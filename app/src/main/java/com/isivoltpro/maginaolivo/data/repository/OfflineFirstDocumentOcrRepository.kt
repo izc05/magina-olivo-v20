@@ -32,7 +32,9 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -44,6 +46,8 @@ import kotlinx.coroutines.withContext
  * reading is still there, PENDING, and can be read again. The file itself is an ordinary
  * attachment owned by the extraction until a person confirms what it is.
  */
+private class OcrScopeInvalid(val field: String, val code: String) : RuntimeException("$field:$code")
+
 class OfflineFirstDocumentOcrRepository(
     private val database: MaginaOlivoDatabase,
     private val attachments: AttachmentRepository,
@@ -59,13 +63,24 @@ class OfflineFirstDocumentOcrRepository(
     private val deliveries = DeliveryWriter(database, idGenerator)
 
     override fun observeOpen(): Flow<List<DocumentExtraction>> =
-        database.documentOcrDao().observeOpen().map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        scopedList { workspaceId ->
+            database.documentOcrDao().observeOpen(workspaceId).map { rows -> rows.map { it.toDomain() } }
+        }
 
     override fun observeRecent(): Flow<List<DocumentExtraction>> =
-        database.documentOcrDao().observeRecent().map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        scopedList { workspaceId ->
+            database.documentOcrDao().observeRecent(workspaceId).map { rows -> rows.map { it.toDomain() } }
+        }
 
     override fun observe(id: UUID): Flow<DocumentExtraction?> =
-        database.documentOcrDao().observeById(id).map { it?.toDomain() }.flowOn(dispatchers.io)
+        flow {
+            when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> emit(null)
+                is AppResult.Success -> emitAll(
+                    database.documentOcrDao().observeById(workspace.value, id).map { it?.toDomain() },
+                )
+            }
+        }.flowOn(dispatchers.io)
 
     override suspend fun importDocument(type: DocumentType, sourceUri: String): AppResult<UUID> {
         val workspaceId = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
@@ -115,17 +130,24 @@ class OfflineFirstDocumentOcrRepository(
     }
 
     override suspend fun runExtraction(id: UUID): AppResult<Unit> {
+        val workspaceId = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
         val row = withContext(dispatchers.io) { database.documentOcrDao().findById(id) }
             ?: return AppResult.Failure(AppError.NotFound("extraction"))
+        if (row.workspaceId != workspaceId) {
+            return AppResult.Failure(AppError.Validation("document", "context_mismatch"))
+        }
         if (row.status == OcrStatus.CONFIRMED.name) return AppResult.Failure(AppError.Conflict("already_confirmed"))
         val attachment = attachments.observe(row.attachmentId).first()
-            ?: return recordFailure(id, "attachment_missing")
-        if (!attachment.isAvailableLocally) return recordFailure(id, "attachment_missing")
+            ?: return recordFailure(workspaceId, id, "attachment_missing")
+        if (!attachment.isAvailableLocally) return recordFailure(workspaceId, id, "attachment_missing")
 
         val text = try {
             engine.recognize(attachment.localUri, attachment.mimeType)
         } catch (error: Throwable) {
-            return recordFailure(id, error.javaClass.simpleName)
+            return recordFailure(workspaceId, id, error.javaClass.simpleName)
         }
         val (json, hasEssentials) = when (row.documentType) {
             DocumentType.GENERIC_AGRICULTURAL_DOCUMENT.name -> null to true
@@ -141,6 +163,9 @@ class OfflineFirstDocumentOcrRepository(
         return transaction("record_extraction") {
             val current = database.documentOcrDao().findById(id)
                 ?: return@transaction AppResult.Failure(AppError.NotFound("extraction"))
+            if (current.workspaceId != workspaceId) {
+                return@transaction AppResult.Failure(AppError.Validation("document", "context_mismatch"))
+            }
             if (current.status == OcrStatus.CONFIRMED.name) {
                 return@transaction AppResult.Failure(AppError.Conflict("already_confirmed"))
             }
@@ -161,10 +186,17 @@ class OfflineFirstDocumentOcrRepository(
     }
 
     override suspend fun createExpenseDraft(id: UUID, reviewed: ExpenseDraft): AppResult<UUID> {
+        val workspaceId = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
         val result = transaction("create_expense_draft") {
             val current = database.documentOcrDao().findById(id)
                 ?.takeIf { it.metadata.deletedAt == null }
                 ?: return@transaction AppResult.Failure(AppError.NotFound("extraction"))
+            if (current.workspaceId != workspaceId) {
+                return@transaction AppResult.Failure(AppError.Validation("document", "context_mismatch"))
+            }
             if (current.documentType == DocumentType.DELIVERY_TICKET.name) {
                 // A weight ticket records kilos delivered, not money spent.
                 return@transaction AppResult.Failure(AppError.Validation("documentType", "delivery_ticket"))
@@ -185,18 +217,25 @@ class OfflineFirstDocumentOcrRepository(
                     metadata = current.metadata.next(now),
                 ),
             )
-            reOwnAttachment(current.attachmentId, AttachmentOwner(AttachmentOwnerType.EXPENSE, expenseId), now)
+            reOwnAttachment(current.attachmentId, AttachmentOwner(AttachmentOwnerType.EXPENSE, expenseId), workspaceId, now)
             database.enqueueCollapsed(idGenerator, SyncEntityType.DOCUMENT_EXTRACTION, id, OutboxOperation.UPDATE, now)
             AppResult.Success(expenseId)
         }
         return result
     }
 
-    override suspend fun confirmDeliveryTicket(id: UUID, reviewed: DeliveryDraft): AppResult<UUID> =
-        transaction("confirm_delivery_ticket") {
+    override suspend fun confirmDeliveryTicket(id: UUID, reviewed: DeliveryDraft): AppResult<UUID> {
+        val workspaceId = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
+        return transaction("confirm_delivery_ticket") {
             val current = database.documentOcrDao().findById(id)
                 ?.takeIf { it.metadata.deletedAt == null }
                 ?: return@transaction AppResult.Failure(AppError.NotFound("extraction"))
+            if (current.workspaceId != workspaceId) {
+                return@transaction AppResult.Failure(AppError.Validation("document", "context_mismatch"))
+            }
             if (current.documentType != DocumentType.DELIVERY_TICKET.name) {
                 return@transaction AppResult.Failure(AppError.Validation("documentType", "not_a_delivery_ticket"))
             }
@@ -216,16 +255,24 @@ class OfflineFirstDocumentOcrRepository(
                     metadata = current.metadata.next(now),
                 ),
             )
-            reOwnAttachment(current.attachmentId, AttachmentOwner(AttachmentOwnerType.DELIVERY, delivery.id), now)
+            reOwnAttachment(current.attachmentId, AttachmentOwner(AttachmentOwnerType.DELIVERY, delivery.id), workspaceId, now)
             database.enqueueCollapsed(idGenerator, SyncEntityType.DOCUMENT_EXTRACTION, id, OutboxOperation.UPDATE, now)
             AppResult.Success(delivery.id)
         }
+    }
 
-    override suspend fun confirmWithoutExpense(id: UUID): AppResult<Unit> =
-        transaction("confirm_document") {
+    override suspend fun confirmWithoutExpense(id: UUID): AppResult<Unit> {
+        val workspaceId = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
+        return transaction("confirm_document") {
             val current = database.documentOcrDao().findById(id)
                 ?.takeIf { it.metadata.deletedAt == null }
                 ?: return@transaction AppResult.Failure(AppError.NotFound("extraction"))
+            if (current.workspaceId != workspaceId) {
+                return@transaction AppResult.Failure(AppError.Validation("document", "context_mismatch"))
+            }
             if (current.status == OcrStatus.CONFIRMED.name) return@transaction AppResult.Success(Unit)
             val now = clock.nowInstant()
             database.documentOcrDao().upsert(
@@ -241,12 +288,20 @@ class OfflineFirstDocumentOcrRepository(
             database.enqueueCollapsed(idGenerator, SyncEntityType.DOCUMENT_EXTRACTION, id, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)
         }
+    }
 
     override suspend fun discard(id: UUID): AppResult<Unit> {
+        val workspaceId = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
         var attachmentId: UUID? = null
         val result = transaction("discard_document") {
             val current = database.documentOcrDao().findById(id)
                 ?: return@transaction AppResult.Failure(AppError.NotFound("extraction"))
+            if (current.workspaceId != workspaceId) {
+                return@transaction AppResult.Failure(AppError.Validation("document", "context_mismatch"))
+            }
             if (current.metadata.deletedAt != null) return@transaction AppResult.Success(Unit)
             if (current.status == OcrStatus.CONFIRMED.name && current.ownerType == AttachmentOwnerType.EXPENSE.name) {
                 // Its file now belongs to an expense; discarding the reading must not take it away.
@@ -265,21 +320,34 @@ class OfflineFirstDocumentOcrRepository(
         return result
     }
 
-    private suspend fun recordFailure(id: UUID, code: String): AppResult<Unit> {
-        transaction("record_ocr_failure") {
+    private suspend fun recordFailure(workspaceId: UUID, id: UUID, code: String): AppResult<Unit> {
+        val recorded = transaction("record_ocr_failure") {
             val current = database.documentOcrDao().findById(id) ?: return@transaction AppResult.Success(Unit)
+            if (current.workspaceId != workspaceId) {
+                return@transaction AppResult.Failure(AppError.Validation("document", "context_mismatch"))
+            }
             val now = clock.nowInstant()
             database.documentOcrDao().upsert(
                 current.copy(status = OcrStatus.FAILED.name, confidenceJson = null, metadata = current.metadata.next(now)),
             )
             AppResult.Success(Unit)
         }
+        if (recorded is AppResult.Failure) return recorded
         return AppResult.Failure(AppError.Unknown(IllegalStateException(code)))
     }
 
     /** The document stays the same immutable file; only who it belongs to changes. */
-    private suspend fun reOwnAttachment(attachmentId: UUID, owner: AttachmentOwner, now: Instant) {
-        val document = database.documentDao().findById(attachmentId) ?: return
+    private suspend fun reOwnAttachment(
+        attachmentId: UUID,
+        owner: AttachmentOwner,
+        workspaceId: UUID,
+        now: Instant,
+    ) {
+        val document = database.documentDao().findById(attachmentId)
+            ?: throw OcrScopeInvalid("document", "attachment_missing")
+        if (document.workspaceId != workspaceId || ownerWorkspaceId(owner) != workspaceId) {
+            throw OcrScopeInvalid("document", "context_mismatch")
+        }
         database.documentDao().update(
             document.copy(
                 ownerType = owner.type.name,
@@ -293,10 +361,31 @@ class OfflineFirstDocumentOcrRepository(
         )
     }
 
+    private suspend fun ownerWorkspaceId(owner: AttachmentOwner): UUID? = when (owner.type) {
+        AttachmentOwnerType.FARM -> database.farmDao().findById(owner.id)?.workspaceId
+        AttachmentOwnerType.PARCEL -> database.parcelDao().findById(owner.id)?.workspaceId
+        AttachmentOwnerType.CAMPAIGN -> database.campaignDao().findById(owner.id)?.workspaceId
+        AttachmentOwnerType.ACTIVITY -> database.activityDao().findById(owner.id)?.workspaceId
+        AttachmentOwnerType.EXPENSE -> database.expenseDao().findById(owner.id)?.workspaceId
+        AttachmentOwnerType.HARVEST -> database.harvestDao().findById(owner.id)?.workspaceId
+        AttachmentOwnerType.DELIVERY -> database.deliveryDao().findById(owner.id)?.workspaceId
+        AttachmentOwnerType.DOCUMENT -> database.documentOcrDao().findById(owner.id)?.workspaceId
+    }
+
+    private fun scopedList(source: (UUID) -> Flow<List<DocumentExtraction>>): Flow<List<DocumentExtraction>> =
+        flow {
+            when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> emit(emptyList())
+                is AppResult.Success -> emitAll(source(workspace.value))
+            }
+        }.flowOn(dispatchers.io)
+
     private suspend fun <T> transaction(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
         withContext(dispatchers.io) {
             try {
                 database.withTransaction { block() }
+            } catch (error: OcrScopeInvalid) {
+                AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: InvalidExpense) {
                 AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: InvalidDelivery) {

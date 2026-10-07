@@ -13,6 +13,7 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
+import com.isivoltpro.maginaolivo.data.local.entity.DocumentOcrExtractionEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
@@ -38,6 +39,8 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
+import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
@@ -1091,6 +1094,70 @@ class ExpenseLedgerContractTest {
     // ---------------------------------------------------------------- OCR safety
 
     @Test
+    fun foreignOcrExtractionIsInvisibleAndCannotBeMutated() = runBlocking {
+        val otherWorkspace = UUID.randomUUID()
+        val extractionId = UUID.randomUUID()
+        val meta = LocalMetadata(now, now)
+        db.workspaceDao().upsert(
+            WorkspaceEntity(otherWorkspace, "Otro olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+        )
+        db.documentOcrDao().upsert(
+            DocumentOcrExtractionEntity(
+                id = extractionId,
+                workspaceId = otherWorkspace,
+                attachmentId = UUID.randomUUID(),
+                documentType = DocumentType.PURCHASE_INVOICE.name,
+                engine = engine.name,
+                status = OcrStatus.PENDING.name,
+                metadata = meta,
+            ),
+        )
+
+        assertTrue(documents.observeOpen().first().none { it.id == extractionId })
+        assertTrue(documents.observeRecent().first().none { it.id == extractionId })
+        assertNull(documents.observe(extractionId).first())
+
+        val before = db.documentOcrDao().findById(extractionId)!!
+        val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.DOCUMENT_EXTRACTION, extractionId)
+        assertDocumentContextMismatch(documents.runExtraction(extractionId))
+        assertDocumentContextMismatch(documents.createExpenseDraft(extractionId, draft(1_000, farmId = farmId)))
+        assertDocumentContextMismatch(
+            documents.confirmDeliveryTicket(
+                extractionId,
+                DeliveryDraft(
+                    farmId = farmId,
+                    deliveryDate = date,
+                    destinationOrganizationId = null,
+                    destinationName = "Cooperativa",
+                    netGrams = 1_000_000,
+                    shares = emptyList(),
+                    origin = PesadaOrigin.TREE,
+                ),
+            ),
+        )
+        assertDocumentContextMismatch(documents.confirmWithoutExpense(extractionId))
+        assertDocumentContextMismatch(documents.discard(extractionId))
+
+        assertEquals(before, db.documentOcrDao().findById(extractionId))
+        assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.DOCUMENT_EXTRACTION, extractionId))
+        assertTrue(expenses.observeAll().first().isEmpty())
+
+        // With B explicitly active, the same extraction is legitimate and can be reviewed.
+        val otherWorkspaces = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(otherWorkspace)
+        }
+        val otherAttachments = OfflineFirstAttachmentRepository(
+            db, AndroidAttachmentFileStore(context), otherWorkspaces, FixedClock(now), RandomIds, TestDispatchers,
+        )
+        val otherDocuments = OfflineFirstDocumentOcrRepository(
+            db, otherAttachments, otherWorkspaces, engine, JsonProposalCodec(), FixedClock(now), RandomIds, TestDispatchers,
+        )
+        assertEquals(extractionId, otherDocuments.observe(extractionId).first()!!.id)
+        ok(otherDocuments.confirmWithoutExpense(extractionId))
+        assertEquals(OcrStatus.CONFIRMED, otherDocuments.observe(extractionId).first()!!.status)
+    }
+
+    @Test
     fun aReviewedDocumentBecomesADraftThatIsNeverCountedUntilPosted() = runBlocking {
         engine.text = INVOICE
         val documentId = ok(documents.importDocument(DocumentType.FERTILIZER_INVOICE, source("factura.jpg")))
@@ -1259,6 +1326,13 @@ class ExpenseLedgerContractTest {
     private fun assertValidation(field: String, result: AppResult<*>) {
         val error = (result as? AppResult.Failure)?.error
         assertTrue("Expected validation on $field but was $result", error is AppError.Validation && error.field == field)
+    }
+
+    private fun assertDocumentContextMismatch(result: AppResult<*>) {
+        assertEquals(
+            AppError.Validation("document", "context_mismatch"),
+            (result as? AppResult.Failure)?.error,
+        )
     }
 
     private fun assertClosedMutation(result: AppResult<*>) {
