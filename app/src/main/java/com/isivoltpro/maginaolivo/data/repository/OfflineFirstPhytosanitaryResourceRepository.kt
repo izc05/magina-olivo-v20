@@ -7,14 +7,20 @@ import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.local.entity.AgronomicCredentialEntity
 import com.isivoltpro.maginaolivo.data.local.entity.AgronomicPersonEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
+import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryEquipmentInspectionEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryEquipmentProfileEntity
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicCredential
+import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicCredentialDraft
 import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicPerson
 import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicPersonDraft
+import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentInspection
+import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentInspectionDraft
 import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentProfile
 import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentProfileDraft
 import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryResourceRepository
@@ -33,7 +39,7 @@ import kotlinx.coroutines.withContext
  * Offline-first reusable resources for CUE phytosanitary records.
  *
  * Worker is intentionally not involved: harvest labour aliases and legal applicator identities
- * have different semantics and lifecycles.
+ * have different semantics and lifecycles. Credentials and inspections are historical children.
  */
 class OfflineFirstPhytosanitaryResourceRepository(
     private val database: MaginaOlivoDatabase,
@@ -49,10 +55,22 @@ class OfflineFirstPhytosanitaryResourceRepository(
                 .map { rows -> rows.map { it.toDomain() } }
         }
 
+    override fun observeCredentials(personId: UUID): Flow<List<AgronomicCredential>> =
+        scoped { workspaceId ->
+            database.phytosanitaryResourceDao().observeCredentials(workspaceId, personId)
+                .map { rows -> rows.map { it.toDomain() } }
+        }
+
     override fun observeEquipmentProfile(machineId: UUID): Flow<PhytosanitaryEquipmentProfile?> =
         scoped { workspaceId ->
             database.phytosanitaryResourceDao().observeEquipmentProfile(workspaceId, machineId)
                 .map { it?.toDomain() }
+        }
+
+    override fun observeEquipmentInspections(machineId: UUID): Flow<List<PhytosanitaryEquipmentInspection>> =
+        scoped { workspaceId ->
+            database.phytosanitaryResourceDao().observeEquipmentInspections(workspaceId, machineId)
+                .map { rows -> rows.map { it.toDomain() } }
         }
 
     override suspend fun createPerson(draft: AgronomicPersonDraft): AppResult<UUID> {
@@ -73,13 +91,7 @@ class OfflineFirstPhytosanitaryResourceRepository(
                     metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
                 ),
             )
-            database.enqueueCollapsed(
-                idGenerator,
-                SyncEntityType.AGRONOMIC_PERSON,
-                id,
-                OutboxOperation.CREATE,
-                now,
-            )
+            database.enqueueCollapsed(idGenerator, SyncEntityType.AGRONOMIC_PERSON, id, OutboxOperation.CREATE, now)
             AppResult.Success(id)
         }
     }
@@ -96,27 +108,16 @@ class OfflineFirstPhytosanitaryResourceRepository(
             if (current.status != ACTIVE || current.metadata.deletedAt != null) {
                 return@safely AppResult.Failure(AppError.Conflict("archived_agronomic_person"))
             }
-            val name = draft.displayName.trim()
-            val duplicate = database.phytosanitaryResourceDao().findActivePersonByName(workspaceId, name)
+            val duplicate = database.phytosanitaryResourceDao()
+                .findActivePersonByName(workspaceId, draft.displayName.trim())
             if (duplicate != null && duplicate.id != id) {
                 return@safely AppResult.Failure(AppError.Conflict("duplicate_agronomic_person"))
             }
             val now = clock.nowInstant()
             database.phytosanitaryResourceDao().upsertPerson(
-                draft.toEntity(
-                    id = id,
-                    workspaceId = workspaceId,
-                    status = current.status,
-                    metadata = current.metadata.next(now),
-                ),
+                draft.toEntity(id, workspaceId, current.status, current.metadata.next(now)),
             )
-            database.enqueueCollapsed(
-                idGenerator,
-                SyncEntityType.AGRONOMIC_PERSON,
-                id,
-                OutboxOperation.UPDATE,
-                now,
-            )
+            database.enqueueCollapsed(idGenerator, SyncEntityType.AGRONOMIC_PERSON, id, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)
         }
     }
@@ -134,13 +135,7 @@ class OfflineFirstPhytosanitaryResourceRepository(
             database.phytosanitaryResourceDao().upsertPerson(
                 current.copy(status = ARCHIVED, metadata = current.metadata.next(now)),
             )
-            database.enqueueCollapsed(
-                idGenerator,
-                SyncEntityType.AGRONOMIC_PERSON,
-                id,
-                OutboxOperation.UPDATE,
-                now,
-            )
+            database.enqueueCollapsed(idGenerator, SyncEntityType.AGRONOMIC_PERSON, id, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)
         }
     }
@@ -171,14 +166,44 @@ class OfflineFirstPhytosanitaryResourceRepository(
                     ),
                 ),
             )
-            database.enqueueCollapsed(
-                idGenerator,
-                SyncEntityType.AGRONOMIC_PERSON,
-                id,
-                OutboxOperation.UPDATE,
-                now,
-            )
+            database.enqueueCollapsed(idGenerator, SyncEntityType.AGRONOMIC_PERSON, id, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)
+        }
+    }
+
+    override suspend fun addCredential(
+        personId: UUID,
+        draft: AgronomicCredentialDraft,
+    ): AppResult<UUID> {
+        validateCredential(draft)?.let { return it }
+        val workspaceId = activeWorkspace() ?: return AppResult.Failure(AppError.NotFound("workspace"))
+        return safely("add_agronomic_credential") {
+            val person = database.phytosanitaryResourceDao().findPersonById(personId)
+                ?: return@safely AppResult.Failure(AppError.NotFound("agronomic_person"))
+            if (person.workspaceId != workspaceId || person.status != ACTIVE || person.metadata.deletedAt != null) {
+                return@safely AppResult.Failure(AppError.Validation("person", "context_mismatch"))
+            }
+            val now = clock.nowInstant()
+            val id = idGenerator.newId()
+            database.phytosanitaryResourceDao().upsertCredential(
+                AgronomicCredentialEntity(
+                    id = id,
+                    workspaceId = workspaceId,
+                    personId = personId,
+                    credentialType = draft.credentialType.trim(),
+                    number = draft.number.trim(),
+                    categoryCode = draft.categoryCode.normalized(),
+                    validFrom = draft.validFrom,
+                    validUntil = draft.validUntil,
+                    source = draft.source.name,
+                    externalId = draft.externalId.normalized(),
+                    sourceVersion = draft.sourceVersion.normalized(),
+                    fetchedAt = draft.fetchedAt,
+                    metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
+                ),
+            )
+            database.enqueueCollapsed(idGenerator, SyncEntityType.AGRONOMIC_CREDENTIAL, id, OutboxOperation.CREATE, now)
+            AppResult.Success(id)
         }
     }
 
@@ -204,7 +229,6 @@ class OfflineFirstPhytosanitaryResourceRepository(
                     romaRegistration = draft.romaRegistration.normalized(),
                     censusReference = draft.censusReference.normalized(),
                     acquisitionDate = draft.acquisitionDate,
-                    lastInspectionDate = draft.lastInspectionDate,
                     regulatoryTypeCode = draft.regulatoryTypeCode.normalized(),
                     source = draft.source.name,
                     externalId = draft.externalId.normalized(),
@@ -224,14 +248,62 @@ class OfflineFirstPhytosanitaryResourceRepository(
         }
     }
 
+    override suspend fun addEquipmentInspection(
+        machineId: UUID,
+        draft: PhytosanitaryEquipmentInspectionDraft,
+    ): AppResult<UUID> {
+        val workspaceId = activeWorkspace() ?: return AppResult.Failure(AppError.NotFound("workspace"))
+        return safely("add_phytosanitary_equipment_inspection") {
+            val machine = database.machineDao().findById(machineId)
+                ?: return@safely AppResult.Failure(AppError.NotFound("machine"))
+            if (machine.workspaceId != workspaceId || machine.metadata.deletedAt != null) {
+                return@safely AppResult.Failure(AppError.Validation("machine", "context_mismatch"))
+            }
+            val now = clock.nowInstant()
+            val id = idGenerator.newId()
+            database.phytosanitaryResourceDao().upsertEquipmentInspection(
+                PhytosanitaryEquipmentInspectionEntity(
+                    id = id,
+                    workspaceId = workspaceId,
+                    machineId = machineId,
+                    inspectionDate = draft.inspectionDate,
+                    resultCode = draft.resultCode.normalized(),
+                    certificateReference = draft.certificateReference.normalized(),
+                    source = draft.source.name,
+                    externalId = draft.externalId.normalized(),
+                    sourceVersion = draft.sourceVersion.normalized(),
+                    fetchedAt = draft.fetchedAt,
+                    metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
+                ),
+            )
+            database.enqueueCollapsed(
+                idGenerator,
+                SyncEntityType.PHYTO_EQUIPMENT_INSPECTION,
+                id,
+                OutboxOperation.CREATE,
+                now,
+            )
+            AppResult.Success(id)
+        }
+    }
+
     private suspend fun activeWorkspace(): UUID? = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
         is AppResult.Success -> workspace.value
         is AppResult.Failure -> null
     }
 
-    private fun validatePerson(draft: AgronomicPersonDraft): AppResult.Failure? = when {
-        draft.displayName.isBlank() ->
+    private fun validatePerson(draft: AgronomicPersonDraft): AppResult.Failure? =
+        if (draft.displayName.isBlank()) {
             AppResult.Failure(AppError.Validation("displayName", "blank"))
+        } else {
+            null
+        }
+
+    private fun validateCredential(draft: AgronomicCredentialDraft): AppResult.Failure? = when {
+        draft.credentialType.isBlank() ->
+            AppResult.Failure(AppError.Validation("credentialType", "blank"))
+        draft.number.isBlank() ->
+            AppResult.Failure(AppError.Validation("number", "blank"))
         draft.validFrom != null && draft.validUntil != null && draft.validUntil.isBefore(draft.validFrom) ->
             AppResult.Failure(AppError.Validation("validUntil", "before_valid_from"))
         else -> null
@@ -266,11 +338,7 @@ class OfflineFirstPhytosanitaryResourceRepository(
         givenName = givenName.normalized(),
         familyName = familyName.normalized(),
         taxId = taxId.normalized(),
-        ropoOrCardNumber = ropoOrCardNumber.normalized(),
-        cardTypeCode = cardTypeCode.normalized(),
         isAdvisor = isAdvisor,
-        validFrom = validFrom,
-        validUntil = validUntil,
         source = source.name,
         externalId = externalId.normalized(),
         sourceVersion = sourceVersion.normalized(),
@@ -285,16 +353,27 @@ class OfflineFirstPhytosanitaryResourceRepository(
         givenName = givenName,
         familyName = familyName,
         taxId = taxId,
-        ropoOrCardNumber = ropoOrCardNumber,
-        cardTypeCode = cardTypeCode,
         isAdvisor = isAdvisor,
-        validFrom = validFrom,
-        validUntil = validUntil,
-        source = RegulatoryResourceSource.entries.firstOrNull { it.name == source } ?: RegulatoryResourceSource.MANUAL,
+        source = source.toSource(),
         externalId = externalId,
         sourceVersion = sourceVersion,
         fetchedAt = fetchedAt,
         archived = status != ACTIVE,
+        version = metadata.version,
+    )
+
+    private fun AgronomicCredentialEntity.toDomain() = AgronomicCredential(
+        id = id,
+        personId = personId,
+        credentialType = credentialType,
+        number = number,
+        categoryCode = categoryCode,
+        validFrom = validFrom,
+        validUntil = validUntil,
+        source = source.toSource(),
+        externalId = externalId,
+        sourceVersion = sourceVersion,
+        fetchedAt = fetchedAt,
         version = metadata.version,
     )
 
@@ -303,14 +382,29 @@ class OfflineFirstPhytosanitaryResourceRepository(
         romaRegistration = romaRegistration,
         censusReference = censusReference,
         acquisitionDate = acquisitionDate,
-        lastInspectionDate = lastInspectionDate,
         regulatoryTypeCode = regulatoryTypeCode,
-        source = RegulatoryResourceSource.entries.firstOrNull { it.name == source } ?: RegulatoryResourceSource.MANUAL,
+        source = source.toSource(),
         externalId = externalId,
         sourceVersion = sourceVersion,
         fetchedAt = fetchedAt,
         version = metadata.version,
     )
+
+    private fun PhytosanitaryEquipmentInspectionEntity.toDomain() = PhytosanitaryEquipmentInspection(
+        id = id,
+        machineId = machineId,
+        inspectionDate = inspectionDate,
+        resultCode = resultCode,
+        certificateReference = certificateReference,
+        source = source.toSource(),
+        externalId = externalId,
+        sourceVersion = sourceVersion,
+        fetchedAt = fetchedAt,
+        version = metadata.version,
+    )
+
+    private fun String.toSource() =
+        RegulatoryResourceSource.entries.firstOrNull { it.name == this } ?: RegulatoryResourceSource.MANUAL
 
     private fun LocalMetadata.next(now: Instant) =
         copy(updatedAt = now, version = version + 1, syncStatus = SyncStatus.PENDING)
