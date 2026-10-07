@@ -74,6 +74,8 @@ object AppDestination {
     const val CampaignPattern = "campaign/{campaignId}"
     /** #408: Días de recolección scoped to the campaign the user came from. */
     const val CampaignHarvestsPattern = "campaign/{campaignId}/harvests"
+    /** #511: Pesadas scoped to the Campaign being consulted, including closed history. */
+    const val CampaignDeliveriesPattern = "campaign/{campaignId}/deliveries"
     const val ActivityPattern = "activity/{activityId}"
     const val ExpensePattern = "expense/{expenseId}"
     /** CR-012 P1: a document taken on a Farm/Campaign screen is reviewed with that context. */
@@ -112,6 +114,9 @@ object AppDestination {
 
     /** #408: keep the chosen Campaign while browsing its recollection days. */
     fun campaignHarvests(campaignId: String): String = "${campaign(campaignId)}/harvests"
+
+    /** #511: keep the chosen Campaign while browsing its Pesadas. */
+    fun campaignDeliveries(campaignId: String): String = "${campaign(campaignId)}/deliveries"
 
     fun activity(activityId: String): String = nestedRoute("activity", activityId)
 
