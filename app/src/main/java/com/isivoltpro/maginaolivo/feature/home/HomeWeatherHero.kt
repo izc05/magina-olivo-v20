@@ -61,11 +61,12 @@ internal fun WeatherNow.rainLine(today: java.time.LocalDate?): String? =
     rainProbabilityPercent?.let { "Prob. lluvia ${it.coerceIn(0, 100)} %" }
         ?: today?.let { day -> daily.firstOrNull { it.date == day }?.rainMm }?.let { "Lluvia prevista ${rainFormat(it)} mm" }
 
-internal fun WeatherNow.solarLine(today: java.time.LocalDate?): String? {
-    if (today == null || solarDate != today) return null
+internal fun WeatherNow.solarLine(now: Instant): String? {
+    val zone = solarTimeZone?.let { runCatching { ZoneId.of(it) }.getOrNull() } ?: SUN_ZONE
+    if (solarDate != now.atZone(zone).toLocalDate()) return null
     val sunrise = sunriseAt ?: return null
     val sunset = sunsetAt ?: return null
-    return "Salida ${SUN_TIME.format(sunrise.atZone(SUN_ZONE))} · Puesta ${SUN_TIME.format(sunset.atZone(SUN_ZONE))}"
+    return "Salida ${SUN_TIME.format(sunrise.atZone(zone))} · Puesta ${SUN_TIME.format(sunset.atZone(zone))}"
 }
 
 /** The photograph remains visible; content grows naturally at enlarged font sizes. */
@@ -131,7 +132,7 @@ internal fun HomeWeatherHero(
                     }
                     when (val weather = state.weather) {
                         is FeedState.Value -> {
-                            weather.value.solarLine(state.today)?.let { line ->
+                            weather.value.solarLine(now)?.let { line ->
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
