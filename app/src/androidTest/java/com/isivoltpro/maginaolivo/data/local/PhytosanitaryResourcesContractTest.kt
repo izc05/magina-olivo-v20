@@ -100,6 +100,8 @@ class PhytosanitaryResourcesContractTest {
 
         ok(repository.archivePerson(id))
         assertTrue(repository.observeActivePeople().first().isEmpty())
+        ok(repository.restorePerson(id))
+        assertEquals(id, repository.observeActivePeople().first().single().id)
     }
 
     @Test
