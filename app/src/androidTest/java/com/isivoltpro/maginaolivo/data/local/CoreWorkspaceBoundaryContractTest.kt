@@ -98,6 +98,9 @@ class CoreWorkspaceBoundaryContractTest {
                 ),
             ),
         )
+        // #427: archiving is no longer an implicit cascade. Resolve the operational Campaign
+        // first, then archive B so this test can keep exercising an archived foreign Farm.
+        assertEquals(AppResult.Success(Unit), campaigns.close(campaignB, LocalDate.of(2026, 10, 6)))
         assertEquals(AppResult.Success(Unit), farms.archive(farmB))
 
         val farmBefore = db.farmDao().findById(farmB)!!
