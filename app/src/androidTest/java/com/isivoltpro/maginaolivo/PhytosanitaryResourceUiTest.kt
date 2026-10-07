@@ -135,6 +135,8 @@ class PhytosanitaryResourceUiTest {
                 )
             }
         }
+        rule.onNodeWithTag("machine-phyto-source").assertDoesNotExist()
+        rule.onNodeWithTag("machine-phyto-details").performScrollTo().performClick()
         rule.onNodeWithTag("machine-phyto-source").performScrollTo().assertTextContains("REAFA")
         rule.onNodeWithTag("machine-phyto-inspection").performScrollTo()
             .assertTextContains("CERT-2026", substring = true)
