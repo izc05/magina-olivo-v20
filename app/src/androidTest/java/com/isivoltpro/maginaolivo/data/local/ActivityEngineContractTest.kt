@@ -9,11 +9,14 @@ import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
+import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
+import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstActivityRepository
@@ -187,14 +190,67 @@ class ActivityEngineContractTest {
         assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(todayId)?.status)
         assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(yesterdayId)?.status)
         assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(plannedId)?.status)
-        // A harvest day is an appointment the agenda shows while planned, even if dated today.
+        // A harvest day is an appointment the agenda shows while planned, and always belongs
+        // to the Campaign that defines the collection context (#482).
+        val harvestCampaign = campaign(startDate = today.minusDays(10), parcelIds = setOf(parcelA))
         val harvestDayId = (repository.create(
             NewActivity(
-                farmId, null, ActivityType.HARVEST_DAY, today, "Jornada de recogida", setOf(parcelA),
+                farmId, harvestCampaign, ActivityType.HARVEST_DAY, today, "Jornada de recogida", setOf(parcelA),
                 completeImmediately = true,
             ),
         ) as AppResult.Success).value
         assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(harvestDayId)?.status)
+        assertEquals(harvestCampaign, db.activityDao().findById(harvestDayId)?.campaignId)
+    }
+
+    @Test
+    fun harvestDayRequiresCampaignDateAndParcelMembership() = runBlocking {
+        val today = LocalDate.parse("2026-09-22")
+        val noCampaign = repository.create(
+            NewActivity(farmId, null, ActivityType.HARVEST_DAY, today, "Recogida", setOf(parcelA)),
+        )
+        assertValidation("campaignId", noCampaign)
+        assertEquals(
+            "required_for_harvest_day",
+            ((noCampaign as AppResult.Failure).error as AppError.Validation).code,
+        )
+
+        val campaignId = campaign(
+            startDate = LocalDate.parse("2026-09-20"),
+            parcelIds = setOf(parcelA),
+        )
+        assertValidation(
+            "activityDate",
+            repository.create(
+                NewActivity(
+                    farmId, campaignId, ActivityType.HARVEST_DAY,
+                    LocalDate.parse("2026-09-19"), "Demasiado pronto", setOf(parcelA),
+                ),
+            ),
+        )
+        val foreignTarget = repository.create(
+            NewActivity(farmId, campaignId, ActivityType.HARVEST_DAY, today, "Parcela ajena a campaña", setOf(parcelB)),
+        )
+        assertValidation("parcelIds", foreignTarget)
+        assertEquals(
+            "not_in_campaign",
+            ((foreignTarget as AppResult.Failure).error as AppError.Validation).code,
+        )
+
+        val valid = repository.create(
+            NewActivity(farmId, campaignId, ActivityType.HARVEST_DAY, today, "Recogida", setOf(parcelA)),
+        )
+        assertTrue(valid is AppResult.Success)
+        val id = (valid as AppResult.Success).value
+        assertEquals(campaignId, db.activityDao().findById(id)?.campaignId)
+        assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(id)?.status)
+
+        db.campaignDao().upsert(db.campaignDao().findById(campaignId)!!.copy(status = CampaignStatus.CLOSED, endDate = today))
+        val closed = repository.create(
+            NewActivity(farmId, campaignId, ActivityType.HARVEST_DAY, today, "Otra recogida", setOf(parcelA)),
+        )
+        assertValidation("campaignId", closed)
+        assertEquals("closed", ((closed as AppResult.Failure).error as AppError.Validation).code)
     }
 
     @Test
@@ -310,6 +366,46 @@ class ActivityEngineContractTest {
     }
 
     // --------------------------------------------------------------- helpers
+
+    private suspend fun campaign(
+        startDate: LocalDate,
+        parcelIds: Set<UUID>,
+        status: CampaignStatus = CampaignStatus.PREPARATION,
+        farm: UUID = farmId,
+    ): UUID {
+        val id = UUID.randomUUID()
+        val meta = LocalMetadata(now, now)
+        db.campaignDao().upsert(
+            CampaignEntity(
+                id = id,
+                workspaceId = workspaceId,
+                farmId = farm,
+                name = "Campaña para recogida",
+                startDate = startDate,
+                status = status,
+                metadata = meta,
+            ),
+        )
+        db.campaignDao().upsertSnapshots(
+            parcelIds.map { parcelId ->
+                CampaignParcelSnapshotEntity(
+                    id = UUID.randomUUID(),
+                    workspaceId = workspaceId,
+                    campaignId = id,
+                    parcelId = parcelId,
+                    farmIdAtStart = farm,
+                    farmNameAtStart = if (farm == farmId) "Finca principal" else "Finca vecina",
+                    parcelNameAtStart = when (parcelId) {
+                        parcelA -> "Parcela A"
+                        parcelB -> "Parcela B"
+                        else -> "Parcela vecina"
+                    },
+                    metadata = meta,
+                )
+            },
+        )
+        return id
+    }
 
     private suspend fun created(description: String, parcelIds: Set<UUID>): UUID {
         val result = repository.create(
