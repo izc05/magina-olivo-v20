@@ -195,14 +195,39 @@ class ExpenseLedgerContractTest {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(otherWorkspaceId)
         }
         val otherExpenses = OfflineFirstExpenseRepository(db, otherWorkspaces, FixedClock(now), RandomIds, TestDispatchers)
+        val foreignFarm = UUID.randomUUID()
+        db.farmDao().upsert(
+            FarmEntity(foreignFarm, otherWorkspaceId, "Finca B", metadata = LocalMetadata(now, now)),
+        )
 
         val mine = ok(expenses.create(draft(500, concept = "Gasto A")))
-        val theirs = ok(otherExpenses.create(draft(800, concept = "Gasto B")))
+        val theirs = ok(otherExpenses.create(draft(800, farmId = foreignFarm, concept = "Gasto B")))
 
         assertEquals(listOf(mine), expenses.observeAll().first().map { it.id })
         assertEquals(500L, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
         assertEquals(listOf(theirs), otherExpenses.observeAll().first().map { it.id })
         assertEquals(800L, ExpenseSummary.of(otherExpenses.observeAll().first(), "EUR").totalMinor)
+
+        // A UUID from B never becomes a back door around the active Workspace.
+        assertNull(expenses.observe(theirs).first())
+        val before = db.expenseDao().findById(theirs)!!
+        val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.EXPENSE, theirs)
+
+        fun assertContext(result: AppResult<*>) {
+            assertEquals(
+                AppError.Validation("workspaceId", "context_mismatch"),
+                (result as? AppResult.Failure)?.error,
+            )
+        }
+        assertContext(expenses.create(draft(900, farmId = foreignFarm, concept = "No crear en B")))
+        assertContext(expenses.update(theirs, draft(900, farmId = foreignFarm, concept = "No tocar B")))
+        assertContext(expenses.post(theirs))
+        assertContext(expenses.delete(theirs))
+        assertContext(expenses.keepAsIndependent(theirs))
+
+        assertEquals(before, db.expenseDao().findById(theirs))
+        assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.EXPENSE, theirs))
+        assertEquals(listOf(theirs), otherExpenses.observeAll().first().map { it.id })
     }
 
     @Test
