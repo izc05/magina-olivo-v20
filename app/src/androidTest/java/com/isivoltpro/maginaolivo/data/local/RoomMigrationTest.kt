@@ -40,7 +40,7 @@ class RoomMigrationTest {
     fun migration22To23AddsOptionalActivityEndDateWithoutRewritingLegacyRows() {
         migrationHelper.createDatabase(TEST_DATABASE, 22).use { database ->
             database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
-            database.execSQL("INSERT INTO activities (id, workspace_id, farm_id, activity_date, type, status, description, created_at, updated_at, version, sync_status) VALUES ('a','w',NULL,'2026-10-05','PHYTO SANITARY','PLANNED','Tratamiento',1000,1000,7,'PENDING')")
+            database.execSQL("INSERT INTO activities (id, workspace_id, farm_id, activity_date, type, status, description, created_at, updated_at, version, sync_status) VALUES ('a','w',NULL,'2026-10-05','PHYTOSANITARY','PLANNED','Tratamiento',1000,1000,7,'PENDING')")
         }
         migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 23, true, DatabaseMigrations.MIGRATION_22_23).use { database ->
             database.query("SELECT activity_date, activity_end_date, description, version, sync_status FROM activities WHERE id='a'").use { cursor ->
