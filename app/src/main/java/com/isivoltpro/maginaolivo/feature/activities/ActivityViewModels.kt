@@ -382,27 +382,33 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
             mutableState.value = mutableState.value.copy(error = "Revisa la descripción y la fecha")
             return
         }
-        mutate("Cambios guardados") {
-            repository.update(
-                activityId,
-                ActivityChanges(
-                    draft.type,
-                    draft.activityDate,
-                    draft.description.trim(),
-                    draft.parcelIds,
-                    draft.notes.nullIfBlank(),
-                    draft.detail,
-                    // #429: an edit never touches money; a cost linked before 1.0 stays on its Gasto.
-                    null,
-                    draft.machines,
-                    draft.planning,
-                    draft.reminders,
-                    parcelAreasM2 = draft.parcelAreasM2,
-                    activityEndDate = draft.activityEndDate,
-                ),
-            )
-        }
+        mutate("Cambios guardados") { repository.update(activityId, draft.toChanges()) }
     }
+
+    /** #426: historical correction never sends the record back to Agenda. */
+    fun correct(draft: ActivityDraft) {
+        if (draft.description.isBlank() || draft.activityDate == null) {
+            mutableState.value = mutableState.value.copy(error = "Revisa la descripción y la fecha")
+            return
+        }
+        mutate("Registro corregido") { repository.correctCompleted(activityId, draft.toChanges()) }
+    }
+
+    private fun ActivityDraft.toChanges() = ActivityChanges(
+        type = type,
+        activityDate = activityDate!!,
+        description = description.trim(),
+        parcelIds = parcelIds,
+        notes = notes.nullIfBlank(),
+        detail = detail,
+        // #429/#426: Activity corrections never write money.
+        costMinor = null,
+        machines = machines,
+        planning = planning,
+        reminders = reminders,
+        parcelAreasM2 = parcelAreasM2,
+        activityEndDate = activityEndDate,
+    )
 
     fun plan() = mutate("Trabajo planificado", "volver a planificarlo") { repository.plan(activityId) }
 

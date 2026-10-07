@@ -1012,6 +1012,8 @@ internal fun ActivityEditor(
 fun ActivityDetailRoute(
     activityId: UUID,
     persistence: LocalPersistence,
+    /** #426/#435: canonical Workspace day for inline validation of historical corrections. */
+    clock: AppClock? = null,
     /** #416: opens Gasto tied to this work (its Farm, its single Parcel, the work itself). */
     onAddRelatedExpense: ((Activity) -> Unit)? = null,
     /** #416: opens one Gasto by id (the historic cost row of this work). */
@@ -1024,6 +1026,15 @@ fun ActivityDetailRoute(
         initializer { ActivityDetailViewModel(activityId, persistence.activityRepository) }
     })
     val state by vm.state.collectAsStateWithLifecycle()
+    val workspaceId = state.activity?.workspaceId
+    var workspaceToday by remember(workspaceId) { mutableStateOf<LocalDate?>(null) }
+    LaunchedEffect(workspaceId, clock) {
+        workspaceToday = if (workspaceId != null && clock != null) {
+            runCatching { persistence.database.todayForWorkspace(workspaceId, clock) }.getOrNull()
+        } else {
+            null
+        }
+    }
     // #416: the canonical Expense row of a cost typed on the work before 1.0 (money lives in Gastos).
     val linkedExpenses by remember(activityId) { persistence.expenseRepository.observeForActivity(activityId) }
         .collectAsStateWithLifecycle(emptyList())
@@ -1042,6 +1053,9 @@ fun ActivityDetailRoute(
         vm::cancel,
         vm::reopen,
         vm::archive,
+        onCorrect = vm::correct,
+        correctionCampaign = campaign,
+        today = workspaceToday,
         onAddRelatedExpense = onAddRelatedExpense,
         historicCostExpenseId = historicCostId,
         // #437: Gastos of their own pointing at this work (never its convenience cost).
@@ -1070,6 +1084,12 @@ fun ActivityDetailScreen(
     onCancelActivity: () -> Unit,
     onReopen: () -> Unit,
     onArchive: () -> Unit,
+    /** #426: historical correction keeps COMPLETED; null for legacy/test callers. */
+    onCorrect: ((ActivityDraft) -> Unit)? = null,
+    /** Current Campaign snapshot for a historical HARVEST_DAY correction. */
+    correctionCampaign: Campaign? = null,
+    /** #435: canonical Workspace day; null only in source-compatible previews/tests. */
+    today: LocalDate? = null,
     onAddRelatedExpense: ((Activity) -> Unit)? = null,
     historicCostExpenseId: UUID? = null,
     relatedExpenses: List<com.isivoltpro.maginaolivo.domain.expense.Expense> = emptyList(),
@@ -1214,8 +1234,31 @@ fun ActivityDetailScreen(
                             }
                         }
                         ActivityStatus.COMPLETED -> {
-                            Text("Registro protegido", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
-                            MoSecondaryButton("Reabrir trabajo", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-activity"), enabled = !costHeld)
+                            Text("Trabajo realizado", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
+                            if (onCorrect != null) {
+                                val harvestContextMissing =
+                                    activity.type == ActivityType.HARVEST_DAY && correctionCampaign == null
+                                MoPrimaryButton(
+                                    "Corregir datos",
+                                    { editor = true },
+                                    modifier = Modifier.fillMaxWidth().testTag("correct-activity"),
+                                    enabled = !state.isSaving && !campaignClosed && !harvestContextMissing,
+                                )
+                                if (campaignClosed) {
+                                    Text(
+                                        "La campaña está cerrada. Reábrela antes de corregir este histórico.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MoTextSecondary,
+                                        modifier = Modifier.testTag("correct-activity-closed"),
+                                    )
+                                }
+                            }
+                            MoSecondaryButton(
+                                "Volver a planificar",
+                                { confirmation = "reopen" },
+                                modifier = Modifier.fillMaxWidth().testTag("reopen-activity"),
+                                enabled = !costHeld,
+                            )
                             if (costHeld) CostToReview(costToReview("volver a planificarlo"), historicCostExpenseId, onOpenExpense)
                         }
                         ActivityStatus.CANCELLED -> {
@@ -1240,8 +1283,14 @@ fun ActivityDetailScreen(
     val activity = state.activity
     if (editor && activity != null) {
         ModalBottomSheet(onDismissRequest = { editor = false }) {
+            val correctionParcels = (
+                state.parcels + activity.targets
+                    .filter { target -> state.parcels.none { it.id == target.parcelId } }
+                    .map { target -> ActivityParcelOption(target.parcelId, target.parcelName, null) }
+            ).distinctBy { it.id }
             ActivityEditor(
-                parcels = state.parcels,
+                parcels = correctionParcels,
+                campaigns = listOfNotNull(correctionCampaign),
                 descriptionError = null,
                 dateError = null,
                 // #441: said where the Parcels are chosen; the Gastos to review are listed below the work.
@@ -1254,7 +1303,10 @@ fun ActivityDetailScreen(
                     }
                 },
                 isSaving = state.isSaving,
-                onSave = onUpdate,
+                onSave = { draft ->
+                    if (activity.status == ActivityStatus.COMPLETED && onCorrect != null) onCorrect(draft)
+                    else onUpdate(draft)
+                },
                 onCancel = { editor = false },
                 initial = ActivityDraft(
                     type = activity.type,
@@ -1267,12 +1319,16 @@ fun ActivityDetailScreen(
                     machines = activity.machines.map { MachineUseInput(it.machineId, it.startHours, it.endHours, it.usageHours) },
                     planning = activity.planning,
                     reminders = activity.reminders.map { it.toRequest() },
+                    campaignId = activity.campaignId,
                     activityEndDate = activity.activityEndDate,
                 ),
-                title = "Editar trabajo",
+                title = if (activity.status == ActivityStatus.COMPLETED) "Corregir registro" else "Editar trabajo",
+                // #426: a historical correction does not expose planning/reminder controls.
+                doneWork = activity.status == ActivityStatus.COMPLETED,
                 // A retired machine the Activity already named stays choosable here only.
                 machines = state.machines + activity.machines.filter { it.archived }
                     .map { MachineOption(it.machineId, "${it.name} (retirada)", it.category) },
+                today = today,
             )
         }
     }
@@ -1284,7 +1340,11 @@ fun ActivityDetailScreen(
             ) {
                 Text("Confirmar cambio", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Esta acción actualizará el estado del trabajo guardado en este dispositivo.",
+                    if (confirmation == "reopen") {
+                        "Volverá a quedar pendiente y aparecerá otra vez en Avisos. Úsalo solo si el trabajo realmente debe volver a planificarse."
+                    } else {
+                        "Esta acción actualizará el estado del trabajo guardado en este dispositivo."
+                    },
                     color = MoTextSecondary,
                 )
                 val confirm = {

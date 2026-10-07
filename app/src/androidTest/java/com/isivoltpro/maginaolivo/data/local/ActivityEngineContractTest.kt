@@ -377,6 +377,88 @@ class ActivityEngineContractTest {
     }
 
     @Test
+    fun completedCorrectionHasIndependentStatusDateAndCampaignGuards() = runBlocking {
+        val today = LocalDate.parse("2026-09-22")
+        val completed = (repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PRUNING,
+                activityDate = today.minusDays(1),
+                description = "Poda registrada",
+                parcelIds = setOf(parcelA),
+                completeImmediately = true,
+            ),
+        ) as AppResult.Success).value
+
+        assertEquals(
+            AppResult.Failure(AppError.Validation("activityDate", "future_completed_work")),
+            repository.correctCompleted(
+                completed,
+                ActivityChanges(
+                    ActivityType.PRUNING,
+                    today.plusDays(1),
+                    "No debe guardarse",
+                    setOf(parcelA),
+                ),
+            ),
+        )
+        assertEquals("Poda registrada", db.activityDao().findById(completed)?.description)
+        assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(completed)?.status)
+
+        assertValidation(
+            "parcelIds",
+            repository.correctCompleted(
+                completed,
+                ActivityChanges(
+                    ActivityType.PRUNING,
+                    today.minusDays(1),
+                    "Sin ámbito",
+                    emptySet(),
+                ),
+            ),
+        )
+        assertEquals(setOf(parcelA), db.activityDao().listTargets(completed).map { it.parcelId }.toSet())
+
+        val planned = created("Pendiente", setOf(parcelA))
+        assertConflict(
+            "activity_not_completed",
+            repository.correctCompleted(
+                planned,
+                ActivityChanges(ActivityType.PRUNING, date, "No aplica", setOf(parcelA)),
+            ),
+        )
+
+        val campaignId = campaign(
+            startDate = today.minusDays(10),
+            parcelIds = setOf(parcelA),
+            status = CampaignStatus.ACTIVE,
+        )
+        val campaignWork = (repository.create(
+            NewActivity(
+                farmId = farmId,
+                campaignId = campaignId,
+                type = ActivityType.PRUNING,
+                activityDate = today.minusDays(1),
+                description = "Trabajo de campaña",
+                parcelIds = setOf(parcelA),
+                completeImmediately = true,
+            ),
+        ) as AppResult.Success).value
+        val campaign = db.campaignDao().findById(campaignId)!!
+        db.campaignDao().upsert(campaign.copy(status = CampaignStatus.CLOSED, endDate = today))
+
+        assertConflict(
+            "closed_campaign",
+            repository.correctCompleted(
+                campaignWork,
+                ActivityChanges(ActivityType.PRUNING, today.minusDays(2), "Corrección bloqueada", setOf(parcelA)),
+            ),
+        )
+        assertEquals("Trabajo de campaña", db.activityDao().findById(campaignWork)?.description)
+        assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(campaignWork)?.status)
+    }
+
+    @Test
     fun completedActivityIsProtectedFromEditsUntilItIsReopened() = runBlocking {
         val id = created("Desbroce", setOf(parcelA))
         assertOk(repository.complete(id))

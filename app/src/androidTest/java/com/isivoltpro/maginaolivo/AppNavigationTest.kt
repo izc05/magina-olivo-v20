@@ -587,7 +587,7 @@ class AppNavigationTest {
         // PLANNED -> COMPLETED, then protected until an explicit reopen.
         clickByTag("complete-activity")
         confirmActivityAction()
-        waitForText("Registro protegido")
+        waitForText("Trabajo realizado")
 
         pressBack()
         composeRule.activityRule.scenario.recreate()
@@ -603,7 +603,7 @@ class AppNavigationTest {
         // Same race as above: the root is on screen before the Activity's targets load.
         waitForTag("activity-target")
         composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
-        assertTextVisible("Registro protegido")
+        assertTextVisible("Trabajo realizado")
     }
 
     /**
