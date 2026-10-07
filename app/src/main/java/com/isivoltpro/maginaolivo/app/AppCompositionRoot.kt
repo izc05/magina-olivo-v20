@@ -93,6 +93,7 @@ data class AppCompositionRoot(
             val farmCoverRepository = OfflineFirstFarmCoverRepository(
                 database = database,
                 fileStore = attachmentFileStore,
+                workspaceRepository = workspaceRepository,
                 clock = defaults.clock,
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
@@ -118,6 +119,7 @@ data class AppCompositionRoot(
             val attachmentRepository = OfflineFirstAttachmentRepository(
                 database = database,
                 fileStore = attachmentFileStore,
+                workspaceRepository = workspaceRepository,
                 clock = defaults.clock,
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
