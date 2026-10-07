@@ -43,6 +43,11 @@ data class WeatherNow(
     val attribution: String? = null,
     /** Optional additive field: empty for pre-week responses and legacy cache rows. */
     val daily: List<WeatherDayForecast> = emptyList(),
+    /** Local calendar date the solar calculation belongs to. */
+    val solarDate: LocalDate? = null,
+    /** Civil sunrise/sunset as UTC instants; null when coordinates were unavailable. */
+    val sunriseAt: Instant? = null,
+    val sunsetAt: Instant? = null,
 )
 
 /** What a source answered: the provider that actually produced it, and the value. */
@@ -80,6 +85,9 @@ object WeatherCodec {
         "at=${weather.validAt.epochSecond}",
         weather.updatedAt?.let { "u=${it.epochSecond}" },
         weather.attribution?.let { "a=${it.replace('\n', ' ')}" },
+        weather.solarDate?.let { "sd=$it" },
+        weather.sunriseAt?.let { "sr=${it.epochSecond}" },
+        weather.sunsetAt?.let { "ss=${it.epochSecond}" },
     ) + weather.daily.map { day ->
             "d=${listOf(
                 day.date.toString(),
@@ -116,14 +124,17 @@ object WeatherCodec {
             )
         }
         return WeatherNow(
-            temperature,
-            condition,
-            fields["p"]?.toIntOrNull(),
-            fields["w"]?.toIntOrNull(),
-            validAt,
-            fields["u"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
-            fields["a"]?.takeIf { it.isNotBlank() },
-            daily,
+            temperatureC = temperature,
+            condition = condition,
+            rainProbabilityPercent = fields["p"]?.toIntOrNull(),
+            windKmh = fields["w"]?.toIntOrNull(),
+            validAt = validAt,
+            updatedAt = fields["u"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
+            attribution = fields["a"]?.takeIf { it.isNotBlank() },
+            daily = daily,
+            solarDate = fields["sd"]?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+            sunriseAt = fields["sr"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
+            sunsetAt = fields["ss"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
         )
     }
 }
