@@ -210,18 +210,38 @@ class DeliveryContractTest {
     }
 
     @Test
-    fun yieldCanArriveAfterTheCampaignClosesWhileTheDeliveryStaysHistory() = runBlocking {
+    fun yieldCanArriveAfterCloseButConfirmedYieldStaysHistoricalUntilReopen() = runBlocking {
         val id = ok(deliveries.create(draft(2_850_000, north to null)))
         closeCampaign()
 
         assertEquals(AppError.Conflict("closed_campaign"), (deliveries.update(id, draft(3_000_000, north to null)) as AppResult.Failure).error)
         assertEquals(AppError.Conflict("closed_campaign"), (deliveries.delete(id) as AppResult.Failure).error)
-        ok(deliveries.recordYield(id, YieldDraft(null, 2_000, null)))
 
-        val delivery = deliveries.observe(id).first()!!
-        assertEquals(2_850_000L, delivery.netGrams)
-        assertEquals(false, delivery.editable)
-        assertEquals(2_000, delivery.analysis!!.fatYieldHundredths)
+        // A pending cooperative analysis may legitimately arrive after the Campaign was closed.
+        ok(deliveries.recordYield(id, YieldDraft(null, 2_000, null)))
+        val confirmed = deliveries.observe(id).first()!!
+        assertEquals(2_850_000L, confirmed.netGrams)
+        assertEquals(false, confirmed.editable)
+        assertEquals(2_000, confirmed.analysis!!.fatYieldHundredths)
+
+        // Once confirmed, the closed historical result is immutable through the normal path.
+        assertEquals(
+            AppError.Conflict("closed_campaign_yield_confirmed"),
+            (deliveries.recordYield(id, YieldDraft(null, 2_200, null)) as AppResult.Failure).error,
+        )
+        assertEquals(
+            AppError.Conflict("closed_campaign_yield_confirmed"),
+            (deliveries.removeYield(id) as AppResult.Failure).error,
+        )
+        assertEquals(2_000, deliveries.observe(id).first()!!.analysis!!.fatYieldHundredths)
+
+        // Reopening the Campaign explicitly restores the normal correction tools.
+        val campaign = db.campaignDao().findById(campaignId)!!
+        db.campaignDao().upsert(campaign.copy(status = CampaignStatus.HARVEST, endDate = null))
+        ok(deliveries.recordYield(id, YieldDraft(null, 2_200, null)))
+        assertEquals(2_200, deliveries.observe(id).first()!!.analysis!!.fatYieldHundredths)
+        ok(deliveries.removeYield(id))
+        assertNull(deliveries.observe(id).first()!!.analysis)
     }
 
     // ------------------------------------------------------------ weighted metrics
