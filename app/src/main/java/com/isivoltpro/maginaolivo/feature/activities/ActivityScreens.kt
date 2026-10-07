@@ -456,8 +456,6 @@ private fun ActivityRow(activity: Activity, onSelected: (UUID) -> Unit) {
 @Composable
 internal fun ActivityEditor(
     parcels: List<ActivityParcelOption>,
-    campaigns: List<Campaign> = emptyList(),
-    campaignError: String? = null,
     descriptionError: String?,
     dateError: String?,
     parcelsError: String?,
@@ -480,6 +478,9 @@ internal fun ActivityEditor(
     autoSelectSingleParcel: Boolean = false,
     /** #441 (Codex #530): shown under [parcelsError], inside the sheet, so its links can be used. */
     parcelsErrorContent: @Composable () -> Unit = {},
+    /** #482: Campaign context is only relevant to HARVEST_DAY planning. Appended for source compatibility. */
+    campaigns: List<Campaign> = emptyList(),
+    campaignError: String? = null,
 ) {
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
