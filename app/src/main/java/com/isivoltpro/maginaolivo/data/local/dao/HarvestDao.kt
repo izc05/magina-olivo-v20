@@ -86,6 +86,9 @@ interface HarvestDao {
     @Query("SELECT * FROM harvests WHERE campaign_id = :campaignId AND deleted_at IS NULL")
     suspend fun listLiveForCampaign(campaignId: UUID): List<HarvestEntity>
 
+    @Query("SELECT MAX(harvest_date) FROM harvests WHERE campaign_id = :campaignId AND deleted_at IS NULL")
+    suspend fun lastLiveDateForCampaign(campaignId: UUID): LocalDate?
+
     @Query("SELECT * FROM harvest_parcels WHERE harvest_id = :harvestId ORDER BY parcel_name_at_harvest COLLATE NOCASE, parcel_id")
     suspend fun listParcels(harvestId: UUID): List<HarvestParcelEntity>
 
