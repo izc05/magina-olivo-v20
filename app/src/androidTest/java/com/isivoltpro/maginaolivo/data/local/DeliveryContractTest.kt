@@ -163,6 +163,22 @@ class DeliveryContractTest {
         assertEquals(0L, deliveries.observe(id).first()!!.unallocatedGrams)
     }
 
+    @Test
+    fun newPesadasRequireOriginAtRepositoryBoundaryAndLegacyNullSurvivesEdit() = runBlocking {
+        assertValidation("origin", deliveries.create(draft(500_000, north to null).copy(origin = null)))
+
+        val tree = ok(deliveries.create(draft(500_000, north to null).copy(origin = PesadaOrigin.TREE)))
+        val ground = ok(deliveries.create(draft(600_000, south to null).copy(origin = PesadaOrigin.GROUND)))
+        assertEquals(PesadaOrigin.TREE, deliveries.observe(tree).first()!!.origin)
+        assertEquals(PesadaOrigin.GROUND, deliveries.observe(ground).first()!!.origin)
+
+        // Simula una Pesada guardada antes de #254: editar otros datos no inventa su origen.
+        val stored = db.deliveryDao().findById(tree)!!
+        db.deliveryDao().upsert(stored.copy(origin = null))
+        ok(deliveries.update(tree, draft(500_000, north to null).copy(origin = null, notes = "Dato legacy")))
+        assertNull(deliveries.observe(tree).first()!!.origin)
+    }
+
     // ------------------------------------------------------------ yield does not rewrite the delivery
 
     @Test
@@ -510,6 +526,7 @@ class DeliveryContractTest {
         destinationName = "Cooperativa San Isidro",
         netGrams = net,
         shares = shares.map { DeliveryShareInput(it.first, it.second) },
+        origin = PesadaOrigin.TREE,
     )
 
     private fun source(name: String): String {

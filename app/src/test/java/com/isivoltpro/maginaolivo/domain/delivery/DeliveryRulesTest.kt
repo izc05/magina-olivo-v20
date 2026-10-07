@@ -27,6 +27,15 @@ class DeliveryRulesTest {
     }
 
     @Test
+    fun aNewDeliveryNeedsAnExplicitOriginButLegacyValidationKeepsNullValid() {
+        val legacy = draft(2_850_000, north to null)
+        assertNull(DeliveryRules.validate(legacy, today))
+        assertEquals(DeliveryProblem("origin", "required"), DeliveryRules.validateNew(legacy, today))
+        assertNull(DeliveryRules.validateNew(legacy.copy(origin = PesadaOrigin.TREE), today))
+        assertNull(DeliveryRules.validateNew(legacy.copy(origin = PesadaOrigin.GROUND), today))
+    }
+
+    @Test
     fun exactParcelKilosMustAddUpToTheDeliveredKilos() {
         assertNull(DeliveryRules.validate(draft(2_850_000, north to 2_000_000, south to 850_000), today))
         assertEquals(

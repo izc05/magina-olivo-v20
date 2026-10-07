@@ -122,7 +122,7 @@ internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, Delive
         },
         parcels = if (badWeight) "Revisa los kilos de las parcelas: escribe como 1200 o 1.200,5" else null,
         time = if (time.isNotBlank() && parseHour(time) == null) "Escribe la hora como 9:30" else null,
-        origin = if (origin == null) "Indica si la aceituna es de árbol/vuelo o de suelo" else null,
+        origin = if (origin == null) "Indica si la aceituna es de árbol/vuelo o de suelo." else null,
     )
     if (!errors.isEmpty) return null to errors
     val shares = when {
@@ -155,6 +155,7 @@ internal fun DeliveryProblem.toFormErrors(): DeliveryFormErrors = when (field) {
     "grossGrams" -> DeliveryFormErrors(gross = deliveryProblemMessage(this))
     "destination" -> DeliveryFormErrors(destination = deliveryProblemMessage(this))
     "farmId" -> DeliveryFormErrors(farm = deliveryProblemMessage(this))
+    "origin" -> DeliveryFormErrors(origin = deliveryProblemMessage(this))
     else -> DeliveryFormErrors(parcels = deliveryProblemMessage(this))
 }
 
@@ -162,6 +163,7 @@ internal fun deliveryProblemMessage(problem: DeliveryProblem): String = when (pr
     "required" -> when (problem.field) {
         "destination" -> "Elige la cooperativa o almazara, o escribe su nombre"
         "yield" -> "Escribe al menos un rendimiento"
+        "origin" -> "Indica si la aceituna es de árbol/vuelo o de suelo."
         else -> "Escribe los kilos de la pesada"
     }
     "not_positive" -> when (problem.field) {
