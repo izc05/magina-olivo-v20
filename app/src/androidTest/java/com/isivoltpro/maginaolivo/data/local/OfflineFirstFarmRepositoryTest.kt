@@ -10,8 +10,15 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
+import com.isivoltpro.maginaolivo.data.local.entity.ActivityParcelTargetEntity
+import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
+import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
+import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
@@ -639,6 +646,207 @@ class OfflineFirstFarmRepositoryTest {
             assertEquals(closed, history.first { it.id == closed.id })
             assertEquals(farmB, history.single { it.validUntil == null }.farmId)
             assertEquals(RecordStatus.ACTIVE, database.parcelDao().findById(active)!!.status)
+        } finally {
+            database.close()
+        }
+    }
+
+
+    /** #427: archive is never a hidden cascade of Campaign, Agenda or pending money. */
+    @Test
+    fun farmArchiveRequiresOperationalDependenciesToBeResolved() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000427")
+        val farmId = uuid("20000000-0000-0000-0000-000000000427")
+        val campaignId = uuid("60000000-0000-0000-0000-000000000427")
+        val activityId = uuid("70000000-0000-0000-0000-000000000427")
+        val expenseId = uuid("80000000-0000-0000-0000-000000000427")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            val farms = repository(
+                database,
+                TEST_INSTANT,
+                listOf(
+                    farmId,
+                    uuid("30000000-0000-0000-0000-000000000427"),
+                    uuid("30000000-0000-0000-0000-000000000428"),
+                ),
+            )
+            assertEquals(AppResult.Success(farmId), farms.create(NewFarm(workspaceId, "Guarded Farm")))
+            val beforeFarm = database.farmDao().findById(farmId)!!
+            val beforeOutbox = database.syncOutboxDao().listForEntity(SyncEntityType.FARM, farmId)
+
+            val campaign = CampaignEntity(
+                id = campaignId,
+                workspaceId = workspaceId,
+                farmId = farmId,
+                name = "2026/27",
+                startDate = LocalDate.parse("2026-10-01"),
+                status = CampaignStatus.PREPARATION,
+                metadata = LocalMetadata(TEST_INSTANT, TEST_INSTANT),
+            )
+            database.campaignDao().upsert(campaign)
+            assertEquals(
+                AppResult.Failure(AppError.Conflict("archive_blocked_campaign")),
+                farms.archive(farmId),
+            )
+            assertEquals(beforeFarm, database.farmDao().findById(farmId))
+            assertEquals(beforeOutbox, database.syncOutboxDao().listForEntity(SyncEntityType.FARM, farmId))
+
+            database.campaignDao().upsert(
+                campaign.copy(status = CampaignStatus.CLOSED, endDate = LocalDate.parse("2026-10-02")),
+            )
+            val activity = ActivityEntity(
+                id = activityId,
+                workspaceId = workspaceId,
+                farmId = farmId,
+                activityDate = LocalDate.parse("2026-10-20"),
+                type = "PRUNING",
+                status = ActivityStatus.PLANNED,
+                description = "Poda pendiente",
+                metadata = LocalMetadata(TEST_INSTANT, TEST_INSTANT),
+            )
+            database.activityDao().upsert(activity)
+            assertEquals(
+                AppResult.Failure(AppError.Conflict("archive_blocked_planned_activity")),
+                farms.archive(farmId),
+            )
+
+            database.activityDao().upsert(
+                activity.copy(metadata = activity.metadata.copy(deletedAt = TEST_INSTANT)),
+            )
+            val expense = ExpenseEntity(
+                id = expenseId,
+                workspaceId = workspaceId,
+                farmId = farmId,
+                expenseDate = LocalDate.parse("2026-10-03"),
+                concept = "Factura por revisar",
+                category = "OTHER",
+                amountMinor = 1_000,
+                currency = "EUR",
+                status = "DRAFT",
+                metadata = LocalMetadata(TEST_INSTANT, TEST_INSTANT),
+            )
+            database.expenseDao().upsert(expense)
+            assertEquals(
+                AppResult.Failure(AppError.Conflict("archive_blocked_draft_expense")),
+                farms.archive(farmId),
+            )
+
+            database.expenseDao().upsert(expense.copy(status = "POSTED"))
+            assertEquals(AppResult.Success(Unit), farms.archive(farmId))
+            assertEquals(FarmStatus.ARCHIVED, database.farmDao().findById(farmId)?.status)
+        } finally {
+            database.close()
+        }
+    }
+
+    /** #427: historical snapshots survive, while operational Parcel dependencies block archive. */
+    @Test
+    fun parcelArchivePreservesHistoryButRefusesLiveDependencies() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000437")
+        val farmId = uuid("20000000-0000-0000-0000-000000000437")
+        val parcelId = uuid("40000000-0000-0000-0000-000000000437")
+        val campaignId = uuid("60000000-0000-0000-0000-000000000437")
+        val activityId = uuid("70000000-0000-0000-0000-000000000437")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            val random = object : IdGenerator { override fun newId(): UUID = UUID.randomUUID() }
+            val farms = OfflineFirstFarmRepository(database, FixedClock(TEST_INSTANT), random, TestDispatchers)
+            val createdFarm = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
+            assertEquals(farmId.toString().take(0), farmId.toString().take(0)) // keep deterministic ids local to this test
+            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
+            val createdParcel = (parcels.create(NewParcel(createdFarm, "Parcela Norte")) as AppResult.Success).value
+
+            val campaign = CampaignEntity(
+                id = campaignId,
+                workspaceId = workspaceId,
+                farmId = createdFarm,
+                name = "2026/27",
+                startDate = LocalDate.parse("2026-10-01"),
+                status = CampaignStatus.ACTIVE,
+                metadata = LocalMetadata(TEST_INSTANT, TEST_INSTANT),
+            )
+            database.campaignDao().upsert(campaign)
+            database.campaignDao().upsertSnapshots(
+                listOf(
+                    CampaignParcelSnapshotEntity(
+                        id = uuid("61000000-0000-0000-0000-000000000437"),
+                        workspaceId = workspaceId,
+                        campaignId = campaignId,
+                        parcelId = createdParcel,
+                        farmIdAtStart = createdFarm,
+                        farmNameAtStart = "Cortijo",
+                        parcelNameAtStart = "Parcela Norte",
+                        metadata = LocalMetadata(TEST_INSTANT, TEST_INSTANT),
+                    ),
+                ),
+            )
+            val membershipBefore = database.parcelDao().findCurrentMembership(createdParcel)!!
+            assertEquals(
+                AppResult.Failure(AppError.Conflict("archive_blocked_campaign")),
+                parcels.archive(createdParcel),
+            )
+            assertEquals(membershipBefore, database.parcelDao().findCurrentMembership(createdParcel))
+
+            database.campaignDao().upsert(
+                campaign.copy(status = CampaignStatus.CLOSED, endDate = LocalDate.parse("2026-10-02")),
+            )
+            val activity = ActivityEntity(
+                id = activityId,
+                workspaceId = workspaceId,
+                farmId = createdFarm,
+                activityDate = LocalDate.parse("2026-10-20"),
+                type = "IRRIGATION",
+                status = ActivityStatus.PLANNED,
+                description = "Riego pendiente",
+                metadata = LocalMetadata(TEST_INSTANT, TEST_INSTANT),
+            )
+            database.activityDao().upsert(activity)
+            database.activityDao().upsertTargets(
+                listOf(
+                    ActivityParcelTargetEntity(
+                        id = uuid("71000000-0000-0000-0000-000000000437"),
+                        workspaceId = workspaceId,
+                        activityId = activityId,
+                        parcelId = createdParcel,
+                        parcelNameAtTarget = "Parcela Norte",
+                        metadata = LocalMetadata(TEST_INSTANT, TEST_INSTANT),
+                    ),
+                ),
+            )
+            assertEquals(
+                AppResult.Failure(AppError.Conflict("archive_blocked_planned_activity")),
+                parcels.archive(createdParcel),
+            )
+
+            database.activityDao().upsert(activity.copy(metadata = activity.metadata.copy(deletedAt = TEST_INSTANT)))
+            val expense = ExpenseEntity(
+                id = uuid("80000000-0000-0000-0000-000000000437"),
+                workspaceId = workspaceId,
+                farmId = createdFarm,
+                parcelId = createdParcel,
+                expenseDate = LocalDate.parse("2026-10-03"),
+                concept = "Ticket pendiente",
+                category = "OTHER",
+                amountMinor = 2_000,
+                currency = "EUR",
+                status = "DRAFT",
+                metadata = LocalMetadata(TEST_INSTANT, TEST_INSTANT),
+            )
+            database.expenseDao().upsert(expense)
+            assertEquals(
+                AppResult.Failure(AppError.Conflict("archive_blocked_draft_expense")),
+                parcels.archive(createdParcel),
+            )
+
+            database.expenseDao().upsert(expense.copy(status = "POSTED"))
+            assertEquals(AppResult.Success(Unit), parcels.archive(createdParcel))
+            assertEquals(RecordStatus.ARCHIVED, database.parcelDao().findById(createdParcel)?.status)
+            assertEquals(null, database.parcelDao().findCurrentMembership(createdParcel))
+            // Closed Campaign snapshot remains historical and is not rewritten by archive.
+            assertEquals(createdParcel, database.campaignDao().listSnapshots(campaignId).single().parcelId)
         } finally {
             database.close()
         }
