@@ -15,8 +15,8 @@ interface LabourDao {
     @Query("SELECT * FROM workers WHERE id = :id LIMIT 1")
     suspend fun findWorker(id: UUID): WorkerEntity?
 
-    @Query("SELECT * FROM workers WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE, id")
-    fun observeWorkers(): Flow<List<WorkerEntity>>
+    @Query("SELECT * FROM workers WHERE workspace_id = :workspaceId AND deleted_at IS NULL ORDER BY name COLLATE NOCASE, id")
+    fun observeWorkers(workspaceId: UUID): Flow<List<WorkerEntity>>
 
     @Upsert suspend fun upsertLabour(rows: List<HarvestLabourEntity>)
 
@@ -48,11 +48,12 @@ interface LabourDao {
         """
         SELECT harvest_labour.* FROM harvest_labour
         JOIN harvests ON harvests.id = harvest_labour.harvest_id
-        WHERE harvests.farm_id = :farmId AND harvests.id != :harvestId AND harvests.deleted_at IS NULL
+        WHERE harvests.workspace_id = :workspaceId AND harvest_labour.workspace_id = :workspaceId
+          AND harvests.farm_id = :farmId AND harvests.id != :harvestId AND harvests.deleted_at IS NULL
           AND harvest_labour.deleted_at IS NULL AND harvest_labour.worker_id IS NOT NULL
           AND harvests.harvest_date <= :onOrBefore
         ORDER BY harvests.harvest_date DESC, harvests.created_at DESC
         """,
     )
-    suspend fun listNamedCrewsBefore(farmId: UUID, harvestId: UUID, onOrBefore: java.time.LocalDate): List<HarvestLabourEntity>
+    suspend fun listNamedCrewsBefore(workspaceId: UUID, farmId: UUID, harvestId: UUID, onOrBefore: java.time.LocalDate): List<HarvestLabourEntity>
 }

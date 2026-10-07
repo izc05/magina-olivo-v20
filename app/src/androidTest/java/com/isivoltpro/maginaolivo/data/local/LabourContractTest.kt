@@ -123,6 +123,53 @@ class LabourContractTest {
     }
 
     @Test
+    fun workersAndPreviousCrewNeverCrossWorkspace() = runBlocking {
+        val otherWorkspace = UUID.randomUUID()
+        val otherFarm = UUID.randomUUID()
+        val otherWorker = UUID.randomUUID()
+        val meta = LocalMetadata(now, now)
+        db.workspaceDao().upsert(
+            WorkspaceEntity(otherWorkspace, "Otro olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+        )
+        db.labourDao().upsertWorker(
+            com.isivoltpro.maginaolivo.data.local.entity.WorkerEntity(otherWorker, otherWorkspace, "María", meta),
+        )
+        val ownWorker = ok(labour.addWorker("Juan"))
+        assertEquals(listOf(ownWorker), labour.observeWorkers().first().map { it.id })
+
+        val otherWorkspaces = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(otherWorkspace)
+        }
+        val otherLabour = OfflineFirstLabourRepository(db, otherWorkspaces, FixedClock(now), RandomIds, TestDispatchers)
+        val namesake = ok(otherLabour.addWorker("Juan"))
+        assertEquals(setOf(otherWorker, namesake), otherLabour.observeWorkers().first().map { it.id }.toSet())
+        assertEquals(listOf(ownWorker), labour.observeWorkers().first().map { it.id })
+
+        val oldDay = UUID.randomUUID()
+        val targetDay = UUID.randomUUID()
+        db.harvestDao().upsert(
+            com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity(
+                oldDay, otherWorkspace, null, otherFarm, day.minusDays(1), 0, metadata = meta,
+            ),
+        )
+        db.harvestDao().upsert(
+            com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity(
+                targetDay, otherWorkspace, null, otherFarm, day, 0, metadata = meta,
+            ),
+        )
+        db.labourDao().upsertLabour(
+            listOf(
+                com.isivoltpro.maginaolivo.data.local.entity.HarvestLabourEntity(
+                    UUID.randomUUID(), otherWorkspace, oldDay, otherWorker, "María",
+                    1, LabourUnit.FULL_DAY.name, metadata = meta,
+                ),
+            ),
+        )
+        assertTrue(labour.previousCrew(targetDay).isEmpty())
+        assertEquals(listOf(otherWorker), otherLabour.previousCrew(targetDay))
+    }
+
+    @Test
     fun aClosedCampaignTakesNoLabourAndARemovedJornadaTakesItsLabourWithIt() = runBlocking {
         val jornada = jornada(day)
         ok(labour.recordCrew(CrewDraft(jornada, listOf(ok(labour.addWorker("Juan"))), LabourUnit.FULL_DAY)))

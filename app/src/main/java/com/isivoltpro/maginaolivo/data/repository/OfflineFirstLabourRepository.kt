@@ -36,6 +36,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -59,7 +61,16 @@ class OfflineFirstLabourRepository(
     private val costs = DayCostLedger(database, idGenerator)
 
     override fun observeWorkers(): Flow<List<Worker>> =
-        database.labourDao().observeWorkers().map { rows -> rows.map { Worker(it.id, it.name) } }.flowOn(dispatchers.io)
+        flow {
+            val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> workspace.value
+            }
+            emitAll(
+                database.labourDao().observeWorkers(active)
+                    .map { rows -> rows.map { Worker(it.id, it.name) } },
+            )
+        }.flowOn(dispatchers.io)
 
     override suspend fun addWorker(name: String): AppResult<UUID> {
         val trimmed = name.trim()
@@ -242,12 +253,21 @@ class OfflineFirstLabourRepository(
     }
 
     override suspend fun previousCrew(harvestId: UUID): List<UUID> = withContext(dispatchers.io) {
-        val harvest = database.harvestDao().findById(harvestId) ?: return@withContext emptyList()
+        val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return@withContext emptyList()
+            is AppResult.Success -> workspace.value
+        }
+        val harvest = database.harvestDao().findById(harvestId)
+            ?.takeIf { it.metadata.deletedAt == null && it.workspaceId == active }
+            ?: return@withContext emptyList()
         val farmId = harvest.farmId ?: return@withContext emptyList()
-        val rows = database.labourDao().listNamedCrewsBefore(farmId, harvestId, harvest.harvestDate)
+        val rows = database.labourDao().listNamedCrewsBefore(active, farmId, harvestId, harvest.harvestDate)
         val latest = rows.firstOrNull()?.harvestId ?: return@withContext emptyList()
         rows.filter { it.harvestId == latest }.mapNotNull { it.workerId }.distinct()
-            .filter { id -> database.labourDao().findWorker(id)?.metadata?.deletedAt == null }
+            .filter { id ->
+                database.labourDao().findWorker(id)
+                    ?.takeIf { it.metadata.deletedAt == null && it.workspaceId == active } != null
+            }
     }
 
     private suspend fun runningJornada(harvestId: UUID): HarvestEntity {
