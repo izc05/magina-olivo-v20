@@ -114,13 +114,18 @@ class OfflineFirstDeliveryRepository(
         inTransaction("record_yield") {
             val delivery = database.deliveryDao().findById(deliveryId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
+            val campaign = database.campaignDao().findById(delivery.campaignId)
+                ?: return@inTransaction AppResult.Failure(AppError.NotFound("campaign"))
+            val existing = database.deliveryDao().findLiveAnalysis(deliveryId)
+            if (campaign.status == CampaignStatus.CLOSED && existing != null) {
+                return@inTransaction AppResult.Failure(AppError.Conflict("closed_campaign_yield_confirmed"))
+            }
             YieldRules.validate(draft, today(delivery.workspaceId))
                 ?.let { return@inTransaction AppResult.Failure(AppError.Validation(it.field, it.code)) }
             if (draft.analysisDate?.isBefore(delivery.deliveryDate) == true) {
                 return@inTransaction AppResult.Failure(AppError.Validation("analysisDate", "before_delivery"))
             }
             val now = clock.nowInstant()
-            val existing = database.deliveryDao().findLiveAnalysis(deliveryId)
             val row = existing?.copy(
                 analysisDate = draft.analysisDate,
                 fatYieldHundredths = draft.fatYieldHundredths,
@@ -150,7 +155,15 @@ class OfflineFirstDeliveryRepository(
 
     override suspend fun removeYield(deliveryId: UUID): AppResult<Unit> =
         inTransaction("remove_yield") {
-            database.deliveryDao().findLiveAnalysis(deliveryId)?.let { tombstone(it, clock.nowInstant()) }
+            val delivery = database.deliveryDao().findById(deliveryId)?.takeIf { it.metadata.deletedAt == null }
+                ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
+            val analysis = database.deliveryDao().findLiveAnalysis(deliveryId) ?: return@inTransaction AppResult.Success(Unit)
+            val campaign = database.campaignDao().findById(delivery.campaignId)
+                ?: return@inTransaction AppResult.Failure(AppError.NotFound("campaign"))
+            if (campaign.status == CampaignStatus.CLOSED) {
+                return@inTransaction AppResult.Failure(AppError.Conflict("closed_campaign_yield_confirmed"))
+            }
+            tombstone(analysis, clock.nowInstant())
             AppResult.Success(Unit)
         }
 
