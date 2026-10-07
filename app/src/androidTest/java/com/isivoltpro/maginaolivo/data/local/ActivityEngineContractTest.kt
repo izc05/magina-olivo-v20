@@ -198,6 +198,29 @@ class ActivityEngineContractTest {
     }
 
     @Test
+    fun completedWorkUsesWorkspaceCalendarEvenIfThePhoneDayIsAhead() = runBlocking {
+        val workspace = db.workspaceDao().findById(workspaceId)!!
+        db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
+        val utcDay = LocalDate.parse("2026-09-22")
+        val completed = repository.create(
+            NewActivity(
+                farmId, null, ActivityType.PRUNING, utcDay, "Todavía es mañana en la finca", setOf(parcelA),
+                completeImmediately = true,
+            ),
+        )
+        assertEquals(AppResult.Failure(AppError.Validation("activityDate", "future_completed_work")), completed)
+
+        val planned = (repository.create(
+            NewActivity(farmId, null, ActivityType.PRUNING, utcDay, "Trabajo planificado", setOf(parcelA)),
+        ) as AppResult.Success).value
+        assertEquals(
+            AppResult.Failure(AppError.Validation("activityDate", "future_completed_work")),
+            repository.complete(planned),
+        )
+        assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(planned)?.status)
+    }
+
+    @Test
     fun aDraftMayBeSavedEmptyAndResumedIntoPlanned() = runBlocking {
         val id = (repository.create(
             NewActivity(farmId, null, ActivityType.PRUNING, date, "Borrador", emptySet(), asDraft = true),

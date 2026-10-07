@@ -11,6 +11,7 @@ import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
+import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
@@ -116,6 +117,30 @@ class ExpenseLedgerContractTest {
         context.deleteDatabase(DB)
         sources.deleteRecursively()
         attachmentsRoot.deleteRecursively()
+    }
+
+    @Test
+    fun postingADraftUsesTheWorkspaceCalendarAtMidnightBoundaries() = runBlocking {
+        val workspace = db.workspaceDao().findById(workspaceId)!!
+        db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
+        val id = UUID.randomUUID()
+        db.expenseDao().upsert(
+            ExpenseEntity(
+                id = id,
+                workspaceId = workspaceId,
+                expenseDate = LocalDate.parse("2026-09-23"),
+                concept = "Factura pendiente",
+                category = ExpenseCategory.OTHER.name,
+                amountMinor = 1_000,
+                currency = "EUR",
+                status = ExpenseStatus.DRAFT.name,
+                origin = ExpenseOrigin.MANUAL.name,
+                metadata = LocalMetadata(now, now),
+            ),
+        )
+
+        assertValidation("expenseDate", expenses.post(id))
+        assertEquals(ExpenseStatus.DRAFT, expenses.observe(id).first()?.status)
     }
 
     // ------------------------------------------------------------ #441 a work's Parcels keep its Gastos

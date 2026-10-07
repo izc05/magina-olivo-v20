@@ -238,13 +238,6 @@ class OfflineFirstActivityRepository(
         notNegative("costMinor", command.costMinor?.toDouble())?.let { return it }
         MachineRules.validateUses(command.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         ReminderRules.validate(command.planning, command.reminders)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
-        // #435/#414: work recorded as done cannot be dated ahead; it is never quietly turned into a
-        // plan. Pending work is planned from Avisos.
-        if (command.completeImmediately && !command.asDraft && command.type != ActivityType.HARVEST_DAY &&
-            command.activityDate.isAfter(clock.today(zone()))
-        ) {
-            return AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
-        }
         return withContext(dispatchers.io) {
             val active = when (val result = workspaceScope.resolve()) {
                 is AppResult.Failure -> return@withContext result
@@ -258,6 +251,15 @@ class OfflineFirstActivityRepository(
                 }
                 if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                     return@safely AppResult.Failure(AppError.Conflict("archived_farm"))
+                }
+                // #619: a completed agricultural fact uses the Workspace calendar, never the
+                // device's temporary timezone. Pending work may still be planned in the future.
+                if (
+                    command.completeImmediately && !command.asDraft &&
+                    command.type != ActivityType.HARVEST_DAY &&
+                    command.activityDate.isAfter(database.todayForWorkspace(farm.workspaceId, clock))
+                ) {
+                    return@safely AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
                 }
                 command.campaignId?.let { campaignId ->
                     val campaign = database.campaignDao().findById(campaignId)
@@ -399,6 +401,13 @@ class OfflineFirstActivityRepository(
         }
         if (requireTargets && database.activityDao().countTargets(id) == 0) {
             return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
+        }
+        if (
+            to == ActivityStatus.COMPLETED &&
+            current.type != ActivityType.HARVEST_DAY.name &&
+            current.activityDate.isAfter(database.todayForWorkspace(current.workspaceId, clock))
+        ) {
+            return@mutate AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
         }
         database.activityDao().upsert(current.copy(status = to, metadata = current.metadata.next(now)))
         enqueue(id, OutboxOperation.UPDATE, now)

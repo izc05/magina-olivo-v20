@@ -47,7 +47,8 @@ class OfflineFirstDeliveryRepository(
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
-    private val zoneId: () -> ZoneId = ZoneId::systemDefault,
+    /** Test override only; production derives the calendar from the persisted Workspace. */
+    private val zoneId: (() -> ZoneId)? = null,
 ) : DeliveryRepository {
     private val writer = DeliveryWriter(database, idGenerator)
 
@@ -79,14 +80,18 @@ class OfflineFirstDeliveryRepository(
 
     override suspend fun create(draft: DeliveryDraft): AppResult<UUID> =
         inTransaction("create_delivery") {
-            AppResult.Success(writer.insert(draft, DeliverySource.MANUAL, today(), clock.nowInstant()).id)
+            val workspaceId = database.farmDao().findById(draft.farmId)?.workspaceId
+                ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+            AppResult.Success(
+                writer.insert(draft, DeliverySource.MANUAL, today(workspaceId), clock.nowInstant()).id,
+            )
         }
 
     override suspend fun update(id: UUID, draft: DeliveryDraft): AppResult<Unit> =
         inTransaction("update_delivery") {
             val current = database.deliveryDao().findById(id)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
-            writer.rewrite(current, draft, today(), clock.nowInstant())
+            writer.rewrite(current, draft, today(current.workspaceId), clock.nowInstant())
             AppResult.Success(Unit)
         }
 
@@ -105,11 +110,12 @@ class OfflineFirstDeliveryRepository(
             AppResult.Success(Unit)
         }
 
-    override suspend fun recordYield(deliveryId: UUID, draft: YieldDraft): AppResult<UUID> {
-        YieldRules.validate(draft, today())?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
-        return inTransaction("record_yield") {
+    override suspend fun recordYield(deliveryId: UUID, draft: YieldDraft): AppResult<UUID> =
+        inTransaction("record_yield") {
             val delivery = database.deliveryDao().findById(deliveryId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
+            YieldRules.validate(draft, today(delivery.workspaceId))
+                ?.let { return@inTransaction AppResult.Failure(AppError.Validation(it.field, it.code)) }
             if (draft.analysisDate?.isBefore(delivery.deliveryDate) == true) {
                 return@inTransaction AppResult.Failure(AppError.Validation("analysisDate", "before_delivery"))
             }
@@ -141,7 +147,6 @@ class OfflineFirstDeliveryRepository(
             )
             AppResult.Success(row.id)
         }
-    }
 
     override suspend fun removeYield(deliveryId: UUID): AppResult<Unit> =
         inTransaction("remove_yield") {
@@ -154,7 +159,7 @@ class OfflineFirstDeliveryRepository(
         database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY_YIELD, analysis.id, OutboxOperation.DELETE, now)
     }
 
-    private fun today() = clock.today(zoneId())
+    private suspend fun today(workspaceId: UUID) = database.todayForWorkspace(workspaceId, clock, zoneId)
 
     private suspend fun <T> inTransaction(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
         withContext(dispatchers.io) {

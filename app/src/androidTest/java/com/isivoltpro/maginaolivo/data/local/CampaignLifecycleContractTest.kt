@@ -225,6 +225,18 @@ class CampaignLifecycleContractTest {
     }
 
     @Test
+    fun closeTodayUsesTheWorkspaceCalendarNotThePhoneCalendar() = runBlocking {
+        val workspace = db.workspaceDao().findById(workspaceId)!!
+        db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
+
+        val id = created("Campaña de verano", setOf(parcelId), LocalDate.parse("2026-09-01"))
+        assertOk(repository.activate(id))
+        assertOk(repository.closeToday(id))
+
+        assertEquals(LocalDate.parse("2026-09-20"), db.campaignDao().findById(id)?.endDate)
+    }
+
+    @Test
     fun closeThenReopenIsExplicitAuditedAndClearsTheEndDate() = runBlocking {
         val id = created("2026/27", setOf(parcelId))
         assertOk(repository.activate(id))
@@ -344,8 +356,12 @@ class CampaignLifecycleContractTest {
 
     // ----------------------------------------------------------------- helpers
 
-    private suspend fun created(name: String, parcelIds: Set<UUID>): UUID {
-        val result = repository.create(NewCampaign(farmId, name, start, parcelIds))
+    private suspend fun created(
+        name: String,
+        parcelIds: Set<UUID>,
+        startDate: LocalDate = start,
+    ): UUID {
+        val result = repository.create(NewCampaign(farmId, name, startDate, parcelIds))
         assertTrue("create($name) failed: $result", result is AppResult.Success)
         return (result as AppResult.Success).value
     }

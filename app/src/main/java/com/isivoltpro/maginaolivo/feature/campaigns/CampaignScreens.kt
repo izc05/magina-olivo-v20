@@ -268,7 +268,7 @@ fun CampaignDetailRoute(
         )
     }
     CampaignDetailScreen(
-        state, vm::update, vm::activate, vm::markHarvest, vm::close, vm::reopen, vm::archivePreparation,
+        state, vm::update, vm::activate, vm::markHarvest, vm::closeToday, vm::reopen, vm::archivePreparation,
         summary = summary,
         onHarvests = onHarvests,
         onDeliveries = {
@@ -304,7 +304,7 @@ fun CampaignDetailRoute(
 @Composable
 fun CampaignDetailScreen(
     state: CampaignDetailUiState, onUpdate: (CampaignDraft) -> Unit, onActivate: () -> Unit, onHarvest: () -> Unit,
-    onClose: (LocalDate) -> Unit, onReopen: () -> Unit, onArchive: () -> Unit,
+    onClose: () -> Unit, onReopen: () -> Unit, onArchive: () -> Unit,
     summary: CampaignSummaryUi = CampaignSummaryUi(),
     onHarvests: () -> Unit = {},
     onDeliveries: () -> Unit = {},
@@ -509,7 +509,7 @@ fun CampaignDetailScreen(
                 )
             }
             val confirm = {
-                when (confirmation) { "activate" -> onActivate(); "harvest" -> onHarvest(); "close" -> onClose(LocalDate.now()); "reopen" -> onReopen(); "archive" -> onArchive() }
+                when (confirmation) { "activate" -> onActivate(); "harvest" -> onHarvest(); "close" -> onClose(); "reopen" -> onReopen(); "archive" -> onArchive() }
                 confirmation = null
             }
             if (destructive) {
