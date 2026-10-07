@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -63,7 +64,7 @@ class PhytosanitaryResourceUiTest {
         }
         rule.onNodeWithTag("agronomic-person-row").assertIsDisplayed()
             .assertTextContains("Juan Aplicador", substring = true)
-            .assertTextContains("••••5678Z", substring = true)
+            .assertTextContains("••••678Z", substring = true)
     }
 
     @Test fun machineDetailShowsOfficialProfileAndInspectionHistoryWithoutAnotherMachine() {
