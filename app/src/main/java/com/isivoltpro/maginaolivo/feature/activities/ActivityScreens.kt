@@ -674,6 +674,7 @@ internal fun ActivityEditor(
                             onClick = {
                                 selectedCampaignId = campaign.id.toString()
                                 selected = emptyList()
+                                singleParcelOffered = false
                             },
                             label = { Text(campaign.name) },
                             modifier = Modifier.testTag("harvest-day-campaign-option"),
