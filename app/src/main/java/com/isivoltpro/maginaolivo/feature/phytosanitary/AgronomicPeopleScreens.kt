@@ -119,13 +119,17 @@ fun AgronomicPeopleScreen(
                     icon = MoIcons.People,
                 )
                 else -> state.active.forEach { person ->
-                    PersonRow(person, onClick = { onPersonSelected(person.id) })
+                    PersonRow(
+                        person = person,
+                        credentialSummary = state.credentialSummaries[person.id],
+                        onClick = { onPersonSelected(person.id) },
+                    )
                 }
             }
             if (state.archived.isNotEmpty()) {
                 MoSectionHeader("Archivados")
                 state.archived.forEach { person ->
-                    PersonRow(person, onClick = { onPersonSelected(person.id) })
+                    PersonRow(person = person, credentialSummary = null, onClick = { onPersonSelected(person.id) })
                 }
             }
             Spacer(Modifier.height(MoSpacing.xl))
@@ -147,22 +151,27 @@ fun AgronomicPeopleScreen(
 }
 
 @Composable
-private fun PersonRow(person: AgronomicPerson, onClick: () -> Unit) {
+private fun PersonRow(
+    person: AgronomicPerson,
+    credentialSummary: String?,
+    onClick: () -> Unit,
+) {
     MoCompactListItem(
         title = person.displayName,
         subtitle = buildList {
-            if (person.isAdvisor) add("Asesor")
+            add(if (person.isAdvisor) "Asesor" else "Aplicador")
             person.taxId?.let { add(maskIdentifier(it)) }
+            credentialSummary?.let { add(it) }
             if (person.archived) add("Archivado")
-        }.ifEmpty { listOf("Aplicador") }.joinToString(" · "),
+        }.joinToString(" · "),
         icon = MoIcons.Person,
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().testTag("agronomic-person-row"),
         trailing = {
-            if (person.archived) {
-                MoStatusChip("Archivado", tone = MoStatusTone.Neutral)
-            } else if (person.isAdvisor) {
-                MoStatusChip("Asesor", tone = MoStatusTone.Info)
+            when {
+                person.archived -> MoStatusChip("Archivado", tone = MoStatusTone.Neutral)
+                person.isAdvisor -> MoStatusChip("Asesor", tone = MoStatusTone.Info)
+                else -> MoStatusChip("Aplicador", tone = MoStatusTone.Neutral)
             }
         },
     )
@@ -458,5 +467,3 @@ private fun credentialKindLabel(value: String): String = when (value) {
     else -> value
 }
 
-internal fun maskIdentifier(value: String): String =
-    if (value.length <= 4) "••••" else "••••${value.takeLast(4)}"
