@@ -116,6 +116,60 @@ class ActivityEngineContractTest {
         assertEquals(before, repository.observeForFarm(farmId).first().size)
     }
 
+    @Test
+    fun activityIntervalRoundTripsWithoutDuplicatingTheActivity() = runBlocking {
+        val start = LocalDate.parse("2026-10-05")
+        val end = LocalDate.parse("2026-10-07")
+        val result = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = start,
+                activityEndDate = end,
+                description = "Tratamiento de tres días",
+                parcelIds = setOf(parcelA),
+            ),
+        )
+        assertTrue(result is AppResult.Success)
+        val id = (result as AppResult.Success).value
+        val stored = repository.observe(id).first()!!
+        assertEquals(start, stored.activityDate)
+        assertEquals(end, stored.activityEndDate)
+        assertEquals(1, repository.observeForFarm(farmId).first().count { it.id == id })
+    }
+
+    @Test
+    fun intervalEndCannotBeBeforeItsStart() = runBlocking {
+        val result = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = LocalDate.parse("2026-10-07"),
+                activityEndDate = LocalDate.parse("2026-10-05"),
+                description = "Intervalo imposible",
+                parcelIds = setOf(parcelA),
+            ),
+        )
+        assertValidation("activityEndDate", result)
+    }
+
+    @Test
+    fun completedWorkCannotEndInTheFuture() = runBlocking {
+        val today = LocalDate.parse("2026-09-22")
+        val result = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = today.minusDays(1),
+                activityEndDate = today.plusDays(1),
+                description = "Tratamiento aún abierto",
+                parcelIds = setOf(parcelA),
+                completeImmediately = true,
+            ),
+        )
+        assertEquals(AppResult.Failure(AppError.Validation("activityEndDate", "future_completed_work")), result)
+    }
+
     // ---------------------------------------------------------------- outbox
 
     @Test
