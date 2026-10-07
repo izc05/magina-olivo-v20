@@ -443,8 +443,7 @@ fun AppNavigation(
                     campaignId,
                     persistence,
                     onHarvests = { navController.navigate(AppDestination.campaignHarvests(campaignId.toString())) },
-                    onDeliveries = { navController.navigate(AppDestination.Deliveries) },
-                    onNewPesada = { farmId -> navController.navigate(AppDestination.newPesada(farmId.toString())) },
+                    onDeliveries = { navController.navigate(AppDestination.campaignDeliveries(campaignId.toString())) },
                     // #365: the same day as Cuaderno → Jornal; find-or-create keeps it a single day.
                     onAddLabour = { farmId ->
                         navController.navigate(AppDestination.todayHarvest(farmId.toString())) { launchSingleTop = true }
@@ -467,6 +466,23 @@ fun AppNavigation(
                         onDeliveries = { farmId ->
                             if (farmId != null) navController.navigate(AppDestination.newPesada(farmId.toString()))
                         },
+                    )
+                }
+            }
+            composable(AppDestination.CampaignDeliveriesPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val campaignId = backStackEntry.arguments?.getString("campaignId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || campaignId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    DeliveriesRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        campaignId = campaignId,
+                        onDeliverySelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
+                        onTicketSelected = { id -> navController.navigate(AppDestination.ticket(id.toString())) },
+                        onAddYield = { id -> navController.navigate(AppDestination.deliveryYield(id.toString())) },
                     )
                 }
             }

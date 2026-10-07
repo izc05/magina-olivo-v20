@@ -113,9 +113,11 @@ fun DeliveriesRoute(
     presetFarmId: UUID? = null,
     /** CR-011 §14: the Cuaderno's Parcel, preselected when it is in that Farm's campaign. */
     presetParcelId: UUID? = null,
+    /** #511: consult exactly one Campaign's Pesadas; closed Campaigns are read-only here. */
+    campaignId: UUID? = null,
 ) {
     val viewModel: DeliveriesViewModel = viewModel(
-        key = "deliveries-${jornadaId ?: initialStatus ?: presetFarmId ?: "all"}",
+        key = "deliveries-${campaignId ?: jornadaId ?: initialStatus ?: presetFarmId ?: "all"}",
         factory = viewModelFactory {
             initializer {
                 DeliveriesViewModel(
@@ -125,6 +127,7 @@ fun DeliveriesRoute(
                     clock,
                     persistence.harvestRepository,
                     persistence.attachmentRepository,
+                    campaignId = campaignId,
                 )
             }
         },
@@ -151,6 +154,7 @@ fun DeliveriesRoute(
         onAddYield = onAddYield,
         presetFarmId = presetFarmId,
         presetParcelId = presetParcelId,
+        allowCreate = campaignId == null || state.contexts.isNotEmpty(),
     )
 }
 
@@ -175,6 +179,8 @@ fun DeliveriesScreen(
     onAddYield: (UUID) -> Unit = onDeliverySelected,
     presetFarmId: UUID? = null,
     presetParcelId: UUID? = null,
+    /** False for a scoped closed Campaign: history remains visible, creation disappears. */
+    allowCreate: Boolean = true,
 ) {
     // Phase 19C: find a Pesada by its ticket days later, and the ones still without yield.
     var searchText by rememberSaveable { mutableStateOf("") }
@@ -205,12 +211,15 @@ fun DeliveriesScreen(
             )
             val canRecord = state.contexts.isNotEmpty() && !state.contextsReadFailed && !state.isSaving
             // #342: kilos are typed and confirmed by the farmer; there is no ticket-reading entry.
-            MoPrimaryButton(
-                "+ Nueva pesada",
-                { editorVisible = true },
-                Modifier.fillMaxWidth().testTag("add-delivery"),
-                enabled = canRecord,
-            )
+            // #511: a closed Campaign's scoped history never shows a write CTA.
+            if (allowCreate) {
+                MoPrimaryButton(
+                    "+ Nueva pesada",
+                    { editorVisible = true },
+                    Modifier.fillMaxWidth().testTag("add-delivery"),
+                    enabled = canRecord,
+                )
+            }
             when {
                 state.contextsReadFailed -> {
                     Text(

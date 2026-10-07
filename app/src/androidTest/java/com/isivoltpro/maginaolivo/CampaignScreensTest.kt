@@ -17,6 +17,8 @@ import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelSnapshot
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailScreen
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailUiState
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignEditor
+import com.isivoltpro.maginaolivo.feature.deliveries.DeliveriesScreen
+import com.isivoltpro.maginaolivo.feature.deliveries.DeliveriesUiState
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.time.LocalDate
 import java.util.UUID
@@ -111,6 +113,45 @@ class CampaignScreensTest {
         assertTrue("Jornales goes under Pesadas", labour > deliveries)
         compose.onNodeWithTag("campaign-open-labour").performClick()
         compose.runOnIdle { assertEquals(1, opened) }
+    }
+
+    @Test fun closedCampaignScopedPesadasHideTheWriteAction() {
+        compose.setContent {
+            MaginaOlivoTheme {
+                DeliveriesScreen(
+                    state = DeliveriesUiState(isLoading = false, contextsLoaded = true),
+                    today = LocalDate.parse("2026-10-07"),
+                    onCreate = {},
+                    onProblem = {},
+                    onDeliverySelected = {},
+                    onTicketSelected = {},
+                    allowCreate = false,
+                )
+            }
+        }
+        compose.onAllNodesWithText("+ Nueva pesada").assertCountEquals(0)
+        compose.onAllNodesWithText("Pesadas").assertCountEquals(1)
+    }
+
+    @Test fun campaignPesadasCardAlwaysOpensItsListCallback() {
+        var opened = 0
+        var state by androidx.compose.runtime.mutableStateOf(
+            CampaignDetailUiState(isLoading = false, campaign = campaign()),
+        )
+        compose.setContent {
+            MaginaOlivoTheme {
+                CampaignDetailScreen(
+                    state, {}, {}, {}, {}, {}, {},
+                    onDeliveries = { opened++ },
+                )
+            }
+        }
+        compose.onNodeWithTag("campaign-open-deliveries").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, opened) }
+
+        state = state.copy(campaign = campaign().copy(status = CampaignStatus.ACTIVE, endDate = null))
+        compose.onNodeWithTag("campaign-open-deliveries").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(2, opened) }
     }
 
     /** #450: a Campaign with EUR and GBP shows both totals; one with only GBP never says «sin gastos». */

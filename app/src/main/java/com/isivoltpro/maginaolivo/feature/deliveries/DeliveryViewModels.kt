@@ -78,13 +78,16 @@ class DeliveriesViewModel(
     harvests: HarvestRepository? = null,
     /** #342: stores the optional receipt photo/file of a saved Pesada. */
     private val attachments: AttachmentRepository? = null,
+    /** #511: when present, this surface is the history of exactly one Campaign. */
+    private val campaignId: UUID? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(DeliveriesUiState())
     val state: StateFlow<DeliveriesUiState> = mutableState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            deliveries.observeAll()
+            val source = campaignId?.let(deliveries::observeForCampaign) ?: deliveries.observeAll()
+            source
                 .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer las pesadas") }
                 .collect { rows ->
                     mutableState.value = mutableState.value.copy(
@@ -106,7 +109,12 @@ class DeliveriesViewModel(
         harvests?.let { repository ->
             viewModelScope.launch {
                 repository.observeAll().catch { mutableState.value = mutableState.value.copy(jornadasLoaded = true) }
-                    .collect { rows -> mutableState.value = mutableState.value.copy(jornadas = rows.filter { it.editable }, jornadasLoaded = true) }
+                    .collect { rows ->
+                        mutableState.value = mutableState.value.copy(
+                            jornadas = rows.filter { it.editable && (campaignId == null || it.campaignId == campaignId) },
+                            jornadasLoaded = true,
+                        )
+                    }
             }
         }
         viewModelScope.launch {
@@ -134,7 +142,7 @@ class DeliveriesViewModel(
                 }
                 .collect { rows ->
                     mutableState.value = mutableState.value.copy(
-                        contexts = rows,
+                        contexts = rows.filter { campaignId == null || it.campaignId == campaignId },
                         contextsLoaded = true,
                         contextsReadFailed = false,
                     )

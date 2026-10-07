@@ -271,10 +271,9 @@ fun CampaignDetailRoute(
         state, vm::update, vm::activate, vm::markHarvest, vm::closeToday, vm::reopen, vm::archivePreparation,
         summary = summary,
         onHarvests = onHarvests,
-        onDeliveries = {
-            val campaign = state.campaign
-            if (campaign != null && campaign.status.isRunning) onNewPesada(campaign.farmId) else onDeliveries()
-        },
+        // #511: «Pesadas» always means the list belonging to this Campaign.
+        // Creation, when allowed, lives inside that scoped list.
+        onDeliveries = onDeliveries,
         onLabour = { labourOpen = true },
     )
     // #365: the one Jornales detail (people and payments) of this campaign, as from the Cuaderno.

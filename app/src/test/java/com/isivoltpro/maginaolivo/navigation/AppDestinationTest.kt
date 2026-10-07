@@ -59,7 +59,10 @@ class AppDestinationTest {
         assertEquals("campaign/campaign-1", AppDestination.campaign("campaign-1"))
         assertEquals("campaign/campaign-1/harvests", AppDestination.campaignHarvests("campaign-1"))
         assertEquals("campaign/{campaignId}/harvests", AppDestination.CampaignHarvestsPattern)
+        assertEquals("campaign/campaign-1/deliveries", AppDestination.campaignDeliveries("campaign-1"))
+        assertEquals("campaign/{campaignId}/deliveries", AppDestination.CampaignDeliveriesPattern)
         assertEquals(RootDestination.Olivar, AppDestination.rootForRoute(AppDestination.campaignHarvests("campaign-1")))
+        assertEquals(RootDestination.Olivar, AppDestination.rootForRoute(AppDestination.campaignDeliveries("campaign-1")))
 
         listOf(
             { AppDestination.farm(" ") },
