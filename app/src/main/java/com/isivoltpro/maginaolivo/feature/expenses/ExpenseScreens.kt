@@ -281,9 +281,10 @@ fun ExpensesScreen(
                         Text("En ${ledger.currency}", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary,
                             modifier = Modifier.testTag("expenses-categories-${ledger.currency}"))
                     }
-                    val total = ledger.amount() ?: 0L
-                    ledger.posted.groupBy { it.category }.mapValues { (_, rows) -> rows.sumOf { it.amountMinor } }
-                        .entries.sortedByDescending { it.value }.forEach { (category, amount) ->
+                    // #500: checked sums; a category or total that overflows reads «No disponible», never negative.
+                    val total = ledger.amount()
+                    com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary.of(ledger.posted, ledger.currency).byCategory
+                        .entries.sortedByDescending { it.value ?: Long.MAX_VALUE }.forEach { (category, amount) ->
                             CategoryRow(category.label(), amount, total, ledger.currency)
                         }
                 }
@@ -457,8 +458,8 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
 }
 
 @Composable
-private fun CategoryRow(label: String, amountMinor: Long, totalMinor: Long, currency: String) {
-    val share = if (totalMinor > 0) (amountMinor * 100 / totalMinor) else 0
+private fun CategoryRow(label: String, amountMinor: Long?, totalMinor: Long?, currency: String) {
+    val share = categoryShare(amountMinor, totalMinor)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
@@ -471,9 +472,9 @@ private fun CategoryRow(label: String, amountMinor: Long, totalMinor: Long, curr
         ) {
             Column(Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-                Text("$share %", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+                Text(share?.let { "$it %" } ?: "—", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
             }
-            Text(Money.format(amountMinor, currency), style = MaterialTheme.typography.titleMedium, color = MoInk)
+            Text(amountMinor?.let { Money.format(it, currency) } ?: "No disponible", style = MaterialTheme.typography.titleMedium, color = MoInk)
         }
     }
 }
@@ -514,3 +515,11 @@ internal const val LABOUR_OUTSIDE_CAMPAIGN_TITLE = "Jornal fuera de campaña"
 internal const val LABOUR_OUTSIDE_CAMPAIGN_NOTE =
     "Mano de obra de la finca: poda, desbroce, tratamientos… Se guarda como gasto de mano de obra. " +
         "Los jornales de recogida, por persona, se registran dentro de una campaña."
+
+/** #500: a category's share of the total, or null when either sum is unknown; never an overflowed figure. */
+internal fun categoryShare(amountMinor: Long?, totalMinor: Long?): Long? {
+    if (amountMinor == null || totalMinor == null) return null
+    if (totalMinor <= 0) return 0
+    return java.math.BigInteger.valueOf(amountMinor).multiply(java.math.BigInteger.valueOf(100))
+        .divide(java.math.BigInteger.valueOf(totalMinor)).toLong()
+}
