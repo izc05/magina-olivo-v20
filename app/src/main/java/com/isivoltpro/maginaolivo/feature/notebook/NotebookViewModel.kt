@@ -65,8 +65,10 @@ class NotebookViewModel(
             } else {
                 combine(
                     activities.observeForFarm(farmId),
-                    harvests.observeForCampaign(campaign.id),
-                    deliveries.observeForCampaign(campaign.id),
+                    // #509: campaignId-null legacy rows must be resolved against every
+                    // Campaign of the Farm before they can enter one Notebook.
+                    harvests.observeAll(),
+                    deliveries.observeAll(),
                     expenses.observeAll(),
                     combine(
                         labour?.observeForCampaign(campaign.id) ?: flowOf(emptyList<LabourEntry>()),
@@ -79,7 +81,10 @@ class NotebookViewModel(
                         campaigns = list,
                         selectedCampaignId = campaign.id,
                         labourPayments = payments,
-                        notebook = CampaignNotebook.project(campaign, acts, crops, weighings, costs, jornales, maquinaria),
+                        notebook = CampaignNotebook.project(
+                            campaign, acts, crops, weighings, costs, jornales, maquinaria,
+                            candidateCampaigns = list,
+                        ),
                     )
                 }
             }
@@ -111,7 +116,14 @@ class NotebookViewModel(
         combine(expenses.observeAll(), farmCrews) { costs, crews -> costs to crews },
     ) { list, acts, crops, weighings, (costs, crews) ->
         val (jornales, maquinaria) = crews
-        CampaignComparison.of(list.map { CampaignNotebook.project(it, acts, crops, weighings, costs, jornales, maquinaria) })
+        CampaignComparison.of(
+            list.map {
+                CampaignNotebook.project(
+                    it, acts, crops, weighings, costs, jornales, maquinaria,
+                    candidateCampaigns = list,
+                )
+            },
+        )
     }
 
     /** #417: the Farm's Cuaderno, built whether or not any Campaign exists. */
