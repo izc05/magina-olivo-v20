@@ -75,6 +75,8 @@ class FarmActivitiesViewModel(
     private val farmId: UUID,
     private val repository: ActivityRepository,
     private val campaignRepository: CampaignRepository? = null,
+    /** #435: canonical day of the active Workspace. Null only in non-writing legacy/test callers. */
+    private val today: LocalDate? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(FarmActivitiesUiState())
     val state: StateFlow<FarmActivitiesUiState> = mutableState.asStateFlow()
@@ -166,8 +168,12 @@ class FarmActivitiesViewModel(
         val dateError = when {
             draft.activityDate == null -> "Selecciona una fecha"
             // #435/#414: the Cuaderno records facts; a date ahead is planned from Avisos.
-            completeImmediately && !asDraft && draft.type != ActivityType.HARVEST_DAY &&
-                draft.activityDate.isAfter(java.time.LocalDate.now()) -> FUTURE_DONE_WORK
+            isFutureDoneWork(
+                activityDate = draft.activityDate,
+                today = today,
+                doneWork = completeImmediately && !asDraft,
+                type = draft.type,
+            ) -> FUTURE_DONE_WORK
             else -> null
         }
         val parcelsError =
@@ -436,6 +442,18 @@ internal const val LINKED_EXPENSES_TEXT =
 
 
 private fun String.nullIfBlank(): String? = trim().takeIf(String::isNotEmpty)
+
+internal fun isFutureDoneWork(
+    activityDate: LocalDate?,
+    today: LocalDate?,
+    doneWork: Boolean,
+    type: ActivityType,
+): Boolean =
+    doneWork &&
+        type != ActivityType.HARVEST_DAY &&
+        activityDate != null &&
+        today != null &&
+        activityDate.isAfter(today)
 
 /** #435/#414: why the Cuaderno will not save work dated ahead. */
 internal const val FUTURE_DONE_WORK = "La fecha es futura. Para trabajos pendientes usa Avisos → Planificar."

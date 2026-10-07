@@ -292,6 +292,7 @@ fun AppNavigation(
                         onActivitySelected = { activityId ->
                             navController.navigate(AppDestination.activity(activityId.toString()))
                         },
+                        clock = compositionRoot.clock,
                     )
                 }
             }
@@ -307,6 +308,7 @@ fun AppNavigation(
                         onActivitySelected = { activityId ->
                             navController.navigate(AppDestination.activity(activityId.toString()))
                         },
+                        clock = compositionRoot.clock,
                     )
                 }
             }

@@ -12,7 +12,7 @@ import java.util.UUID
  * This matters around midnight and when a device temporarily uses another timezone: a Pesada,
  * Jornada, completed work, payment or campaign closure must agree on what "today" means.
  */
-internal suspend fun MaginaOlivoDatabase.todayForWorkspace(
+suspend fun MaginaOlivoDatabase.todayForWorkspace(
     workspaceId: UUID,
     clock: AppClock,
     zoneOverride: (() -> ZoneId)? = null,
