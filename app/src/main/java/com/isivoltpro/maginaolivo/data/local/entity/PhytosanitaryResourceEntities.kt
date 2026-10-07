@@ -13,6 +13,9 @@ import java.util.UUID
 /**
  * A reusable legal/agronomic person (applicator/advisor). Deliberately separate from Worker,
  * whose meaning is only harvest labour and whose name may be an alias.
+ *
+ * Regulatory credentials are historical child rows: renewing a card/ROPO never rewrites
+ * credentials that were valid for older treatments.
  */
 @Entity(
     tableName = "agronomic_people",
@@ -36,11 +39,7 @@ data class AgronomicPersonEntity(
     @ColumnInfo(name = "given_name") val givenName: String? = null,
     @ColumnInfo(name = "family_name") val familyName: String? = null,
     @ColumnInfo(name = "tax_id") val taxId: String? = null,
-    @ColumnInfo(name = "ropo_or_card_number") val ropoOrCardNumber: String? = null,
-    @ColumnInfo(name = "card_type_code") val cardTypeCode: String? = null,
     @ColumnInfo(name = "is_advisor") val isAdvisor: Boolean = false,
-    @ColumnInfo(name = "valid_from") val validFrom: LocalDate? = null,
-    @ColumnInfo(name = "valid_until") val validUntil: LocalDate? = null,
     val source: String = "MANUAL",
     @ColumnInfo(name = "external_id") val externalId: String? = null,
     @ColumnInfo(name = "source_version") val sourceVersion: String? = null,
@@ -49,9 +48,50 @@ data class AgronomicPersonEntity(
     @Embedded val metadata: LocalMetadata,
 )
 
+@Entity(
+    tableName = "agronomic_credentials",
+    foreignKeys = [
+        ForeignKey(
+            entity = AgronomicPersonEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["person_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = WorkspaceEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["workspace_id"],
+        ),
+    ],
+    indices = [
+        Index(value = ["person_id", "valid_from"]),
+        Index(value = ["workspace_id"]),
+        Index(value = ["workspace_id", "external_id"]),
+    ],
+)
+data class AgronomicCredentialEntity(
+    @PrimaryKey val id: UUID,
+    @ColumnInfo(name = "workspace_id") val workspaceId: UUID,
+    @ColumnInfo(name = "person_id") val personId: UUID,
+    /** Dynamic semantic code, e.g. ROPO_APPLICATOR/CARD/ADVISOR; finalized by #536/#558. */
+    @ColumnInfo(name = "credential_type") val credentialType: String,
+    val number: String,
+    @ColumnInfo(name = "category_code") val categoryCode: String? = null,
+    @ColumnInfo(name = "valid_from") val validFrom: LocalDate? = null,
+    @ColumnInfo(name = "valid_until") val validUntil: LocalDate? = null,
+    val source: String = "MANUAL",
+    @ColumnInfo(name = "external_id") val externalId: String? = null,
+    @ColumnInfo(name = "source_version") val sourceVersion: String? = null,
+    @ColumnInfo(name = "fetched_at") val fetchedAt: Instant? = null,
+    @Embedded val metadata: LocalMetadata,
+)
+
 /**
- * Optional regulatory extension of an existing Machine. The machine remains the one visible
- * operational asset; this profile carries only phytosanitary/administrative facts.
+ * Optional regulatory extension of an existing Machine. The machine remains the operational
+ * asset; this profile carries only current registration/provenance facts.
+ *
+ * Inspections live in their own historical table so a future inspection cannot make a past
+ * treatment appear compliant retroactively.
  */
 @Entity(
     tableName = "phytosanitary_equipment_profiles",
@@ -79,8 +119,43 @@ data class PhytosanitaryEquipmentProfileEntity(
     @ColumnInfo(name = "roma_registration") val romaRegistration: String? = null,
     @ColumnInfo(name = "census_reference") val censusReference: String? = null,
     @ColumnInfo(name = "acquisition_date") val acquisitionDate: LocalDate? = null,
-    @ColumnInfo(name = "last_inspection_date") val lastInspectionDate: LocalDate? = null,
     @ColumnInfo(name = "regulatory_type_code") val regulatoryTypeCode: String? = null,
+    val source: String = "MANUAL",
+    @ColumnInfo(name = "external_id") val externalId: String? = null,
+    @ColumnInfo(name = "source_version") val sourceVersion: String? = null,
+    @ColumnInfo(name = "fetched_at") val fetchedAt: Instant? = null,
+    @Embedded val metadata: LocalMetadata,
+)
+
+@Entity(
+    tableName = "phytosanitary_equipment_inspections",
+    foreignKeys = [
+        ForeignKey(
+            entity = MachineEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["machine_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = WorkspaceEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["workspace_id"],
+        ),
+    ],
+    indices = [
+        Index(value = ["machine_id", "inspection_date"]),
+        Index(value = ["workspace_id"]),
+        Index(value = ["workspace_id", "external_id"]),
+    ],
+)
+data class PhytosanitaryEquipmentInspectionEntity(
+    @PrimaryKey val id: UUID,
+    @ColumnInfo(name = "workspace_id") val workspaceId: UUID,
+    @ColumnInfo(name = "machine_id") val machineId: UUID,
+    @ColumnInfo(name = "inspection_date") val inspectionDate: LocalDate,
+    /** Dynamic result/status code if the official source supplies one. */
+    @ColumnInfo(name = "result_code") val resultCode: String? = null,
+    @ColumnInfo(name = "certificate_reference") val certificateReference: String? = null,
     val source: String = "MANUAL",
     @ColumnInfo(name = "external_id") val externalId: String? = null,
     @ColumnInfo(name = "source_version") val sourceVersion: String? = null,
