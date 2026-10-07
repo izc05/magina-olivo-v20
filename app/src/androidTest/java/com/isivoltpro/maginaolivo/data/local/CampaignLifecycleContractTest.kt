@@ -282,6 +282,30 @@ class CampaignLifecycleContractTest {
     }
 
     @Test
+    fun reopenIsRejectedWhenItsFarmIsArchivedLegacyState() = runBlocking {
+        val id = created("2026/27", setOf(parcelId))
+        assertOk(repository.activate(id))
+        assertOk(repository.close(id, LocalDate.parse("2027-02-01")))
+        val before = db.campaignDao().findById(id)!!
+        val snapshotsBefore = db.campaignDao().listSnapshots(id)
+        val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
+
+        // Simulate legacy data predating #427: a closed Campaign remains under an archived Farm.
+        val farm = db.farmDao().findById(farmId)!!
+        db.farmDao().upsert(
+            farm.copy(
+                status = com.isivoltpro.maginaolivo.data.local.model.FarmStatus.ARCHIVED,
+                metadata = farm.metadata.copy(updatedAt = now, version = farm.metadata.version + 1),
+            ),
+        )
+
+        assertConflict("archived_farm", repository.reopen(id))
+        assertEquals(before, db.campaignDao().findById(id))
+        assertEquals(snapshotsBefore, db.campaignDao().listSnapshots(id))
+        assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id))
+    }
+
+    @Test
     fun reopenIsRejectedWhileAnotherCurrentCampaignHoldsTheFarmSlot() = runBlocking {
         val first = created("2026/27", setOf(parcelId))
         assertOk(repository.activate(first))

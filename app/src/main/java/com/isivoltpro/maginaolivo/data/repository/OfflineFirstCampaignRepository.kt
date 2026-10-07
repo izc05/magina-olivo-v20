@@ -176,6 +176,15 @@ class OfflineFirstCampaignRepository(
 
     override suspend fun reopen(id: UUID): AppResult<Unit> = mutate(id, "reopen_campaign") { current, now ->
         if (current.status != CampaignStatus.CLOSED) return@mutate conflict("illegal_campaign_transition")
+        val farm = database.farmDao().findById(current.farmId)
+            ?: return@mutate AppResult.Failure(AppError.NotFound("farm"))
+        if (
+            farm.workspaceId != current.workspaceId ||
+            farm.status != FarmStatus.ACTIVE ||
+            farm.metadata.deletedAt != null
+        ) {
+            return@mutate conflict("archived_farm")
+        }
         if (database.campaignDao().countOtherCurrent(current.farmId, id) > 0) return@mutate conflict("active_campaign_exists")
         database.campaignDao().upsert(current.copy(status = CampaignStatus.ACTIVE, endDate = null, metadata = current.metadata.next(now)))
         enqueue(id, OutboxOperation.UPDATE, now)
