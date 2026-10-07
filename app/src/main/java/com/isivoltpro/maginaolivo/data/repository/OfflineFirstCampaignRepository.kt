@@ -186,6 +186,9 @@ class OfflineFirstCampaignRepository(
         if (endDate.isAfter(today)) {
             return AppResult.Failure(AppError.Validation("endDate", "future"))
         }
+        if (database.activityDao().countPlannedHarvestDaysForCampaign(current.id) > 0) {
+            return conflict("planned_harvest_days")
+        }
         val lastOperationalDate = listOfNotNull(
             database.harvestDao().lastLiveDateForCampaign(current.id),
             database.deliveryDao().lastLiveDateForCampaign(current.id),
