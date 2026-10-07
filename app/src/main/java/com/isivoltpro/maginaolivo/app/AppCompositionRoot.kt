@@ -33,6 +33,7 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstLabourRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstMachineRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstOrganizationRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstProfileRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstPhytosanitaryResourceRepository
 import com.isivoltpro.maginaolivo.data.repository.RoomReminderPreferences
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
@@ -191,6 +192,9 @@ data class AppCompositionRoot(
             val profileRepository = OfflineFirstProfileRepository(
                 database, workspaceRepository, organizationRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
             )
+            val phytosanitaryResourceRepository = OfflineFirstPhytosanitaryResourceRepository(
+                database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
+            )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 activeFarmStore = AndroidActiveFarmStore(applicationContext),
@@ -217,6 +221,7 @@ data class AppCompositionRoot(
                     radarSource = radarSource,
                     oilMarketFeed = oilMarketFeed,
                     profileRepository = profileRepository,
+                    phytosanitaryResourceRepository = phytosanitaryResourceRepository,
                 ),
             )
         }
