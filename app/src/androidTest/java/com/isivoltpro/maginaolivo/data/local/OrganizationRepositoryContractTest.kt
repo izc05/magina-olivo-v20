@@ -3,12 +3,14 @@ package com.isivoltpro.maginaolivo.data.local
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstOrganizationRepository
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationDraft
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRepository
@@ -54,15 +56,7 @@ class OrganizationRepositoryContractTest {
                 metadata = LocalMetadata(now, now),
             ),
         )
-        repository = OfflineFirstOrganizationRepository(
-            db,
-            object : WorkspaceRepository {
-                override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
-            },
-            FixedClock(now),
-            RandomIds,
-            TestDispatchers,
-        )
+        repository = repositoryFor(workspaceId)
     }
 
     @After
@@ -115,6 +109,89 @@ class OrganizationRepositoryContractTest {
         val row = db.organizationDao().findById(id)!!
         assertEquals("Calle Olivo 1", row.address)
         assertEquals("https://example.test", row.website)
+    }
+
+    @Test
+    fun catalogsRolesAndMutationsNeverCrossWorkspace() = runBlocking {
+        val otherWorkspace = UUID.randomUUID()
+        db.workspaceDao().upsert(
+            WorkspaceEntity(
+                id = otherWorkspace,
+                name = "Otro olivar",
+                ownerUserId = UUID.randomUUID(),
+                countryCode = "ES",
+                timezone = "Europe/Madrid",
+                locale = "es-ES",
+                currency = "EUR",
+                metadata = LocalMetadata(now, now),
+            ),
+        )
+        val other = repositoryFor(otherWorkspace)
+        val sameName = "Cooperativa Compartida"
+        val foreign = ok(
+            other.create(
+                OrganizationDraft(
+                    name = sameName,
+                    roles = setOf(OrganizationRole.COOPERATIVE, OrganizationRole.SUPPLIER),
+                ),
+            ),
+        )
+        val own = ok(
+            repository.create(
+                OrganizationDraft(
+                    name = sameName,
+                    roles = setOf(OrganizationRole.COOPERATIVE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(own), repository.observeAll().first().map { it.id })
+        assertEquals(listOf(foreign), other.observeAll().first().map { it.id })
+        assertEquals(
+            listOf(own),
+            repository.observeWithAnyRole(setOf(OrganizationRole.COOPERATIVE)).first().map { it.id },
+        )
+        assertEquals(
+            listOf(foreign),
+            other.observeWithAnyRole(setOf(OrganizationRole.SUPPLIER)).first().map { it.id },
+        )
+
+        val before = db.organizationDao().findById(foreign)!!
+        val rolesBefore = db.organizationDao().listRoles(foreign)
+        val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.ORGANIZATION, foreign)
+
+        assertContextMismatch(
+            repository.update(
+                foreign,
+                OrganizationDraft("No tocar", setOf(OrganizationRole.OTHER)),
+            ),
+        )
+        assertContextMismatch(repository.archive(foreign))
+
+        assertEquals(before, db.organizationDao().findById(foreign))
+        assertEquals(rolesBefore, db.organizationDao().listRoles(foreign))
+        assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.ORGANIZATION, foreign))
+    }
+
+    private fun repositoryFor(workspace: UUID): OrganizationRepository =
+        OfflineFirstOrganizationRepository(
+            db,
+            object : WorkspaceRepository {
+                override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspace)
+            },
+            FixedClock(now),
+            RandomIds,
+            TestDispatchers,
+        )
+
+    private fun <T> ok(result: AppResult<T>): T = when (result) {
+        is AppResult.Success -> result.value
+        is AppResult.Failure -> throw AssertionError("Expected success but was ${result.error}")
+    }
+
+    private fun assertContextMismatch(result: AppResult<*>) {
+        val error = (result as? AppResult.Failure)?.error
+        assertEquals(AppError.Validation("organization", "context_mismatch"), error)
     }
 
     private data class FixedClock(val value: Instant) : AppClock {
