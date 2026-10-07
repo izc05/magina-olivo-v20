@@ -55,6 +55,8 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.app.LocalPersistence
+import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.repository.todayForWorkspace
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
@@ -107,6 +109,8 @@ fun FarmActivitiesRoute(
     editorAsScreen: Boolean = false,
     /** "Registrar hoy" is a diary entry for work already done, unlike farm planning. */
     completeOnSave: Boolean = false,
+    /** #435: canonical day of the Workspace; required by done-work entry points. */
+    today: LocalDate? = null,
 ) {
     val vm: FarmActivitiesViewModel = viewModel(key = "farm-activities-$farmId", factory = viewModelFactory {
         initializer {
@@ -114,6 +118,7 @@ fun FarmActivitiesRoute(
                 farmId,
                 persistence.activityRepository,
                 persistence.campaignRepository,
+                today = today,
             )
         }
     })
@@ -128,6 +133,7 @@ fun FarmActivitiesRoute(
         lockInitialType = lockInitialType,
         editorAsScreen = editorAsScreen,
         quickEntry = completeOnSave,
+        today = today,
     )
 }
 
@@ -144,6 +150,8 @@ fun FarmActivitiesSection(
     editorAsScreen: Boolean = false,
     /** #414: a Cuaderno quick action records work already done: no planning, no draft step. */
     quickEntry: Boolean = false,
+    /** #435: canonical Workspace day for visual validation. */
+    today: LocalDate? = null,
 ) {
     var editor by rememberSaveable { mutableStateOf(startWithEditor) }
     OnEachSave(state.saveCount) { editor = false }
@@ -166,6 +174,7 @@ fun FarmActivitiesSection(
             lockInitialType = lockInitialType,
             doneWork = quickEntry,
             autoSelectSingleParcel = true,
+            today = today,
         )
     } else {
         // UX-D: saving is confirmed where the farmer is looking, not only by the closed sheet.
@@ -213,6 +222,7 @@ fun FarmActivitiesSection(
                     title = editorTitle,
                     lockInitialType = lockInitialType,
                     autoSelectSingleParcel = true,
+                    today = today,
                 )
             }
         }
@@ -239,6 +249,8 @@ fun RegisterActivityRoute(
     preselectedParcelId: UUID? = null,
     /** CR-011 §12: opened from Avisos; the work is saved as planned, never as done. */
     planning: Boolean = false,
+    /** #435/#619: resolves today using the Workspace timezone, not the phone timezone. */
+    clock: AppClock,
 ) {
     var selectedTypeName by rememberSaveable { mutableStateOf(presetType?.name) }
     LaunchedEffect(presetType) { if (presetType != null) selectedTypeName = presetType.name }
@@ -250,6 +262,13 @@ fun RegisterActivityRoute(
         }
     })
     val state by vm.state.collectAsStateWithLifecycle()
+    val workspaceId = state.farms.firstOrNull()?.workspaceId
+    var workspaceToday by remember(workspaceId) { mutableStateOf<LocalDate?>(null) }
+    LaunchedEffect(workspaceId, clock) {
+        workspaceToday = workspaceId?.let { id ->
+            runCatching { persistence.database.todayForWorkspace(id, clock) }.getOrNull()
+        }
+    }
     // #498: validate the contextual Farm before consuming navigation state.
     LaunchedEffect(preselectedFarmId) {
         if (preselectedFarmId != null) vm.preselectFarm(preselectedFarmId)
@@ -292,6 +311,7 @@ fun RegisterActivityRoute(
                     "Crea una finca en Mi Campo y podrás registrar trabajos en sus parcelas.",
                     icon = MoIcons.Tree,
                 )
+                workspaceToday == null -> CircularProgressIndicator(Modifier.testTag("activity-workspace-day-loading"))
                 else -> {
                     val selectedFarmId = state.selectedFarmId
                     if (selectedFarmId == null) {
@@ -332,7 +352,7 @@ fun RegisterActivityRoute(
                             // Today by default (editable); the type already chosen; the Farm in the title.
                             initialDraft = ActivityDraft(
                                 type = activityType,
-                                activityDate = LocalDate.now(),
+                                activityDate = workspaceToday,
                                 // #414: the type already says what was done; a short detail is optional.
                                 description = "",
                                 // Only while the Parcel's own Farm is the one chosen.
@@ -345,6 +365,7 @@ fun RegisterActivityRoute(
                             lockInitialType = true,
                             editorAsScreen = true,
                             completeOnSave = !planning,
+                            today = workspaceToday,
                         )
                     }
                 }
@@ -481,6 +502,8 @@ internal fun ActivityEditor(
     /** #482: Campaign context is only relevant to HARVEST_DAY planning. Appended for source compatibility. */
     campaigns: List<Campaign> = emptyList(),
     campaignError: String? = null,
+    /** #435: canonical Workspace day. Null keeps non-writing previews source-compatible. */
+    today: LocalDate? = null,
 ) {
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
@@ -697,7 +720,12 @@ internal fun ActivityEditor(
             modifier = Modifier.testTag("activity-description"),
         )
         // #435/#414: work already done cannot be dated ahead; it is never saved as a quiet plan.
-        val futureDoneWork = doneWork && runCatching { LocalDate.parse(date) }.getOrNull()?.isAfter(LocalDate.now()) == true
+        val futureDoneWork = isFutureDoneWork(
+            activityDate = runCatching { LocalDate.parse(date) }.getOrNull(),
+            today = today,
+            doneWork = doneWork,
+            type = selectedType,
+        )
         MoDateInputField(
             date, { date = it }, "Fecha",
             isError = dateError != null || futureDoneWork,
