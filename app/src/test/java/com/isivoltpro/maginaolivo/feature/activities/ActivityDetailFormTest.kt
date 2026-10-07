@@ -18,6 +18,16 @@ import org.junit.Test
  */
 class ActivityDetailFormTest {
     @Test
+    fun `date intervals stay limited to agronomic operations that need them`() {
+        assertTrue(ActivityType.PHYTOSANITARY.needsDateInterval())
+        assertTrue(ActivityType.FERTILIZATION.needsDateInterval())
+        assertTrue(ActivityType.IRRIGATION.needsDateInterval())
+        assertFalse(ActivityType.PRUNING.needsDateInterval())
+        assertFalse(ActivityType.MAINTENANCE.needsDateInterval())
+        assertFalse(ActivityType.HARVEST_DAY.needsDateInterval())
+    }
+
+    @Test
     fun `affected surface stays out of unrelated work types`() {
         assertTrue(ActivityType.PHYTOSANITARY.needsAffectedArea())
         assertTrue(ActivityType.FERTILIZATION.needsAffectedArea())
