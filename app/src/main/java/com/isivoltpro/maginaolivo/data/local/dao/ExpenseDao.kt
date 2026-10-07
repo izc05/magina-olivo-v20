@@ -59,6 +59,14 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE harvest_id = :harvestId AND deleted_at IS NULL")
     suspend fun listForHarvest(harvestId: UUID): List<ExpenseEntity>
 
+    /** #427: unresolved money review blocks archiving its current context. */
+    @Query("SELECT COUNT(*) FROM expenses WHERE farm_id = :farmId AND status = 'DRAFT' AND deleted_at IS NULL")
+    suspend fun countDraftForFarm(farmId: UUID): Int
+
+    /** #427: unresolved money review blocks archiving the Parcel it explicitly references. */
+    @Query("SELECT COUNT(*) FROM expenses WHERE parcel_id = :parcelId AND status = 'DRAFT' AND deleted_at IS NULL")
+    suspend fun countDraftForParcel(parcelId: UUID): Int
+
     /** #441: the live Expenses that point at one Activity (drafts included). */
     @Query("SELECT * FROM expenses WHERE activity_id = :activityId AND deleted_at IS NULL")
     suspend fun listForActivity(activityId: UUID): List<ExpenseEntity>
