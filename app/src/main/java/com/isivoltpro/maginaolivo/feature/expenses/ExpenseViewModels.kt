@@ -176,7 +176,7 @@ internal fun Expense.toForm() = ExpenseForm(
  * to review, said plainly; it stays a DRAFT and counts nothing until then.
  */
 internal fun postErrorMessage(error: AppError): String = when {
-    error is AppError.Validation && error.field == "expenseDate" && error.code == "future" ->
+    error is AppError.Validation && error.field == "expenseDate" && error.code == "future_real_expense" ->
         "La fecha de este gasto es posterior a hoy. Corrígela antes de confirmarlo."
     error is AppError.Validation && error.code != "campaign_closed" && error.code != "archived" &&
         error.field in setOf("farmId", "parcelId", "activityId", "campaignId", "harvestId", "supplierOrganizationId") ->
@@ -186,6 +186,8 @@ internal fun postErrorMessage(error: AppError): String = when {
 
 internal fun expenseErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> when {
+        error.field == "expenseDate" && error.code == "future_real_expense" ->
+            "La fecha es futura. Los Gastos reflejan importes ya realizados."
         error.code == "campaign_closed" -> "La campaña está cerrada: el coste histórico no se modifica."
         error.code == "below_paid" -> "Debes corregir los pagos antes de reducir el coste por debajo de lo pagado."
         error.field == "appliedPrice" && error.code == "confirm_missing_prices" ->
