@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.machinery.Machine
 import com.isivoltpro.maginaolivo.domain.machinery.MachineCategory
+import com.isivoltpro.maginaolivo.domain.phytosanitary.RegulatoryResourceSource
 import com.isivoltpro.maginaolivo.feature.activities.editableHours
 import com.isivoltpro.maginaolivo.feature.expenses.Choice
 import com.isivoltpro.maginaolivo.feature.expenses.ChoiceSheet
@@ -47,6 +48,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
+import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoMetricCard
@@ -55,6 +57,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoSelectField
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
+import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
@@ -228,10 +231,26 @@ internal fun MachineEditor(
 fun MachineDetailRoute(machineId: UUID, persistence: LocalPersistence) {
     val viewModel: MachineDetailViewModel = viewModel(
         key = "machine-$machineId",
-        factory = viewModelFactory { initializer { MachineDetailViewModel(machineId, persistence.machineRepository) } },
+        factory = viewModelFactory {
+            initializer {
+                MachineDetailViewModel(
+                    machineId,
+                    persistence.machineRepository,
+                    persistence.phytosanitaryResourceRepository,
+                )
+            }
+        },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
-    MachineDetailScreen(state, viewModel::update, viewModel::archive, viewModel::restore, viewModel::clearFormErrors)
+    MachineDetailScreen(
+        state = state,
+        onUpdate = viewModel::update,
+        onSavePhytosanitaryProfile = viewModel::savePhytosanitaryProfile,
+        onAddPhytosanitaryInspection = viewModel::addPhytosanitaryInspection,
+        onArchive = viewModel::archive,
+        onRestore = viewModel::restore,
+        onEditorClosed = viewModel::clearFormErrors,
+    )
 }
 
 /** Detalle de máquina: its data and the Activities that named it, with the hours recorded. */
@@ -240,6 +259,8 @@ fun MachineDetailRoute(machineId: UUID, persistence: LocalPersistence) {
 fun MachineDetailScreen(
     state: MachineDetailUiState,
     onUpdate: (MachineForm) -> Unit,
+    onSavePhytosanitaryProfile: (PhytosanitaryEquipmentForm) -> Unit = {},
+    onAddPhytosanitaryInspection: (PhytosanitaryInspectionForm) -> Unit = {},
     onArchive: () -> Unit,
     onRestore: () -> Unit,
     onEditorClosed: () -> Unit = {},
@@ -265,6 +286,101 @@ fun MachineDetailScreen(
                     DetailValue("Matrícula o nº de serie", machine.registrationOrSerial)
                     DetailValue("Horas del contador", machine.currentHours?.let { "${editableHours(it)} h" })
                     machine.notes?.let { DetailValue("Notas", it) }
+
+                    var showPhytosanitaryDetails by rememberSaveable(machine.id) { mutableStateOf(false) }
+                    MoSectionHeader("Datos fitosanitarios")
+                    if (showPhytosanitaryDetails) {
+                    Text(
+                        "Solo si esta máquina se utiliza para aplicar productos fitosanitarios.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoTextSecondary,
+                    )
+                    val phyto = state.phytosanitaryProfile
+                    if (phyto == null) {
+                        Text("Sin configurar", color = MoTextSecondary, modifier = Modifier.testTag("machine-phyto-empty"))
+                        if (!machine.archived) {
+                            MoSecondaryButton(
+                                "Configurar datos fitosanitarios",
+                                { sheet = "phyto-profile" },
+                                Modifier.fillMaxWidth().testTag("machine-phyto-configure"),
+                                enabled = !state.isSaving,
+                            )
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                            MoStatusChip(
+                                if (phyto.source == RegulatoryResourceSource.REAFA) "REAFA" else "Manual",
+                                tone = if (phyto.source == RegulatoryResourceSource.REAFA) MoStatusTone.Success else MoStatusTone.Neutral,
+                                modifier = Modifier.testTag("machine-phyto-source"),
+                            )
+                        }
+                        DetailValue("ROMA", phyto.romaRegistration)
+                        DetailValue("Referencia de censo", phyto.censusReference)
+                        DetailValue("Fecha de adquisición", phyto.acquisitionDate?.toString())
+                        if (phyto.source != RegulatoryResourceSource.REAFA && !machine.archived) {
+                            MoTertiaryButton(
+                                "Editar datos fitosanitarios",
+                                { sheet = "phyto-profile" },
+                                Modifier.fillMaxWidth().testTag("machine-phyto-edit"),
+                            )
+                        } else if (phyto.source == RegulatoryResourceSource.REAFA) {
+                            Text(
+                                "Datos recibidos de REAFA. No se sobrescriben manualmente.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MoTextSecondary,
+                            )
+                        }
+                    }
+
+                    MoSectionHeader("Inspecciones del equipo")
+                    if (state.phytosanitaryInspections.isEmpty()) {
+                        Text("Sin inspecciones registradas.", color = MoTextSecondary)
+                    } else {
+                        state.phytosanitaryInspections.forEach { inspection ->
+                            Column(
+                                Modifier.fillMaxWidth().testTag("machine-phyto-inspection"),
+                                verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs),
+                            ) {
+                                Text(
+                                    DATE_FORMAT.format(inspection.inspectionDate),
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                Text(
+                                    listOfNotNull(
+                                        inspection.resultCode,
+                                        inspection.certificateReference?.let { "Cert. $it" },
+                                    ).ifEmpty { listOf("Sin resultado adicional") }.joinToString(" · "),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MoTextSecondary,
+                                )
+                            }
+                        }
+                    }
+                    if (!machine.archived) {
+                        MoSecondaryButton(
+                            "Añadir inspección",
+                            { sheet = "phyto-inspection" },
+                            Modifier.fillMaxWidth().testTag("machine-add-phyto-inspection"),
+                            enabled = !state.isSaving,
+                        )
+                    }
+
+                    MoTertiaryButton(
+                        "Ocultar datos fitosanitarios",
+                        { showPhytosanitaryDetails = false },
+                        Modifier.fillMaxWidth().testTag("machine-phyto-hide"),
+                    )
+                    } else {
+                        MoTertiaryButton(
+                            if (state.phytosanitaryProfile != null || state.phytosanitaryInspections.isNotEmpty()) {
+                                "Ver datos fitosanitarios · configurados"
+                            } else {
+                                "Ver datos fitosanitarios"
+                            },
+                            { showPhytosanitaryDetails = true },
+                            Modifier.fillMaxWidth().testTag("machine-phyto-details"),
+                        )
+                    }
 
                     MoSectionHeader("Trabajos con esta máquina")
                     if (state.uses.isEmpty()) {
@@ -318,6 +434,21 @@ fun MachineDetailScreen(
                 onCancel = { sheet = null; onEditorClosed() },
             )
         }
+        "phyto-profile" -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
+            PhytosanitaryEquipmentEditor(
+                initial = state.phytosanitaryProfile,
+                isSaving = state.isSaving,
+                onSave = onSavePhytosanitaryProfile,
+                onCancel = { sheet = null },
+            )
+        }
+        "phyto-inspection" -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
+            PhytosanitaryInspectionEditor(
+                isSaving = state.isSaving,
+                onSave = onAddPhytosanitaryInspection,
+                onCancel = { sheet = null },
+            )
+        }
         "archive" -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
             MoConfirmationSheet(
                 title = "Retirar máquina",
@@ -329,6 +460,114 @@ fun MachineDetailScreen(
             )
             Spacer(Modifier.height(MoSpacing.md))
         }
+    }
+}
+
+@Composable
+private fun PhytosanitaryEquipmentEditor(
+    initial: com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentProfile?,
+    isSaving: Boolean,
+    onSave: (PhytosanitaryEquipmentForm) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var roma by rememberSaveable(initial?.romaRegistration) { mutableStateOf(initial?.romaRegistration.orEmpty()) }
+    var census by rememberSaveable(initial?.censusReference) { mutableStateOf(initial?.censusReference.orEmpty()) }
+    var acquisition by rememberSaveable(initial?.acquisitionDate) { mutableStateOf(initial?.acquisitionDate?.toString().orEmpty()) }
+    var dateError by rememberSaveable { mutableStateOf<String?>(null) }
+
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+    ) {
+        Text("Datos fitosanitarios", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "No confundas el ROMA con la matrícula o nº de serie de la máquina.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+        )
+        MoTextField(roma, { roma = it }, "Nº ROMA (si aplica)", modifier = Modifier.fillMaxWidth().testTag("machine-roma"))
+        MoTextField(census, { census = it }, "Referencia de censo (si aplica)", modifier = Modifier.fillMaxWidth().testTag("machine-census"))
+        MoDateInputField(
+            acquisition,
+            {
+                acquisition = it
+                dateError = null
+            },
+            "Fecha de adquisición (opcional)",
+            isError = dateError != null,
+            supportingText = dateError,
+            modifier = Modifier.testTag("machine-acquisition-date"),
+        )
+        MoPrimaryButton(
+            "Guardar",
+            {
+                if (acquisition.isNotBlank() && runCatching { java.time.LocalDate.parse(acquisition) }.isFailure) {
+                    dateError = "Revisa la fecha de adquisición"
+                } else {
+                    onSave(PhytosanitaryEquipmentForm(roma, census, acquisition))
+                }
+            },
+            Modifier.fillMaxWidth().testTag("save-machine-phyto-profile"),
+            enabled = !isSaving,
+        )
+        MoTertiaryButton("Cancelar", onCancel, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(MoSpacing.lg))
+    }
+}
+
+@Composable
+private fun PhytosanitaryInspectionEditor(
+    isSaving: Boolean,
+    onSave: (PhytosanitaryInspectionForm) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var date by rememberSaveable { mutableStateOf("") }
+    var result by rememberSaveable { mutableStateOf("") }
+    var certificate by rememberSaveable { mutableStateOf("") }
+    var dateError by rememberSaveable { mutableStateOf<String?>(null) }
+
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+    ) {
+        Text("Añadir inspección", style = MaterialTheme.typography.headlineSmall)
+        MoDateInputField(
+            date,
+            {
+                date = it
+                dateError = null
+            },
+            "Fecha de inspección",
+            isError = dateError != null,
+            supportingText = dateError,
+            modifier = Modifier.testTag("machine-inspection-date"),
+        )
+        MoTextField(
+            result,
+            { result = it },
+            "Resultado (opcional)",
+            modifier = Modifier.fillMaxWidth().testTag("machine-inspection-result"),
+        )
+        MoTextField(
+            certificate,
+            { certificate = it },
+            "Referencia del certificado (opcional)",
+            modifier = Modifier.fillMaxWidth().testTag("machine-inspection-certificate"),
+        )
+        MoPrimaryButton(
+            "Guardar inspección",
+            {
+                if (runCatching { java.time.LocalDate.parse(date) }.isFailure) {
+                    dateError = "Selecciona una fecha válida"
+                } else {
+                    onSave(PhytosanitaryInspectionForm(date, result, certificate))
+                }
+            },
+            Modifier.fillMaxWidth().testTag("save-machine-phyto-inspection"),
+            enabled = !isSaving,
+        )
+        MoTertiaryButton("Cancelar", onCancel, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(MoSpacing.lg))
     }
 }
 
