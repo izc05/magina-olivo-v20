@@ -165,6 +165,7 @@ data class AppCompositionRoot(
             )
             val dayCostRepository = OfflineFirstDayCostRepository(
                 database, defaults.clock, defaults.idGenerator, defaults.dispatchers,
+                workspaceRepository = workspaceRepository,
             )
             // Phase 20B (CR-006): AEMET -> MET Norway through the weather Edge Function. Without
             // the public anon key in this build the card says the weather is not configured.
