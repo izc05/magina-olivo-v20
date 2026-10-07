@@ -52,30 +52,42 @@ internal fun CampaignCharts(series: CampaignSeries) {
     }
     val first = series.days.first().date
     val last = series.days.last().date
-    val summary = "Pesado ${Weight.format(series.deliveredGrams)} en ${series.days.count { it.deliveredGrams > 0 }} días, " +
-        "del ${first.format(SHORT_DAY)} al ${last.format(SHORT_DAY)}"
+    val knownTotal = series.deliveredGrams
+    val kgKnown = knownTotal != null && series.days.all { it.deliveredGrams != null && it.cumulativeDeliveredGrams != null }
+    val summary = if (kgKnown) {
+        "Pesado ${Weight.format(knownTotal!!)} en ${series.days.count { (it.deliveredGrams ?: 0L) > 0 }} días, " +
+            "del ${first.format(SHORT_DAY)} al ${last.format(SHORT_DAY)}"
+    } else {
+        "Kilos no disponibles por un total histórico inconsistente"
+    }
     Text("Kilos pesados por día y acumulado", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
-    val bar = MaterialTheme.colorScheme.primary
-    val line = MoOliveDark
-    Canvas(
-        Modifier.fillMaxWidth().height(140.dp).testTag("chart-kg").semantics { contentDescription = summary },
-    ) {
-        val maxDay = series.days.maxOf { it.deliveredGrams }.coerceAtLeast(1)
-        val maxCumulative = series.deliveredGrams.coerceAtLeast(1)
-        val slot = size.width / series.days.size
-        val barWidth = (slot * 0.6f).coerceAtLeast(2f)
-        val path = Path()
-        series.days.forEachIndexed { index, day ->
-            val x = slot * index + (slot - barWidth) / 2
-            val height = size.height * day.deliveredGrams / maxDay
-            if (day.deliveredGrams > 0) {
-                drawRect(bar.copy(alpha = 0.55f), topLeft = Offset(x, size.height - height), size = Size(barWidth, height))
+    if (kgKnown) {
+        val bar = MaterialTheme.colorScheme.primary
+        val line = MoOliveDark
+        Canvas(
+            Modifier.fillMaxWidth().height(140.dp).testTag("chart-kg").semantics { contentDescription = summary },
+        ) {
+            val maxDay = series.days.maxOf { it.deliveredGrams ?: 0L }.coerceAtLeast(1)
+            val maxCumulative = knownTotal!!.coerceAtLeast(1)
+            val slot = size.width / series.days.size
+            val barWidth = (slot * 0.6f).coerceAtLeast(2f)
+            val path = Path()
+            series.days.forEachIndexed { index, day ->
+                val daily = day.deliveredGrams ?: return@forEachIndexed
+                val cumulative = day.cumulativeDeliveredGrams ?: return@forEachIndexed
+                val x = slot * index + (slot - barWidth) / 2
+                val height = size.height * daily / maxDay
+                if (daily > 0) {
+                    drawRect(bar.copy(alpha = 0.55f), topLeft = Offset(x, size.height - height), size = Size(barWidth, height))
+                }
+                val cx = slot * index + slot / 2
+                val cy = size.height - size.height * cumulative / maxCumulative
+                if (index == 0) path.moveTo(cx, cy) else path.lineTo(cx, cy)
             }
-            val cx = slot * index + slot / 2
-            val cy = size.height - size.height * day.cumulativeDeliveredGrams / maxCumulative
-            if (index == 0) path.moveTo(cx, cy) else path.lineTo(cx, cy)
+            drawPath(path, line, style = Stroke(width = 3.dp.toPx()))
         }
-        drawPath(path, line, style = Stroke(width = 3.dp.toPx()))
+    } else {
+        Text("La gráfica de kilos se oculta para no dibujar un total incorrecto.", color = MoTextSecondary, modifier = Modifier.testTag("chart-kg-unavailable"))
     }
     Text(summary, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("chart-kg-summary"))
 
@@ -87,7 +99,7 @@ internal fun CampaignCharts(series: CampaignSeries) {
         val low = analysed.minOf { it.fatYield!!.hundredths }
         val high = analysed.maxOf { it.fatYield!!.hundredths }
         val yieldSummary = "De ${Percent.format(low)} a ${Percent.format(high)}; " +
-            "${analysed.size} de ${series.days.count { it.deliveredGrams > 0 }} días con pesadas analizadas"
+            "${analysed.size} de ${series.days.count { (it.deliveredGrams ?: 0L) > 0 }} días con pesadas analizadas"
         val dot = MoOliveDark
         Canvas(
             Modifier.fillMaxWidth().height(90.dp).testTag("chart-yield").semantics { contentDescription = yieldSummary },
@@ -111,8 +123,11 @@ internal fun CampaignCharts(series: CampaignSeries) {
                 Column(Modifier.weight(1f)) {
                     Text(cooperative.name, style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        Weight.format(cooperative.summary.deliveredGrams) +
-                            (cooperative.summary.fatYield?.let { " · análisis sobre el ${cooperative.coveragePercent} %" } ?: " · sin análisis"),
+                        (cooperative.summary.deliveredGrams?.let(Weight::format) ?: "Kilos no disponibles") +
+                            (cooperative.summary.fatYield?.let {
+                                cooperative.coveragePercent?.let { coverage -> " · análisis sobre el $coverage %" }
+                                    ?: " · cobertura no disponible"
+                            } ?: " · sin análisis"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MoTextSecondary,
                     )
@@ -145,7 +160,10 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>, onSelectCamp
                         row.deliveredGrams?.let { kg ->
                             Weight.format(kg) + (row.deliveredChangePercent?.let { if (it >= 0) " (+$it %)" else " ($it %)" } ?: "")
                         } ?: "Pesado: sin datos",
-                        row.fatYield?.let { "rend. ${Percent.format(it.hundredths)} sobre el ${row.yieldCoveragePercent} %" } ?: "rend. sin datos",
+                        row.fatYield?.let {
+                            row.yieldCoveragePercent?.let { coverage -> "rend. ${Percent.format(it.hundredths)} sobre el $coverage %" }
+                                ?: "rend. ${Percent.format(it.hundredths)} · cobertura no disponible"
+                        } ?: "rend. sin datos",
                         if (row.costsByCurrency.isEmpty()) "coste/kg sin datos" else row.costsByCurrency.joinToString(" · ") { cost ->
                             cost.costPerKgMilli?.let { "coste ${com.isivoltpro.maginaolivo.domain.expense.CostPerKg.format(it, cost.currency)}" + if (row.costComplete) "" else " (incompleto)" }
                                 ?: "coste/kg sin datos (${cost.currency})"
@@ -176,7 +194,10 @@ internal fun historyKilosLine(history: CampaignHistory): String =
 /** «2025/26: sin análisis · 2026/27: 21,00 % sobre el 100 %». */
 internal fun historyYieldLine(history: CampaignHistory): String =
     history.points.joinToString(" · ") { point ->
-        "${point.name}: " + (point.yieldHundredths?.let { "${Percent.format(it)} sobre el ${point.yieldCoveragePercent} %" } ?: "sin análisis")
+        "${point.name}: " + (point.yieldHundredths?.let {
+            point.yieldCoveragePercent?.let { coverage -> "${Percent.format(it)} sobre el $coverage %" }
+                ?: "${Percent.format(it)} · cobertura no disponible"
+        } ?: "sin análisis")
     }
 
 /** «2025/26: sin datos · 2026/27: 0,253 €/kg», in the one currency of the series. */

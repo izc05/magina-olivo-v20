@@ -4,6 +4,9 @@ import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.WeightedYield
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
+import java.math.BigDecimal
+import java.math.RoundingMode
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.domain.notebook.legacyUnweighedGrams
 import java.time.LocalDate
@@ -15,15 +18,15 @@ import java.util.UUID
  */
 data class DayPoint(
     val date: LocalDate,
-    val harvestedGrams: Long,
-    val deliveredGrams: Long,
-    val cumulativeDeliveredGrams: Long,
+    val harvestedGrams: Long?,
+    val deliveredGrams: Long?,
+    val cumulativeDeliveredGrams: Long?,
     val fatYield: WeightedYield?,
 )
 
 /** A cooperative's weighted yield and how many of its kilos carry an analysis. */
 data class CooperativeYield(val name: String, val summary: DeliverySummary) {
-    val coveragePercent: Int get() = summary.coveragePercent(summary.fatYield)
+    val coveragePercent: Int? get() = summary.coveragePercent(summary.fatYield)
 }
 
 /**
@@ -31,25 +34,26 @@ data class CooperativeYield(val name: String, val summary: DeliverySummary) {
  * Cuaderno lists, so the charts reconcile with `HarvestSummary`/`DeliverySummary` exactly.
  */
 data class CampaignSeries(val days: List<DayPoint>, val cooperatives: List<CooperativeYield>) {
-    val deliveredGrams: Long get() = days.lastOrNull()?.cumulativeDeliveredGrams ?: 0
-    val harvestedGrams: Long get() = days.sumOf { it.harvestedGrams }
+    val deliveredGrams: Long? get() = if (days.isEmpty()) 0L else days.last().cumulativeDeliveredGrams
+    val harvestedGrams: Long? get() = checkedSum(days.map { it.harvestedGrams })
     val isEmpty: Boolean get() = days.isEmpty()
 
     companion object {
         fun of(notebook: CampaignNotebook): CampaignSeries {
             val harvestByDay = notebook.harvests.filterNot { it.awaitingPesadas }.groupBy { it.harvestDate }
             val deliveryByDay = notebook.deliveries.groupBy { it.deliveryDate }
-            var cumulative = 0L
+            var cumulative: Long? = 0L
             val days = (harvestByDay.keys + deliveryByDay.keys).sorted().map { date ->
                 val delivered = deliveryByDay[date].orEmpty()
-                val deliveredGrams = delivered.sumOf { it.netGrams }
-                cumulative += deliveredGrams
+                val deliverySummary = DeliverySummary.of(delivered)
+                val deliveredGrams = deliverySummary.deliveredGrams
+                cumulative = checkedAdd(cumulative, deliveredGrams)
                 DayPoint(
                     date = date,
-                    harvestedGrams = harvestByDay[date].orEmpty().sumOf { it.totalGrams },
+                    harvestedGrams = HarvestSummary.of(harvestByDay[date].orEmpty()).totalGrams,
                     deliveredGrams = deliveredGrams,
                     cumulativeDeliveredGrams = cumulative,
-                    fatYield = if (delivered.isEmpty()) null else DeliverySummary.of(delivered).fatYield,
+                    fatYield = deliverySummary.fatYield,
                 )
             }
             val cooperatives = notebook.deliveries
@@ -65,7 +69,7 @@ data class CampaignSeries(val days: List<DayPoint>, val cooperatives: List<Coope
                     }
                     CooperativeYield(name, DeliverySummary.of(rows))
                 }
-                .sortedByDescending { it.summary.deliveredGrams }
+                .sortedWith(compareByDescending<CooperativeYield> { it.summary.deliveredGrams ?: Long.MIN_VALUE })
             return CampaignSeries(days, cooperatives)
         }
     }
@@ -94,7 +98,7 @@ data class CampaignComparison(
     val harvestedGrams: Long?,
     val deliveredGrams: Long?,
     val fatYield: WeightedYield?,
-    val yieldCoveragePercent: Int,
+    val yieldCoveragePercent: Int?,
     /** Change in delivered kilos against the previous Campaign, in whole percent; null when unknown. */
     val deliveredChangePercent: Int?,
     /** CR-010 (A2): hand-typed kilos with no Pesada, disclosed apart and never in [deliveredGrams]. */
@@ -114,9 +118,9 @@ data class CampaignComparison(
             var previousDelivered: Long? = null
             return notebooks.sortedBy { it.campaign.startDate }.map { notebook ->
                 val deliveries = notebook.deliverySummary
-                val delivered = deliveries.deliveredGrams.takeIf { deliveries.deliveryCount > 0 }
+                val delivered = deliveries.deliveredGrams?.takeIf { deliveries.deliveryCount > 0 }
                 val change = if (delivered != null && previousDelivered != null && previousDelivered!! > 0) {
-                    Math.round((delivered - previousDelivered!!) * 100.0 / previousDelivered!!).toInt()
+                    percentageChange(previousDelivered!!, delivered)
                 } else {
                     null
                 }
@@ -125,7 +129,7 @@ data class CampaignComparison(
                 val cost = costs.singleOrNull()
                 CampaignComparison(
                     campaign = notebook.campaign,
-                    harvestedGrams = notebook.harvestSummary.totalGrams.takeIf { notebook.harvestSummary.weighedCount > 0 },
+                    harvestedGrams = notebook.harvestSummary.totalGrams?.takeIf { notebook.harvestSummary.weighedCount > 0 },
                     deliveredGrams = delivered,
                     fatYield = deliveries.fatYield,
                     yieldCoveragePercent = deliveries.coveragePercent(deliveries.fatYield),
@@ -139,3 +143,28 @@ data class CampaignComparison(
         }
     }
 }
+
+
+private fun checkedAdd(left: Long?, right: Long?): Long? {
+    if (left == null || right == null || left < 0 || right < 0) return null
+    return try {
+        Math.addExact(left, right)
+    } catch (_: ArithmeticException) {
+        null
+    }
+}
+
+private fun checkedSum(values: List<Long?>): Long? {
+    var total: Long? = 0L
+    for (value in values) total = checkedAdd(total, value)
+    return total
+}
+
+private fun percentageChange(previous: Long, current: Long): Int? =
+    runCatching {
+        BigDecimal.valueOf(current)
+            .subtract(BigDecimal.valueOf(previous))
+            .multiply(BigDecimal.valueOf(100))
+            .divide(BigDecimal.valueOf(previous), 0, RoundingMode.HALF_UP)
+            .intValueExact()
+    }.getOrNull()

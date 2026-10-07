@@ -13,7 +13,7 @@ data class CampaignHistoryPoint(
     val deliveredGrams: Long?,
     val legacyUnweighedGrams: Long,
     val yieldHundredths: Int?,
-    val yieldCoveragePercent: Int,
+    val yieldCoveragePercent: Int?,
     /** Cost per kilo in [CampaignHistory.costCurrency] only; another currency is a gap. */
     val costPerKgMilli: Long?,
     /** #449: the cost per kilo is only what is confirmed so far; said beside it, never hidden. */
