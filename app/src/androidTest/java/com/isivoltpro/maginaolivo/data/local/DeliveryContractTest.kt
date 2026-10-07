@@ -237,11 +237,38 @@ class DeliveryContractTest {
 
         // Reopening the Campaign explicitly restores the normal correction tools.
         val campaign = db.campaignDao().findById(campaignId)!!
-        db.campaignDao().upsert(campaign.copy(status = CampaignStatus.HARVEST, endDate = null))
+        db.campaignDao().upsert(campaign.copy(status = CampaignStatus.HARVEST))
         ok(deliveries.recordYield(id, YieldDraft(null, 2_200, null)))
         assertEquals(2_200, deliveries.observe(id).first()!!.analysis!!.fatYieldHundredths)
         ok(deliveries.removeYield(id))
         assertNull(deliveries.observe(id).first()!!.analysis)
+    }
+
+    @Test
+    fun reopenedHistoricalCampaignKeepsPesadasInsideItsOriginalBoundary() = runBlocking {
+        val existing = ok(deliveries.create(draft(1_200_000, north to null)))
+        val campaign = db.campaignDao().findById(campaignId)!!
+        db.campaignDao().upsert(
+            campaign.copy(status = CampaignStatus.ACTIVE, endDate = day),
+        )
+        val afterBoundary = day.plusDays(1)
+
+        val create = deliveries.create(
+            draft(900_000, north to null).copy(deliveryDate = afterBoundary),
+        )
+        val createError = (create as? AppResult.Failure)?.error as? AppError.Validation
+        assertEquals("deliveryDate", createError?.field)
+        assertEquals("after_campaign", createError?.code)
+
+        val update = deliveries.update(
+            existing,
+            draft(1_300_000, north to null).copy(deliveryDate = afterBoundary),
+        )
+        val updateError = (update as? AppResult.Failure)?.error as? AppError.Validation
+        assertEquals("deliveryDate", updateError?.field)
+        assertEquals("after_campaign", updateError?.code)
+        assertEquals(day, deliveries.observe(existing).first()!!.deliveryDate)
+        assertEquals(1_200_000L, deliveries.observe(existing).first()!!.netGrams)
     }
 
     // ------------------------------------------------------------ weighted metrics
