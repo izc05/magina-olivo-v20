@@ -49,6 +49,8 @@ export interface Place {
 
 export interface SolarTimes {
   date: string;
+  /** IANA zone used to choose the civil date and render the returned UTC instants. */
+  timeZone: string;
   sunriseAt: string | null;
   sunsetAt: string | null;
 }
