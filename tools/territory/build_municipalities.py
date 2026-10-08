@@ -56,6 +56,7 @@ def main():
     parser.add_argument("--code-column", required=True, help="CSV column containing five-digit INE code")
     parser.add_argument("--name-column", required=True, help="CSV column containing municipality name")
     parser.add_argument("--province", default="23", help="Two-digit province code (Jaén=23)")
+    parser.add_argument("--expected-count", required=True, type=int, help="Officially verified expected municipality count; prevents publishing partial exports")
     parser.add_argument("--source-url", required=True, help="Original dataset URL for attribution")
     parser.add_argument("--source-date", required=True, help="Dataset publication/retrieval date YYYY-MM-DD")
     args = parser.parse_args()
@@ -68,6 +69,8 @@ def main():
             if args.code_column not in columns or args.name_column not in columns:
                 raise ValueError(f"Required columns absent. Available: {columns}")
             records = build_snapshot(reader, args.code_column, args.name_column, args.province)
+            if args.expected_count < 1 or len(records) != args.expected_count:
+                raise ValueError(f"Coverage mismatch: expected {args.expected_count}, found {len(records)}")
         payload = {
             "schemaVersion": 1,
             "provinceCode": args.province,
