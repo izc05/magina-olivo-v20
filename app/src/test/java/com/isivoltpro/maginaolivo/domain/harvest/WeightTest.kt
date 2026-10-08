@@ -29,6 +29,15 @@ class WeightTest {
         assertNull(Weight.parseGrams("2850,1234"))
     }
 
+    /** #497: a well-formed but enormous figure is null, never an exception that crashes the form. */
+    @Test
+    fun aFigureBeyondALongIsNullNotACrash() {
+        assertEquals(Long.MAX_VALUE, Weight.parseGrams("9223372036854775,807"))
+        assertNull(Weight.parseGrams("9223372036854775,808"))
+        assertNull(Weight.parseGrams("9223372036854775808"))
+        assertNull(Weight.parseGrams("9.223.372.036.854.775,808"))
+    }
+
     @Test
     fun theEditableFormReadsBackToTheSameGrams() {
         listOf(2_850_000L, 2_850_500L, 12_500L, 125L, 1L).forEach { grams ->

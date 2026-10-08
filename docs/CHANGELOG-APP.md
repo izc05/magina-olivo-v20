@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un peso enorme ya no tumba la Pesada (#497).** Si se escribe un número de kilos tan grande que no
+  se puede guardar, el campo lo marca como no válido en vez de cerrar la pantalla. Y un reparto entre
+  parcelas cuyos kilos sumados no caben en la cuenta se rechaza como «supera el total», nunca se da
+  por bueno.
+
 - **Un total de gastos imposible nunca sale negativo (#500).** Si los importes registrados no caben
   en una suma (datos importados o dañados), el resumen de gastos lo da como no disponible en vez de
   mostrar una cifra negativa, igual que ya hacían el coste de recolección y Mi Campo.
