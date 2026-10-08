@@ -83,7 +83,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash .github/scripts/gate3-emulator-evidence.sh
+          script: GATE3_ALLOW_APP_DATA_RESET=1 bash .github/scripts/gate3-emulator-evidence.sh
 
       - name: Upload Gate 3 evidence
         if: always()
