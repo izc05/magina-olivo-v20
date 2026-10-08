@@ -62,6 +62,11 @@ def main():
     args = parser.parse_args()
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.source_date):
         parser.error("--source-date must be YYYY-MM-DD")
+    from datetime import date
+    try:
+        date.fromisoformat(args.source_date)
+    except ValueError:
+        parser.error("--source-date must be a real calendar date")
     try:
         with args.input.open("r", encoding="utf-8-sig", newline="") as source:
             reader = csv.DictReader(source)
