@@ -6,6 +6,7 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -78,6 +79,20 @@ class AttachmentsSectionTest {
             .performClick()
         composeRule.waitUntil(5_000) { removed != null }
         assertEquals(attachment.id, removed)
+    }
+
+    @Test
+    fun capturedPhotoUsesHumanLabelInListAndRemovalWithoutChangingIdentity() {
+        val capture = attachment("captura-12345678-1234-1234-1234-123456789abc.jpg", AttachmentUploadState.PENDING)
+        var removed: UUID? = null
+        show(AttachmentsUiState(isLoading = false, attachments = listOf(capture)), onRemove = { removed = it })
+        composeRule.onAllNodesWithText("Foto ·", substring = true)[0].assertIsDisplayed()
+        composeRule.onNodeWithText(capture.displayName).assertDoesNotExist()
+        composeRule.onNodeWithTag("remove-attachment").performClick()
+        composeRule.onNodeWithText("Se quitará «Foto ·", substring = true).assertIsDisplayed()
+        composeRule.onNode(hasText("Eliminar") and hasAnyAncestor(hasTestTag("attachment-remove-sheet"))).performClick()
+        composeRule.waitUntil(5_000) { removed != null }
+        assertEquals(capture.id, removed)
     }
 
     private fun show(

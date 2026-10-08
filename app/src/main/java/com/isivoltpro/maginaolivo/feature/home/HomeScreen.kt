@@ -30,7 +30,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.time.AppClock
-import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
@@ -174,8 +173,7 @@ fun HomeScreen(
                 state.campaigns.forEach { campaign ->
                     MoCompactListItem(
                         title = "${campaign.name} · ${campaign.farmName}",
-                        subtitle = campaign.deliveredGrams?.let { "Pesado ${Weight.format(it)}" }
-                            ?: "Aún no hay pesadas",
+                        subtitle = campaign.deliverySubtitle,
                         icon = MoIcons.Delivery,
                         onClick = { onCampaign(campaign.farmId) },
                         modifier = Modifier.testTag("home-campaign"),

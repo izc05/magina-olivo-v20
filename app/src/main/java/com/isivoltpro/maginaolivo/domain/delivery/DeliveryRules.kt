@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo.domain.delivery
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.production.ParcelSplit
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.LocalTime
@@ -56,8 +57,11 @@ data class Delivery(
     /** Issue #254: árbol/vuelo or suelo; null on Pesadas saved before it was asked. */
     val origin: PesadaOrigin? = null,
 ) {
-    val unallocatedGrams: Long
-        get() = netGrams - shares.sumOf { if (it.allocation == HarvestAllocation.EXACT) it.weightGrams ?: 0 else 0 }
+    val unallocatedGrams: Long?
+        get() = checkedUnallocated(
+            netGrams,
+            shares.filter { it.allocation == HarvestAllocation.EXACT }.mapNotNull { it.weightGrams },
+        )
 }
 
 data class DeliveryShareInput(val parcelId: UUID, val weightGrams: Long?)
@@ -173,32 +177,65 @@ object YieldRules {
 /** A weighted yield with the kilos it is based on. */
 data class WeightedYield(val hundredths: Int, val analysedGrams: Long)
 
+private fun checkedNonNegativeSum(values: Iterable<Long>): Long? {
+    var total = 0L
+    for (value in values) {
+        if (value < 0) return null
+        total = try {
+            Math.addExact(total, value)
+        } catch (_: ArithmeticException) {
+            return null
+        }
+    }
+    return total
+}
+
+private fun checkedUnallocated(total: Long, exactParts: Iterable<Long>): Long? {
+    if (total < 0) return null
+    val allocated = checkedNonNegativeSum(exactParts) ?: return null
+    return try {
+        Math.subtractExact(total, allocated).takeIf { it >= 0 }
+    } catch (_: ArithmeticException) {
+        null
+    }
+}
+
 /**
  * Delivered kilos and their yield, weighted by kilos
  * (`SUM(kg × yield) / SUM(kg with a valid analysis)`), with the coverage the UI must show.
  * A Delivery without an analysis counts in the kilos and never in a yield.
+ *
+ * #497: aggregate kilos are nullable on overflow/corrupt imported data. Unknown is safer than
+ * wrapping to a negative figure.
  */
 data class DeliverySummary(
     val deliveryCount: Int,
-    val deliveredGrams: Long,
-    val unallocatedGrams: Long,
+    val deliveredGrams: Long?,
+    val unallocatedGrams: Long?,
     val fatYield: WeightedYield?,
     val industrialYield: WeightedYield?,
 ) {
     companion object {
-        fun of(deliveries: List<Delivery>): DeliverySummary = DeliverySummary(
-            deliveryCount = deliveries.size,
-            deliveredGrams = deliveries.sumOf { it.netGrams },
-            unallocatedGrams = deliveries.sumOf { it.unallocatedGrams },
-            fatYield = weighted(deliveries) { it.fatYieldHundredths },
-            industrialYield = weighted(deliveries) { it.industrialYieldHundredths },
-        )
+        fun of(deliveries: List<Delivery>): DeliverySummary {
+            val unallocated = deliveries.map { it.unallocatedGrams }
+            return DeliverySummary(
+                deliveryCount = deliveries.size,
+                deliveredGrams = checkedNonNegativeSum(deliveries.map { it.netGrams }),
+                unallocatedGrams = if (unallocated.any { it == null }) {
+                    null
+                } else {
+                    checkedNonNegativeSum(unallocated.filterNotNull())
+                },
+                fatYield = weighted(deliveries) { it.fatYieldHundredths },
+                industrialYield = weighted(deliveries) { it.industrialYieldHundredths },
+            )
+        }
 
         private fun weighted(deliveries: List<Delivery>, value: (YieldAnalysis) -> Int?): WeightedYield? {
             val analysed = deliveries.mapNotNull { delivery ->
                 delivery.analysis?.let(value)?.let { delivery.netGrams to it }
             }
-            val grams = analysed.sumOf { it.first }
+            val grams = checkedNonNegativeSum(analysed.map { it.first }) ?: return null
             if (grams == 0L) return null
             val weightedSum = analysed.fold(BigDecimal.ZERO) { sum, (kg, yield) ->
                 sum + BigDecimal.valueOf(kg).multiply(BigDecimal.valueOf(yield.toLong()))
@@ -208,7 +245,14 @@ data class DeliverySummary(
         }
     }
 
-    /** Share of delivered kilos with this analysis, 0–100. */
-    fun coveragePercent(yield: WeightedYield?): Int =
-        if (yield == null || deliveredGrams == 0L) 0 else (yield.analysedGrams * 100 / deliveredGrams).toInt()
+    /** Share of delivered kilos with this analysis, 0–100; null when the total itself is unknown. */
+    fun coveragePercent(yield: WeightedYield?): Int? {
+        if (yield == null) return 0
+        val total = deliveredGrams ?: return null
+        if (total <= 0L) return 0
+        return BigInteger.valueOf(yield.analysedGrams)
+            .multiply(BigInteger.valueOf(100))
+            .divide(BigInteger.valueOf(total))
+            .toInt()
+    }
 }

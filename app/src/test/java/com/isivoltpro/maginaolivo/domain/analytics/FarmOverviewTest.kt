@@ -52,10 +52,27 @@ class FarmOverviewTest {
         assertEquals(listOf("Estacas", "El Cerro"), overview.farms.map { it.farmName })
         assertEquals(75, overview.sharePercent(overview.farms.first()))
         assertEquals(listOf("Los Llanos"), overview.farmsWithoutCampaign)
-        assertEquals(overview.delivery.deliveredGrams, overview.farms.sumOf { it.delivery.deliveredGrams })
+        assertEquals(overview.delivery.deliveredGrams, overview.farms.sumOf { it.delivery.deliveredGrams ?: 0L })
     }
 
     /** #616: archiving is operational only; it cannot rewrite a season that already happened. */
+    @Test fun overflowingSeasonKilosStayUnknownAndDisableRatios() {
+        val deliveries = listOf(
+            delivery(estacasNow, Long.MAX_VALUE, null),
+            delivery(cerroNow, 1, null),
+        )
+        val overview = FarmOverview.of(
+            "2026/27",
+            listOf(estacas, cerro),
+            listOf(estacasNow, cerroNow),
+            deliveries,
+            listOf(cost(estacasNow, 10_000)),
+        )
+        assertNull(overview.delivery.deliveredGrams)
+        assertNull(overview.costPerKgMilli)
+        assertNull(overview.sharePercent(overview.farms.first()))
+    }
+
     @Test fun archivedFarmKeepsHistoricalKilosCostsAndGeneralExpenses() {
         val archivedEstacas = estacas.copy(archivedAt = java.time.Instant.parse("2026-10-06T12:00:00Z"))
         val deliveries = listOf(

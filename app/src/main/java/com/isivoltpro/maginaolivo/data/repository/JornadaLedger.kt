@@ -79,7 +79,7 @@ internal class JornadaLedger(
             reconcileAutoDay(harvest, linked, now)
             return
         }
-        val sum = linked.sumOf { it.netGrams }
+        val sum = linkedGrams(linked)
         if (sum == harvest.weightGrams) return
         database.harvestDao().upsert(harvest.copy(weightGrams = sum, metadata = harvest.metadata.next(now)))
         val parcels = database.harvestDao().listParcels(harvestId)
@@ -124,12 +124,26 @@ internal class JornadaLedger(
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, day.id, OutboxOperation.DELETE, now)
             return
         }
-        val sum = linked.sumOf { it.netGrams }
+        val sum = linkedGrams(linked)
         // With no Pesada left, its origin is not determined again: no Parcel is presumed (#458).
         val parcelsChanged = replaceDayParcels(day, linked, now)
         if (sum == day.weightGrams && !parcelsChanged) return
         database.harvestDao().upsert(day.copy(weightGrams = sum, metadata = day.metadata.next(now)))
         database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, day.id, OutboxOperation.UPDATE, now)
+    }
+
+    /** #497: never persist a wrapped/negative day total if historical/imported rows are extreme. */
+    private fun linkedGrams(linked: List<DeliveryEntity>): Long {
+        var total = 0L
+        for (delivery in linked) {
+            if (delivery.netGrams < 0) throw InvalidDelivery("netGrams", "invalid_stored_value")
+            total = try {
+                Math.addExact(total, delivery.netGrams)
+            } catch (_: ArithmeticException) {
+                throw InvalidDelivery("netGrams", "day_total_overflow")
+            }
+        }
+        return total
     }
 
     /**

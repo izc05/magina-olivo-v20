@@ -150,7 +150,9 @@ data class CampaignNotebook(
         val summary = DeliverySummary.of(own)
         val fat = summary.fatYield ?: return "rend. pendiente"
         // Partial whenever the fat yield covers fewer kilos than were weighed (pending or only industrial).
-        return "rend. ${Percent.format(fat.hundredths)}" + if (fat.analysedGrams < summary.deliveredGrams) " (parcial)" else ""
+        val delivered = summary.deliveredGrams
+            ?: return "rend. ${Percent.format(fat.hundredths)} (cobertura no disponible)"
+        return "rend. ${Percent.format(fat.hundredths)}" + if (fat.analysedGrams < delivered) " (parcial)" else ""
     }
 
     companion object {

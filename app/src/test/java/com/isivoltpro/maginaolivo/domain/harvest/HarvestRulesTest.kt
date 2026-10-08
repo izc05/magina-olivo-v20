@@ -89,7 +89,32 @@ class HarvestRulesTest {
             summary.parcels,
         )
         // Nothing is invented: the parcel kilos plus the unallocated kilos are the total.
-        assertEquals(summary.totalGrams, summary.parcels.sumOf { it.exactGrams } + summary.unallocatedGrams)
+        assertEquals(
+            requireNotNull(summary.totalGrams),
+            summary.parcels.sumOf { requireNotNull(it.exactGrams) } + requireNotNull(summary.unallocatedGrams),
+        )
+    }
+
+    @Test
+    fun overflowingHistoricalHarvestTotalsBecomeUnknownNeverNegative() {
+        val exactOverflow = HarvestSummary.of(
+            listOf(
+                harvest(Long.MAX_VALUE, share(north, "Norte", Long.MAX_VALUE)),
+                harvest(1, share(north, "Norte", 1)),
+            ),
+        )
+        assertNull(exactOverflow.totalGrams)
+        assertNull(exactOverflow.parcels.single().exactGrams)
+        assertEquals(0L, exactOverflow.unallocatedGrams)
+
+        val unallocatedOverflow = HarvestSummary.of(
+            listOf(
+                harvest(Long.MAX_VALUE, share(north, "Norte", null)),
+                harvest(1, share(south, "Sur", null)),
+            ),
+        )
+        assertNull(unallocatedOverflow.totalGrams)
+        assertNull(unallocatedOverflow.unallocatedGrams)
     }
 
     @Test

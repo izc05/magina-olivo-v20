@@ -7,11 +7,13 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.activity.AgendaEntry
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
+import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.market.OilMarketFeed
 import com.isivoltpro.maginaolivo.domain.market.OilMarketSeries
 import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
@@ -46,7 +48,13 @@ data class HomeCampaign(
     val deliveredGrams: Long?,
     /** CR-011 §17: the Farm whose Cuaderno the card opens. */
     val farmId: java.util.UUID? = null,
-)
+    /** A null total with existing Pesadas is unavailable, not an empty campaign. */
+    val deliveryCount: Int = 0,
+) {
+    val deliverySubtitle: String
+        get() = deliveredGrams?.let { "Pesado ${com.isivoltpro.maginaolivo.domain.harvest.Weight.format(it)}" }
+            ?: if (deliveryCount == 0) "Aún no hay pesadas" else "Kilos no disponibles"
+}
 
 /**
  * Inicio: a summary built from this phone's data first. External feeds (Phase 20: weather,
@@ -178,9 +186,10 @@ class HomeViewModel(
                                     HomeCampaign(
                                         name = context.campaignName,
                                         farmName = context.farmName,
-                                        harvestedGrams = harvested.takeIf { it.isNotEmpty() }?.sumOf { it.totalGrams },
-                                        deliveredGrams = delivered.takeIf { it.isNotEmpty() }?.sumOf { it.netGrams },
+                                        harvestedGrams = harvested.takeIf { it.isNotEmpty() }?.let(HarvestSummary::of)?.totalGrams,
+                                        deliveredGrams = delivered.takeIf { it.isNotEmpty() }?.let(DeliverySummary::of)?.deliveredGrams,
                                         farmId = context.farmId,
+                                        deliveryCount = delivered.size,
                                     )
                                 },
                                 upcoming = agenda.filter { !it.activityDate.isBefore(today) }
