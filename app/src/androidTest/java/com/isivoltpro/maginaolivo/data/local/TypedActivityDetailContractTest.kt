@@ -25,6 +25,7 @@ import com.isivoltpro.maginaolivo.domain.activity.IncidentState
 import com.isivoltpro.maginaolivo.domain.activity.IrrigationPrice
 import com.isivoltpro.maginaolivo.domain.activity.IrrigationPricingBasis
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -66,7 +67,7 @@ class TypedActivityDetailContractTest {
     fun before() = runBlocking {
         context.deleteDatabase(DB)
         db = MaginaOlivoDatabase.create(context, DB)
-        repository = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        repository = activityRepository()
         seed()
     }
 
@@ -115,6 +116,94 @@ class TypedActivityDetailContractTest {
             equipmentText = "Atomizador arrastrado",
         )
         assertEquals(detail, roundTrip(ActivityType.PHYTOSANITARY, detail).detail)
+    }
+
+    @Test
+    fun phytosanitaryKeepsCueV25ReferencesAndRegulatorySnapshot() = runBlocking {
+        val operatorId = UUID.fromString("40000000-0000-0000-0000-0000000000e1")
+        val machineId = UUID.fromString("50000000-0000-0000-0000-0000000000e1")
+        val providerId = UUID.fromString("60000000-0000-0000-0000-0000000000e1")
+        val fetchedAt = Instant.parse("2026-10-07T12:00:00Z")
+        val detail = ActivityDetail.Phytosanitary(
+            productName = "Cobre 50%",
+            activeSubstance = "Oxicloruro de cobre",
+            doseValue = 2.0,
+            doseUnit = "kg/ha",
+            reason = "Repilo",
+            equipmentText = "Atomizador arrastrado",
+            operatorPersonId = operatorId,
+            applicationMachineId = machineId,
+            serviceProviderOrganizationId = providerId,
+            productRegistrationNumber = "ES-12345",
+            productSource = "MAPA_REGFI",
+            productSourceVersion = "2026-W41",
+            productFetchedAt = fetchedAt,
+            authorizationContextSnapshot = """{"crop":"olivo","use":"repilo"}""",
+            pestProblemCode = "REPILO",
+            efficacyCode = "GOOD",
+            treatmentObservations = "Sin deriva visible",
+        )
+        val stored = roundTrip(ActivityType.PHYTOSANITARY, detail)
+        assertEquals(detail, stored.detail)
+        val row = db.activityDao().findWithTargets(stored.id)!!.phytosanitary!!
+        assertEquals(operatorId, row.operatorPersonId)
+        assertEquals(machineId, row.applicationMachineId)
+        assertEquals(providerId, row.serviceProviderOrganizationId)
+        assertEquals("ES-12345", row.productRegistrationNumber)
+        assertEquals("MAPA_REGFI", row.productSource)
+        assertEquals("2026-W41", row.productSourceVersion)
+        assertEquals(fetchedAt, row.productFetchedAt)
+        assertEquals("""{"crop":"olivo","use":"repilo"}""", row.authorizationContextSnapshot)
+        assertEquals("REPILO", row.pestProblemCode)
+        assertEquals("GOOD", row.efficacyCode)
+        assertEquals("Sin deriva visible", row.treatmentObservations)
+    }
+
+    @Test
+    fun phytosanitaryRejectsApplicatorFromAnotherWorkspace() = runBlocking {
+        val foreignOperator = UUID.fromString("40000000-0000-0000-0000-0000000000ff")
+        val result = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento con referencia ajena",
+                parcelIds = setOf(parcelA),
+                detail = ActivityDetail.Phytosanitary(
+                    productName = "Cobre 50%",
+                    operatorPersonId = foreignOperator,
+                ),
+            ),
+        )
+        assertValidation("operatorPersonId", result)
+    }
+
+    @Test
+    fun legacyTreatmentEditKeepsArchivedResourcesAndSnapshotAfterRestart() = runBlocking {
+        val stored = ActivityDetail.Phytosanitary(
+            productName = "Cobre 50%", activeSubstance = "Oxicloruro de cobre", reason = "Repilo",
+            operatorPersonId = UUID.fromString("40000000-0000-0000-0000-0000000000e1"),
+            applicationMachineId = UUID.fromString("50000000-0000-0000-0000-0000000000e1"),
+            serviceProviderOrganizationId = UUID.fromString("60000000-0000-0000-0000-0000000000e1"),
+            productRegistrationNumber = "ES-12345", productSource = "MAPA_REGFI",
+            productSourceVersion = "historical-v1", productFetchedAt = Instant.parse("2026-03-01T12:00:00Z"),
+            authorizationContextSnapshot = """{"crop":"olivo","use":"repilo"}""",
+            pestProblemCode = "REPILO", efficacyCode = "GOOD", treatmentObservations = "Sin deriva",
+        )
+        val id = create(ActivityType.PHYTOSANITARY, stored)
+        db.openHelper.writableDatabase.execSQL("UPDATE agronomic_people SET status='ARCHIVED' WHERE id='${stored.operatorPersonId}'")
+        db.openHelper.writableDatabase.execSQL("UPDATE machines SET status='ARCHIVED' WHERE id='${stored.applicationMachineId}'")
+        val legacyForm = ActivityDetail.Phytosanitary(
+            productName = stored.productName, activeSubstance = stored.activeSubstance, reason = "Repilo leve",
+        )
+        assertOk(repository.update(id, ActivityChanges(
+            type = ActivityType.PHYTOSANITARY, activityDate = date, description = "Corrección histórica",
+            parcelIds = setOf(parcelA), detail = legacyForm,
+        )))
+        db.close()
+        db = MaginaOlivoDatabase.create(context, DB)
+        repository = activityRepository()
+        assertEquals(stored.copy(reason = "Repilo leve"), repository.observe(id).first()!!.detail)
     }
 
     @Test
@@ -525,7 +614,7 @@ class TypedActivityDetailContractTest {
         db.close()
 
         db = MaginaOlivoDatabase.create(context, DB)
-        val restored = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val restored = activityRepository()
             .observe(id).first()!!
         assertEquals(detail, restored.detail)
     }
@@ -593,6 +682,15 @@ class TypedActivityDetailContractTest {
             if (cursor.moveToFirst()) cursor.getInt(0) else 0
         }
 
+    // This fixture intentionally contains two workspaces. The active one is explicit;
+    // selecting the oldest row would choose the foreign workspace used by rejection tests.
+    private fun activityRepository() = OfflineFirstActivityRepository(
+        db, FixedClock(now), RandomIds, TestDispatchers,
+        workspaceRepository = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
+        },
+    )
+
     private suspend fun seed() {
         val meta = LocalMetadata(now, now)
         db.workspaceDao().upsert(
@@ -610,6 +708,32 @@ class TypedActivityDetailContractTest {
         )
         db.parcelDao().upsertMembership(
             FarmParcelMembershipEntity(UUID.randomUUID(), workspaceId, farmId, parcelB, now, metadata = meta),
+        )
+
+        val sql = db.openHelper.writableDatabase
+        sql.execSQL(
+            "INSERT INTO agronomic_people (id, workspace_id, display_name, is_advisor, source, status, created_at, updated_at, version, sync_status) " +
+                "VALUES ('40000000-0000-0000-0000-0000000000e1','10000000-0000-0000-0000-0000000000e1','Juan Aplicador',0,'MANUAL','ACTIVE',1000,1000,1,'LOCAL_ONLY')",
+        )
+        sql.execSQL(
+            "INSERT INTO machines (id, workspace_id, name, category, status, created_at, updated_at, version, sync_status) " +
+                "VALUES ('50000000-0000-0000-0000-0000000000e1','10000000-0000-0000-0000-0000000000e1','Atomizador','ATOMIZER','ACTIVE',1000,1000,1,'LOCAL_ONLY')",
+        )
+        sql.execSQL(
+            "INSERT INTO agricultural_organizations (id, workspace_id, name, created_at, updated_at, version, sync_status) " +
+                "VALUES ('60000000-0000-0000-0000-0000000000e1','10000000-0000-0000-0000-0000000000e1','Tratamientos Sierra',1000,1000,1,'LOCAL_ONLY')",
+        )
+        sql.execSQL(
+            "INSERT INTO organization_roles (organization_id, role) " +
+                "VALUES ('60000000-0000-0000-0000-0000000000e1','SERVICE_PROVIDER')",
+        )
+        sql.execSQL(
+            "INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) " +
+                "VALUES ('10000000-0000-0000-0000-0000000000ff','Otro olivar','70000000-0000-0000-0000-0000000000ff','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')",
+        )
+        sql.execSQL(
+            "INSERT INTO agronomic_people (id, workspace_id, display_name, is_advisor, source, status, created_at, updated_at, version, sync_status) " +
+                "VALUES ('40000000-0000-0000-0000-0000000000ff','10000000-0000-0000-0000-0000000000ff','Aplicador ajeno',0,'MANUAL','ACTIVE',1000,1000,1,'LOCAL_ONLY')",
         )
     }
 
