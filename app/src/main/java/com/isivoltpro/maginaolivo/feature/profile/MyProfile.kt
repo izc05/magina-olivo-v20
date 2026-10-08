@@ -308,6 +308,8 @@ private const val SHEET_COOPERATIVE = "cooperative"
 fun ReminderSettings(
     preferences: ReminderPreferences,
     isSaving: Boolean,
+    notificationsOn: Boolean,
+    onNotifications: () -> Unit,
     onChange: (ReminderPreferences) -> Unit,
 ) {
     Column(
@@ -329,7 +331,11 @@ fun ReminderSettings(
             Column(Modifier.weight(1f)) {
                 Text("Avisos de trabajos planificados", style = MaterialTheme.typography.bodyLarge, color = MoOliveDark)
                 Text(
-                    if (preferences.enabled) "Suenan en este teléfono." else "Desactivados: no suena ninguno; se guardan para cuando los actives.",
+                    when {
+                        !preferences.enabled -> "Desactivados: no suena ninguno; se guardan para cuando los actives."
+                        !notificationsOn -> "Android bloquea los avisos en este teléfono."
+                        else -> "Activados. Android controla el sonido y la vibración."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MoTextSecondary,
                 )
@@ -337,6 +343,9 @@ fun ReminderSettings(
             Switch(checked = preferences.enabled, onCheckedChange = null, enabled = !isSaving)
         }
         if (preferences.enabled) {
+            if (!notificationsOn) {
+                MoTertiaryButton("Revisar notificaciones", onNotifications, Modifier.testTag("profile-reminders-notifications"))
+            }
             Text("Aviso del día anterior, a las", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 ReminderPreferences.PREVIOUS_DAY_CHOICES.forEach { hour ->
