@@ -1,0 +1,1169 @@
+{
+  "verifiedOn": "2026-10-07",
+  "protocol": "3.11.4",
+  "descriptorSha256": "eec4e809732e17cd845343db1e0b7bb51507b8878c8f6c0f4d57039cac752217",
+  "annexVSha256": "0f7391ff59df46d83fd18071cbed8765033dd269497cc7704d60258d84e16e19",
+  "sheet": "EstructuraCuadernoWS",
+  "wireFields": [
+    {
+      "row": 3,
+      "depth": 1,
+      "field": "CodigoSIEX",
+      "occurrenceRaw": null,
+      "typeRaw": "string(14)"
+    },
+    {
+      "row": 4,
+      "depth": 1,
+      "field": "CAExplotacion",
+      "occurrenceRaw": "*",
+      "typeRaw": "string(2)"
+    },
+    {
+      "row": 5,
+      "depth": 1,
+      "field": "IdTitular",
+      "occurrenceRaw": "*",
+      "typeRaw": "string(20)"
+    },
+    {
+      "row": 6,
+      "depth": 1,
+      "field": "IdCuaderno",
+      "occurrenceRaw": null,
+      "typeRaw": "number(8)"
+    },
+    {
+      "row": 7,
+      "depth": 1,
+      "field": "UnidadGestora",
+      "occurrenceRaw": "*",
+      "typeRaw": "string(20)"
+    },
+    {
+      "row": 8,
+      "depth": 1,
+      "field": "CodigoRea",
+      "occurrenceRaw": "*",
+      "typeRaw": "string(14)"
+    },
+    {
+      "row": 276,
+      "depth": 2,
+      "field": "TratamFito",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 277,
+      "depth": 3,
+      "field": "IdAjenaTratamFito",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(10)"
+    },
+    {
+      "row": 278,
+      "depth": 3,
+      "field": "Borrar",
+      "occurrenceRaw": null,
+      "typeRaw": "boolean"
+    },
+    {
+      "row": 279,
+      "depth": 3,
+      "field": "FechaInicio",
+      "occurrenceRaw": "*",
+      "typeRaw": "date"
+    },
+    {
+      "row": 280,
+      "depth": 3,
+      "field": "FechaFin",
+      "occurrenceRaw": "*",
+      "typeRaw": "date"
+    },
+    {
+      "row": 281,
+      "depth": 3,
+      "field": "HoraTratamiento",
+      "occurrenceRaw": null,
+      "typeRaw": "string(8)"
+    },
+    {
+      "row": 282,
+      "depth": 3,
+      "field": "FechaSeca",
+      "occurrenceRaw": null,
+      "typeRaw": "date"
+    },
+    {
+      "row": 283,
+      "depth": 3,
+      "field": "Actividad",
+      "occurrenceRaw": null,
+      "typeRaw": "number(1)"
+    },
+    {
+      "row": 284,
+      "depth": 3,
+      "field": "DGCs {",
+      "occurrenceRaw": "1..n",
+      "typeRaw": null
+    },
+    {
+      "row": 285,
+      "depth": 4,
+      "field": "CodigoDGC",
+      "occurrenceRaw": null,
+      "typeRaw": "number(16)"
+    },
+    {
+      "row": 286,
+      "depth": 4,
+      "field": "CodigoDGCAjena",
+      "occurrenceRaw": null,
+      "typeRaw": "number(16)"
+    },
+    {
+      "row": 287,
+      "depth": 4,
+      "field": "CodigoCultivo",
+      "occurrenceRaw": null,
+      "typeRaw": "number(16)"
+    },
+    {
+      "row": 288,
+      "depth": 4,
+      "field": "Superficie",
+      "occurrenceRaw": null,
+      "typeRaw": "number(8,2)"
+    },
+    {
+      "row": 289,
+      "depth": 4,
+      "field": "EstadoFenologico",
+      "occurrenceRaw": null,
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 290,
+      "depth": 4,
+      "field": "HuertaVivero",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 291,
+      "depth": 5,
+      "field": "Producto",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(4)"
+    },
+    {
+      "row": 293,
+      "depth": 4,
+      "field": "Cubiertas {",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 294,
+      "depth": 5,
+      "field": "TipoCobertura",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 297,
+      "depth": 3,
+      "field": "ProblematicaFito {",
+      "occurrenceRaw": "1",
+      "typeRaw": null
+    },
+    {
+      "row": 298,
+      "depth": 4,
+      "field": "Enfermedades {",
+      "occurrenceRaw": "0..1",
+      "typeRaw": null
+    },
+    {
+      "row": 299,
+      "depth": 5,
+      "field": "TipoEnfermedad",
+      "occurrenceRaw": "0..n",
+      "typeRaw": "number(3)"
+    },
+    {
+      "row": 301,
+      "depth": 4,
+      "field": "ArtropodosGasteropodos {",
+      "occurrenceRaw": "0..1",
+      "typeRaw": null
+    },
+    {
+      "row": 302,
+      "depth": 5,
+      "field": "TipoPlaga",
+      "occurrenceRaw": "0..n",
+      "typeRaw": "number(3)"
+    },
+    {
+      "row": 304,
+      "depth": 4,
+      "field": "MalasHierbas {",
+      "occurrenceRaw": "0..1",
+      "typeRaw": null
+    },
+    {
+      "row": 305,
+      "depth": 5,
+      "field": "TipoMalaHierba",
+      "occurrenceRaw": "0..n",
+      "typeRaw": "number(3)"
+    },
+    {
+      "row": 307,
+      "depth": 4,
+      "field": "ReguladoresOtros {",
+      "occurrenceRaw": "0..1",
+      "typeRaw": null
+    },
+    {
+      "row": 308,
+      "depth": 5,
+      "field": "TipoRegulador",
+      "occurrenceRaw": "0..n",
+      "typeRaw": "number(3)"
+    },
+    {
+      "row": 311,
+      "depth": 3,
+      "field": "Justificaciones {",
+      "occurrenceRaw": "1..n",
+      "typeRaw": null
+    },
+    {
+      "row": 312,
+      "depth": 4,
+      "field": "JustAct",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(1)"
+    },
+    {
+      "row": 314,
+      "depth": 3,
+      "field": "OtrasActuacionesFito {",
+      "occurrenceRaw": "0..1",
+      "typeRaw": null
+    },
+    {
+      "row": 315,
+      "depth": 4,
+      "field": "TipoMedida",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 316,
+      "depth": 4,
+      "field": "Cantidad",
+      "occurrenceRaw": null,
+      "typeRaw": "number(8,2)"
+    },
+    {
+      "row": 317,
+      "depth": 4,
+      "field": "Unidad",
+      "occurrenceRaw": null,
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 318,
+      "depth": 4,
+      "field": "NumRegistroMDF",
+      "occurrenceRaw": null,
+      "typeRaw": "string(10)"
+    },
+    {
+      "row": 319,
+      "depth": 4,
+      "field": "BuenasPracticas",
+      "occurrenceRaw": null,
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 321,
+      "depth": 3,
+      "field": "ProductosFito {",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 322,
+      "depth": 4,
+      "field": "TipoProducto",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(1)"
+    },
+    {
+      "row": 323,
+      "depth": 4,
+      "field": "NumRegistro",
+      "occurrenceRaw": null,
+      "typeRaw": "string(10)"
+    },
+    {
+      "row": 324,
+      "depth": 4,
+      "field": "MateriaActivaFormulado {",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 325,
+      "depth": 4,
+      "field": "MateriaActiva",
+      "occurrenceRaw": null,
+      "typeRaw": "number (5)"
+    },
+    {
+      "row": 327,
+      "depth": 4,
+      "field": "Dosis",
+      "occurrenceRaw": null,
+      "typeRaw": "number(8,3)"
+    },
+    {
+      "row": 328,
+      "depth": 4,
+      "field": "Cantidad",
+      "occurrenceRaw": null,
+      "typeRaw": "number(8,2)"
+    },
+    {
+      "row": 329,
+      "depth": 4,
+      "field": "Unidad",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 331,
+      "depth": 3,
+      "field": "IdentificadorAplicador {",
+      "occurrenceRaw": "1..n",
+      "typeRaw": null
+    },
+    {
+      "row": 332,
+      "depth": 4,
+      "field": "AplicadorEmpresa {",
+      "occurrenceRaw": "1",
+      "typeRaw": null
+    },
+    {
+      "row": 333,
+      "depth": 5,
+      "field": "NumROPO",
+      "occurrenceRaw": "*",
+      "typeRaw": "string(14)"
+    },
+    {
+      "row": 335,
+      "depth": 4,
+      "field": "EquipoAplicador {",
+      "occurrenceRaw": "1",
+      "typeRaw": null
+    },
+    {
+      "row": 336,
+      "depth": 5,
+      "field": "NumROMA",
+      "occurrenceRaw": null,
+      "typeRaw": "string(12)"
+    },
+    {
+      "row": 337,
+      "depth": 5,
+      "field": "NumREGANIP",
+      "occurrenceRaw": null,
+      "typeRaw": "string(12)"
+    },
+    {
+      "row": 338,
+      "depth": 5,
+      "field": "EquipoPropio",
+      "occurrenceRaw": null,
+      "typeRaw": "boolean"
+    },
+    {
+      "row": 339,
+      "depth": 5,
+      "field": "IdEquipoAplicador",
+      "occurrenceRaw": null,
+      "typeRaw": "string(50)"
+    },
+    {
+      "row": 340,
+      "depth": 5,
+      "field": "PotenciaMaquinaria",
+      "occurrenceRaw": null,
+      "typeRaw": "number(8,2)"
+    },
+    {
+      "row": 341,
+      "depth": 5,
+      "field": "UnidadesMedida",
+      "occurrenceRaw": null,
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 342,
+      "depth": 5,
+      "field": "AplicacionManual",
+      "occurrenceRaw": "*",
+      "typeRaw": "boolean"
+    },
+    {
+      "row": 343,
+      "depth": 5,
+      "field": "HorasUtilizacion",
+      "occurrenceRaw": null,
+      "typeRaw": "number(8,2)"
+    },
+    {
+      "row": 344,
+      "depth": 5,
+      "field": "TipoMaquinariaUNE",
+      "occurrenceRaw": null,
+      "typeRaw": "string(12)"
+    },
+    {
+      "row": 345,
+      "depth": 5,
+      "field": "TipoEnergia",
+      "occurrenceRaw": null,
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 346,
+      "depth": 5,
+      "field": "NumRepeticiones",
+      "occurrenceRaw": null,
+      "typeRaw": "number(3)"
+    },
+    {
+      "row": 347,
+      "depth": 5,
+      "field": "Duracion",
+      "occurrenceRaw": null,
+      "typeRaw": "number(8,2)"
+    },
+    {
+      "row": 350,
+      "depth": 3,
+      "field": "AsesorValidacion {",
+      "occurrenceRaw": "0..1",
+      "typeRaw": null
+    },
+    {
+      "row": 351,
+      "depth": 4,
+      "field": "NumROPO",
+      "occurrenceRaw": "*",
+      "typeRaw": "string(14)"
+    },
+    {
+      "row": 352,
+      "depth": 4,
+      "field": "Fecha",
+      "occurrenceRaw": null,
+      "typeRaw": "date"
+    },
+    {
+      "row": 353,
+      "depth": 4,
+      "field": "Validacion",
+      "occurrenceRaw": null,
+      "typeRaw": "boolean"
+    },
+    {
+      "row": 354,
+      "depth": 4,
+      "field": "Observaciones",
+      "occurrenceRaw": null,
+      "typeRaw": "string(200)"
+    },
+    {
+      "row": 355,
+      "depth": 4,
+      "field": "Confirmacion",
+      "occurrenceRaw": null,
+      "typeRaw": "boolean"
+    },
+    {
+      "row": 356,
+      "depth": 4,
+      "field": "Contrato",
+      "occurrenceRaw": null,
+      "typeRaw": "boolean"
+    },
+    {
+      "row": 358,
+      "depth": 3,
+      "field": "Eficacia",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(1)"
+    },
+    {
+      "row": 359,
+      "depth": 3,
+      "field": "Observaciones",
+      "occurrenceRaw": null,
+      "typeRaw": "string(150)"
+    },
+    {
+      "row": 487,
+      "depth": 2,
+      "field": "Analitica {",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 488,
+      "depth": 3,
+      "field": "IdAjenaAna",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(10)"
+    },
+    {
+      "row": 489,
+      "depth": 3,
+      "field": "Borrar",
+      "occurrenceRaw": null,
+      "typeRaw": "boolean"
+    },
+    {
+      "row": 490,
+      "depth": 3,
+      "field": "MaterialAnalizado",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(1)"
+    },
+    {
+      "row": 491,
+      "depth": 3,
+      "field": "Fecha",
+      "occurrenceRaw": "*",
+      "typeRaw": "date"
+    },
+    {
+      "row": 492,
+      "depth": 3,
+      "field": "Laboratorio",
+      "occurrenceRaw": null,
+      "typeRaw": "string(150)"
+    },
+    {
+      "row": 493,
+      "depth": 3,
+      "field": "Nif",
+      "occurrenceRaw": null,
+      "typeRaw": "String(9)"
+    },
+    {
+      "row": 494,
+      "depth": 3,
+      "field": "NumBoletin",
+      "occurrenceRaw": null,
+      "typeRaw": "string(50)"
+    },
+    {
+      "row": 495,
+      "depth": 3,
+      "field": "TiposAnalisis{",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 496,
+      "depth": 4,
+      "field": "TipoAnalisis",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(1)"
+    },
+    {
+      "row": 498,
+      "depth": 3,
+      "field": "TiposSustancias{",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 499,
+      "depth": 4,
+      "field": "TipoSustancia",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(4)"
+    },
+    {
+      "row": 501,
+      "depth": 3,
+      "field": "ParametrosSuelo {",
+      "occurrenceRaw": "0..1",
+      "typeRaw": null
+    },
+    {
+      "row": 502,
+      "depth": 4,
+      "field": "MateriaOrganica",
+      "occurrenceRaw": null,
+      "typeRaw": "number(5,2)"
+    },
+    {
+      "row": 503,
+      "depth": 4,
+      "field": "Arena",
+      "occurrenceRaw": null,
+      "typeRaw": "number(5,2)"
+    },
+    {
+      "row": 504,
+      "depth": 4,
+      "field": "Limo",
+      "occurrenceRaw": null,
+      "typeRaw": "number(5,2)"
+    },
+    {
+      "row": 505,
+      "depth": 4,
+      "field": "Arcilla",
+      "occurrenceRaw": null,
+      "typeRaw": "number(5,2)"
+    },
+    {
+      "row": 506,
+      "depth": 4,
+      "field": "Ph",
+      "occurrenceRaw": null,
+      "typeRaw": "number(4,2)"
+    },
+    {
+      "row": 507,
+      "depth": 4,
+      "field": "FosforoAsimilable",
+      "occurrenceRaw": null,
+      "typeRaw": "number(5,2)"
+    },
+    {
+      "row": 508,
+      "depth": 4,
+      "field": "PotasioAsimilable",
+      "occurrenceRaw": null,
+      "typeRaw": "number(5,2)"
+    },
+    {
+      "row": 509,
+      "depth": 4,
+      "field": "NitrogenoTotal",
+      "occurrenceRaw": null,
+      "typeRaw": "number(5,2)"
+    },
+    {
+      "row": 510,
+      "depth": 4,
+      "field": "Conductividad",
+      "occurrenceRaw": null,
+      "typeRaw": "number(5,2)"
+    },
+    {
+      "row": 512,
+      "depth": 3,
+      "field": "DGCs {",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 513,
+      "depth": 4,
+      "field": "CodigoDGC",
+      "occurrenceRaw": null,
+      "typeRaw": "number(16)"
+    },
+    {
+      "row": 514,
+      "depth": 4,
+      "field": "CodigoDGCAjena",
+      "occurrenceRaw": null,
+      "typeRaw": "number(16)"
+    },
+    {
+      "row": 515,
+      "depth": 4,
+      "field": "CodigoCultivo",
+      "occurrenceRaw": null,
+      "typeRaw": "number(16)"
+    },
+    {
+      "row": 583,
+      "depth": 2,
+      "field": "Riego{",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 584,
+      "depth": 3,
+      "field": "IdAjenaRiego",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(10)"
+    },
+    {
+      "row": 585,
+      "depth": 3,
+      "field": "Borrar",
+      "occurrenceRaw": null,
+      "typeRaw": "boolean"
+    },
+    {
+      "row": 586,
+      "depth": 3,
+      "field": "FechaInicio",
+      "occurrenceRaw": "*",
+      "typeRaw": "date"
+    },
+    {
+      "row": 587,
+      "depth": 3,
+      "field": "FechaFin",
+      "occurrenceRaw": "*",
+      "typeRaw": "date"
+    },
+    {
+      "row": 588,
+      "depth": 3,
+      "field": "SistemaRiego",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 589,
+      "depth": 3,
+      "field": "Cantidad",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(8,2)"
+    },
+    {
+      "row": 590,
+      "depth": 3,
+      "field": "UnidadMedida",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 591,
+      "depth": 3,
+      "field": "OrigenAgua {",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 592,
+      "depth": 4,
+      "field": "IdOrigenAgua",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(1)"
+    },
+    {
+      "row": 594,
+      "depth": 3,
+      "field": "TipoEnergia",
+      "occurrenceRaw": null,
+      "typeRaw": "number(2)"
+    },
+    {
+      "row": 595,
+      "depth": 3,
+      "field": "NumContador",
+      "occurrenceRaw": null,
+      "typeRaw": "string(14)"
+    },
+    {
+      "row": 596,
+      "depth": 3,
+      "field": "BuenasPracticasRiego {",
+      "occurrenceRaw": "0..n",
+      "typeRaw": null
+    },
+    {
+      "row": 597,
+      "depth": 4,
+      "field": "TipoBPR",
+      "occurrenceRaw": "*",
+      "typeRaw": "number(1)"
+    },
+    {
+      "row": 599,
+      "depth": 3,
+      "field": "DGCs {",
+      "occurrenceRaw": "1..n",
+      "typeRaw": null
+    },
+    {
+      "row": 600,
+      "depth": 4,
+      "field": "CodigoDGC",
+      "occurrenceRaw": null,
+      "typeRaw": "number(16)"
+    },
+    {
+      "row": 601,
+      "depth": 4,
+      "field": "CodigoDGCAjena",
+      "occurrenceRaw": null,
+      "typeRaw": "number(16)"
+    },
+    {
+      "row": 602,
+      "depth": 4,
+      "field": "CodigoCultivo",
+      "occurrenceRaw": null,
+      "typeRaw": "number(16)"
+    },
+    {
+      "row": 603,
+      "depth": 4,
+      "field": "Superficie",
+      "occurrenceRaw": null,
+      "typeRaw": "number(8,2)"
+    }
+  ],
+  "annexVSheet": "CUE",
+  "variables": [
+    {
+      "row": 151,
+      "variableId": 395,
+      "name": "Fecha inicio de tratamiento",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 152,
+      "variableId": 396,
+      "name": "Fecha fin de tratamiento",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 153,
+      "variableId": 397,
+      "name": "Hora de tratamiento",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 154,
+      "variableId": 398,
+      "name": "Fecha seca para tratamiento herbicida o fitosanitario en cultivo bajo agua",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 155,
+      "variableId": 399,
+      "name": "Superficie tratada",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 156,
+      "variableId": 400,
+      "name": "Cultivo",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 157,
+      "variableId": 401,
+      "name": "Cultivo tratado de la HUERTA-VIVERO",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 158,
+      "variableId": 402,
+      "name": "Estado fenológico",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 159,
+      "variableId": 403,
+      "name": "Tipo de cobertura del suelo",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 160,
+      "variableId": 404,
+      "name": "Actividad sobre la cubierta (mantenimiento o eliminación)",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 161,
+      "variableId": 405,
+      "name": "Malas hierbas",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 162,
+      "variableId": 406,
+      "name": "Enfermedades",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 163,
+      "variableId": 407,
+      "name": "Artrópodos y gasterópodos",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 164,
+      "variableId": 408,
+      "name": "Reguladores de crecimiento, rodenticidas y otros ",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 165,
+      "variableId": 409,
+      "name": "Justificación de la actuación",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 166,
+      "variableId": 410,
+      "name": "Tipo de medida fitosanitaria",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 167,
+      "variableId": 411,
+      "name": "Cantidad",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 168,
+      "variableId": 412,
+      "name": "Unidad de medida",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 169,
+      "variableId": 413,
+      "name": "Registro MDF",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 170,
+      "variableId": 414,
+      "name": "Buenas prácticas",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 171,
+      "variableId": 415,
+      "name": "Tipo de producto fitosanitario",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 172,
+      "variableId": 416,
+      "name": "Nombre comercial",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 173,
+      "variableId": 417,
+      "name": "Materia activa o formulado",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 174,
+      "variableId": 418,
+      "name": "Número de registro",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 175,
+      "variableId": 419,
+      "name": "Cantidad",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 176,
+      "variableId": 420,
+      "name": "Dosis",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 177,
+      "variableId": 421,
+      "name": "Unidad de medida",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 178,
+      "variableId": 422,
+      "name": "Nombre ",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 179,
+      "variableId": 423,
+      "name": "Primer apellido",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 180,
+      "variableId": 424,
+      "name": "Segundo apellido",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 181,
+      "variableId": 425,
+      "name": "Razón social",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 182,
+      "variableId": 426,
+      "name": "NIF",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 183,
+      "variableId": 427,
+      "name": "Nº inscripción ROPO",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 184,
+      "variableId": 428,
+      "name": "Aplicación manual (S/N)",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 185,
+      "variableId": 429,
+      "name": "Nº inscripción ROMA o REGANIP",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 186,
+      "variableId": 430,
+      "name": "Propio (S/N)",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 187,
+      "variableId": 431,
+      "name": "Equipo aplicador no inscribible en ROMA/REGANIP ",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 188,
+      "variableId": 432,
+      "name": "Tipo de maquinaria UNE",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 189,
+      "variableId": 433,
+      "name": "Potencia de la maquina tractora/autopropulsada",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 190,
+      "variableId": 434,
+      "name": "Unidades de medida",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 191,
+      "variableId": 435,
+      "name": "Tipo de energía",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 192,
+      "variableId": 436,
+      "name": "Número de repeticiones",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 193,
+      "variableId": 437,
+      "name": "Duración de cada repetición",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 194,
+      "variableId": 438,
+      "name": "Fecha",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 195,
+      "variableId": 439,
+      "name": "Nombre ",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 196,
+      "variableId": 440,
+      "name": "Primer apellido",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 197,
+      "variableId": 441,
+      "name": "Segundo apellido",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 198,
+      "variableId": 442,
+      "name": "Razón social",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 199,
+      "variableId": 443,
+      "name": "NIF",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 200,
+      "variableId": 444,
+      "name": "Nº inscripción ROPO",
+      "obligationRaw": "Obligatorio"
+    },
+    {
+      "row": 201,
+      "variableId": 445,
+      "name": "Validación del tratamiento",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 202,
+      "variableId": 446,
+      "name": "Marca de confirmación/Firma electrónica",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 203,
+      "variableId": 447,
+      "name": "Contrato de asesoramiento",
+      "obligationRaw": "Voluntario"
+    },
+    {
+      "row": 204,
+      "variableId": 448,
+      "name": "Eficacia del tratamiento",
+      "obligationRaw": "Obligatorio"
+    }
+  ]
+}

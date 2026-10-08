@@ -54,6 +54,19 @@ sealed interface ActivityDetail {
         val doseUnit: String? = null,
         val reason: String? = null,
         val equipmentText: String? = null,
+        // #677 / CUE v25: optional structured references and historical regulatory snapshot.
+        // Appended for source compatibility with legacy positional constructors.
+        val operatorPersonId: UUID? = null,
+        val applicationMachineId: UUID? = null,
+        val serviceProviderOrganizationId: UUID? = null,
+        val productRegistrationNumber: String? = null,
+        val productSource: String? = null,
+        val productSourceVersion: String? = null,
+        val productFetchedAt: Instant? = null,
+        val authorizationContextSnapshot: String? = null,
+        val pestProblemCode: String? = null,
+        val efficacyCode: String? = null,
+        val treatmentObservations: String? = null,
     ) : ActivityDetail {
         override val type: ActivityType get() = ActivityType.PHYTOSANITARY
     }

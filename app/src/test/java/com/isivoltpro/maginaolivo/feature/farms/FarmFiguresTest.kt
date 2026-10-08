@@ -9,6 +9,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import java.time.LocalDate
 import java.util.UUID
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /** #359/#363/#364: Mis fincas figures are canonical sums; unknown is «—», partial is «≥ N». */
@@ -42,6 +43,17 @@ class FarmFiguresTest {
         assertEquals(mapOf(salinillas to 3_150_000L), kilos)
         assertEquals(Weight.format(3_150_000), campaignKilosLabel(kilos[salinillas]))
         assertEquals("—", campaignKilosLabel(kilos[estacas]))
+    }
+
+    @Test fun anOverflowingRunningCampaignTotalIsUnknownNeverNegative() {
+        val kilos = runningCampaignKilos(
+            listOf(context(salinillas, campaign)),
+            listOf(
+                delivery(salinillas, campaign, Long.MAX_VALUE),
+                delivery(salinillas, campaign, 1),
+            ),
+        )
+        assertNull(kilos[salinillas])
     }
 
     @Test fun aRunningCampaignWithoutPesadasSaysSoNotZero() {

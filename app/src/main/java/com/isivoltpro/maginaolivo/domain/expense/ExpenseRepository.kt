@@ -95,9 +95,11 @@ data class ExpenseDraft(
  * currency) instead, so no amount in another currency is ever hidden behind an implicit EUR.
  */
 data class ExpenseSummary(
-    val totalMinor: Long,
+    /** #500: null when the posted amounts do not fit in a Long: never a wrapped, negative total. */
+    val totalMinor: Long?,
     val currency: String,
-    val byCategory: Map<ExpenseCategory, Long>,
+    /** #500: a category whose sum overflows is null, like [RecollectionCurrency.amount]. */
+    val byCategory: Map<ExpenseCategory, Long?>,
     val postedCount: Int,
     val draftCount: Int,
 ) {
@@ -105,14 +107,16 @@ data class ExpenseSummary(
         fun of(expenses: List<Expense>, currency: String): ExpenseSummary {
             val posted = expenses.filter { it.status == ExpenseStatus.POSTED && it.currency == currency }
             return ExpenseSummary(
-                totalMinor = posted.sumOf { it.amountMinor },
+                totalMinor = exactSum(posted),
                 currency = currency,
-                byCategory = posted.groupBy { it.category }
-                    .mapValues { (_, rows) -> rows.sumOf { it.amountMinor } },
+                byCategory = posted.groupBy { it.category }.mapValues { (_, rows) -> exactSum(rows) },
                 postedCount = posted.size,
                 draftCount = expenses.count { it.status == ExpenseStatus.DRAFT },
             )
         }
+
+        private fun exactSum(rows: List<Expense>): Long? =
+            runCatching { rows.fold(0L) { total, expense -> Math.addExact(total, expense.amountMinor) } }.getOrNull()
     }
 }
 

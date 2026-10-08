@@ -191,7 +191,7 @@ fun HarvestsScreen(
             if (!state.isLoading) {
                 MoMetricGrid(
                     content = listOf(
-                        { m -> MoKpiMetric("Kg pesados", deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { Weight.format(it.deliveredGrams) } ?: "—", m.testTag("harvest-metric-kg"), icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS) },
+                        { m -> MoKpiMetric("Kg pesados", deliverySummary?.takeIf { it.deliveryCount > 0 }?.deliveredGrams?.let(Weight::format) ?: "—", m.testTag("harvest-metric-kg"), icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS) },
                         { m -> MoKpiMetric("Pesadas", (deliverySummary?.deliveryCount ?: 0).toString(), m, icon = MoIcons.Checklist, kind = MoKpiKind.PESADAS) },
                         { m ->
                             // #366: calendar days, not records — two Farms on 3 oct are one day.
@@ -725,7 +725,7 @@ fun HarvestDetailScreen(
                         supportingText = when { !state.costsLoaded -> "Cargando gastos…"; state.costsReadFailed -> "No pudimos leer los gastos";
                             else -> "Combustible, transporte, reparación · Ver gastos" }, onClick = { resourceDetail = "costs" })
                     MoSectionHeader("Resumen económico")
-                    RecollectionTotalCards(ledger, true, state.pesadas.sumOf { it.netGrams }.takeIf { it > 0 }?.let(Weight::format),
+                    RecollectionTotalCards(ledger, true, DeliverySummary.of(state.pesadas).deliveredGrams?.takeIf { it > 0 }?.let(Weight::format),
                         // Codex #605: only with every source read; otherwise never presented as final.
                         com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(state.labour, state.equipment, state.costs)
                             .takeIf { state.labourLoaded && state.equipmentLoaded && state.costsLoaded &&
@@ -977,8 +977,17 @@ private fun JornadaPesadas(
     } else {
         val summary = DeliverySummary.of(pesadas)
         summary.fatYield?.let {
-            Text("Rendimiento del día ${Percent.format(it.hundredths)} · sobre el ${summary.coveragePercent(it)} % de los kilos",
-                style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-pesadas-summary"))
+            val coverage = summary.coveragePercent(it)
+            Text(
+                if (coverage == null) {
+                    "Rendimiento del día ${Percent.format(it.hundredths)} · cobertura no disponible"
+                } else {
+                    "Rendimiento del día ${Percent.format(it.hundredths)} · sobre el $coverage % de los kilos"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("jornada-pesadas-summary"),
+            )
         }
         pesadas.forEach { pesada ->
             Row(
@@ -1057,7 +1066,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
     }
     if (harvest.allocationMode != HarvestAllocationMode.EXACT) {
         Text(
-            "Sin repartir entre parcelas: ${Weight.format(harvest.unallocatedGrams)}",
+            "Sin repartir entre parcelas: ${harvest.unallocatedGrams?.let(Weight::format) ?: "No disponible"}",
             style = MaterialTheme.typography.bodyMedium,
             color = MoTextSecondary,
             modifier = Modifier.testTag("harvest-unallocated"),
