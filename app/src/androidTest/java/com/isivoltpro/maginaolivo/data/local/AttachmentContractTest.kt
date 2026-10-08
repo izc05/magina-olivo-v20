@@ -65,7 +65,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class AttachmentContractTest {
-    private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val context = attachmentFixtureContext(ApplicationProvider.getApplicationContext<Context>(), "attachment")
     private val workspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000e1")
     private val farmId = UUID.fromString("20000000-0000-0000-0000-0000000000e1")
     private val parcelA = UUID.fromString("30000000-0000-0000-0000-0000000000e1")
@@ -448,7 +448,7 @@ class AttachmentContractTest {
     ): String {
         sourceDirectory.mkdirs()
         val file = File(sourceDirectory, name).apply { writeBytes(bytes) }
-        return FileProvider.getUriForFile(context, "${context.packageName}.attachments", file).toString()
+        return FileProvider.getUriForFile(context.applicationContext, "${context.packageName}.attachments", file).toString()
     }
 
     private fun storedFiles(): List<File> =

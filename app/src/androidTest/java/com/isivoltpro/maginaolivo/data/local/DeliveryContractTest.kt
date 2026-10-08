@@ -75,7 +75,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class DeliveryContractTest {
-    private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val context = attachmentFixtureContext(ApplicationProvider.getApplicationContext<Context>(), "delivery")
     private val workspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000d1")
     private val farmId = UUID.fromString("20000000-0000-0000-0000-0000000000d1")
     private val campaignId = UUID.fromString("40000000-0000-0000-0000-0000000000d1")
@@ -680,7 +680,7 @@ class DeliveryContractTest {
             output.toByteArray()
         }
         val file = File(sources, name).apply { writeBytes(bytes) }
-        return FileProvider.getUriForFile(context, "${context.packageName}.attachments", file).toString()
+        return FileProvider.getUriForFile(context.applicationContext, "${context.packageName}.attachments", file).toString()
     }
 
     /** Rows of [table]; live rows only for tables with a metadata tail. */

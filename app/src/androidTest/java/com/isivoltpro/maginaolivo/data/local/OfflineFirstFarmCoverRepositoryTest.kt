@@ -43,7 +43,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class OfflineFirstFarmCoverRepositoryTest {
-    private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val context = attachmentFixtureContext(ApplicationProvider.getApplicationContext<Context>(), "farm-cover")
 
     private val attachments = File(context.filesDir, AndroidAttachmentFileStore.ROOT_DIRECTORY)
     private val sources = File(context.cacheDir, "camera")
@@ -108,7 +108,7 @@ class OfflineFirstFarmCoverRepositoryTest {
 
             val bytes = jpeg()
             val source = File(sources.apply { mkdirs() }, "olivar.jpg").apply { writeBytes(bytes) }
-            val sourceUri = FileProvider.getUriForFile(context, "${context.packageName}.attachments", source)
+            val sourceUri = FileProvider.getUriForFile(context.applicationContext, "${context.packageName}.attachments", source)
             assertEquals(
                 AppResult.Success(Unit),
                 coverRepository.attachCover(farmId, sourceUri.toString()),
@@ -164,7 +164,7 @@ class OfflineFirstFarmCoverRepositoryTest {
             database.farmDao().upsert(FarmEntity(farmB, workspaceB, "Finca B", metadata = meta))
 
             val source = File(sources.apply { mkdirs() }, "b.jpg").apply { writeBytes(jpeg()) }
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.attachments", source).toString()
+            val uri = FileProvider.getUriForFile(context.applicationContext, "${context.packageName}.attachments", source).toString()
             val repoB = OfflineFirstFarmCoverRepository(
                 database,
                 AndroidAttachmentFileStore(context),
@@ -192,7 +192,7 @@ class OfflineFirstFarmCoverRepositoryTest {
             assertEquals(null, repoA.observeCoverUri(farmB).first())
 
             val foreignSource = File(sources, "a-tries-b.jpg").apply { writeBytes(jpeg()) }
-            val foreignUri = FileProvider.getUriForFile(context, "${context.packageName}.attachments", foreignSource).toString()
+            val foreignUri = FileProvider.getUriForFile(context.applicationContext, "${context.packageName}.attachments", foreignSource).toString()
             val refused = repoA.attachCover(farmB, foreignUri)
             assertEquals(
                 AppError.Validation("farm", "context_mismatch"),
