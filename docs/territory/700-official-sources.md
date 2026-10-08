@@ -26,6 +26,7 @@ python3 tools/territory/build_municipalities.py \
   --code-column 'CABECERA_REAL_CODIGO' \
   --name-column 'CABECERA_REAL_NOMBRE' \
   --province 23 \
+  --expected-count NUMERO_OFICIAL_VERIFICADO \
   --source-url 'URL_REAL_DESCARGA' \
   --source-date 'AAAA-MM-DD'
 python3 -m unittest discover -s tools/territory -p 'test_*.py' -v
