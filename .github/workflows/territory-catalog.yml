@@ -1,0 +1,26 @@
+name: Territory catalog checks
+
+on:
+  push:
+    branches:
+      - feat/700-andalucia-municipality-catalog
+    paths:
+      - 'tools/territory/**'
+      - '.github/workflows/territory-catalog.yml'
+  pull_request:
+    paths:
+      - 'tools/territory/**'
+      - '.github/workflows/territory-catalog.yml'
+
+jobs:
+  validate-territory-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python unit tests
+        run: python3 -m unittest discover -s tools/territory -p 'test_*.py' -v
+      - name: Python syntax
+        run: python3 -m compileall -q tools/territory
