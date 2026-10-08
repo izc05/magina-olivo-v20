@@ -1,3 +1,21 @@
+## Estado vigente — #696, 8 de octubre de 2026 (15:15 UTC)
+
+Prioridad: Android; Codex ejecuta una sola tarea productiva cada vez, Claude apoya revisión/pruebas. **Web V3 y Web-1 pausadas** hasta orden expresa. #696 sustituye el reparto/cursor anteriores.
+
+| PR | HEAD validado | Merge en main | Validación final |
+| --- | --- | --- | --- |
+| #689 | 6ad5848a | 8618a721 | 514 unitarios; 671 instrumentados CI; tres checks SUCCESS |
+| #680 | 73f79a02 | cda14003 | 517 unitarios; 676 instrumentados CI; offline196; tres checks SUCCESS |
+| #684 | d30e3ec4 | 690e2195 | 520 unitarios; parser extremo y persistencia UI API35; tres checks SUCCESS |
+| #692 | 4157013d | c2556e4e | 524 unitarios; 677 instrumentados CI; offline196; tres checks SUCCESS |
+
+Main integrado: `c2556e4e96787faea7fde015a850b91404f9c0f2`. Los informes ANDROID-689-FIX, ANDROID-680-FIX, ANDROID-684-INTEGRATION y ANDROID-692-INTEGRATION de esta carpeta y los comentarios DONE en #696 conservan ramas, commits, pruebas y gates. Ninguna de estas cuatro PR sigue bloqueada por los errores descritos en la auditoría inicial. En #680 la causa confirmada fue la selección del workspace en fixtures; no se relajó ownership productivo. Además se corrigió la mezcla de snapshots regulatorios y se probó migración soportada 1–24→25.
+
+NEXT vigente: ejecutar recorrido agrícola sobre este main, preparar candidata APK y evidencia de actualización sin borrar datos; aceptación física por el propietario pendiente (Gate21). La cámara virtual y tests no acreditan móvil físico. Exportación PDF pendiente Fase25; Gates22–28 no abiertos. #694 conserva evidencia histórica, no ejecuta Web ni acepta release.
+
+### Auditoría histórica conservada
+
+**Todo lo que sigue describe el snapshot inicial c4617f87 / af1384ab, anterior a #696.** Sus fallos CI, PRs pendientes, asignaciones y próximos pasos son históricos y quedan sustituidos por el estado vigente de arriba. Sus resultados Web se conservan como evidencia previa y no autorizan reanudarla. La existencia de tests o guiones en aquel snapshot no acredita recorrido completo.
 # Cursor de ejecución Codex — #695 / #693
 
 2026-10-08. Producto/gates: #340/#338; este ledger solo registra evidencia y próximo trabajo. Base c4617f87. PR activa de documentación #694; no hay nueva implementación Android.
@@ -23,6 +41,6 @@ Android CI y Gate3 tienen pull_request a main sin filtro de rutas, por lo que #6
 
 ## Cursor
 
-NEXT=B6 runtime + B8 contenido/externos, luego B9 | base_sha=c4617f87 | web_tested_sha=76c1c05d | open_pr=694 | blockers=CI694 nuevo SHA pendiente; Docker local sin motor; Android680/689 rojos; V3-A no aprobado; Gate22/23 y beta física no acreditados.
+HISTORICAL_NEXT=B6 runtime + B8 contenido/externos, luego B9 | base_sha=c4617f87 | web_tested_sha=76c1c05d | open_pr=694 | blockers=CI694 nuevo SHA pendiente; Docker local sin motor; Android680/689 rojos; V3-A no aprobado; Gate22/23 y beta física no acreditados.
 
 A1–A3 aquí son entregas documentales, no flujos implementados/probados. Resumen A8 es provisional y no cierra gate de release.
