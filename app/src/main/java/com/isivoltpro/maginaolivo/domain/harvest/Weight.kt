@@ -32,7 +32,10 @@ object Weight {
             else -> return null
         }
         val kilos = normalized.toBigDecimalOrNull() ?: return null
-        // #497: a well-formed figure too large for a Long is simply not a weight: null, never a crash.\n        return runCatching { kilos.movePointRight(3).setScale(0, RoundingMode.HALF_UP).longValueExact() }.getOrNull()
+        // #497: a well-formed figure too large for a Long is simply not a weight: null, never a crash.
+        return runCatching {
+            kilos.movePointRight(3).setScale(0, RoundingMode.HALF_UP).longValueExact()
+        }.getOrNull()
     }
 
     /** "2.850 kg", "2.850,5 kg". */
