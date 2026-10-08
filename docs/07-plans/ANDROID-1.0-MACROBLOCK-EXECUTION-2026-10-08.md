@@ -94,4 +94,4 @@ Siguiente acción dentro del mismo macrobloque:
 Web V3 / nuevas fases: SIN CAMBIOS
 ```
 
-**Regla final:** los 5–6 macrobloques son **paquetes de resultado** para avanzar más, no permiso para acumular una PR inmanejable ni declarar que funciones sin construir ya están terminadas.
+**Regla final:** los ocho macrobloques M0–M7 son **paquetes de resultado** para avanzar más, no permiso para acumular una PR inmanejable ni declarar que funciones sin construir ya están terminadas.
