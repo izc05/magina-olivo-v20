@@ -1,5 +1,11 @@
 """Offline contract tests: run python3 -m unittest discover -s tools/territory -p 'test_*.py'."""
 import unittest
+import csv
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 
 from build_municipalities import build_snapshot, search_name
 
@@ -56,6 +62,43 @@ class MunicipalitySnapshotTests(unittest.TestCase):
             {"code": "23002", "name": "EJEMPLO"},
         ]
         self.assertEqual(len(build_snapshot(rows, "code", "name")), 2)
+
+
+    def test_cli_generates_offline_snapshot_and_rejects_partial_export(self):
+        script = Path(__file__).with_name("build_municipalities.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source.csv"
+            output = Path(tmp) / "jaen.json"
+            with source.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=["code", "name"])
+                writer.writeheader()
+                writer.writerow({"code": "23092", "name": "Úbeda"})
+                writer.writerow({"code": "23009", "name": "Baeza"})
+            cmd = [sys.executable, str(script), "--input", str(source),
+                   "--output", str(output), "--code-column", "code",
+                   "--name-column", "name", "--province", "23",
+                   "--source-url", "https://example.org/test-only",
+                   "--source-date", "2026-10-08", "--expected-count", "2"]
+            passed = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertEqual(passed.returncode, 0, passed.stderr)
+            data = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual([m["code"] for m in data["municipalities"]], ["23009", "23092"])
+            output.unlink()
+            cmd[-1] = "3"
+            rejected = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn("Coverage mismatch", rejected.stderr)
+            self.assertFalse(output.exists())
+
+    def test_cli_rejects_impossible_source_date(self):
+        script = Path(__file__).with_name("build_municipalities.py")
+        result = subprocess.run([sys.executable, str(script), "--input", "unused.csv",
+            "--output", "unused.json", "--code-column", "code",
+            "--name-column", "name", "--source-url", "https://example.org/test-only",
+            "--source-date", "2026-02-30", "--expected-count", "1"],
+            capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("real calendar date", result.stderr)
 
 
 if __name__ == "__main__":
