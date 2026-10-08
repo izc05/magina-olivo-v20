@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un peso enorme ya no tumba la Pesada (#497).** Si se escribe un número de kilos tan grande que no
+  se puede guardar, el campo lo marca como no válido en vez de cerrar la pantalla. Y un reparto entre
+  parcelas cuyos kilos sumados no caben en la cuenta se rechaza como «supera el total», nunca se da
+  por bueno.
+
 - **Un rendimiento del 100 % ya se puede escribir (#499).** El formulario de rendimiento aceptaba
   hasta 99,99 % aunque el 100 % es válido: ahora admite «100» y «100,00» y sigue rechazando cualquier
   valor por encima. Un rendimiento guardado al 100 % se puede abrir y volver a guardar sin error.
