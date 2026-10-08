@@ -131,8 +131,9 @@ class CampaignChartsScreenTest {
 
     @Test fun unknownLegacyKilosRemainVisibleInTheComparison() {
         val comparison = CampaignComparison(current, null, null, null, null, null, legacyUnweighedGrams = null)
-        show(CampaignSeries(emptyList(), emptyList()), listOf(comparison))
-        composeRule.onNodeWithTag("comparison-legacy-kilos")
+        val previous = CampaignComparison(last, null, null, null, null, null)
+        show(CampaignSeries(emptyList(), emptyList()), listOf(previous, comparison))
+        composeRule.onNodeWithTag("comparison-legacy-kilos", useUnmergedTree = true)
             .assertTextContains("Kilos históricos sin pesada no disponibles", substring = true)
     }
 
