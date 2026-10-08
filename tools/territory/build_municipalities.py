@@ -58,6 +58,7 @@ def main():
     parser.add_argument("--province", default="23", help="Two-digit province code (Jaén=23)")
     parser.add_argument("--expected-count", required=True, type=int, help="Officially verified expected municipality count; prevents publishing partial exports")
     parser.add_argument("--source-url", required=True, help="Original dataset URL for attribution")
+    parser.add_argument("--source-sha256", help="Expected SHA256 of original CSV for reproducible imports")
     parser.add_argument("--source-date", required=True, help="Dataset publication/retrieval date YYYY-MM-DD")
     args = parser.parse_args()
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.source_date):
@@ -68,6 +69,9 @@ def main():
     except ValueError:
         parser.error("--source-date must be a real calendar date")
     try:
+        source_digest = hashlib.sha256(args.input.read_bytes()).hexdigest()
+        if args.source_sha256 and source_digest.lower() != args.source_sha256.lower():
+            raise ValueError("Source SHA256 mismatch")
         with args.input.open("r", encoding="utf-8-sig", newline="") as source:
             reader = csv.DictReader(source)
             columns = reader.fieldnames or []
@@ -81,6 +85,7 @@ def main():
             "provinceCode": args.province,
             "sourceUrl": args.source_url,
             "sourceDate": args.source_date,
+            "sourceSha256": source_digest,
             "attribution": "Datos de origen: administración pública indicada en sourceUrl; verificar licencia de cada descarga",
             "municipalities": records,
         }
