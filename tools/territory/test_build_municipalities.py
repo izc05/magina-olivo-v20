@@ -37,5 +37,26 @@ class MunicipalitySnapshotTests(unittest.TestCase):
             build_snapshot([{"code": "", "name": "Garcíez"}], "code", "name")
 
 
+    def test_preserves_leading_zeroes_in_municipality_codes(self):
+        rows = [{"code": "01001", "name": "Municipio de prueba"}]
+        snapshot = build_snapshot(rows, "code", "name", province="01")
+        self.assertEqual(snapshot[0]["code"], "01001")
+
+    def test_empty_name_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "empty/invalid"):
+            build_snapshot([{"code": "23009", "name": " "}], "code", "name")
+
+    def test_invalid_province_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Province code"):
+            build_snapshot([{"code": "23009", "name": "Baeza"}], "code", "name", province="230")
+
+    def test_duplicate_normalized_names_can_have_distinct_official_codes(self):
+        rows = [
+            {"code": "23001", "name": "Ejemplo"},
+            {"code": "23002", "name": "EJEMPLO"},
+        ]
+        self.assertEqual(len(build_snapshot(rows, "code", "name")), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
