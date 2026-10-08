@@ -205,6 +205,9 @@ jobs:
 
       - name: Run Gate 3 instrumented QA on emulator
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        env:
+          # This runner creates a disposable AVD; retained QA devices must never opt in.
+          GATE3_ALLOW_APP_DATA_RESET: "1"
         with:
           api-level: 35
           arch: x86_64

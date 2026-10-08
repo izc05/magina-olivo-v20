@@ -1093,6 +1093,8 @@ class AppNavigationTest {
      * guarded so a missing node reports itself instead of masking the real failure.
      */
     private fun diagnostics(): String = buildString {
+        appendLine("Current screen roots:")
+        appendLine(dumpOrAbsent { composeRule.onAllNodes(isRoot(), useUnmergedTree = true) })
         appendLine("Campaign detail screen:")
         appendLine(dumpOrAbsent { composeRule.onAllNodesWithTag("campaign-detail-root", useUnmergedTree = true) })
         appendLine("Confirmation sheet title:")
@@ -1184,6 +1186,17 @@ class AppNavigationTest {
             }
         }
         waitForNodeOrDump("clickable node \"$text\"") { composeRule.onAllNodesWithText(text) }
+        // Lazy farm rows can already be composed below the viewport. Loading the
+        // seasonal summary also changes their position after the first scroll.
+        // Re-resolve and scroll until the target is visible, before issuing one click.
+        if (composeRule.onAllNodesWithTag("farm-list").fetchSemanticsNodes().isNotEmpty()) {
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                runCatching {
+                    composeRule.onNodeWithTag("farm-list").performScrollToNode(hasText(text))
+                    clickableNodeWithText(text).assertIsDisplayed()
+                }.isSuccess
+            }
+        }
         val node = clickableNodeWithText(text)
         scrollIntoViewIfPossible { node }
         node.assertIsDisplayed().assertIsEnabled().assertHasClickAction().performClick()

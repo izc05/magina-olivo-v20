@@ -68,6 +68,9 @@ jobs:
           encoded=$(sed -e 's/%/%25/g' -e 's/\r//g' annotation.txt | awk 'BEGIN { ORS = "%0A" } { print }')
           echo "::error title=Gradle build failure::${encoded}"
 
+      - name: Verify Gate 3 device safety (fake adb)
+        run: bash .github/scripts/test-gate3-emulator-safe.sh
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -83,7 +86,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash .github/scripts/gate3-emulator-evidence.sh
+          script: GATE3_ALLOW_APP_DATA_RESET=1 bash .github/scripts/gate3-emulator-evidence.sh
 
       - name: Upload Gate 3 evidence
         if: always()
