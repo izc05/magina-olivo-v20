@@ -1066,7 +1066,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
     }
     if (harvest.allocationMode != HarvestAllocationMode.EXACT) {
         Text(
-            "Sin repartir entre parcelas: ${harvest.unallocatedGrams?.let(Weight::format) ?: \"No disponible\"}",
+            "Sin repartir entre parcelas: ${harvest.unallocatedGrams?.let(Weight::format) ?: "No disponible"}",
             style = MaterialTheme.typography.bodyMedium,
             color = MoTextSecondary,
             modifier = Modifier.testTag("harvest-unallocated"),
