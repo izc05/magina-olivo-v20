@@ -215,6 +215,22 @@ class CampaignAnalyticsTest {
         assertNull(CampaignComparison.of(listOf(notebook)).single().deliveredGrams)
     }
 
+    @Test
+    fun anOverflowingDayKeepsItsPesadasAndKnownAnalysis() {
+        val notebook = CampaignNotebook.project(
+            current, emptyList(), emptyList(),
+            listOf(
+                delivery(current, Long.MAX_VALUE, day(24), "Coop", null),
+                delivery(current, 1, day(24), "Coop", 2_000),
+            ),
+            emptyList(),
+        )
+        val point = CampaignSeries.of(notebook).days.single()
+        assertNull(point.deliveredGrams)
+        assertEquals(2, point.deliveryCount)
+        assertEquals(2_000, requireNotNull(point.fatYield).hundredths)
+    }
+
     private fun campaign(name: String, start: LocalDate, status: CampaignStatus) = Campaign(
         id = UUID.randomUUID(), workspaceId = workspace, farmId = farm, name = name, startDate = start,
         endDate = if (status == CampaignStatus.CLOSED) start.plusMonths(9) else null, status = status,

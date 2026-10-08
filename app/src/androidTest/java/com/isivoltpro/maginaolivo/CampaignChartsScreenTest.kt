@@ -93,9 +93,47 @@ class CampaignChartsScreenTest {
         )
         show(CampaignSeries.of(notebook), emptyList())
         composeRule.onNodeWithTag("chart-kg-summary")
-            .assertTextContains("Pesado ${Weight.format(notebook.deliverySummary.deliveredGrams)} en 2 días", substring = true)
+            .assertTextContains("Pesado ${Weight.format(requireNotNull(notebook.deliverySummary.deliveredGrams))} en 2 días", substring = true)
         composeRule.onNodeWithTag("chart-yield-summary").assertTextContains("1 de 2 días con pesadas analizadas", substring = true)
         composeRule.onAllNodesWithTag("chart-cooperative").assertCountEquals(1)
+    }
+
+    @Test fun anOverflowingTotalIsUnavailableAndNeverDrawnAsZero() {
+        val notebook = CampaignNotebook.project(
+            current, emptyList(), emptyList(),
+            listOf(
+                delivery(current, Long.MAX_VALUE, LocalDate.of(2026, 11, 24), "Coop", null),
+                delivery(current, 1, LocalDate.of(2026, 11, 25), "Coop", null),
+            ),
+            emptyList(),
+        )
+        show(CampaignSeries.of(notebook), emptyList())
+        composeRule.onNodeWithTag("chart-kg-summary")
+            .assertTextContains("Kilos no disponibles", substring = true)
+        composeRule.onNodeWithTag("chart-kg-unavailable").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("chart-kg").assertCountEquals(0)
+        composeRule.onAllNodesWithTag("chart-empty").assertCountEquals(0)
+    }
+
+    @Test fun anOverflowingDayStillCountsAsADayWithPesadas() {
+        val notebook = CampaignNotebook.project(
+            current, emptyList(), emptyList(),
+            listOf(
+                delivery(current, Long.MAX_VALUE, LocalDate.of(2026, 11, 24), "Coop", null),
+                delivery(current, 1, LocalDate.of(2026, 11, 24), "Coop", 2_000),
+            ),
+            emptyList(),
+        )
+        show(CampaignSeries.of(notebook), emptyList())
+        composeRule.onNodeWithTag("chart-yield-summary")
+            .assertTextContains("1 de 1 días con pesadas analizadas", substring = true)
+    }
+
+    @Test fun unknownLegacyKilosRemainVisibleInTheComparison() {
+        val comparison = CampaignComparison(current, null, null, null, null, null, legacyUnweighedGrams = null)
+        show(CampaignSeries(emptyList(), emptyList()), listOf(comparison))
+        composeRule.onNodeWithTag("comparison-legacy-kilos")
+            .assertTextContains("Kilos históricos sin pesada no disponibles", substring = true)
     }
 
     @Test fun noRecordsIsAnExplicitEmptyState() {

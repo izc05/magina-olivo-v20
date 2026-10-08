@@ -47,8 +47,8 @@ class JornadaTest {
 
     @Test
     fun anOverflowingPesadaTotalIsUnknownNeverNegative() {
-        val huge = delivery(Long.MAX_VALUE)
-        val one = delivery(1)
+        val huge = pesada(Long.MAX_VALUE, "Cooperativa", null, harvest.id)
+        val one = pesada(1, "Cooperativa", null, harvest.id)
         val jornada = Jornada.of(harvest, listOf(huge, one))
         assertNull(jornada.pesadaGrams)
     }

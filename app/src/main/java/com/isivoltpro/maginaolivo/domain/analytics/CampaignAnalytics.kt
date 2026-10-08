@@ -22,6 +22,8 @@ data class DayPoint(
     val deliveredGrams: Long?,
     val cumulativeDeliveredGrams: Long?,
     val fatYield: WeightedYield?,
+    /** Presence of Pesadas does not depend on their aggregate fitting in Long. */
+    val deliveryCount: Int,
 )
 
 /** A cooperative's weighted yield and how many of its kilos carry an analysis. */
@@ -54,6 +56,7 @@ data class CampaignSeries(val days: List<DayPoint>, val cooperatives: List<Coope
                     deliveredGrams = deliveredGrams,
                     cumulativeDeliveredGrams = cumulative,
                     fatYield = deliverySummary.fatYield,
+                    deliveryCount = delivered.size,
                 )
             }
             val cooperatives = notebook.deliveries

@@ -55,7 +55,7 @@ internal fun CampaignCharts(series: CampaignSeries) {
     val knownTotal = series.deliveredGrams
     val kgKnown = knownTotal != null && series.days.all { it.deliveredGrams != null && it.cumulativeDeliveredGrams != null }
     val summary = if (kgKnown) {
-        "Pesado ${Weight.format(knownTotal!!)} en ${series.days.count { (it.deliveredGrams ?: 0L) > 0 }} días, " +
+        "Pesado ${Weight.format(knownTotal!!)} en ${series.days.count { it.deliveryCount > 0 }} días, " +
             "del ${first.format(SHORT_DAY)} al ${last.format(SHORT_DAY)}"
     } else {
         "Kilos no disponibles por un total histórico inconsistente"
@@ -99,7 +99,7 @@ internal fun CampaignCharts(series: CampaignSeries) {
         val low = analysed.minOf { it.fatYield!!.hundredths }
         val high = analysed.maxOf { it.fatYield!!.hundredths }
         val yieldSummary = "De ${Percent.format(low)} a ${Percent.format(high)}; " +
-            "${analysed.size} de ${series.days.count { (it.deliveredGrams ?: 0L) > 0 }} días con pesadas analizadas"
+            "${analysed.size} de ${series.days.count { it.deliveryCount > 0 }} días con pesadas analizadas"
         val dot = MoOliveDark
         Canvas(
             Modifier.fillMaxWidth().height(90.dp).testTag("chart-yield").semantics { contentDescription = yieldSummary },
@@ -173,10 +173,12 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>, onSelectCamp
                     color = MoTextSecondary,
                     modifier = Modifier.testTag("comparison-line"),
                 )
-                row.legacyUnweighedGrams?.takeIf { it > 0 }?.let { legacy ->
+                val legacy = row.legacyUnweighedGrams
+                if (legacy == null || legacy > 0) {
                     // CR-010 (A2): disclosed apart, never added to the weighed kilos above.
                     Text(
-                        "Además, ${Weight.format(legacy)} registrados sin pesada (histórico)",
+                        legacy?.let { "Además, ${Weight.format(it)} registrados sin pesada (histórico)" }
+                            ?: "Kilos históricos sin pesada no disponibles",
                         style = MaterialTheme.typography.bodySmall,
                         color = MoTextSecondary,
                         modifier = Modifier.testTag("comparison-legacy-kilos"),

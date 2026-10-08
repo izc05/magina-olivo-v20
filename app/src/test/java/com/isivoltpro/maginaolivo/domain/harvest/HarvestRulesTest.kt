@@ -90,8 +90,8 @@ class HarvestRulesTest {
         )
         // Nothing is invented: the parcel kilos plus the unallocated kilos are the total.
         assertEquals(
-            summary.totalGrams,
-            summary.parcels.sumOf { it.exactGrams ?: 0L } + (summary.unallocatedGrams ?: 0L),
+            requireNotNull(summary.totalGrams),
+            summary.parcels.sumOf { requireNotNull(it.exactGrams) } + requireNotNull(summary.unallocatedGrams),
         )
     }
 

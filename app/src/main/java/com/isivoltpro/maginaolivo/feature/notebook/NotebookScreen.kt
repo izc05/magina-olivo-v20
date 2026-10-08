@@ -134,9 +134,11 @@ internal fun RecollectionActions(notebook: CampaignNotebook, actions: NotebookAc
             Modifier.fillMaxWidth().testTag("notebook-pending-yields"),
         )
     }
-    notebook.legacyUnweighedGrams?.takeIf { it > 0 }?.let { legacy ->
+    val legacy = notebook.legacyUnweighedGrams
+    if (legacy == null || legacy > 0) {
         Text(
-            "Además, ${Weight.format(legacy)} registrados sin pesada (histórico)",
+            legacy?.let { "Además, ${Weight.format(it)} registrados sin pesada (histórico)" }
+                ?: "Kilos históricos sin pesada no disponibles",
             style = MaterialTheme.typography.bodySmall,
             color = MoTextSecondary,
             modifier = Modifier.testTag("notebook-legacy-kilos"),
@@ -276,10 +278,12 @@ internal fun SummaryTab(
         ParcelYields(notebook)
         // Phase 19G: charts and year-over-year, all derived from the same records.
         CampaignCharts(CampaignSeries.of(notebook))
-        notebook.legacyUnweighedGrams?.takeIf { it > 0 }?.let { legacy ->
+        val legacy = notebook.legacyUnweighedGrams
+        if (legacy == null || legacy > 0) {
             // CR-010 (A2): the charts are drawn from Pesadas; the legacy kilos are named, not hidden.
             Text(
-                "Las gráficas solo incluyen pesadas. ${Weight.format(legacy)} registrados sin pesada (histórico) no aparecen en ellas.",
+                legacy?.let { "Las gráficas solo incluyen pesadas. ${Weight.format(it)} registrados sin pesada (histórico) no aparecen en ellas." }
+                    ?: "Las gráficas solo incluyen pesadas. Kilos históricos sin pesada no disponibles.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MoTextSecondary,
                 modifier = Modifier.testTag("notebook-chart-legacy-note"),
