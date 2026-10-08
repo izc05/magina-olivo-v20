@@ -73,3 +73,6 @@ La transición cinematográfica aprobada de campo → móvil → producto y su m
 - [Foco de teclado en Mi](screenshots/web-0f-mi-focus.png)
 
 Las capturas se tomaron en servidor local de producción sin el overlay de desarrollo de Next.js.
+## Ampliación de cobertura reduced-motion — 2026-10-08
+
+`tests/reduced-motion.spec.ts` comprueba Home y `/mi` en los dos proyectos Chromium. Con la preferencia reduce, los elementos visibles deben tener duraciones calculadas de animación/transición <=0,02 ms y no usar scroll suave. Se comprueba además el destino del skip link. Es una verificación de la política CSS actual, sin afirmar que exista o esté validada una secuencia cinematográfica. Cuando #389 tenga motor/frames, añadir cobertura de pausa, selección de fallback y ausencia de precarga innecesaria.
