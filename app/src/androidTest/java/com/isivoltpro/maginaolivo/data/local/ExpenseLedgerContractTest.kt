@@ -87,7 +87,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class ExpenseLedgerContractTest {
-    private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val context = attachmentFixtureContext(ApplicationProvider.getApplicationContext<Context>(), "expense-ledger")
     private val workspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000f1")
     private val farmId = UUID.fromString("20000000-0000-0000-0000-0000000000f1")
     private val otherFarmId = UUID.fromString("20000000-0000-0000-0000-0000000000f2")
@@ -1362,7 +1362,7 @@ class ExpenseLedgerContractTest {
             output.toByteArray()
         }
         val file = File(sources, name).apply { writeBytes(bytes) }
-        return FileProvider.getUriForFile(context, "${context.packageName}.attachments", file).toString()
+        return FileProvider.getUriForFile(context.applicationContext, "${context.packageName}.attachments", file).toString()
     }
 
     private fun <T> ok(result: AppResult<T>): T = when (result) {
