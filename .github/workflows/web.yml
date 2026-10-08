@@ -1,0 +1,146 @@
+name: Web
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  push:
+    branches:
+      - main
+      - "feat/web-*"
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+
+jobs:
+  validate-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Build GitHub Pages export
+        env:
+          GITHUB_PAGES: "true"
+          PAGES_BASE_PATH: "/magina-olivo-v20"
+          SITE_URL: "https://izc05.github.io/magina-olivo-v20"
+          ALLOW_INDEXING: "false"
+        run: npm run build
+
+      - name: Build Docker image
+        working-directory: web
+        run: docker build -t magina-olivo-web:ci .
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test Docker runtime
+        run: |
+          docker run -d --rm \
+            --name magina-olivo-web-ci \
+            -p 127.0.0.1:3000:3000 \
+            -e SITE_URL=http://localhost:3000 \
+            -e ALLOW_INDEXING=false \
+            magina-olivo-web:ci
+
+          cleanup() {
+            docker stop magina-olivo-web-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health >/tmp/health.json; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+
+          test "$ready" = "1"
+          grep -q '"status":"ok"' /tmp/health.json
+          curl -fsS http://127.0.0.1:3000/robots.txt | grep -q "Disallow: /"
+          curl -fsSI http://127.0.0.1:3000/ | grep -qi "x-content-type-options: nosniff"
+
+          routes=(
+            "/"
+            "/producto"
+            "/beneficios"
+            "/territorio"
+            "/contacto"
+            "/privacidad"
+            "/terminos"
+            "/aviso-legal"
+            "/manifest.webmanifest"
+            "/sitemap.xml"
+            "/robots.txt"
+            "/api/health"
+          )
+
+          for route in "${routes[@]}"; do
+            code="$(curl -sS -o /tmp/route-body -w "%{http_code}" "http://127.0.0.1:3000${route}" || true)"
+            echo "${route} -> ${code}"
+            test "${code}" = "200"
+          done
+
+          PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run test:e2e
+
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-playwright-report
+          path: |
+            web/playwright-report
+            web/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload GitHub Pages artifact
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feat/web-')) || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/web-') && github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/out
+
+
+  deploy-pages:
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feat/web-')) || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/web-') && github.event.pull_request.head.repo.full_name == github.repository)
+    needs: validate-web
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
