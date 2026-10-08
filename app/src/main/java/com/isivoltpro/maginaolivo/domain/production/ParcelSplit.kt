@@ -14,7 +14,10 @@ object ParcelSplit {
         if (weights.isEmpty()) return "empty"
         if (weights.any { (it ?: 1) <= 0 }) return "not_positive"
         val exact = weights.filterNotNull()
-        // #497: an allocation too large to add up exceeds any total; it never wraps into a valid one.\n        val allocated = runCatching { exact.fold(0L) { sum, grams -> Math.addExact(sum, grams) } }.getOrNull()\n            ?: return \"exceeds_total\"
+        // #497: an allocation too large to add up exceeds any total; it never wraps into a valid one.
+        val allocated = runCatching {
+            exact.fold(0L) { sum, grams -> Math.addExact(sum, grams) }
+        }.getOrNull() ?: return "exceeds_total"
         val someUnknown = exact.size < weights.size
         return when {
             allocated > totalGrams -> "exceeds_total"
