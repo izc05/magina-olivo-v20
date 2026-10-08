@@ -457,3 +457,9 @@ Una submission ya aceptada no se sobrescribe: se versiona/supersede según el co
 - #563 GIP 3.1bis;
 - #564 fitosanitarios especiales 3.2–3.5;
 - #565 análisis fitosanitarios opcionales.
+
+## 15. Discovery de transporte IUWS 3.11.4 — 2026-10-07
+
+El [discovery verificado de #536](../integrations/cue-andalucia/IUWS-3114-DISCOVERY.md) documenta la descarga directa del Anexo VI, certificado/cabeceras de comunicación, JWT emitido por IUWS, callback de productor, operaciones y resultados batch por actividad. Incluye fake interno ejecutable bajo `docs/**`, sin runtime ni conexión oficial.
+
+Este slice no cierra la matriz Anexo V/VII/descriptores, el alta #555, el audit del Supabase desplegado ni el sandbox. No libera integración productiva; el gate vigente se mantiene.

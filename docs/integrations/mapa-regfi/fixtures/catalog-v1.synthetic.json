@@ -1,0 +1,122 @@
+{
+  "Productos": [
+    {
+      "DATOSPRODUCTO": {
+        "IdProducto": 900001,
+        "Num_Registro": "SYN-00001",
+        "Nombre": "PRODUCTO Á COBRE DEMO",
+        "Titular": "EMPRESA SINTÉTICA",
+        "Fabricante": "FABRICANTE SINTÉTICO",
+        "Fabrica": "FIXTURE",
+        "Formulado": "FORMULADO SINTÉTICO",
+        "Fecha_Registro": "2020-01-01T00:00:00",
+        "Estado": "Vigente",
+        "Fecha_Caducidad": "",
+        "Fecha_Cancelacion": "",
+        "Fecha_LimiteVenta": "",
+        "Condicionamiento": "SOLO DATOS DE TEST"
+      },
+      "OTRASDENOMINACIONES": [
+        {
+          "Nombre_Origen": "ALIAS SINTÉTICO"
+        }
+      ],
+      "OTROSNOMBRES": [
+        {
+          "Nombre": "PRODUCTO Á COBRE DEMO"
+        }
+      ],
+      "COMPOSICION": [
+        {
+          "Nombre Sustancia": "OXICLORURO DE COBRE",
+          "NombreUE": "Copper oxychloride",
+          "Concentracion": 50,
+          "DescripcionNota": "% (EXPR. EN CU)"
+        }
+      ],
+      "USOS": [
+        {
+          "CodigoCultivo": "0103021400000000",
+          "Cultivo": "Olivo",
+          "CodigoAgente": "8.SYN",
+          "Agente": "Problema sintético",
+          "Dosis_Min": 0.15,
+          "Dosis_Max": 0.5,
+          "Unidad Medida dosis": "%",
+          "Plazo Seguridad": "NP",
+          "Volumen Caldo": "400-1000 l/ha",
+          "Aplicaciones": "Máx. 3",
+          "IntervaloAplicaciones": "7-14 días",
+          "Bbch": "",
+          "CondicionamientoEspecifico": "SOLO FIXTURE: no representa una autorización.",
+          "TipoUsuario": "",
+          "Ambito": "",
+          "SistemaCultivo": "",
+          "MetodoAplicacion": "",
+          "Volumen_Min": 0,
+          "VolumenMax": 0,
+          "Unidades Volumen": ""
+        }
+      ]
+    },
+    {
+      "DATOSPRODUCTO": {
+        "IdProducto": 900002,
+        "Num_Registro": "SYN-00002",
+        "Nombre": "PRODUCTO B DEMO",
+        "Titular": "EMPRESA SINTÉTICA",
+        "Fabricante": "FABRICANTE SINTÉTICO",
+        "Fabrica": "FIXTURE",
+        "Formulado": "FORMULADO SINTÉTICO",
+        "Fecha_Registro": "2020-01-01T00:00:00",
+        "Estado": "Vigente",
+        "Fecha_Caducidad": "",
+        "Fecha_Cancelacion": "",
+        "Fecha_LimiteVenta": "",
+        "Condicionamiento": "SOLO DATOS DE TEST"
+      },
+      "OTRASDENOMINACIONES": [
+        {
+          "Nombre_Origen": "ALIAS SINTÉTICO"
+        }
+      ],
+      "OTROSNOMBRES": [
+        {
+          "Nombre": "PRODUCTO B DEMO"
+        }
+      ],
+      "COMPOSICION": [
+        {
+          "Nombre Sustancia": "OXICLORURO DE COBRE",
+          "NombreUE": "Copper oxychloride",
+          "Concentracion": 50,
+          "DescripcionNota": "% (EXPR. EN CU)"
+        }
+      ],
+      "USOS": [
+        {
+          "CodigoCultivo": "0103021400000000",
+          "Cultivo": "Olivo",
+          "CodigoAgente": "8.SYN",
+          "Agente": "Problema sintético",
+          "Dosis_Min": 0.15,
+          "Dosis_Max": 0.5,
+          "Unidad Medida dosis": "%",
+          "Plazo Seguridad": "NP",
+          "Volumen Caldo": "400-1000 l/ha",
+          "Aplicaciones": "Máx. 3",
+          "IntervaloAplicaciones": "7-14 días",
+          "Bbch": "",
+          "CondicionamientoEspecifico": "SOLO FIXTURE: no representa una autorización.",
+          "TipoUsuario": "",
+          "Ambito": "",
+          "SistemaCultivo": "",
+          "MetodoAplicacion": "",
+          "Volumen_Min": 0,
+          "VolumenMax": 0,
+          "Unidades Volumen": ""
+        }
+      ]
+    }
+  ]
+}

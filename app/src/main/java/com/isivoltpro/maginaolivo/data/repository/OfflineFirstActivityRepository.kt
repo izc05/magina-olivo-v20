@@ -352,63 +352,123 @@ class OfflineFirstActivityRepository(
     }
 
     override suspend fun update(id: UUID, changes: ActivityChanges): AppResult<Unit> {
-        val description = changes.description.trim()
-        if (description.isEmpty()) return AppResult.Failure(AppError.Validation("description", "blank"))
-        validateDateRange(changes.activityDate, changes.activityEndDate)?.let { return it }
-        validateDetail(changes.type, changes.detail)?.let { return it }
-        notNegative("costMinor", changes.costMinor?.toDouble())?.let { return it }
-        // #429: only DRAFT and PLANNED work is editable, and neither carries money; a cost typed
-        // before 1.0 is corrected on its own Gasto, so a null here leaves it exactly as it is.
-        if (changes.costMinor.counts()) return AppResult.Failure(AppError.Validation("costMinor", ActivityCostRules.NOT_DONE_WORK))
-        MachineRules.validateUses(changes.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
-        ReminderRules.validate(changes.planning, changes.reminders)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
+        validateChanges(changes, validateScheduling = true)?.let { return it }
         return mutate(id, "update_activity") { current, now ->
             if (current.status !in EDITABLE) return@mutate conflict("protected_activity")
             if (current.status == ActivityStatus.PLANNED && changes.parcelIds.isEmpty()) {
                 return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
             }
-            if (changes.type == ActivityType.HARVEST_DAY) {
-                val farmId = current.farmId
-                    ?: return@mutate AppResult.Failure(AppError.Validation("farmId", "not_found"))
-                validateHarvestDayContext(
-                    workspaceId = current.workspaceId,
-                    farmId = farmId,
-                    campaignId = current.campaignId,
-                    date = changes.activityDate,
-                    parcelIds = changes.parcelIds,
-                )?.let { return@mutate it }
+            applyChanges(id, current, changes, now, preserveScheduling = false)
+        }.alsoReconcile()
+    }
+
+    /**
+     * #426: a correction is not a reopen. The Activity remains COMPLETED and its old planning /
+     * reminders are historical evidence, so this path never rewrites or reconciles them.
+     */
+    override suspend fun correctCompleted(id: UUID, changes: ActivityChanges): AppResult<Unit> {
+        validateChanges(changes, validateScheduling = false)?.let { return it }
+        return mutate(id, "correct_completed_activity") { current, now ->
+            if (current.status != ActivityStatus.COMPLETED) return@mutate conflict("activity_not_completed")
+            // Current 1.0 invariant: every non-draft Activity has Parcel scope. #425 will relax
+            // this only for explicit whole-Farm types; correction must not create that state early.
+            if (changes.parcelIds.isEmpty()) {
+                return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
             }
-            // #441: a Parcel a Gasto of this work names is not dropped from the work (also when it
-            // becomes «Toda la finca»). Adding Parcels, changing surface, retyping or redating never
-            // touches Gastos.
-            val currentTargets = database.activityDao().listTargets(id)
-            val dropped = currentTargets.map { it.parcelId }.toSet() - changes.parcelIds
-            if (dropped.isNotEmpty() && database.expenseDao().listForActivity(id).any { it.parcelId in dropped }) {
-                return@mutate conflict(ActivityCostRules.PARCEL_HAS_EXPENSES)
+
+            current.campaignId?.let { campaignId ->
+                val campaign = database.campaignDao().findById(campaignId)
+                    ?: return@mutate AppResult.Failure(AppError.Validation("campaignId", "not_found"))
+                if (campaign.metadata.deletedAt != null || campaign.workspaceId != current.workspaceId) {
+                    return@mutate AppResult.Failure(AppError.Validation("campaignId", "context_mismatch"))
+                }
+                if (campaign.status == CampaignStatus.CLOSED) return@mutate conflict("closed_campaign")
             }
-            database.activityDao().upsert(
-                current.copy(
-                    type = changes.type.name,
-                    activityDate = changes.activityDate,
-                    activityEndDate = changes.activityEndDate,
-                    description = description,
-                    notes = changes.notes.normalized(),
-                    metadata = current.metadata.next(now),
-                ),
-            )
-            // #453: the same type keeps what its form never carries; a new type replaces it all.
-            val previous = database.activityDao().findWithTargets(id)?.toDomainDetail()
-            replaceDetail(id, current.workspaceId, ActivityDetailPatch.keepingHidden(previous, changes.detail), now)
-            val areas = changes.parcelAreasM2 ?: currentTargets
-                .filter { it.parcelId in changes.parcelIds }
-                .associate { it.parcelId to it.areaAffectedM2 }
-            replaceTargets(id, changes.parcelIds, areas, now)
-            replaceMachines(id, current.workspaceId, changes.machines)
+
+            val today = database.todayForWorkspace(current.workspaceId, clock)
+            if (changes.activityDate.isAfter(today)) {
+                return@mutate AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
+            }
+            if (changes.activityEndDate?.isAfter(today) == true) {
+                return@mutate AppResult.Failure(AppError.Validation("activityEndDate", "future_completed_work"))
+            }
+
+            applyChanges(id, current, changes, now, preserveScheduling = true)
+        }
+    }
+
+    private fun validateChanges(
+        changes: ActivityChanges,
+        validateScheduling: Boolean,
+    ): AppResult.Failure? {
+        if (changes.description.trim().isEmpty()) return AppResult.Failure(AppError.Validation("description", "blank"))
+        validateDateRange(changes.activityDate, changes.activityEndDate)?.let { return it }
+        validateDetail(changes.type, changes.detail)?.let { return it }
+        notNegative("costMinor", changes.costMinor?.toDouble())?.let { return it }
+        // #429/#426: an Activity edit never writes money; the linked Expense remains authoritative.
+        if (changes.costMinor.counts()) {
+            return AppResult.Failure(AppError.Validation("costMinor", ActivityCostRules.NOT_DONE_WORK))
+        }
+        MachineRules.validateUses(changes.machines)
+            ?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
+        if (validateScheduling) {
+            ReminderRules.validate(changes.planning, changes.reminders)
+                ?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
+        }
+        return null
+    }
+
+    private suspend fun applyChanges(
+        id: UUID,
+        current: ActivityEntity,
+        changes: ActivityChanges,
+        now: Instant,
+        preserveScheduling: Boolean,
+    ): AppResult<Unit> {
+        if (changes.type == ActivityType.HARVEST_DAY) {
+            val farmId = current.farmId
+                ?: return AppResult.Failure(AppError.Validation("farmId", "not_found"))
+            validateHarvestDayContext(
+                workspaceId = current.workspaceId,
+                farmId = farmId,
+                campaignId = current.campaignId,
+                date = changes.activityDate,
+                parcelIds = changes.parcelIds,
+            )?.let { return it }
+        }
+
+        // #441: a Parcel named by a linked Gasto cannot disappear as a side effect of correction.
+        val currentTargets = database.activityDao().listTargets(id)
+        val dropped = currentTargets.map { it.parcelId }.toSet() - changes.parcelIds
+        if (dropped.isNotEmpty() && database.expenseDao().listForActivity(id).any { it.parcelId in dropped }) {
+            return conflict(ActivityCostRules.PARCEL_HAS_EXPENSES)
+        }
+
+        database.activityDao().upsert(
+            current.copy(
+                type = changes.type.name,
+                activityDate = changes.activityDate,
+                activityEndDate = changes.activityEndDate,
+                description = changes.description.trim(),
+                notes = changes.notes.normalized(),
+                metadata = current.metadata.next(now),
+            ),
+        )
+        // #453: same-type corrections keep hidden historical values; retyping replaces the detail.
+        val previous = database.activityDao().findWithTargets(id)?.toDomainDetail()
+        replaceDetail(id, current.workspaceId, ActivityDetailPatch.keepingHidden(previous, changes.detail), now)
+        val areas = changes.parcelAreasM2 ?: currentTargets
+            .filter { it.parcelId in changes.parcelIds }
+            .associate { it.parcelId to it.areaAffectedM2 }
+        replaceTargets(id, changes.parcelIds, areas, now)
+        replaceMachines(id, current.workspaceId, changes.machines)
+
+        if (!preserveScheduling) {
             replacePlanning(id, current.workspaceId, changes.planning, now)
             replaceReminders(id, changes.reminders, now)
-            enqueue(id, OutboxOperation.UPDATE, now)
-            AppResult.Success(Unit)
-        }.alsoReconcile()
+        }
+        database.enqueueCollapsed(idGenerator, SyncEntityType.ACTIVITY, id, OutboxOperation.UPDATE, now)
+        return AppResult.Success(Unit)
     }
 
     override suspend fun plan(id: UUID): AppResult<Unit> =
