@@ -28,7 +28,7 @@ Primer slice #693, auditoría 2026-10-08. Base `main c4617f87`. Fuentes normativ
 
 ## Cobertura restante de #340 (sin casillas aprobadas por intuición)
 
-Esta primera matriz cubre flujos agrupados; aún requiere inventario por subrequisito A1–A23. Pendientes de evidencia adicional: Admin/roles (#327/#322), soporte/feedback/ayuda (#323), contenido/cooperativas/avisos remotos, publicidad y privacidad (#324/#336), mantenimiento seguro/tombstones, telemetría aprobada (#331), exportación/eliminación de cuenta (#320), informes #328 y publicación #334. No se clasifican como implementados o ausentes sin inspección específica.
+Esta primera matriz cubre flujos agrupados; incluye a continuación inventario por subrequisito A1–A23; falta acreditar ejecución por requisito. Pendientes de evidencia adicional: Admin/roles (#327/#322), soporte/feedback/ayuda (#323), contenido/cooperativas/avisos remotos, publicidad y privacidad (#324/#336), mantenimiento seguro/tombstones, telemetría aprobada (#331), exportación/eliminación de cuenta (#320), informes #328 y publicación #334. No se clasifican como implementados o ausentes sin inspección específica.
 
 OCR de Pesadas está fuera de 1.0 (#342/#448); entrada manual + foto opcional. Features 2.0 no entran en esta cola.
 
@@ -48,4 +48,36 @@ Guion físico: crear finca/parcela → registrar trabajo general sin campaña �
 
 ## Decisión actual
 
-**NO-GO para declarar 1.0 terminado.** Motivo: gates Android rojos, Home V3 incompleta, nube/restore y prueba física integral sin evidencia. No se modifica app/** ni se corrigen ramas Android. Próximo slice Codex: completar inventario A1–A23 y auditoría Web V3 conforme #693; Claude recibe el handoff mediante documentación enlazada, sin mensaje automático a otro chat.
+**NO-GO para declarar 1.0 terminado.** Motivo: gates Android rojos, Home V3 incompleta, nube/restore y prueba física integral sin evidencia. No se modifica app/** ni se corrigen ramas Android. Próximo slice Codex: auditoría dirigida A4–A6 y posterior Web V3 conforme #693; Claude recibe el handoff mediante documentación enlazada, sin mensaje automático a otro chat.
+
+## Inventario A1–A23 del alcance #340
+
+Auditoría estática al main c4617f87; evidencia de tests existentes no significa que se hayan ejecutado en esta auditoría. Este inventario completa la cobertura de requisitos, no su implementación. Los enlaces a issues canónicos se resuelven en el repositorio izc05/magina-olivo-v20.
+
+| ID / requisito | Estado y evidencia concreta | Integración / prueba acreditada | Responsable | Pendiente exacto / gate |
+| --- | --- | --- | --- | --- |
+| A1 Android agrícola | Parcial en main: paquetes feature de fincas/parcelas/cuaderno/recogida/gastos/avisos | Flujos en tabla anterior; #680/#689 rojos; #692 PR verde, no integrada | Claude | Recorrido integral + defectos P0; Gate21 y beta física |
+| A2 Cuenta/nube #325/#335 | Pendiente: HelpScreens.kt dice hoy sin cuenta/copia cloud; supabase/ contiene tres familias de servicios externos | Auth/schema/RLS/Storage productivos no acreditados | Claude/backend | Cuenta opcional y aislamiento A/B; Gate22 |
+| A3 Sync/recuperación #330/#321 | Outbox local presente: SyncOutboxDao/Entity, OutboxWriter; motor cloud y restore no acreditados | No ejecución de sync real documentada aquí | Claude/backend | Retries, idempotencia, conflictos, tombstones, adjuntos y segundo móvil; Gate23 |
+| A4 Centro de estado Sync | No acreditado; no equiparar chip Guardado localmente con backup | HelpScreens.kt distingue teléfono/nube | Claude | Estados/pending/conflictos/último éxito y acción real; Gate23 |
+| A5 Compatibilidad upgrades | RoomMigrationTest.kt existe; no prueba nueva de upgrade completo | Existencia del test, no ejecución en este slice | Claude | APK anterior→actual sin desinstalar, datos/outbox/adjuntos intactos y posterior sync; Gates22/23/26 |
+| A6 Recuperación desastre | Backup/restore cloud y rollback de infraestructura no acreditados | Sin restore real nuevo | Backend/propietario | Plan y ensayo en entorno seguro, alcance y RPO/RTO demostrados; Gate22/23 |
+| A7 Seguridad final | Aislamiento local tiene gates parciales; RLS/Storage/sesión/Admin no acreditados | #680 scope falla; no scan completo nuevo | Backend/Claude | RLS A/B, no secrets, logs/token y funciones privilegiadas; Gate22 y26 |
+| A8 Accesibilidad campo | Pruebas Compose y Web presentes; #692 4 UI/14 unitarios pasan | #691 Web verde; no beta física integral | Claude/Codex/propietario | Texto grande/TalkBack/sol/teclado y tamaños; Gate26/27 |
+| A9 Dataset grande | No benchmark integral acreditado; no extrapolar cifras de demo | Falta dataset/timing/RSS versionados | Claude | Arranque/cuaderno/gráficos/PDF/sync con cientos/miles de filas; Gate26 |
+| A10 Degradación externa #332 | weather-forecast/radar/oil-market en main; módulos Home/Catastro presentes | Fallo por proveedor y local-first integral no reejecutados | Claude/backend | Stale visible, cache/retry/kill switch donde aplique, modo avión; Gate26 |
+| A11 Admin #327 | Implementación completa no acreditada; /mi web es DEMO, no Admin | Sin prueba roles/admin server-side | Backend/web | Roles, soporte/contenido/salud/auditoría sin acceso indiscriminado; Gate24 |
+| A12 Cooperativas #333 | Organization local y destino histórico no acreditan ficha oficial/avisos remotos | No prueba targeting/cache/privacidad nueva | Claude/backend | Organización verificada, vínculo, aviso/fallback; Gate24 |
+| A13 Publicidad #337 | Lead/campaña/creatividad/métricas reales no acreditados | DEMO web no constituye publicidad operativa | Backend/web/Claude | MVP municipal revisado/expirable; sin targeting agrícola ni pagos; Gate24C |
+| A14 PDF/reportes #328 | Consulta/gráficos presentes; paquete de reportes completo no identificado en feature actual | Conciliación/PDF offline/compartir no acreditados | Claude/web | ReportSnapshot, finca/parcela/campaña, parcialidad/anonimización; Gate25 |
+| A15 Web #326 | Árbol Web V3 pendiente de consolidación; /mi DEMO; Auth/cloud no conectados | #691 validate/Pages verdes; no Gate591/WEB1 | Codex/backend | V3-A, CI desde main, read-only con Auth tras22/23; Gate591 y WEB1 |
+| A16 Soporte #323 | Help/Profile presentes; ticket con diagnóstico sanitizado no acreditado | Sin envío/ticket probado | Claude/backend/web | Sin cuenta y ticket con cuenta, versión y Admin; Gate24 |
+| A17 Ayuda | HelpScreens.kt integrado; cobertura de todas las materias #340 no auditada completa | No recorrido Perfil→cada ayuda nuevo | Claude/Codex | Matriz ayuda vs altas/pesadas/sync/cambio móvil/PDF/privacidad; Gate26 |
+| A18 Feedback | Flujo Sugerir mejora separado de problema no acreditado | Sin prueba de contacto/consentimiento | Claude/backend | Mensaje/categoría/contacto opcional, sin diagnóstico automático; Gate24 |
+| A19 Mantenimiento | Metadata outbox/adjuntos no acredita cleanup seguro | Idempotencia/gracia/ownership de cleanup no acreditadas | Backend/Claude | Inventario huérfanos/cache/tokens/tombstones/logs; Gates23/24/26 |
+| A20 Privacidad/legal #320/#336/#334 | Ayuda describe almacenamiento local; obligaciones cloud/Store no cerradas | No Data Safety/export/borrado de cuenta probado | Propietario/backend/Claude | SDK/proveedores/retención/privacidad/términos coherentes y borrados separados; Gate22/28 |
+| A21 Telemetría #331 | Proveedor/activación no acreditados | Ninguna métrica real asumida | Propietario/backend | Decidir provider/privacidad antes de activar; no bloquea núcleo si desactivada |
+| A22 QA/beta | Gates de PR parciales, no aceptación global | #684/#692 verdes; #680/#689 rojos; móvil físico integral pendiente | Claude/Codex/propietario | Torture/performance/migración/sync y días en campo; Gates26/27 |
+| A23 Store #334 | Signing/track/rollback/RC no acreditados | No publicación ni APK candidata validados aquí | Propietario/Claude | Firma, assets/legal, tracks, crash/ANR y rollout/rollback; Gate28 |
+
+**Fuera de 1.0:** OCR de Pesadas (#342), edición web completa sin gate adicional, features 2.0 de #340. No se trasladan a blockers de release por decisión de esta matriz.
