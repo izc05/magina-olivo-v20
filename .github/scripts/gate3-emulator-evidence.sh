@@ -10,6 +10,31 @@ RUNNER="androidx.test.runner.AndroidJUnitRunner"
 SCREENSHOT_TEST="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest"
 OFFLINE_ROOM_TESTS="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest,com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest,com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmCoverRepositoryTest,com.isivoltpro.maginaolivo.data.local.AttachmentContractTest,com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest,com.isivoltpro.maginaolivo.data.local.HarvestContractTest,com.isivoltpro.maginaolivo.data.local.DeliveryContractTest,com.isivoltpro.maginaolivo.data.local.MachineryContractTest,com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest"
 
+# This suite is destructive for the DEV application's on-device data: capture_variant
+# calls `pm clear` repeatedly. Restrict it to an explicitly opted-in disposable AVD.
+# Check BEFORE adb install -r (and well before any pm clear).
+assert_disposable_emulator() {
+  if [[ "${GATE3_ALLOW_APP_DATA_RESET:-}" != "1" ]]; then
+    echo "::error title=Gate 3 device safety::Refusing to run: GATE3_ALLOW_APP_DATA_RESET=1 must be set for disposable CI emulators" >&2
+    return 1
+  fi
+
+  local serial qemu_kernel qemu_boot
+  serial="$(adb get-serialno | tr -d '\r')"
+  if [[ ! "$serial" =~ ^emulator-[0-9]+$ ]]; then
+    echo "::error title=Gate 3 device safety::Refusing to touch non-emulator serial: $serial" >&2
+    return 1
+  fi
+  qemu_kernel="$(adb shell getprop ro.kernel.qemu | tr -d '\r')"
+  qemu_boot="$(adb shell getprop ro.boot.qemu | tr -d '\r')"
+  if [[ "$qemu_kernel" != "1" && "$qemu_boot" != "1" ]]; then
+    echo "::error title=Gate 3 device safety::Selected $serial is not identified as a QEMU Android emulator" >&2
+    return 1
+  fi
+  echo "Gate 3: opted-in disposable Android emulator $serial (app DEV data will be cleared)" >&2
+}
+assert_disposable_emulator
+
 APP_APK="$(find app/build/outputs/apk/dev/debug -name '*.apk' | head -n 1)"
 TEST_APK="$(find app/build/outputs/apk/androidTest -name '*.apk' | head -n 1)"
 
