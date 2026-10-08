@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.domain.harvest
 
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
+import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import java.time.LocalTime
 import java.util.UUID
 
@@ -11,7 +12,7 @@ import java.util.UUID
  */
 data class Jornada(val harvest: Harvest, val pesadas: List<Delivery>) {
     val kilosFromPesadas: Boolean get() = pesadas.isNotEmpty()
-    val pesadaGrams: Long get() = pesadas.sumOf { it.netGrams }
+    val pesadaGrams: Long? get() = DeliverySummary.of(pesadas).deliveredGrams
 
     /** Every cooperative or mill that received a Pesada of this day, in weighing order. */
     val destinations: List<String> get() = pesadas.map { it.destinationName }.distinct()

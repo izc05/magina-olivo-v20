@@ -39,7 +39,7 @@ import java.util.UUID
 
 /** #359: weighed kilos, «—» when nothing was weighed (never «0 kg»). */
 internal fun overviewKilos(delivery: DeliverySummary): String =
-    if (delivery.deliveryCount == 0) "—" else Weight.format(delivery.deliveredGrams)
+    if (delivery.deliveryCount == 0) "—" else delivery.deliveredGrams?.let(Weight::format) ?: "No disponible"
 
 /** Weighted yield, «—» without any analysis. */
 internal fun overviewYield(delivery: DeliverySummary): String =
@@ -77,7 +77,10 @@ private fun String.fold(): String =
 
 /** «Análisis sobre el 75 % de los kilos · 2 de 3 fincas con campaña · Sin campaña: Los Llanos». */
 internal fun overviewNote(overview: FarmOverview): String = listOfNotNull(
-    overview.delivery.fatYield?.let { "Análisis sobre el ${overview.yieldCoveragePercent} % de los kilos" },
+    overview.delivery.fatYield?.let {
+        overview.yieldCoveragePercent?.let { coverage -> "Análisis sobre el $coverage % de los kilos" }
+            ?: "Cobertura de análisis no disponible"
+    },
     overview.costs.mapNotNull { total -> total.labourMinor?.let { Money.format(it, total.currency) } }
         .takeIf { it.isNotEmpty() }?.let { "Jornales ${it.joinToString(" · ")}" },
     when (overview.costComplete) {

@@ -216,7 +216,7 @@ class AgriculturalYearContractTest {
         assertEquals(5_000_000L, overview.delivery.deliveredGrams)
         // 1.630 € over 5.000 kg = 0,326 €/kg; recollection 580 € = 0,116 €/kg — #486 exposes the
         // season's ratio in thousandths, so it is asserted exactly, never rounded to the cent.
-        assertEquals(0, BigDecimal("0.326").compareTo(ratio(overview.totalCosts.single().amountMinor!!, overview.delivery.deliveredGrams)))
+        assertEquals(0, BigDecimal("0.326").compareTo(ratio(overview.totalCosts.single().amountMinor!!, requireNotNull(overview.delivery.deliveredGrams))))
         assertEquals(326L, overview.totalCostPerKgMilli)
         assertEquals(116L, overview.costPerKgMilli)
 

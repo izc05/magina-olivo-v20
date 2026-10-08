@@ -134,9 +134,11 @@ internal fun RecollectionActions(notebook: CampaignNotebook, actions: NotebookAc
             Modifier.fillMaxWidth().testTag("notebook-pending-yields"),
         )
     }
-    notebook.legacyUnweighedGrams.takeIf { it > 0 }?.let { legacy ->
+    val legacy = notebook.legacyUnweighedGrams
+    if (legacy == null || legacy > 0) {
         Text(
-            "Además, ${Weight.format(legacy)} registrados sin pesada (histórico)",
+            legacy?.let { "Además, ${Weight.format(it)} registrados sin pesada (histórico)" }
+                ?: "Kilos históricos sin pesada no disponibles",
             style = MaterialTheme.typography.bodySmall,
             color = MoTextSecondary,
             modifier = Modifier.testTag("notebook-legacy-kilos"),
@@ -240,11 +242,13 @@ internal fun SummaryTab(
         MoSectionHeader("Producción")
         CampaignAtAGlance(CampaignDashboard.of(notebook, today), deliveries.deliveredGrams)
         MoKpiMetric("Días de recolección", com.isivoltpro.maginaolivo.feature.harvests.harvestDayCount(notebook.harvests).toString(), Modifier.fillMaxWidth(), icon = MoIcons.Harvest, kind = MoKpiKind.CAMPAIGN)
-        MoKpiMetric("Kg pesados", if (deliveries.deliveryCount == 0) "—" else Weight.format(deliveries.deliveredGrams), Modifier.fillMaxWidth(),
+        MoKpiMetric("Kg pesados", if (deliveries.deliveryCount == 0) "—" else deliveries.deliveredGrams?.let(Weight::format) ?: "No disponible", Modifier.fillMaxWidth(),
             icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS, supportingText = if (deliveries.deliveryCount == 1) "1 pesada" else "${deliveries.deliveryCount} pesadas")
         MoKpiMetric("Rendimiento", deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—", Modifier.fillMaxWidth(),
             icon = MoIcons.Percent, kind = MoKpiKind.YIELD,
-            supportingText = deliveries.fatYield?.let { "Sobre el ${deliveries.coveragePercent(it)} % de los kilos" } ?: "Pendiente de análisis")
+            supportingText = deliveries.fatYield?.let { yield ->
+                deliveries.coveragePercent(yield)?.let { "Sobre el $it % de los kilos" } ?: "Cobertura no disponible"
+            } ?: "Pendiente de análisis")
         MoSectionHeader("Costes de recogida")
         val accounts = runCatching { com.isivoltpro.maginaolivo.feature.harvests.labourAccounts(notebook.campaign.id, notebook.labour, notebook.expenses, payments) }.getOrNull()
         val balances = accounts?.flatMap { it.balances }.orEmpty()
@@ -269,15 +273,17 @@ internal fun SummaryTab(
             Modifier.fillMaxWidth().testTag("notebook-summary-other"), icon = MoIcons.Euro, kind = MoKpiKind.COSTES,
             supportingText = "Combustible, transporte, reparaciones y otros · Ver gastos", onClick = onExpenses)
         com.isivoltpro.maginaolivo.feature.harvests.RecollectionTotalCards(ledger, false,
-            deliveries.deliveredGrams.takeIf { it > 0 }?.let(Weight::format),
+            deliveries.deliveredGrams?.takeIf { it > 0 }?.let(Weight::format),
             com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(notebook.labour, notebook.equipment, notebook.expenses))
         ParcelYields(notebook)
         // Phase 19G: charts and year-over-year, all derived from the same records.
         CampaignCharts(CampaignSeries.of(notebook))
-        notebook.legacyUnweighedGrams.takeIf { it > 0 }?.let { legacy ->
+        val legacy = notebook.legacyUnweighedGrams
+        if (legacy == null || legacy > 0) {
             // CR-010 (A2): the charts are drawn from Pesadas; the legacy kilos are named, not hidden.
             Text(
-                "Las gráficas solo incluyen pesadas. ${Weight.format(legacy)} registrados sin pesada (histórico) no aparecen en ellas.",
+                legacy?.let { "Las gráficas solo incluyen pesadas. ${Weight.format(it)} registrados sin pesada (histórico) no aparecen en ellas." }
+                    ?: "Las gráficas solo incluyen pesadas. Kilos históricos sin pesada no disponibles.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MoTextSecondary,
                 modifier = Modifier.testTag("notebook-chart-legacy-note"),
@@ -312,7 +318,7 @@ internal fun SummaryTab(
  * close date and the ledger's cost with cost per kilo. Each unknown shows «—», never 0.
  */
 @Composable
-private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long) {
+private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long?) {
     val date = { value: LocalDate? -> value?.let { DATE_FORMAT.format(it) } ?: "—" }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         MoKpiMetric(
@@ -372,9 +378,9 @@ private fun ParcelYields(notebook: CampaignNotebook) {
             Text(parcel.fatYield?.let { Percent.format(it.hundredths) } ?: "—", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
         }
     }
-    if (notebook.deliverySummary.unallocatedGrams > 0) {
+    notebook.deliverySummary.unallocatedGrams?.takeIf { it > 0 }?.let { unallocated ->
         Text(
-            "${Weight.format(notebook.deliverySummary.unallocatedGrams)} sin reparto por parcela cuentan solo en el total de la campaña.",
+            "${Weight.format(unallocated)} sin reparto por parcela cuentan solo en el total de la campaña.",
             style = MaterialTheme.typography.bodySmall,
             color = MoTextSecondary,
         )

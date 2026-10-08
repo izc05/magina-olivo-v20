@@ -7,6 +7,8 @@ import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger
 import com.isivoltpro.maginaolivo.domain.farm.Farm
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 import java.util.UUID
 
@@ -46,7 +48,7 @@ data class FarmSeasonFigures(
     /** #616: historical rows can belong to a Farm no longer operational today. */
     val archived: Boolean = false,
 ) {
-    val yieldCoveragePercent: Int get() = delivery.coveragePercent(delivery.fatYield)
+    val yieldCoveragePercent: Int? get() = delivery.coveragePercent(delivery.fatYield)
     val costPerKgMilli: Long? get() = costPerKg(costs, delivery)
 }
 
@@ -73,7 +75,7 @@ data class FarmOverview(
      */
     val costComplete: Boolean? = true,
 ) {
-    val yieldCoveragePercent: Int get() = delivery.coveragePercent(delivery.fatYield)
+    val yieldCoveragePercent: Int? get() = delivery.coveragePercent(delivery.fatYield)
     val costPerKgMilli: Long? get() = costPerKg(costs, delivery)
 
     /** Recollection plus general costs, one total per currency, nothing converted. */
@@ -87,9 +89,17 @@ data class FarmOverview(
     val totalCostPerKgMilli: Long? get() = costPerKg(totalCosts, delivery)
 
     /** A Farm's share of the season's weighed kilos, in whole percent; null without kilos. */
-    fun sharePercent(figures: FarmSeasonFigures): Int? =
-        if (delivery.deliveredGrams <= 0) null
-        else Math.round(figures.delivery.deliveredGrams * 100.0 / delivery.deliveredGrams).toInt()
+    fun sharePercent(figures: FarmSeasonFigures): Int? {
+        val total = delivery.deliveredGrams ?: return null
+        val part = figures.delivery.deliveredGrams ?: return null
+        if (total <= 0 || part < 0) return null
+        return runCatching {
+            BigDecimal.valueOf(part)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(total), 0, RoundingMode.HALF_UP)
+                .intValueExact()
+        }.getOrNull()
+    }
 
     companion object {
         fun of(
@@ -121,7 +131,7 @@ data class FarmOverview(
             val weighed = deliveries.filter { it.campaignId in ids }
             return FarmOverview(
                 season = season,
-                farms = figures.sortedByDescending { it.delivery.deliveredGrams },
+                farms = figures.sortedWith(compareByDescending<FarmSeasonFigures> { it.delivery.deliveredGrams ?: Long.MIN_VALUE }),
                 // Archived Farms are historical participants, not missing current work.
                 farmsWithoutCampaign = farms.filter { farm ->
                     farm.archivedAt == null && figures.none { it.farmId == farm.id }
@@ -190,5 +200,6 @@ private fun sum(values: List<Long?>): Long? = runCatching {
 private fun costPerKg(costs: List<CurrencyTotal>, delivery: DeliverySummary): Long? {
     val total = costs.singleOrNull() ?: return null
     val cost = total.amountMinor ?: return null
-    return com.isivoltpro.maginaolivo.domain.expense.CostPerKg.milli(cost, total.currency, delivery.deliveredGrams)
+    val grams = delivery.deliveredGrams ?: return null
+    return com.isivoltpro.maginaolivo.domain.expense.CostPerKg.milli(cost, total.currency, grams)
 }

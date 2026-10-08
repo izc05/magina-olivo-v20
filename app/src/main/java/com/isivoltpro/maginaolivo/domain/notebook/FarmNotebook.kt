@@ -88,7 +88,9 @@ data class FarmNotebook(
         if (own.isEmpty()) return null
         val summary = DeliverySummary.of(own)
         val fat = summary.fatYield ?: return "rend. pendiente"
-        return "rend. ${Percent.format(fat.hundredths)}" + if (fat.analysedGrams < summary.deliveredGrams) " (parcial)" else ""
+        val delivered = summary.deliveredGrams
+            ?: return "rend. ${Percent.format(fat.hundredths)} (cobertura no disponible)"
+        return "rend. ${Percent.format(fat.hundredths)}" + if (fat.analysedGrams < delivered) " (parcial)" else ""
     }
 
     companion object {

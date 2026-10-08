@@ -163,7 +163,10 @@ class HarvestContractTest {
             mapOf(east to 500_000L, north to 3_000_000L, south to 2_000_000L),
             summary.parcels.associate { it.parcelId to it.exactGrams },
         )
-        assertEquals(summary.totalGrams, summary.parcels.sumOf { it.exactGrams } + summary.unallocatedGrams)
+        assertEquals(
+            requireNotNull(summary.totalGrams),
+            summary.parcels.sumOf { requireNotNull(it.exactGrams) } + requireNotNull(summary.unallocatedGrams),
+        )
     }
 
     /** #458 (hallazgo 3): editing a day keeps the Parcel rows it had and their recorded names. */
