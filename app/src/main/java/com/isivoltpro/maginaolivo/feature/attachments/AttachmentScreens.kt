@@ -106,6 +106,7 @@ fun AttachmentsSection(
     title: String = "Documentos y fotos",
 ) {
     val context = LocalContext.current
+    val labels = attachmentLabels(state.attachments, ZoneId.systemDefault())
     var chooserVisible by rememberSaveable { mutableStateOf(false) }
     var pendingCapture by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingRemoval by rememberSaveable { mutableStateOf<String?>(null) }
@@ -139,6 +140,7 @@ fun AttachmentsSection(
         else -> state.attachments.forEach { attachment ->
             AttachmentRow(
                 attachment = attachment,
+                displayLabel = labels.getValue(attachment.id),
                 onOpen = {
                     if (!openAttachment(context, attachment)) {
                         onProblem("No hay ninguna aplicación para abrir este archivo")
@@ -202,7 +204,7 @@ fun AttachmentsSection(
         ModalBottomSheet(onDismissRequest = { pendingRemoval = null }) {
             MoConfirmationSheet(
                 title = "Eliminar adjunto",
-                body = "Se quitará «${removal.displayName}» de este dispositivo. No se puede deshacer.",
+                body = "Se quitará «${labels.getValue(removal.id)}» de este dispositivo. No se puede deshacer.",
                 confirmText = "Eliminar",
                 onConfirm = {
                     pendingRemoval = null
@@ -219,6 +221,7 @@ fun AttachmentsSection(
 @Composable
 private fun AttachmentRow(
     attachment: Attachment,
+    displayLabel: String,
     onOpen: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -232,10 +235,10 @@ private fun AttachmentRow(
         horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AttachmentPreview(attachment)
+        AttachmentPreview(attachment, displayLabel)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
             Text(
-                attachment.displayName,
+                displayLabel,
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -249,7 +252,7 @@ private fun AttachmentRow(
 }
 
 @Composable
-private fun AttachmentPreview(attachment: Attachment) {
+private fun AttachmentPreview(attachment: Attachment, displayLabel: String) {
     val model = attachment.thumbnailUri
         ?: attachment.localUri.takeIf { attachment.kind == AttachmentKind.PHOTO && attachment.isAvailableLocally }
     Box(
@@ -267,7 +270,7 @@ private fun AttachmentPreview(attachment: Attachment) {
         if (model != null) {
             AsyncImage(
                 model = model,
-                contentDescription = "Vista previa de ${attachment.displayName}",
+                contentDescription = "Vista previa de $displayLabel",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
