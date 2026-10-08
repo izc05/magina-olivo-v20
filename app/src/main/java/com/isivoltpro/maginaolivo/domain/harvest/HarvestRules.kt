@@ -66,9 +66,21 @@ data class Harvest(
      */
     val automatic: Boolean = false,
 ) {
-    val allocatedGrams: Long get() = shares.sumOf { if (it.allocation == HarvestAllocation.EXACT) it.weightGrams ?: 0 else 0 }
+    val allocatedGrams: Long?
+        get() = checkedNonNegativeSum(
+            shares.filter { it.allocation == HarvestAllocation.EXACT }.mapNotNull { it.weightGrams },
+        )
 
-    val unallocatedGrams: Long get() = totalGrams - allocatedGrams
+    val unallocatedGrams: Long?
+        get() {
+            val allocated = allocatedGrams ?: return null
+            if (totalGrams < 0) return null
+            return try {
+                Math.subtractExact(totalGrams, allocated).takeIf { it >= 0 }
+            } catch (_: ArithmeticException) {
+                null
+            }
+        }
 
     /**
      * Gate 20: a Jornada opened before its first Pesada. Its stored 0 is "not weighed yet",
@@ -129,10 +141,32 @@ object HarvestRules {
 data class ParcelHarvestTotal(
     val parcelId: UUID,
     val parcelName: String,
-    val exactGrams: Long,
+    val exactGrams: Long?,
     /** The Parcel also took part in Harvests whose split is unknown. */
     val sharesUnallocated: Boolean,
 )
+
+private fun checkedNonNegativeSum(values: Iterable<Long>): Long? {
+    var total = 0L
+    for (value in values) {
+        if (value < 0) return null
+        total = try {
+            Math.addExact(total, value)
+        } catch (_: ArithmeticException) {
+            return null
+        }
+    }
+    return total
+}
+
+private fun checkedAdd(current: Long?, value: Long): Long? {
+    if (current == null || value < 0) return null
+    return try {
+        Math.addExact(current, value)
+    } catch (_: ArithmeticException) {
+        null
+    }
+}
 
 /**
  * Truthful totals: the harvested kilos, the part known per Parcel, and the part that is
@@ -141,8 +175,8 @@ data class ParcelHarvestTotal(
  */
 data class HarvestSummary(
     val harvestCount: Int,
-    val totalGrams: Long,
-    val unallocatedGrams: Long,
+    val totalGrams: Long?,
+    val unallocatedGrams: Long?,
     val parcels: List<ParcelHarvestTotal>,
     /** Jornadas with kilos; the rest await their first Pesada and add no kilos. */
     val weighedCount: Int = harvestCount,
@@ -154,17 +188,24 @@ data class HarvestSummary(
             weighed.forEach { harvest ->
                 harvest.shares.forEach { share ->
                     val current = byParcel[share.parcelId]
-                        ?: ParcelHarvestTotal(share.parcelId, share.parcelName, 0, false)
+                        ?: ParcelHarvestTotal(share.parcelId, share.parcelName, 0L, false)
                     byParcel[share.parcelId] = when (share.allocation) {
-                        HarvestAllocation.EXACT -> current.copy(exactGrams = current.exactGrams + (share.weightGrams ?: 0))
+                        HarvestAllocation.EXACT -> current.copy(
+                            exactGrams = checkedAdd(current.exactGrams, share.weightGrams ?: 0L),
+                        )
                         HarvestAllocation.UNALLOCATED -> current.copy(sharesUnallocated = true)
                     }
                 }
             }
+            val unallocated = weighed.map { it.unallocatedGrams }
             return HarvestSummary(
                 harvestCount = harvests.size,
-                totalGrams = weighed.sumOf { it.totalGrams },
-                unallocatedGrams = weighed.sumOf { it.unallocatedGrams },
+                totalGrams = checkedNonNegativeSum(weighed.map { it.totalGrams }),
+                unallocatedGrams = if (unallocated.any { it == null }) {
+                    null
+                } else {
+                    checkedNonNegativeSum(unallocated.filterNotNull())
+                },
                 parcels = byParcel.values.sortedBy { it.parcelName.lowercase() },
                 weighedCount = weighed.size,
             )

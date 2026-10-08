@@ -180,9 +180,13 @@ val CampaignNotebook.costs: NotebookCosts
 val CampaignNotebook.pendingDeliveryGrams: Long?
     get() {
         if (harvestSummary.weighedCount == 0) return null
-        val picked = harvestSummary.totalGrams
-        val delivered = deliverySummary.deliveredGrams
-        return (picked - delivered).takeIf { it >= 0 }
+        val picked = harvestSummary.totalGrams ?: return null
+        val delivered = deliverySummary.deliveredGrams ?: return null
+        return try {
+            Math.subtractExact(picked, delivered).takeIf { it >= 0 }
+        } catch (_: ArithmeticException) {
+            null
+        }
     }
 
 /**
@@ -191,9 +195,18 @@ val CampaignNotebook.pendingDeliveryGrams: Long?
  * (histórico)» — never added to that total, never dropped. A Jornada with Pesadas counts only
  * through them, and one still awaiting its first Pesada has no kilos at all.
  */
-fun legacyUnweighedGrams(harvests: List<Harvest>, deliveries: List<Delivery>): Long {
+fun legacyUnweighedGrams(harvests: List<Harvest>, deliveries: List<Delivery>): Long? {
     val linked = deliveries.mapNotNullTo(HashSet()) { it.harvestId }
-    return harvests.filter { it.id !in linked && !it.automatic && !it.awaitingPesadas }.sumOf { it.totalGrams }
+    var total = 0L
+    for (harvest in harvests.filter { it.id !in linked && !it.automatic && !it.awaitingPesadas }) {
+        if (harvest.totalGrams < 0) return null
+        total = try {
+            Math.addExact(total, harvest.totalGrams)
+        } catch (_: ArithmeticException) {
+            return null
+        }
+    }
+    return total
 }
 
-val CampaignNotebook.legacyUnweighedGrams: Long get() = legacyUnweighedGrams(harvests, deliveries)
+val CampaignNotebook.legacyUnweighedGrams: Long? get() = legacyUnweighedGrams(harvests, deliveries)

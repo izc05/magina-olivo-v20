@@ -9,6 +9,14 @@ import org.junit.Test
 
 class HomeUiStateTest {
 
+    @Test
+    fun campaignDistinguishesMissingPesadasFromAnUnknownTotal() {
+        val empty = HomeCampaign("Campaña", "Finca", null, null, deliveryCount = 0)
+        assertEquals("Aún no hay pesadas", empty.deliverySubtitle)
+        assertEquals("Kilos no disponibles", empty.copy(deliveryCount = 2).deliverySubtitle)
+        assertEquals("Pesado 0 kg", empty.copy(deliveryCount = 1, deliveredGrams = 0L).deliverySubtitle)
+    }
+
     private val workspace = UUID.randomUUID()
 
     private fun farm(parcels: Long, areaM2: Double?) =

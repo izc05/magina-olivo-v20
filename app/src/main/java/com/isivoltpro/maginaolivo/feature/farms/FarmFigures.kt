@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
+import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
@@ -25,11 +26,10 @@ internal fun oliveTreesLabel(farms: List<Farm>): String {
  * Pesada kilos of each Farm's running Campaign, only for Farms that have one. A Farm with a
  * running Campaign and no Pesadas maps to 0 («Sin pesadas»); a Farm without one is absent.
  */
-internal fun runningCampaignKilos(contexts: List<HarvestContext>, deliveries: List<Delivery>): Map<UUID, Long> =
+internal fun runningCampaignKilos(contexts: List<HarvestContext>, deliveries: List<Delivery>): Map<UUID, Long?> =
     contexts.associate { context ->
-        context.farmId to deliveries
-            .filter { it.farmId == context.farmId && it.campaignId == context.campaignId }
-            .sumOf { it.netGrams }
+        val own = deliveries.filter { it.farmId == context.farmId && it.campaignId == context.campaignId }
+        context.farmId to if (own.isEmpty()) 0L else DeliverySummary.of(own).deliveredGrams
     }
 
 /** The card's «Kg campaña»: weighed kilos, «Sin pesadas», or «—» without a running Campaign. */

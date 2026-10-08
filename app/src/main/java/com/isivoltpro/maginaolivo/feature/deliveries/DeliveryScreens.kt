@@ -489,7 +489,7 @@ private fun CampaignDeliveriesCard(campaign: CampaignDeliveries) {
                 color = MoOliveDark,
             )
             Text(
-                Weight.format(summary.deliveredGrams),
+                summary.deliveredGrams?.let(Weight::format) ?: "No disponible",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MoOlivePrimary,
                 modifier = Modifier.testTag("campaign-delivered-total"),
@@ -511,10 +511,12 @@ private fun CampaignDeliveriesCard(campaign: CampaignDeliveries) {
 }
 
 @Composable
-private fun YieldLine(label: String, hundredths: Int?, coverage: Int, tag: String) {
+private fun YieldLine(label: String, hundredths: Int?, coverage: Int?, tag: String) {
     Text(
         if (hundredths == null) {
             "$label: sin análisis todavía"
+        } else if (coverage == null) {
+            "$label: ${Percent.format(hundredths)} ponderado · cobertura no disponible"
         } else {
             "$label: ${Percent.format(hundredths)} ponderado · con análisis el $coverage % de los kilos"
         },
@@ -1089,13 +1091,21 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
             )
         }
     }
-    if (delivery.unallocatedGrams > 0) {
-        Text(
-            "Sin repartir entre parcelas: ${Weight.format(delivery.unallocatedGrams)}",
+    when (val unallocated = delivery.unallocatedGrams) {
+        null -> Text(
+            "Sin repartir entre parcelas: No disponible",
             style = MaterialTheme.typography.bodyMedium,
             color = MoTextSecondary,
             modifier = Modifier.testTag("delivery-unallocated"),
         )
+        else -> if (unallocated > 0) {
+            Text(
+                "Sin repartir entre parcelas: ${Weight.format(unallocated)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("delivery-unallocated"),
+            )
+        }
     }
     delivery.notes?.let { DetailValue("Notas", it) }
 }

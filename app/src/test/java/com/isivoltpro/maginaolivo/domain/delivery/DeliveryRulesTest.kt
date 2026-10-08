@@ -112,6 +112,23 @@ class DeliveryRulesTest {
     }
 
     @Test
+    fun overflowingHistoricalTotalsBecomeUnknownNeverNegative() {
+        val summary = DeliverySummary.of(
+            listOf(
+                delivery(Long.MAX_VALUE, fat = null, industrial = null),
+                delivery(1, fat = null, industrial = null),
+            ),
+        )
+        assertNull(summary.deliveredGrams)
+        assertNull(summary.unallocatedGrams)
+
+        val hugeAnalysed = DeliverySummary.of(
+            listOf(delivery(Long.MAX_VALUE, fat = 2_000, industrial = null)),
+        )
+        assertEquals(100, hugeAnalysed.coveragePercent(hugeAnalysed.fatYield))
+    }
+
+    @Test
     fun withoutAnyAnalysisThereIsNoYieldNotAZeroYield() {
         val summary = DeliverySummary.of(listOf(delivery(1_000_000, fat = null, industrial = null)))
         assertNull(summary.fatYield)
@@ -135,6 +152,11 @@ class DeliveryRulesTest {
             ),
         )
         assertEquals(850_000L, delivery.unallocatedGrams)
+
+        val corrupt = delivery(1, null, null).copy(
+            shares = listOf(DeliveryShare(north, "Norte", HarvestAllocation.EXACT, Long.MAX_VALUE)),
+        )
+        assertNull(corrupt.unallocatedGrams)
     }
 
     private fun delivery(net: Long, fat: Int?, industrial: Int?): Delivery {

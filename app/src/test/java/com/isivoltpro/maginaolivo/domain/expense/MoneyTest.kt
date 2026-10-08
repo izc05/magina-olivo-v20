@@ -88,4 +88,32 @@ class MoneyTest {
         assertEquals(2, summary.postedCount)
         assertEquals(1, summary.draftCount)
     }
+
+    /** #500: a ledger never turns an overflow into negative money; the total is simply unknown. */
+    @Test
+    fun anOverflowingSummaryIsUnknownNeverNegative() {
+        val base = Expense(
+            id = java.util.UUID.randomUUID(),
+            workspaceId = java.util.UUID.randomUUID(),
+            expenseDate = java.time.LocalDate.parse("2026-03-10"),
+            concept = "Importado",
+            category = ExpenseCategory.PRODUCTS,
+            amountMinor = Long.MAX_VALUE - 10,
+            currency = "EUR",
+            status = ExpenseStatus.POSTED,
+            origin = ExpenseOrigin.MANUAL,
+        )
+        val summary = ExpenseSummary.of(
+            listOf(
+                base,
+                base.copy(id = java.util.UUID.randomUUID(), amountMinor = 100),
+                base.copy(id = java.util.UUID.randomUUID(), amountMinor = 2_000, category = ExpenseCategory.FUEL),
+            ),
+            "EUR",
+        )
+        assertNull(summary.totalMinor)
+        assertNull(summary.byCategory.getValue(ExpenseCategory.PRODUCTS))
+        assertEquals(2_000L, summary.byCategory.getValue(ExpenseCategory.FUEL))
+        assertEquals(3, summary.postedCount)
+    }
 }

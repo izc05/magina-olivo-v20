@@ -71,7 +71,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.AgronomicPersonEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryEquipmentInspectionEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryEquipmentProfileEntity
 
-private const val DATABASE_VERSION = 24
+private const val DATABASE_VERSION = 25
 
 @Database(
     entities = [

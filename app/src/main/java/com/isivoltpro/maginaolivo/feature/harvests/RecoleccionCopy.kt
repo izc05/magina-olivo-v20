@@ -30,11 +30,15 @@ internal fun harvestRowTitle(harvest: Harvest): String {
 }
 
 /** A Farm/Campaign card's headline: its weighed kilos, or that nothing is weighed yet. */
-internal fun campaignHarvestHeadline(summary: HarvestSummary): String =
-    if (summary.weighedCount == 0) NO_PESADAS_YET else Weight.format(summary.totalGrams)
+internal fun campaignHarvestHeadline(summary: HarvestSummary): String = when {
+    summary.weighedCount == 0 -> NO_PESADAS_YET
+    summary.totalGrams == null -> "Kilos no disponibles"
+    else -> Weight.format(summary.totalGrams)
+}
 
 /** A Parcel's kilos on the card: exact, exact plus an unsplit part, or none assigned. */
 internal fun parcelHarvestText(parcel: ParcelHarvestTotal): String = when {
+    parcel.exactGrams == null -> "Kg no disponibles"
     parcel.exactGrams > 0 && parcel.sharesUnallocated -> "${Weight.format(parcel.exactGrams)} + parte sin repartir"
     parcel.exactGrams > 0 -> Weight.format(parcel.exactGrams)
     else -> "Sin kg asignados"
@@ -42,10 +46,15 @@ internal fun parcelHarvestText(parcel: ParcelHarvestTotal): String = when {
 
 /** «3.150 kg pendientes de repartir entre 2 parcelas», or null when everything is split. */
 internal fun unallocatedLine(summary: HarvestSummary): String? {
-    if (summary.unallocatedGrams <= 0) return null
+    val unallocated = summary.unallocatedGrams ?: return if (summary.weighedCount > 0) {
+        "Kilos pendientes de repartir no disponibles"
+    } else {
+        null
+    }
+    if (unallocated <= 0) return null
     val parcels = summary.parcels.count { it.sharesUnallocated }
     val among = if (parcels > 1) " entre $parcels parcelas" else ""
-    return "${Weight.format(summary.unallocatedGrams)} pendientes de repartir$among"
+    return "${Weight.format(unallocated)} pendientes de repartir$among"
 }
 
 internal const val NO_PESADAS_YET = "Sin pesadas todavía"

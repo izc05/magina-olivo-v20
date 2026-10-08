@@ -93,7 +93,7 @@ class CampaignAnalyticsTest {
         val rows = CampaignSeries.of(notebook).cooperatives
         assertEquals(3, rows.size)
         assertEquals(3_000_000L, rows.single { it.name == "S.C.A. San Isidro" }.summary.deliveredGrams)
-        assertEquals(listOf(3_000_000L, 4_000_000L), rows.filter { it.name == "San Isidro" }.map { it.summary.deliveredGrams }.sorted())
+        assertEquals(listOf(3_000_000L, 4_000_000L), rows.filter { it.name == "San Isidro" }.mapNotNull { it.summary.deliveredGrams }.sorted())
     }
 
     @Test
@@ -189,6 +189,46 @@ class CampaignAnalyticsTest {
         assertEquals("EUR", history.costCurrency)
         assertNull(history.points.first().costPerKgMilli)
         assertEquals(listOf("2025/26"), history.otherCurrencyCampaigns)
+    }
+
+    @Test
+    fun overflowingHistoricalSeriesStayUnknownInsteadOfWrappingNegative() {
+        val notebook = CampaignNotebook.project(
+            current,
+            emptyList(),
+            listOf(
+                harvest(current, Long.MAX_VALUE, day(24)),
+                harvest(current, 1, day(25)),
+            ),
+            listOf(
+                delivery(current, Long.MAX_VALUE, day(24), "Coop", null),
+                delivery(current, 1, day(25), "Coop", null),
+            ),
+            emptyList(),
+        )
+
+        val series = CampaignSeries.of(notebook)
+        assertNull(series.deliveredGrams)
+        assertNull(series.harvestedGrams)
+        assertEquals(Long.MAX_VALUE, series.days.first().cumulativeDeliveredGrams)
+        assertNull(series.days.last().cumulativeDeliveredGrams)
+        assertNull(CampaignComparison.of(listOf(notebook)).single().deliveredGrams)
+    }
+
+    @Test
+    fun anOverflowingDayKeepsItsPesadasAndKnownAnalysis() {
+        val notebook = CampaignNotebook.project(
+            current, emptyList(), emptyList(),
+            listOf(
+                delivery(current, Long.MAX_VALUE, day(24), "Coop", null),
+                delivery(current, 1, day(24), "Coop", 2_000),
+            ),
+            emptyList(),
+        )
+        val point = CampaignSeries.of(notebook).days.single()
+        assertNull(point.deliveredGrams)
+        assertEquals(2, point.deliveryCount)
+        assertEquals(2_000, requireNotNull(point.fatYield).hundredths)
     }
 
     private fun campaign(name: String, start: LocalDate, status: CampaignStatus) = Campaign(
