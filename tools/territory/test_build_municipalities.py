@@ -83,7 +83,12 @@ class MunicipalitySnapshotTests(unittest.TestCase):
             self.assertEqual(passed.returncode, 0, passed.stderr)
             data = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual([m["code"] for m in data["municipalities"]], ["23009", "23092"])
+            self.assertEqual(len(data["sourceSha256"]), 64)
             output.unlink()
+            mismatch = subprocess.run(cmd + ["--source-sha256", "0" * 64], capture_output=True, text=True)
+            self.assertNotEqual(mismatch.returncode, 0)
+            self.assertIn("SHA256 mismatch", mismatch.stderr)
+            self.assertFalse(output.exists())
             cmd[-1] = "3"
             rejected = subprocess.run(cmd, capture_output=True, text=True)
             self.assertNotEqual(rejected.returncode, 0)
