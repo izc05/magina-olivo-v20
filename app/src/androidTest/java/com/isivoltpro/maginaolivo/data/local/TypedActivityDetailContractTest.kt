@@ -118,6 +118,66 @@ class TypedActivityDetailContractTest {
     }
 
     @Test
+    fun phytosanitaryKeepsCueV25ReferencesAndRegulatorySnapshot() = runBlocking {
+        val operatorId = UUID.fromString("40000000-0000-0000-0000-0000000000e1")
+        val machineId = UUID.fromString("50000000-0000-0000-0000-0000000000e1")
+        val providerId = UUID.fromString("60000000-0000-0000-0000-0000000000e1")
+        val fetchedAt = Instant.parse("2026-10-07T12:00:00Z")
+        val detail = ActivityDetail.Phytosanitary(
+            productName = "Cobre 50%",
+            activeSubstance = "Oxicloruro de cobre",
+            doseValue = 2.0,
+            doseUnit = "kg/ha",
+            reason = "Repilo",
+            equipmentText = "Atomizador arrastrado",
+            operatorPersonId = operatorId,
+            applicationMachineId = machineId,
+            serviceProviderOrganizationId = providerId,
+            productRegistrationNumber = "ES-12345",
+            productSource = "MAPA_REGFI",
+            productSourceVersion = "2026-W41",
+            productFetchedAt = fetchedAt,
+            authorizationContextSnapshot = """{"crop":"olivo","use":"repilo"}""",
+            pestProblemCode = "REPILO",
+            efficacyCode = "GOOD",
+            treatmentObservations = "Sin deriva visible",
+        )
+        val stored = roundTrip(ActivityType.PHYTOSANITARY, detail)
+        assertEquals(detail, stored.detail)
+        val row = db.activityDao().findWithTargets(stored.id)!!.phytosanitary!!
+        assertEquals(operatorId, row.operatorPersonId)
+        assertEquals(machineId, row.applicationMachineId)
+        assertEquals(providerId, row.serviceProviderOrganizationId)
+        assertEquals("ES-12345", row.productRegistrationNumber)
+        assertEquals("MAPA_REGFI", row.productSource)
+        assertEquals("2026-W41", row.productSourceVersion)
+        assertEquals(fetchedAt, row.productFetchedAt)
+        assertEquals("""{"crop":"olivo","use":"repilo"}""", row.authorizationContextSnapshot)
+        assertEquals("REPILO", row.pestProblemCode)
+        assertEquals("GOOD", row.efficacyCode)
+        assertEquals("Sin deriva visible", row.treatmentObservations)
+    }
+
+    @Test
+    fun phytosanitaryRejectsApplicatorFromAnotherWorkspace() = runBlocking {
+        val foreignOperator = UUID.fromString("40000000-0000-0000-0000-0000000000ff")
+        val result = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento con referencia ajena",
+                parcelIds = setOf(parcelA),
+                detail = ActivityDetail.Phytosanitary(
+                    productName = "Cobre 50%",
+                    operatorPersonId = foreignOperator,
+                ),
+            ),
+        )
+        assertValidation("operatorPersonId", result)
+    }
+
+    @Test
     fun soilWorkKeepsItsWorkTypeAndMethod() = runBlocking {
         val detail = ActivityDetail.SoilWork("Desbroce", "Mecánico")
         assertEquals(detail, roundTrip(ActivityType.SOIL_WORK, detail).detail)
@@ -610,6 +670,32 @@ class TypedActivityDetailContractTest {
         )
         db.parcelDao().upsertMembership(
             FarmParcelMembershipEntity(UUID.randomUUID(), workspaceId, farmId, parcelB, now, metadata = meta),
+        )
+
+        val sql = db.openHelper.writableDatabase
+        sql.execSQL(
+            "INSERT INTO agronomic_people (id, workspace_id, display_name, is_advisor, source, status, created_at, updated_at, version, sync_status) " +
+                "VALUES ('40000000-0000-0000-0000-0000000000e1','10000000-0000-0000-0000-0000000000e1','Juan Aplicador',0,'MANUAL','ACTIVE',1000,1000,1,'LOCAL_ONLY')",
+        )
+        sql.execSQL(
+            "INSERT INTO machines (id, workspace_id, name, category, status, created_at, updated_at, version, sync_status) " +
+                "VALUES ('50000000-0000-0000-0000-0000000000e1','10000000-0000-0000-0000-0000000000e1','Atomizador','ATOMIZER','ACTIVE',1000,1000,1,'LOCAL_ONLY')",
+        )
+        sql.execSQL(
+            "INSERT INTO agricultural_organizations (id, workspace_id, name, created_at, updated_at, version, sync_status) " +
+                "VALUES ('60000000-0000-0000-0000-0000000000e1','10000000-0000-0000-0000-0000000000e1','Tratamientos Sierra',1000,1000,1,'LOCAL_ONLY')",
+        )
+        sql.execSQL(
+            "INSERT INTO organization_roles (organization_id, role) " +
+                "VALUES ('60000000-0000-0000-0000-0000000000e1','SERVICE_PROVIDER')",
+        )
+        sql.execSQL(
+            "INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) " +
+                "VALUES ('10000000-0000-0000-0000-0000000000ff','Otro olivar','70000000-0000-0000-0000-0000000000ff','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')",
+        )
+        sql.execSQL(
+            "INSERT INTO agronomic_people (id, workspace_id, display_name, is_advisor, source, status, created_at, updated_at, version, sync_status) " +
+                "VALUES ('40000000-0000-0000-0000-0000000000ff','10000000-0000-0000-0000-0000000000ff','Aplicador ajeno',0,'MANUAL','ACTIVE',1000,1000,1,'LOCAL_ONLY')",
         )
     }
 

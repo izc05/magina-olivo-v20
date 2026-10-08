@@ -308,6 +308,7 @@ class OfflineFirstActivityRepository(
                         return@safely AppResult.Failure(AppError.Validation("campaignId", "context_mismatch"))
                     }
                 }
+                validatePhytosanitaryReferences(farm.workspaceId, command.detail)?.let { return@safely it }
                 val status = when {
                     command.asDraft -> ActivityStatus.DRAFT
                     // "Registrar hoy" records work already done (a date ahead was refused
@@ -425,6 +426,7 @@ class OfflineFirstActivityRepository(
         now: Instant,
         preserveScheduling: Boolean,
     ): AppResult<Unit> {
+        validatePhytosanitaryReferences(current.workspaceId, changes.detail)?.let { return it }
         if (changes.type == ActivityType.HARVEST_DAY) {
             val farmId = current.farmId
                 ?: return AppResult.Failure(AppError.Validation("farmId", "not_found"))
@@ -543,6 +545,42 @@ class OfflineFirstActivityRepository(
     private suspend fun <T> AppResult<T>.alsoReconcile(): AppResult<T> {
         if (this is AppResult.Success) runCatching { reminderReconciler?.reconcile() }
         return this
+    }
+
+    private suspend fun validatePhytosanitaryReferences(
+        workspaceId: UUID,
+        detail: ActivityDetail?,
+    ): AppResult.Failure? {
+        val treatment = detail as? ActivityDetail.Phytosanitary ?: return null
+
+        treatment.operatorPersonId?.let { id ->
+            val person = database.phytosanitaryResourceDao().findPersonById(id)
+                ?: return AppResult.Failure(AppError.Validation("operatorPersonId", "not_found"))
+            if (person.workspaceId != workspaceId) {
+                return AppResult.Failure(AppError.Validation("operatorPersonId", "context_mismatch"))
+            }
+        }
+
+        treatment.applicationMachineId?.let { id ->
+            val machine = database.machineDao().findById(id)
+                ?: return AppResult.Failure(AppError.Validation("applicationMachineId", "not_found"))
+            if (machine.workspaceId != workspaceId) {
+                return AppResult.Failure(AppError.Validation("applicationMachineId", "context_mismatch"))
+            }
+        }
+
+        treatment.serviceProviderOrganizationId?.let { id ->
+            val provider = database.organizationDao().findById(id)
+                ?: return AppResult.Failure(AppError.Validation("serviceProviderOrganizationId", "not_found"))
+            if (provider.workspaceId != workspaceId) {
+                return AppResult.Failure(AppError.Validation("serviceProviderOrganizationId", "context_mismatch"))
+            }
+            if ("SERVICE_PROVIDER" !in database.organizationDao().listRoles(id)) {
+                return AppResult.Failure(AppError.Validation("serviceProviderOrganizationId", "not_service_provider"))
+            }
+        }
+
+        return null
     }
 
     /**
@@ -982,6 +1020,17 @@ class OfflineFirstActivityRepository(
                     doseUnit = detail.doseUnit.normalized(),
                     reason = detail.reason.normalized(),
                     equipmentText = detail.equipmentText.normalized(),
+                    operatorPersonId = detail.operatorPersonId,
+                    applicationMachineId = detail.applicationMachineId,
+                    serviceProviderOrganizationId = detail.serviceProviderOrganizationId,
+                    productRegistrationNumber = detail.productRegistrationNumber.normalized(),
+                    productSource = detail.productSource.normalized(),
+                    productSourceVersion = detail.productSourceVersion.normalized(),
+                    productFetchedAt = detail.productFetchedAt,
+                    authorizationContextSnapshot = detail.authorizationContextSnapshot.normalized(),
+                    pestProblemCode = detail.pestProblemCode.normalized(),
+                    efficacyCode = detail.efficacyCode.normalized(),
+                    treatmentObservations = detail.treatmentObservations.normalized(),
                     metadata = metadata,
                 ),
             )
@@ -1059,8 +1108,25 @@ class OfflineFirstActivityRepository(
         }
         phytosanitary?.let {
             return ActivityDetail.Phytosanitary(
-                it.productName, it.activeSubstance, it.totalQuantity, it.unit,
-                it.doseValue, it.doseUnit, it.reason, it.equipmentText,
+                productName = it.productName,
+                activeSubstance = it.activeSubstance,
+                totalQuantity = it.totalQuantity,
+                unit = it.unit,
+                doseValue = it.doseValue,
+                doseUnit = it.doseUnit,
+                reason = it.reason,
+                equipmentText = it.equipmentText,
+                operatorPersonId = it.operatorPersonId,
+                applicationMachineId = it.applicationMachineId,
+                serviceProviderOrganizationId = it.serviceProviderOrganizationId,
+                productRegistrationNumber = it.productRegistrationNumber,
+                productSource = it.productSource,
+                productSourceVersion = it.productSourceVersion,
+                productFetchedAt = it.productFetchedAt,
+                authorizationContextSnapshot = it.authorizationContextSnapshot,
+                pestProblemCode = it.pestProblemCode,
+                efficacyCode = it.efficacyCode,
+                treatmentObservations = it.treatmentObservations,
             )
         }
         soilWork?.let { return ActivityDetail.SoilWork(it.workType, it.method) }

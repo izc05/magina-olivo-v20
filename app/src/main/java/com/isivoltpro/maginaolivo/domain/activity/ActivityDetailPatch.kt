@@ -11,6 +11,20 @@ object ActivityDetailPatch {
             incoming.copy(price = incoming.price?.let { price -> existing.price?.let { price.keepingHidden(it) } ?: price })
         existing is ActivityDetail.Incident && incoming is ActivityDetail.Incident && incoming.state == existing.state ->
             incoming.copy(resolvedAt = incoming.resolvedAt ?: existing.resolvedAt)
+        existing is ActivityDetail.Phytosanitary && incoming is ActivityDetail.Phytosanitary ->
+            incoming.copy(
+                operatorPersonId = incoming.operatorPersonId ?: existing.operatorPersonId,
+                applicationMachineId = incoming.applicationMachineId ?: existing.applicationMachineId,
+                serviceProviderOrganizationId = incoming.serviceProviderOrganizationId ?: existing.serviceProviderOrganizationId,
+                productRegistrationNumber = incoming.productRegistrationNumber ?: existing.productRegistrationNumber,
+                productSource = incoming.productSource ?: existing.productSource,
+                productSourceVersion = incoming.productSourceVersion ?: existing.productSourceVersion,
+                productFetchedAt = incoming.productFetchedAt ?: existing.productFetchedAt,
+                authorizationContextSnapshot = incoming.authorizationContextSnapshot ?: existing.authorizationContextSnapshot,
+                pestProblemCode = incoming.pestProblemCode ?: existing.pestProblemCode,
+                efficacyCode = incoming.efficacyCode ?: existing.efficacyCode,
+                treatmentObservations = incoming.treatmentObservations ?: existing.treatmentObservations,
+            )
         else -> incoming
     }
 
