@@ -14,7 +14,7 @@ Primer slice #693, auditoría 2026-10-08. Base `main c4617f87`. Fuentes normativ
 | Fitosanitarios (#534/#535/#544/#553/#677) | Recursos UI #676 integrados b695469f; tratamiento v25 #680 pendiente; catálogo y gateway solo PREP | #680 foundation SUCCESS, dos gates emulador FAILURE; #688/#690 documentación integrada | No acreditado | Claude modelo/UX; Codex contratos; resolver scope/fixtures y luego escenario completo, sin afirmar aceptación CUE |
 | Mapa/Catastro/SIGPAC (#361/#574/#540) | Mapas presentes; geometría/importación no equivale a reconciliación oficial | Cámara útil/etiquetas/búsqueda y SIGPAC no reprobados aquí | No acreditado para cierre | Claude; evidencia geométrica y captura desktop no sustituyen teléfono; Codex documenta reconciliación |
 | Consulta/estadísticas/PDF (#328/#340/#465/#464) | Núcleo de consulta presente; informe PDF completo no acreditado; #689 bloquea totales seguros | Falta conciliación de resumen/detalle, cobertura de rendimiento y totales parciales | No acreditado | Claude; probar por finca/campaña/parcela, parcialidad, monedas y PDF offline |
-| Servicios/Avisos (#332/#462/#496/#619) | Servicios meteorológicos/mercado y avisos presentes | No se han repetido freshness/fallback/medianoche/notificación efectiva | No acreditado | Claude; modo avión, dato caducado, permiso denegado, reinicio y zona Workspace |
+| Servicios/Avisos (#332/#462/#496/#619) | Servicios meteorológicos/mercado y avisos presentes | Forecast fixtures 18/18; #669 integrado; lifecycle/medianoche/notificación efectiva en teléfono pendientes | No acreditado | Claude; modo avión, dato caducado, permiso denegado, reinicio y zona Workspace |
 | Cuenta/nube/seguridad/recuperación (#325/#335/#330/#321) | Outbox/Room identificados; Auth/RLS/Storage/restore productivo no acreditados | Falta gate 22/23, aislamiento A/B, idempotencia y cambio de móvil | No acreditado | Claude/backend; inventario y evidencia real antes de afirmar copia cloud; Codex solo preparación |
 | Adjuntos (#517/#430) | #692 implementado, pendiente integrar; datos y Sync sin cambio | SHA f84da9b0: 14 unitarios + 4 Compose API35 locales; lint/APK correctos; tres checks remotos SUCCESS | No acreditado | Claude integración/revisión; propietario cámara real; no confundir UI labels con ciclo íntegro de Storage |
 | Web V3/WEB-1 (#389/#394/#552/#598/#691/#591/#326) | Cadena web pendiente; Home estática y board conceptual, /mi DEMO | #691 validate/preview SUCCESS; CI histórica no acredita consolidación sobre main | Capturas móviles Chromium; no dispositivo físico acreditado | Codex; gate assets/continuidad y motor/fallback; portar estado aprobado selectivamente desde main |
@@ -48,7 +48,7 @@ Guion físico: crear finca/parcela → registrar trabajo general sin campaña �
 
 ## Decisión actual
 
-**NO-GO para declarar 1.0 terminado.** Motivo: gates Android rojos, Home V3 incompleta, nube/restore y prueba física integral sin evidencia. No se modifica app/** ni se corrigen ramas Android. Próximo slice Codex: auditoría dirigida A4–A6 y posterior Web V3 conforme #693; Claude recibe el handoff mediante documentación enlazada, sin mensaje automático a otro chat.
+**NO-GO para declarar 1.0 terminado.** Motivo: gates Android rojos, Home V3 incompleta, nube/restore y prueba física integral sin evidencia. No se modifica app/** ni se corrigen ramas Android. Próximo slice Codex: Web V3 B1–B9 conforme #693; Claude recibe el handoff mediante documentación enlazada, sin mensaje automático a otro chat.
 
 ## Inventario A1–A23 del alcance #340
 

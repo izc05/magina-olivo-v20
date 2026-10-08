@@ -10,7 +10,7 @@
 | 0.4 | Codex | READY documento de cursor | #694 ampliación | Este ledger; diff check | 08-10 | Mantener cada 2–3 slices |
 | A1 | Codex | READY inventario, pendiente revisión | #694 ampliación | 23 filas A1–A23, evidencia/unknown/gate separados | 08-10 | A2/A3 guion y auditoría dirigida |
 | A2/A3 | Codex/Claude | READY guion; ejecución pendiente | #694 ampliación | E2E-AGRICULTURAL-CLOSURE.md, pruebas existentes enlazadas | 08-10 | Claude ejecuta y registra build/resultados |
-| A4/A5/A6 | Codex | PENDING | — | No auditoría completa nueva | 08-10 | Geometrías, lifecycle servicios y PDF/estadísticas |
+| A4/A5/A6 | Codex/Claude | READY evidencia dirigida; ejecución integral pendiente | #694 ampliación | MAPS-SERVICES-REPORTS-AUDIT.md; forecast 18/18; #669 integrado | 08-10 | Claude: móvil/mapa/lifecycle/PDF; Codex B1 |
 | A7/A8 | Codex | READY resumen provisional; audit completo pendiente | #694 ampliación | RELEASE-GO-NOGO-1.0.md, evidencia actual | 08-10 | Actualizar tras A4–A6 y gates |
 
 ## CI disparada por documentación
@@ -19,6 +19,6 @@ Android CI y Gate3 tienen pull_request a main sin filtro de rutas, por lo que #6
 
 ## Cursor
 
-NEXT=A4 | base_sha=c4617f87 | open_pr=694 | blockers=CI694 pendiente; Android680/689 rojos; V3-A no aprobado; Gate22/23 y beta física no acreditados.
+NEXT=B1 | base_sha=c4617f87 | open_pr=694 | blockers=CI694 pendiente; Android680/689 rojos; V3-A no aprobado; Gate22/23 y beta física no acreditados.
 
 A1–A3 aquí son entregas documentales, no flujos implementados/probados. Resumen A8 es provisional y no cierra gate de release.
