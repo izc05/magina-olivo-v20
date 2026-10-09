@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.theme
 
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.graphics.Color
 
 /**
@@ -102,4 +103,34 @@ val MoLightColorScheme = lightColorScheme(
     surfaceContainerHighest = Color(0xFFF8F3E8),
     error = MoErrorText,
     onError = MoWarmWhite,
+)
+
+/** #707: warm olive night surfaces; photographs and external maps keep their source pixels. */
+val MoDarkColorScheme = darkColorScheme(
+    primary = Color(0xFFB6D39E),
+    onPrimary = Color(0xFF192416),
+    primaryContainer = Color(0xFF293A24),
+    onPrimaryContainer = Color(0xFFDFECCD),
+    secondary = Color(0xFFC5CBAE),
+    onSecondary = Color(0xFF252B1E),
+    secondaryContainer = Color(0xFF33392A),
+    onSecondaryContainer = Color(0xFFE4EAD0),
+    tertiary = Color(0xFFE6BD9E),
+    onTertiary = Color(0xFF352417),
+    background = Color(0xFF171914),
+    onBackground = Color(0xFFF0EBDD),
+    surface = Color(0xFF23261F),
+    onSurface = Color(0xFFF0EBDD),
+    surfaceVariant = Color(0xFF303329),
+    onSurfaceVariant = Color(0xFFD0C9BB),
+    outline = Color(0xFFA99F8C),
+    surfaceContainerLowest = Color(0xFF12140F),
+    surfaceContainerLow = Color(0xFF23261F),
+    surfaceContainer = Color(0xFF292C24),
+    surfaceContainerHigh = Color(0xFF303329),
+    surfaceContainerHighest = Color(0xFF383B31),
+    error = Color(0xFFFFB6AC),
+    onError = Color(0xFF442926),
+    errorContainer = Color(0xFF442926),
+    onErrorContainer = Color(0xFFFFB6AC),
 )

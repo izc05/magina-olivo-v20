@@ -1,0 +1,84 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDevDebugBuild UP-TO-DATE
+> Task :app:generateDevDebugBuildConfig UP-TO-DATE
+> Task :app:generateDevDebugResValues UP-TO-DATE
+> Task :app:generateDevDebugResources UP-TO-DATE
+> Task :app:packageDevDebugResources UP-TO-DATE
+> Task :app:processDevDebugNavigationResources UP-TO-DATE
+> Task :app:parseDevDebugLocalResources UP-TO-DATE
+> Task :app:generateDevDebugRFile UP-TO-DATE
+> Task :app:kspDevDebugKotlin UP-TO-DATE
+> Task :app:compileDevDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDevDebug UP-TO-DATE
+> Task :app:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :app:checkDevDebugAarMetadata UP-TO-DATE
+> Task :app:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :app:compileDevDebugNavigationResources UP-TO-DATE
+> Task :app:mergeDevDebugResources UP-TO-DATE
+> Task :app:createDevDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDevDebug UP-TO-DATE
+> Task :app:processDevDebugMainManifest UP-TO-DATE
+> Task :app:processDevDebugManifest UP-TO-DATE
+> Task :app:processDevDebugManifestForPackage UP-TO-DATE
+> Task :app:processDevDebugResources UP-TO-DATE
+> Task :app:bundleDevDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleDevDebugClassesToCompileJar UP-TO-DATE
+> Task :app:kspDevDebugUnitTestKotlin
+> Task :app:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :app:processDevDebugJavaRes UP-TO-DATE
+
+> Task :app:compileDevDebugUnitTestKotlin
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:11:26 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:11:49 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:13:9 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:14:26 Unresolved reference 'it'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:14:30 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:14:61 Unresolved reference 'it'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:19:21 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:20:20 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:21:21 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:22:20 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:27:21 Unresolved reference 'PersistentAppearanceStore'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:28:22 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:29:34 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:30:22 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:31:22 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:31:43 Unresolved reference 'PersistentAppearanceStore'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:32:34 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:33:22 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:37:31 Unresolved reference 'AppearanceStorage'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:41:21 Unresolved reference 'PersistentAppearanceStore'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:42:22 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:43:35 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:44:22 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:49:21 Unresolved reference 'PersistentAppearanceStore'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:50:35 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:51:22 Unresolved reference 'AppearanceMode'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt:55:92 Unresolved reference 'AppearanceStorage'.
+
+> Task :app:compileDevDebugUnitTestKotlin FAILED
+> Task :app:copyRoomSchemas NO-SOURCE
+
+[Incubating] Problems report is available at: file:///C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA%20V20/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDevDebugUnitTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Kotlin compiler: UNRESOLVED_REFERENCE
+       Kotlin compiler error
+         Unresolved reference 'AppearanceMode'.
+         Location: C:/Users/ISICIO/.codex/worktrees/mapa-regfi-prep/MAGINA V20/app/src/test/java/com/isivoltpro/maginaolivo/app/AppearanceStoreTest.kt line 11
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 40s
+27 actionable tasks: 2 executed, 25 up-to-date

@@ -270,3 +270,15 @@ Calendar/PlanWork/reminder routes and Back. No unverified unread badge or new me
 Cuaderno retains its Diary/Phyto/Expenses/Campaign views and operational/history separation.
 See [CR-014](RC1.2-CHANGE-REQUEST-014-GLOBAL-ADD-NAVIGATION.md). This amendment changes the
 CR-007 primary bar layout; all data, offline, Gate and visual invariants remain binding.
+
+## 17. Owner-approved appearance — #707
+
+Owner request2026-10-08, sequenced by #708/#711: Perfil → Ajustes → Apariencia,
+SYSTEM(default)/LIGHT/DARK. Device preference, reactive and durable; no Room schema,
+workspace attribute or outbox. Storage failure must leave agriculture usable.
+
+Implement sequential DARK-1(tokens/store/canonical theme), DARK-2(shared components/Home/Profile),
+DARK-3(remaining screens and final selector/QA). Do not call DARK complete after DARK-1.
+Preserve approved light identity; dark uses warm olive surfaces and ivory text, AA contrast.
+Photographs and external-map pixels are never inverted. No new roots or agricultural writes.
+Each productive slice requires independent review and all three CI gates SUCCESS on finalSHA.
