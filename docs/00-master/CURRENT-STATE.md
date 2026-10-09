@@ -25,10 +25,13 @@ review and foundation / gate3-emulator / gate3-evidence SUCCESS on its final SHA
   Local526JVM/62UI/two repeated offline cases; CI704UI/196offline/4x14captures;36localPNG.
   See [navigation evidence](../qa/ANDROID-705-CR014-NAVIGATION-2026-10-09.md).
 - B2 #707 DARK-1: #717 merged as `2a7ae86448b220c3edc3bde818be18d9e0ea4f7e`; reviewed HEAD `fea592e541e4062e2ffe6b80eccdbe90eb03d4fb`, three checks SUCCESS. Local 534 JVM / 40 UI / nine PNG; CI 706 UI / 196 offline / 4x14 captures per pipeline.
-- Current productive slice: #707 DARK-2, branch `codex/707-dark2-components` from integrated main.
+- B2 #707 DARK-2: #718 merged as `6bd2879d0efe133a2ff75b14f4683e186cbc2295`; reviewed HEAD
+  `f6d26d0abdaea484ef77a528819d3a4bf5c70c3c`, all three checks SUCCESS. Both CI pipelines:
+  715 full UI / 196 offline / four configurations of 14 screenshot cases PASS.
   Recovery preserved all saved work. Local foundation PASS:536JVM;63 directed UI; explicit
   LIGHT/DARK matrix36executions/54PNG at360/390/430dp,font1.3;two Profile repeats and cold launch PASS.
-  See [DARK-2 evidence](../qa/ANDROID-707-DARK2-2026-10-09.md). Final-SHA review/remote gates pending.
+  See [DARK-2 evidence](../qa/ANDROID-707-DARK2-2026-10-09.md).
+- Current productive slice: #707 DARK-3, branch `codex/707-dark3-screens` from integrated main.
   Device appearance preference and semantic tokens first; DARK-2 components then DARK-3 full
   screens/Perfil selector in separate sequential PRs. Maps/GPS B3, weather B4, candidate B5 follow.
 - Expense classification follows the later #411 owner decision: generic Cuaderno asks explicitly;
