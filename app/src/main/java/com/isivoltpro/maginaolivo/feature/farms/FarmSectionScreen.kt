@@ -27,11 +27,10 @@ import com.isivoltpro.maginaolivo.feature.activities.FarmActivitiesRoute
 import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsRoute
 import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsRoute
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
  * One part of a Farm on its own screen (design v3): the same sections that used to be stacked
@@ -52,7 +51,7 @@ fun FarmSectionRoute(
     val farm by farmFlow.collectAsStateWithLifecycle(initialValue = null)
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("farm-section-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
@@ -67,7 +66,7 @@ fun FarmSectionRoute(
                 color = MoOliveDark,
                 modifier = Modifier.semantics { heading() },
             )
-            farm?.let { Text(it.name, style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary) }
+            farm?.let { Text(it.name, style = MaterialTheme.typography.bodyLarge, color = MoSurfaceTokens.secondaryText) }
             when (section) {
                 FarmSection.PARCELS -> FarmParcelsRoute(
                     farmId = farmId,

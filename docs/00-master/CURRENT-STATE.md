@@ -1,9 +1,29 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-10-03
+**Last reviewed:** 2026-10-09
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
+
+## Current owner execution queue — #711 / #696
+
+The owner's 9 October continuation in [#711](https://github.com/izc05/magina-olivo-v20/issues/711)
+and priorities in [#696](https://github.com/izc05/magina-olivo-v20/issues/696) supersede the older
+resume instructions below. Android only; Web V3 paused. One productive PR at a time, independent
+review and foundation / gate3-emulator / gate3-evidence SUCCESS on its final SHA before merge.
+
+- B0 expense context: #712 merged as `45e21fe05624ba68a6020c43258ef75e1351c700`; reviewed HEAD
+  `92fff335241376ecca13dd4bcab6bcfa1a3034d6`, all three checks SUCCESS. #684/#692/#709/#710 also merged.
+- B1 agricultural evidence: 284 current offline instrumented tests PASS, retained C1/C2 records,
+  costs/payments, snapshots and photo verified. Upgrade DEV1606→1609 kept identical backups.
+  See [B0/B1 evidence](../qa/ANDROID-711-B1-AGRICULTURAL-EVIDENCE-2026-10-09.md).
+- Current productive slice: B2 contrast #706. CR-014 navigation #705 and dark appearance #707
+  follow in separate PRs according to approved #708/#711; maps/GPS B3, weather B4, candidate B5.
+- Expense classification follows the later #411 owner decision: generic Cuaderno asks explicitly;
+  creation from a concrete Campaign keeps its Farm/Campaign context. The 3 October preselection
+  description below is historical and superseded. #522 relation cleanup in general editors remains.
+- Gate21 physical acceptance remains OPEN. Final candidate must come from integrated main with
+  green CI. No physical PASS, Gate22+, Auth/Sync/PDF expansion or Web work is authorized by CI alone.
 
 ## Passed Gates
 

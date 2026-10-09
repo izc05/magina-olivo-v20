@@ -34,8 +34,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /** #359: weighed kilos, «—» when nothing was weighed (never «0 kg»). */
 internal fun overviewKilos(delivery: DeliverySummary): String =
@@ -132,7 +132,7 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
                         }
                     }
                 } else {
-                    Text("Campaña ${overview.season}", color = MoTextSecondary, modifier = Modifier.testTag("farm-overview-period"))
+                    Text("Campaña ${overview.season}", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("farm-overview-period"))
                 }
             }
         }
@@ -144,9 +144,9 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
             MoStat("Coste recogida", overviewCost(overview.costs), MoIcons.Euro),
             MoStat("Coste recogida/kg", overviewCostPerKg(overview.costPerKgMilli, overview.costs, overview.costComplete), MoIcons.Euro),
         ), Modifier.testTag("farm-overview-costs"))
-        Text(overviewNote(overview), style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("farm-overview-note"))
+        Text(overviewNote(overview), style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("farm-overview-note"))
         // #359 follow-up: costs linked to no campaign are shown apart, never inside the recollection cost/kg.
-        Text("Gastos generales del periodo", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        Text("Gastos generales del periodo", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
         MoStatStrip(listOf(
             MoStat("Fuera de campaña", overviewCost(overview.generalCosts), MoIcons.Euro),
             MoStat("Coste total", overviewCost(overview.totalCosts), MoIcons.Euro),

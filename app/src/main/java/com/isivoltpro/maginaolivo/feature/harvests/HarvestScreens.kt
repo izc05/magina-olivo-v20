@@ -77,12 +77,9 @@ import com.isivoltpro.maginaolivo.ui.components.MoSelectField
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
@@ -97,6 +94,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun HarvestsRoute(
@@ -174,7 +172,7 @@ fun HarvestsScreen(
     /** CR-011 §9: each day's «kg · pesadas · jornales · maquinaria» line, by day id. */
     dayLines: Map<UUID, String> = emptyMap(),
 ) {
-    Scaffold(Modifier.fillMaxSize().testTag("harvests-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("harvests-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),
@@ -185,7 +183,7 @@ fun HarvestsScreen(
             Text(
                 "Cada día de recolección reúne sus pesadas, jornales y gastos. Los kilos se obtienen de las pesadas.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
             // UI polish v2: the summary first, then the actions.
             if (!state.isLoading) {
@@ -228,12 +226,12 @@ fun HarvestsScreen(
                 Text(
                     "Para registrar una pesada, una finca necesita una campaña activa o en recolección.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                     modifier = Modifier.testTag("harvest-no-campaign"),
                 )
             }
-            if (state.isSaving) Text("Guardando…", color = MoTextSecondary)
-            state.message?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("harvests-message")) }
+            if (state.isSaving) Text("Guardando…", color = MoSurfaceTokens.secondaryText)
+            state.message?.let { Text(it, color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("harvests-message")) }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("harvests-error")) }
 
             when {
@@ -267,7 +265,7 @@ private fun CampaignHarvestCard(campaign: CampaignHarvest, days: Int) {
     Card(
         modifier = Modifier.fillMaxWidth().testTag("campaign-harvest"),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             Text(
@@ -284,7 +282,7 @@ private fun CampaignHarvestCard(campaign: CampaignHarvest, days: Int) {
             Text(
                 "${harvestDays(days)} de recolección",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
                 modifier = Modifier.testTag("campaign-harvest-days"),
             )
             campaign.summary.parcels.forEach { parcel ->
@@ -293,7 +291,7 @@ private fun CampaignHarvestCard(campaign: CampaignHarvest, days: Int) {
                     Text(
                         parcelHarvestText(parcel),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                     )
                 }
             }
@@ -301,7 +299,7 @@ private fun CampaignHarvestCard(campaign: CampaignHarvest, days: Int) {
                 Text(
                     line,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                     modifier = Modifier.testTag("campaign-harvest-unallocated"),
                 )
             }
@@ -315,7 +313,7 @@ private fun HarvestRow(harvest: Harvest, line: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("harvest-row"),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Row(
             Modifier.fillMaxWidth().padding(MoSpacing.md),
@@ -333,7 +331,7 @@ private fun HarvestRow(harvest: Harvest, line: String, onClick: () -> Unit) {
                 Text(
                     line,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (harvest.awaitingPesadas) MoTextSecondary else MoInk,
+                    color = if (harvest.awaitingPesadas) MoSurfaceTokens.secondaryText else MoInk,
                     modifier = Modifier.testTag("harvest-row-line"),
                 )
                 MoStatusChip(harvest.allocationMode.label(), tone = harvest.allocationMode.tone())
@@ -379,7 +377,7 @@ internal fun HarvestEditor(
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
-        Text("Se guardará primero en este dispositivo.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+        Text("Se guardará primero en este dispositivo.", style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
 
         if (farmLocked) {
             Text(context?.farmName.orEmpty(), style = MaterialTheme.typography.titleMedium)
@@ -394,7 +392,7 @@ internal fun HarvestEditor(
             Text(
                 "Campaña ${it.campaignName} · activa",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
         }
         if (form.automatic) {
@@ -441,12 +439,12 @@ internal fun HarvestEditor(
             Text(
                 "Salen de sus pesadas. Los kilos de cada parcela están en cada pesada.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
         } else if (context == null) {
-            Text("Elige primero la finca.", color = MoTextSecondary)
+            Text("Elige primero la finca.", color = MoSurfaceTokens.secondaryText)
         } else if (context.parcels.isEmpty()) {
-            Text("Esta campaña no tiene parcelas.", color = MoTextSecondary)
+            Text("Esta campaña no tiene parcelas.", color = MoSurfaceTokens.secondaryText)
         }
         if (!form.automatic) context?.parcels?.forEach { parcel ->
             val checked = parcel.parcelId in form.parcelIds
@@ -496,7 +494,7 @@ internal fun HarvestEditor(
                             }
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (preview.allocatedGrams > total) MaterialTheme.colorScheme.error else MoTextSecondary,
+                        color = if (preview.allocatedGrams > total) MaterialTheme.colorScheme.error else MoSurfaceTokens.secondaryText,
                         modifier = Modifier.testTag("harvest-allocation-preview"),
                     )
                 }
@@ -504,8 +502,8 @@ internal fun HarvestEditor(
         }
 
         var moreDetails by rememberSaveable { mutableStateOf(false) }
-        if (form.workers.isNotBlank()) Text("Personas trabajando (histórico): ${form.workers}", color = MoTextSecondary)
-        if (form.machinery.isNotBlank()) Text("Maquinaria (histórico): ${form.machinery}", color = MoTextSecondary)
+        if (form.workers.isNotBlank()) Text("Personas trabajando (histórico): ${form.workers}", color = MoSurfaceTokens.secondaryText)
+        if (form.machinery.isNotBlank()) Text("Maquinaria (histórico): ${form.machinery}", color = MoSurfaceTokens.secondaryText)
         if (moreDetails || form.collectionMethod != null || form.notes.isNotBlank()) {
             MoSelectField("Método de recogida", form.collectionMethod?.label() ?: "Sin indicar", { picker = "method" }, Modifier.testTag("harvest-method"))
             MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
@@ -560,7 +558,7 @@ private fun SplitOption(title: String, body: String, selected: Boolean, tag: Str
         RadioButton(selected = selected, onClick = onClick)
         Column {
             Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(body, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+            Text(body, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
         }
     }
 }
@@ -649,7 +647,7 @@ fun HarvestDetailRoute(
     )
     val campaign = state.harvest?.campaignId
     if (labourPerson != null && campaign != null) {
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { labourPerson = null }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { labourPerson = null }) {
             LabourPaymentsRoute(campaign, persistence, UUID.fromString(labourPerson)) { labourPerson = null }
         }
     }
@@ -693,7 +691,7 @@ fun HarvestDetailScreen(
     LaunchedEffect(state.labourMessage) { if (state.labourMessage != null && state.labourMessage != "Persona añadida") { labourVisible = false; editLabour = null } }
     OnEachSave(state.saveCount) { editorVisible = false }
 
-    Scaffold(Modifier.fillMaxSize().testTag("harvest-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("harvest-detail-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(MoSpacing.screen),
@@ -751,7 +749,7 @@ fun HarvestDetailScreen(
                             Text(
                                 "Este día existe porque tiene pesadas. Para cambiarlo, corrige o mueve las pesadas.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MoTextSecondary,
+                                color = MoSurfaceTokens.secondaryText,
                                 modifier = Modifier.testTag("harvest-delete-held"),
                             )
                         } else if (state.pesadasReadFailed) {
@@ -765,11 +763,11 @@ fun HarvestDetailScreen(
                     } else {
                         Text(
                             "La campaña está cerrada: este día de recolección forma parte del histórico y no se modifica.",
-                            color = MoTextSecondary,
+                            color = MoSurfaceTokens.secondaryText,
                             modifier = Modifier.testTag("harvest-read-only"),
                         )
                     }
-                    state.message?.let { Text(it, color = MoTextSecondary) }
+                    state.message?.let { Text(it, color = MoSurfaceTokens.secondaryText) }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     attachmentContent()
                 }
@@ -781,7 +779,7 @@ fun HarvestDetailScreen(
     val harvest = state.harvest
     val context = state.context
     if (resourceDetail != null && harvest != null) {
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { resourceDetail = null }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { resourceDetail = null }) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                 when (resourceDetail) {
                     "labour" -> {
@@ -830,7 +828,7 @@ fun HarvestDetailScreen(
         }
     }
     if (editorVisible && harvest != null && context != null) {
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { editorVisible = false; onEditorClosed() }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             HarvestEditor(
                 title = "Editar día de recolección",
                 initial = harvest.toForm(),
@@ -847,7 +845,7 @@ fun HarvestDetailScreen(
     }
     val rates = state.rates
     if (ratesVisible && harvest != null && rates != null) {
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { ratesVisible = false }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { ratesVisible = false }) {
             RatesSheet(
                 rates = rates,
                 isSaving = state.isSaving,
@@ -859,7 +857,7 @@ fun HarvestDetailScreen(
     }
     if (costVisible && harvest != null) {
         val currencyContext = state.newCostCurrencyContext()
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { costVisible = false }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { costVisible = false }) {
             CostSheet(
                 currency = currencyContext.currency,
                 currencyError = currencyContext.error,
@@ -875,7 +873,7 @@ fun HarvestDetailScreen(
     }
     if (equipmentVisible && harvest != null) {
         val equipmentCurrency = equipmentCurrencyContext(harvest.id, harvest.campaignId, state.equipment, state.costs, state.rates?.currency)
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { equipmentVisible = false }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { equipmentVisible = false }) {
             EquipmentSheet(
                 current = state.equipment,
                 machines = state.machines,
@@ -893,12 +891,12 @@ fun HarvestDetailScreen(
     val editingLabour = state.labour.firstOrNull { it.id.toString() == editLabour }
     val labourCurrency = state.resolvedLabourCurrency()
     if (editingLabour != null && harvest != null && harvest.editable) {
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { if (!state.isSaving) { editLabour = null; labourActions.onClear() } }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { if (!state.isSaving) { editLabour = null; labourActions.onClear() } }) {
             LabourPriceSheet(editingLabour, harvest.harvestDate, labourCurrency?.currency, state.isSaving, state.labourError, { labourActions.onUpdate(editingLabour.id, it) }, { editLabour = null; labourActions.onClear() }, labourCurrency?.error)
         }
     }
     if (labourVisible && harvest?.campaignId != null) {
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { if (!state.isSaving) { labourVisible = false; labourActions.onClear() } }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { if (!state.isSaving) { labourVisible = false; labourActions.onClear() } }) {
             if (labourCurrency?.currency == null) {
                 Column(Modifier.padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                     Text(labourCurrency?.error ?: "La moneda de los jornales no está disponible.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-currency-error"))
@@ -922,7 +920,7 @@ fun HarvestDetailScreen(
     }
     // A Pesada that arrives while the confirmation is open closes it (#457).
     if (confirmDelete && state.pesadas.isEmpty()) {
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { confirmDelete = false }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
                 title = "Eliminar día de recolección",
                 body = listOfNotNull(
@@ -971,7 +969,7 @@ private fun JornadaPesadas(
         Text(
             "Aún no hay pesadas enlazadas. Añádelas según lleguen: cada una con su cooperativa y su vale.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
             modifier = Modifier.testTag("jornada-no-pesadas"),
         )
     } else {
@@ -985,7 +983,7 @@ private fun JornadaPesadas(
                     "Rendimiento del día ${Percent.format(it.hundredths)} · sobre el $coverage % de los kilos"
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
                 modifier = Modifier.testTag("jornada-pesadas-summary"),
             )
         }
@@ -1006,7 +1004,7 @@ private fun JornadaPesadas(
                             pesada.analysis?.fatYieldHundredths?.let { "Rend. ${Percent.format(it)}" } ?: "Rend. pendiente",
                         ).ifEmpty { listOf(DATE_FORMAT.format(pesada.deliveryDate)) }.joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                     )
                 }
                 Text(Weight.format(pesada.netGrams), style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
@@ -1028,7 +1026,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
     Text(
         listOfNotNull(harvest.farmName, harvest.campaignName).joinToString(" · "),
         style = MaterialTheme.typography.bodyLarge,
-        color = MoTextSecondary,
+        color = MoSurfaceTokens.secondaryText,
     )
     MoMetricCard(
         if (pesadaCount == 0 && !harvest.awaitingPesadas) "Kilos históricos" else "Kilos pesados",
@@ -1046,7 +1044,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
             // A legacy record (before Room v7) has no origin rows and expects no Pesada.
             if (harvest.automatic && harvest.awaitingPesadas) "$UNKNOWN_DAY_ORIGIN: llegará con sus pesadas." else UNKNOWN_DAY_ORIGIN,
             style = MaterialTheme.typography.bodyLarge,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
             modifier = Modifier.testTag("harvest-origin-unknown"),
         )
     }
@@ -1060,7 +1058,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
                     "Kilos no conocidos"
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
         }
     }
@@ -1068,7 +1066,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
         Text(
             "Sin repartir entre parcelas: ${harvest.unallocatedGrams?.let(Weight::format) ?: "No disponible"}",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
             modifier = Modifier.testTag("harvest-unallocated"),
         )
     }
@@ -1082,7 +1080,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
 @Composable
 private fun DetailValue(label: String, value: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
         Text(value ?: "Sin registrar", style = MaterialTheme.typography.bodyLarge)
     }
 }

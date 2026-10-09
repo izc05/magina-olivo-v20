@@ -22,11 +22,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 @Composable
@@ -42,9 +39,9 @@ fun MoIconButton(
             .semantics { this.contentDescription = contentDescription }
             .clickable(role = Role.Button, onClick = onClick),
         shape = CircleShape,
-        color = MoSurfaceSoft,
+        color = MoSurfaceTokens.cardElevated,
         contentColor = MoInk,
-        border = BorderStroke(1.dp, MoOutline),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
@@ -67,9 +64,9 @@ fun MoTopAppBar(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MoWarmWhite,
+        color = MoSurfaceTokens.cardSurface,
         contentColor = MoOliveDark,
-        border = BorderStroke(1.dp, MoOutline.copy(alpha = 0.55f)),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
             modifier = Modifier
@@ -100,7 +97,7 @@ fun MoTopAppBar(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                     )
                 }
             }

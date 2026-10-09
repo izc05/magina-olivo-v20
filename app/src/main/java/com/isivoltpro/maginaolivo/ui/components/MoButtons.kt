@@ -20,11 +20,10 @@ import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoError
 import com.isivoltpro.maginaolivo.ui.theme.MoErrorText
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoOutlineStrong
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun MoPrimaryButton(
@@ -74,9 +73,9 @@ fun MoSecondaryButton(
         modifier = modifier.heightIn(min = MoSize.buttonHeight),
         shape = MoShape.field,
         // Secondary actions stay neutral so only the primary CTA reads as dark olive.
-        border = BorderStroke(1.dp, MoOutlineStrong),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = MoWarmWhite,
+            containerColor = MoSurfaceTokens.cardSurface,
             contentColor = MoInk,
         ),
     ) {
@@ -112,9 +111,9 @@ fun MoDestructiveButton(
         enabled = enabled,
         modifier = modifier.heightIn(min = MoSize.buttonHeight),
         shape = MoShape.field,
-        border = BorderStroke(1.dp, MoError.copy(alpha = 0.45f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = MoWarmWhite,
+            containerColor = MoSurfaceTokens.cardSurface,
             contentColor = MoErrorText,
         ),
     ) {
@@ -134,7 +133,7 @@ fun MoTertiaryButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = MoSize.minTouchTarget),
-        colors = ButtonDefaults.textButtonColors(contentColor = MoTextSecondary),
+        colors = ButtonDefaults.textButtonColors(contentColor = MoSurfaceTokens.secondaryText),
     ) {
         Text(text = text, style = MaterialTheme.typography.labelLarge)
     }

@@ -46,10 +46,9 @@ import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import kotlinx.coroutines.launch
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /** Perfil (UI polish v2): real settings only; what belongs to a later phase says so. */
 @Composable
@@ -146,7 +145,7 @@ fun ProfileScreen(
         Modifier
             .fillMaxSize()
             .testTag("profile-root")
-            .background(MoCream)
+            .background(MoSurfaceTokens.appBackground)
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = MoSpacing.screen),
@@ -157,7 +156,7 @@ fun ProfileScreen(
             OliveMark(Modifier.size(48.dp))
             Column {
                 Text("Perfil", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
-                Text("Tus datos se guardan primero en este teléfono.", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                Text("Tus datos se guardan primero en este teléfono.", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
             }
         }
         Spacer(Modifier.height(MoSpacing.xs))
@@ -253,7 +252,7 @@ fun ProfileScreen(
 
 @Composable
 private fun Chevron() {
-    Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp))
+    Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText, modifier = Modifier.size(18.dp))
 }
 
 /** "0.2.0-dev · compilación 531": the version plus the CI build, so each APK is identifiable. */
@@ -278,7 +277,7 @@ private fun DemoFarmSection(tools: com.isivoltpro.maginaolivo.app.DemoFarmTools)
         }
     }
     MoSectionHeader("Herramientas de desarrollo")
-    Text("Finca Demo Mágina: datos ficticios para revisar la app (solo DEV, nunca en producción).", color = MoTextSecondary, style = MaterialTheme.typography.bodySmall)
+    Text("Finca Demo Mágina: datos ficticios para revisar la app (solo DEV, nunca en producción).", color = MoSurfaceTokens.secondaryText, style = MaterialTheme.typography.bodySmall)
     MoSecondaryButton("Cargar Finca Demo", { run(tools::load) }, modifier = Modifier.fillMaxWidth().testTag("profile-demo-load"), enabled = !busy)
     if (confirmReset) {
         Text("Se cerrará y archivará la Finca Demo actual y se creará de nuevo. Tus fincas no se tocan.", style = MaterialTheme.typography.bodySmall)
@@ -287,6 +286,6 @@ private fun DemoFarmSection(tools: com.isivoltpro.maginaolivo.app.DemoFarmTools)
     } else {
         MoTertiaryButton("Restablecer Finca Demo", { confirmReset = true }, modifier = Modifier.fillMaxWidth().testTag("profile-demo-reset"), enabled = !busy)
     }
-    if (busy) Text("Trabajando…", color = MoTextSecondary, modifier = Modifier.testTag("profile-demo-busy"))
+    if (busy) Text("Trabajando…", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("profile-demo-busy"))
     status?.let { Text(it, modifier = Modifier.testTag("profile-demo-status")) }
 }

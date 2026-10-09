@@ -59,14 +59,12 @@ import com.isivoltpro.maginaolivo.ui.components.MoSelectField
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.util.UUID
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun MachineryRoute(persistence: LocalPersistence, onMachineSelected: (UUID) -> Unit) {
@@ -93,7 +91,7 @@ fun MachineryScreen(
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     OnEachSave(state.saveCount) { editorVisible = false }
 
-    Scaffold(Modifier.fillMaxSize().testTag("machinery-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("machinery-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),
@@ -104,7 +102,7 @@ fun MachineryScreen(
             Text(
                 "Tus máquinas, para anotarlas en los trabajos si quieres. Solo hace falta el nombre.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
             MoPrimaryButton(
                 "Añadir máquina",
@@ -112,7 +110,7 @@ fun MachineryScreen(
                 Modifier.fillMaxWidth().testTag("add-machine"),
                 enabled = !state.isSaving,
             )
-            state.message?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("machinery-message")) }
+            state.message?.let { Text(it, color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("machinery-message")) }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("machinery-error")) }
             when {
                 state.isLoading -> CircularProgressIndicator()
@@ -151,7 +149,7 @@ private fun MachineRow(machine: Machine, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("machine-row"),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm, vertical = 10.dp),
@@ -165,7 +163,7 @@ private fun MachineRow(machine: Machine, onClick: () -> Unit) {
                     listOfNotNull(machine.category.label(), listOfNotNull(machine.make, machine.model).joinToString(" ").ifEmpty { null })
                         .joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                 )
             }
             machine.currentHours?.let {
@@ -268,7 +266,7 @@ fun MachineDetailScreen(
     var sheet by rememberSaveable { mutableStateOf<String?>(null) }
     OnEachSave(state.saveCount) { sheet = null }
 
-    Scaffold(Modifier.fillMaxSize().testTag("machine-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("machine-detail-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(MoSpacing.screen),
@@ -293,11 +291,11 @@ fun MachineDetailScreen(
                     Text(
                         "Solo si esta máquina se utiliza para aplicar productos fitosanitarios.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                     )
                     val phyto = state.phytosanitaryProfile
                     if (phyto == null) {
-                        Text("Sin configurar", color = MoTextSecondary, modifier = Modifier.testTag("machine-phyto-empty"))
+                        Text("Sin configurar", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("machine-phyto-empty"))
                         if (!machine.archived) {
                             MoSecondaryButton(
                                 "Configurar datos fitosanitarios",
@@ -327,14 +325,14 @@ fun MachineDetailScreen(
                             Text(
                                 "Datos recibidos de REAFA. No se sobrescriben manualmente.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MoTextSecondary,
+                                color = MoSurfaceTokens.secondaryText,
                             )
                         }
                     }
 
                     MoSectionHeader("Inspecciones del equipo")
                     if (state.phytosanitaryInspections.isEmpty()) {
-                        Text("Sin inspecciones registradas.", color = MoTextSecondary)
+                        Text("Sin inspecciones registradas.", color = MoSurfaceTokens.secondaryText)
                     } else {
                         state.phytosanitaryInspections.forEach { inspection ->
                             Column(
@@ -351,7 +349,7 @@ fun MachineDetailScreen(
                                         inspection.certificateReference?.let { "Cert. $it" },
                                     ).ifEmpty { listOf("Sin resultado adicional") }.joinToString(" · "),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MoTextSecondary,
+                                    color = MoSurfaceTokens.secondaryText,
                                 )
                             }
                         }
@@ -384,7 +382,7 @@ fun MachineDetailScreen(
 
                     MoSectionHeader("Trabajos con esta máquina")
                     if (state.uses.isEmpty()) {
-                        Text("Todavía no se ha anotado en ningún trabajo.", color = MoTextSecondary)
+                        Text("Todavía no se ha anotado en ningún trabajo.", color = MoSurfaceTokens.secondaryText)
                     } else {
                         MoMetricCard(
                             "Horas anotadas",
@@ -400,9 +398,9 @@ fun MachineDetailScreen(
                             Row(Modifier.fillMaxWidth().testTag("machine-use"), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Column(Modifier.weight(1f)) {
                                     Text(use.description, style = MaterialTheme.typography.bodyLarge)
-                                    Text(DATE_FORMAT.format(use.activityDate), style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                                    Text(DATE_FORMAT.format(use.activityDate), style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
                                 }
-                                Text(use.hoursUsed?.let { "${editableHours(it)} h" } ?: "Sin horas", color = MoTextSecondary)
+                                Text(use.hoursUsed?.let { "${editableHours(it)} h" } ?: "Sin horas", color = MoSurfaceTokens.secondaryText)
                             }
                         }
                     }
@@ -413,7 +411,7 @@ fun MachineDetailScreen(
                     } else {
                         MoSecondaryButton("Retirar máquina", { sheet = "archive" }, Modifier.fillMaxWidth().testTag("archive-machine"), enabled = !state.isSaving)
                     }
-                    state.message?.let { Text(it, color = MoTextSecondary) }
+                    state.message?.let { Text(it, color = MoSurfaceTokens.secondaryText) }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             }
@@ -483,7 +481,7 @@ private fun PhytosanitaryEquipmentEditor(
         Text(
             "No confundas el ROMA con la matrícula o nº de serie de la máquina.",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
         )
         MoTextField(roma, { roma = it }, "Nº ROMA (si aplica)", modifier = Modifier.fillMaxWidth().testTag("machine-roma"))
         MoTextField(census, { census = it }, "Referencia de censo (si aplica)", modifier = Modifier.fillMaxWidth().testTag("machine-census"))
@@ -574,7 +572,7 @@ private fun PhytosanitaryInspectionEditor(
 @Composable
 private fun DetailValue(label: String, value: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
         Text(value ?: "Sin registrar", style = MaterialTheme.typography.bodyLarge)
     }
 }

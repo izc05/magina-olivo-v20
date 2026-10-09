@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoErrorText
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
 
 enum class MoStatusTone {
@@ -38,7 +38,7 @@ fun MoStatusChip(
     icon: ImageVector? = null,
 ) {
     val foreground = when (tone) {
-        MoStatusTone.Neutral -> MoTextSecondary
+        MoStatusTone.Neutral -> MoSurfaceTokens.secondaryText
         MoStatusTone.Success -> MoOliveMid
         MoStatusTone.Info -> MoInfoText
         MoStatusTone.Warning -> MoWarningText
@@ -48,7 +48,7 @@ fun MoStatusChip(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(999.dp),
-        color = foreground.copy(alpha = 0.12f),
+        color = MoSurfaceTokens.tintedCard(foreground, 0.12f),
         contentColor = foreground,
     ) {
         Row(

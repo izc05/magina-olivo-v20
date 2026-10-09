@@ -65,15 +65,12 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
  * Issue #246 §4B, CR-011 §5: the six daily actions, shown directly — no second menu repeats
@@ -225,7 +222,7 @@ fun NotebookRootRoute(
         canChangeFarm = origin == NotebookOrigin.ROOT,
     )
     labourCampaign?.let { id ->
-        androidx.compose.material3.ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { labourCampaign = null }) {
+        androidx.compose.material3.ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, onDismissRequest = { labourCampaign = null }) {
             com.isivoltpro.maginaolivo.feature.harvests.LabourPaymentsRoute(UUID.fromString(id), persistence) { labourCampaign = null }
         }
     }
@@ -289,7 +286,7 @@ fun NotebookHomeScreen(
     }
     Scaffold(
         Modifier.fillMaxSize().testTag("notebook-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
@@ -316,13 +313,13 @@ fun NotebookHomeScreen(
                     val runningCampaign = notebook?.campaigns.orEmpty()
                         .filter { it.status.isRunning }
                         .maxByOrNull { it.startDate }
-                    Surface(shape = MoShape.card, color = MoWarmWhite, modifier = Modifier.fillMaxWidth()) {
+                    Surface(shape = MoShape.card, color = MoSurfaceTokens.cardSurface, border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke), modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                             Column(
                                 Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("notebook-context"),
                                 verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                             ) {
-                                Text("Finca", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+                                Text("Finca", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
                                 Text(activeFarm.name, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
                                 // Status in words as well as colour (accessibility contract).
                                 MoStatusChip(
@@ -336,7 +333,7 @@ fun NotebookHomeScreen(
                                     Text(
                                         "Parcela: $parcel",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MoTextSecondary,
+                                        color = MoSurfaceTokens.secondaryText,
                                         modifier = Modifier.weight(1f).testTag("notebook-parcel-context"),
                                     )
                                     MoTertiaryButton("Toda la finca", onClearParcel, modifier = Modifier.testTag("notebook-parcel-clear"))
@@ -364,7 +361,7 @@ fun NotebookHomeScreen(
                             }
                         }
                     }
-                    Text("¿Qué has hecho hoy?", style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary)
+                    Text("¿Qué has hecho hoy?", style = MaterialTheme.typography.bodyLarge, color = MoSurfaceTokens.secondaryText)
                     QuickActionGrid(onAction)
                     NotebookHub(notebook, actions, tab, { tab = it }, onSelectCampaign)
                 }
@@ -413,8 +410,8 @@ private fun QuickActionTile(action: NotebookQuickAction, onClick: () -> Unit, mo
             .clickable(role = Role.Button, onClick = onClick)
             .testTag(action.tag),
         shape = MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(
             Modifier.padding(vertical = MoSpacing.sm, horizontal = MoSpacing.xs),
@@ -456,6 +453,7 @@ private fun NotebookHub(
                 NotebookHubTab.entries.forEach { option ->
                     FilterChip(
                         selected = option == tab,
+                        border = BorderStroke(1.dp, if (option == tab) MaterialTheme.colorScheme.primary else MoSurfaceTokens.cardStroke),
                         onClick = { onTab(option) },
                         label = { Text(option.label, maxLines = 1) },
                         modifier = Modifier.testTag(option.tag),
@@ -492,6 +490,7 @@ private fun NotebookHub(
                                 state.campaigns.sortedByDescending { it.startDate }.forEach { campaign ->
                                     FilterChip(
                                         selected = campaign.id == state.selectedCampaignId,
+                                        border = BorderStroke(1.dp, if (campaign.id == state.selectedCampaignId) MaterialTheme.colorScheme.primary else MoSurfaceTokens.cardStroke),
                                         onClick = { onSelectCampaign(campaign.id) },
                                         label = { Text(campaign.name) },
                                         modifier = Modifier.testTag("notebook-campaign"),
@@ -503,7 +502,7 @@ private fun NotebookHub(
                             Text(
                                 "Viendo ${campaignChipText(notebook.campaign.name, notebook.campaign.status)}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MoTextSecondary,
+                                color = MoSurfaceTokens.secondaryText,
                                 modifier = Modifier.testTag("notebook-selected-campaign-context"),
                             )
                         }

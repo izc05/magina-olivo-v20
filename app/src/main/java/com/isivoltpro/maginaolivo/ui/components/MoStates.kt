@@ -22,12 +22,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
 import com.isivoltpro.maginaolivo.ui.theme.MoError
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
  * UI polish v2: an empty state says what is missing and how to get it, compactly.
@@ -46,8 +44,8 @@ fun MoEmptyState(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
             modifier = Modifier.padding(MoSpacing.md),
@@ -67,7 +65,7 @@ fun MoEmptyState(
                 Text(
                     text = body,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                 )
                 if (actionText != null && onAction != null) {
                     MoSecondaryButton(
@@ -92,8 +90,8 @@ fun MoErrorState(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MoShape.cardLarge,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MoError.copy(alpha = 0.34f)),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.lg),
@@ -111,7 +109,7 @@ fun MoErrorState(
                 }
             }
             Text(title, style = MaterialTheme.typography.titleLarge)
-            Text(body, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+            Text(body, style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
             if (onRetry != null) {
                 MoSecondaryButton(
                     text = retryText,
@@ -135,7 +133,7 @@ fun MoListSkeleton(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MoShape.card,
-                colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+                colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
             ) {
                 Column(
                     modifier = Modifier.padding(MoSpacing.md),

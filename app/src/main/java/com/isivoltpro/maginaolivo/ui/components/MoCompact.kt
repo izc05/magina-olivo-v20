@@ -33,12 +33,10 @@ import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
  * A small tinted square holding a line icon: the leading mark of compact rows and metrics.
@@ -74,17 +72,17 @@ fun MoSummaryMetric(
     Surface(
         modifier = modifier,
         shape = MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(Modifier.padding(horizontal = MoSpacing.sm, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MoIconTone.of(icon).tint)
-                Text(label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(label, style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(value, style = MaterialTheme.typography.titleMedium, color = MoInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (supportingText != null) {
-                Text(supportingText, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, maxLines = 2)
+                Text(supportingText, style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText, maxLines = 2)
             }
         }
     }
@@ -126,8 +124,8 @@ fun MoKpiMetric(
         modifier = modifier.semantics(mergeDescendants = true) {}.heightIn(min = MoSize.minTouchTarget)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
         shape = MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, accent.tint.copy(alpha = 0.45f)),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(Modifier.height(IntrinsicSize.Min)) {
             Box(Modifier.width(4.dp).fillMaxHeight().background(accent.tint))
@@ -141,11 +139,11 @@ fun MoKpiMetric(
                             Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = accent.tint)
                         }
                     }
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary, maxLines = 2)
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText, maxLines = 2)
                 }
                 Text(value, style = MaterialTheme.typography.headlineSmall, color = MoInk)
                 if (supportingText != null) {
-                    Text(supportingText, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                    Text(supportingText, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
                 }
             }
         }
@@ -180,7 +178,7 @@ fun MoCompactListItem(
     iconContainer: Color? = null,
     onClick: (() -> Unit)? = null,
     /** A pending row (planned, draft) sits on the softer surface so it reads as "not done yet". */
-    container: Color = MoWarmWhite,
+    container: Color = MoSurfaceTokens.cardSurface,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Surface(
@@ -190,7 +188,7 @@ fun MoCompactListItem(
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
         shape = MoShape.card,
         color = container,
-        border = BorderStroke(1.dp, MoOutline),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
             Modifier.padding(horizontal = MoSpacing.sm, vertical = 10.dp),
@@ -204,7 +202,7 @@ fun MoCompactListItem(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = MoInk, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (subtitle != null) {
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
             trailing?.invoke()

@@ -51,12 +51,9 @@ import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoTint
@@ -88,6 +85,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 data class WeatherWeekUiState(
     val isLoading: Boolean = false,
@@ -200,7 +198,7 @@ fun WeatherWeekScreen(
 ) {
     Scaffold(
         Modifier.fillMaxSize().testTag("weather-week-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
@@ -222,7 +220,7 @@ fun WeatherWeekScreen(
                 modifier = Modifier.testTag("weather-week-location"),
             )
             if (state.isLoading) {
-                Text("Cargando el tiempo…", color = MoTextSecondary, modifier = Modifier.testTag("weather-week-loading"))
+                Text("Cargando el tiempo…", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("weather-week-loading"))
             } else {
                 when (val weather = state.weather) {
                     is FeedState.Value -> {
@@ -232,10 +230,10 @@ fun WeatherWeekScreen(
                         Spacer(Modifier.height(MoSpacing.xs))
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text("Próximos días", style = MaterialTheme.typography.titleMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
-                            Text("Máx. · mín.", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+                            Text("Máx. · mín.", style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText)
                         }
                         if (weather.value.daily.isEmpty()) {
-                            Text("La fuente disponible aún no ofrece previsión semanal.", color = MoTextSecondary, modifier = Modifier.testTag("weather-week-no-days"))
+                            Text("La fuente disponible aún no ofrece previsión semanal.", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("weather-week-no-days"))
                         } else {
                             val today = now.atZone(zone).toLocalDate()
                             val week = weather.value.daily.take(7)
@@ -255,21 +253,21 @@ fun WeatherWeekScreen(
                             Text(
                                 "Fuente: ${weather.source} · Pronóstico ${FeedAge.label(weather.value.updatedAt ?: weather.fetchedAt, now)} · Consulta ${FeedAge.label(weather.fetchedAt, now)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MoTextSecondary,
+                                color = MoSurfaceTokens.secondaryText,
                             )
-                            weather.value.attribution?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MoTextSecondary) }
+                            weather.value.attribution?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MoSurfaceTokens.secondaryText) }
                         }
                         WeatherRefresh(state, onRefresh)
                     }
                     FeedState.NoLocation -> Text(
                         if (state.locationAmbiguous) "Tus fincas están en varios municipios. Elige tu municipio en Perfil para consultar el tiempo."
                         else "Añade el municipio en la ficha de tu finca o en Perfil para consultar el tiempo.",
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                         modifier = Modifier.testTag("weather-week-no-location"),
                     )
-                    FeedState.NotConfigured -> Text("La fuente del tiempo no está configurada.", color = MoTextSecondary, modifier = Modifier.testTag("weather-week-not-configured"))
+                    FeedState.NotConfigured -> Text("La fuente del tiempo no está configurada.", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("weather-week-not-configured"))
                     FeedState.Unavailable -> {
-                        Text("Conéctate para cargar la previsión", color = MoTextSecondary, modifier = Modifier.testTag("weather-week-unavailable"))
+                        Text("Conéctate para cargar la previsión", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("weather-week-unavailable"))
                         WeatherRefresh(state, onRefresh)
                     }
                 }
@@ -293,7 +291,7 @@ private fun WeatherRefresh(state: WeatherWeekUiState, onRefresh: (() -> Unit)?) 
         Text(
             "No se pudo actualizar. Se muestran los datos guardados con su antigüedad.",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
             modifier = Modifier.testTag("weather-week-refresh-failed"),
         )
     }
@@ -307,7 +305,7 @@ private fun RadarAccess(onRadar: () -> Unit) {
         modifier = Modifier.fillMaxWidth().testTag("weather-week-radar"),
         shape = MoShape.card,
         color = MoRainTint,
-        border = BorderStroke(1.dp, MoRainText.copy(alpha = 0.35f)),
+        border = BorderStroke(1.dp, MoRainText),
     ) {
         Row(
             Modifier.heightIn(min = 64.dp).padding(MoSpacing.sm),
@@ -354,11 +352,11 @@ private fun CurrentWeatherSummary(weather: WeatherNow, stale: Boolean) {
 
 @Composable
 private fun WeatherMeasure(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
-    Surface(modifier.semantics(mergeDescendants = true) {}, shape = MoShape.card, color = MoWarmWhite, border = BorderStroke(1.dp, MoOutline)) {
+    Surface(modifier.semantics(mergeDescendants = true) {}, shape = MoShape.card, color = MoSurfaceTokens.cardSurface, border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke)) {
         Column(Modifier.padding(MoSpacing.sm), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
             Icon(icon, null, tint = MoInfoText, modifier = Modifier.size(22.dp))
             Text(value, style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
-            Text(label, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+            Text(label, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
         }
     }
 }
@@ -371,13 +369,13 @@ private fun WeatherDayRow(day: WeatherDayForecast, today: LocalDate, index: Int)
         WeatherTone.CLOUD -> MoCloudTint to MoCloudText
         WeatherTone.PARTLY -> MoSkyTint to MoInfoText
         WeatherTone.SUN -> MoSoftGoldTint to MoSoftGoldText
-        WeatherTone.NEUTRAL -> MoWarmWhite to MoTextSecondary
+        WeatherTone.NEUTRAL -> MoWarmWhite to MoSurfaceTokens.secondaryText
     }
     Surface(
         shape = MoShape.card,
         color = tint,
         // «Hoy» stands out by its border and larger icon, not by a different layout.
-        border = if (isToday) BorderStroke(2.dp, accent) else BorderStroke(1.dp, MoOutline.copy(alpha = 0.6f)),
+        border = if (isToday) BorderStroke(2.dp, accent) else BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -397,7 +395,7 @@ private fun WeatherDayRow(day: WeatherDayForecast, today: LocalDate, index: Int)
                 // The maximum leads; the minimum is secondary.
                 Column(horizontalAlignment = Alignment.End) {
                     Text(day.maxTemperatureC?.let { "$it°" } ?: "—", style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
-                    Text(day.minTemperatureC?.let { "$it°" } ?: "—", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+                    Text(day.minTemperatureC?.let { "$it°" } ?: "—", style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
                 }
             }
             val rain = dayRainLine(day)
@@ -408,12 +406,12 @@ private fun WeatherDayRow(day: WeatherDayForecast, today: LocalDate, index: Int)
                     Text(rain, style = MaterialTheme.typography.labelLarge, color = MoRainText)
                 }
             } else if (rain != null) {
-                Text(rain, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                Text(rain, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
             }
             if (wind != null) {
-                Text(wind, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                Text(wind, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
             } else if (rain == null) {
-                Text("Sin valores publicados para este día", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                Text("Sin valores publicados para este día", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
             }
         }
     }

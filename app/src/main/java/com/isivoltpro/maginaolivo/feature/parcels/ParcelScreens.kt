@@ -30,7 +30,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatTile
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.DayOfWeek
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -89,12 +88,11 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun FarmParcelsRoute(
@@ -304,7 +302,7 @@ fun ParcelDetailScreen(
     OnEachSave(state.saveCount) { editorVisible = false }
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("parcel-detail-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         when {
@@ -354,7 +352,7 @@ fun ParcelDetailScreen(
     if (archiveConfirmation) ModalBottomSheet(onDismissRequest = { archiveConfirmation = false }) {
         Column(Modifier.fillMaxWidth().padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.md)) {
             Text("Archivar parcela", style = MaterialTheme.typography.headlineSmall)
-            Text("Se conservarán sus datos y el histórico de pertenencia a la finca.", color = MoTextSecondary)
+            Text("Se conservarán sus datos y el histórico de pertenencia a la finca.", color = MoSurfaceTokens.secondaryText)
             MoDestructiveButton("Archivar", { archiveConfirmation = false; onArchive() }, Modifier.fillMaxWidth())
             MoTertiaryButton("Cancelar", { archiveConfirmation = false }, Modifier.fillMaxWidth())
             Spacer(Modifier.height(MoSpacing.md))
@@ -417,7 +415,7 @@ private fun ParcelDetailContent(
                     icon = MoIcons.Map,
                     onClick = it,
                     modifier = Modifier.testTag("parcel-locate"),
-                    trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary) },
+                    trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText) },
                 )
             }
             IrrigationCard(agronomy, onEdit)
@@ -441,12 +439,12 @@ private fun ParcelDetailContent(
 @Composable
 private fun ParcelDataBlocks(parcel: Parcel) {
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-        Surface(shape = MoShape.card, color = MoWarmWhite, modifier = Modifier.fillMaxWidth()) {
+        Surface(shape = MoShape.card, color = MoSurfaceTokens.cardSurface, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 Column(Modifier.semantics(mergeDescendants = true) {}.testTag("parcel-area-hero")) {
-                    Text("Superficie", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+                    Text("Superficie", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
                     Text(parcel.areaLabel(), style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
-                    parcel.areaNote()?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary) }
+                    parcel.areaNote()?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText) }
                 }
                 // Phase 18: the saved boundary, drawn from this phone's copy (works offline).
                 parcel.geometryGeoJson?.let { geometry ->
@@ -477,7 +475,7 @@ private fun ParcelDataBlocks(parcel: Parcel) {
             Text(
                 parcel.notes?.takeIf { it.isNotBlank() } ?: "Sin notas. Puedes añadirlas al editar la parcela.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (parcel.notes.isNullOrBlank()) MoTextSecondary else MoInk,
+                color = if (parcel.notes.isNullOrBlank()) MoSurfaceTokens.secondaryText else MoInk,
             )
         }
     }
@@ -510,7 +508,7 @@ private enum class ParcelTab(val label: String) { ACTIVITY("Actividad"), DATA("D
 private fun ParcelTabs(selected: ParcelTab, onSelect: (ParcelTab) -> Unit) {
     TabRow(
         selectedTabIndex = selected.ordinal,
-        containerColor = MoWarmWhite,
+        containerColor = MoSurfaceTokens.cardSurface,
         contentColor = MoOliveDark,
         modifier = Modifier.clip(MoShape.card),
     ) {
@@ -523,7 +521,7 @@ private fun ParcelTabs(selected: ParcelTab, onSelect: (ParcelTab) -> Unit) {
                     Text(
                         tab.label,
                         style = MaterialTheme.typography.labelLarge,
-                        color = if (tab == selected) MoOliveDark else MoTextSecondary,
+                        color = if (tab == selected) MoOliveDark else MoSurfaceTokens.secondaryText,
                     )
                 },
             )
@@ -541,7 +539,7 @@ private fun IrrigationCard(agronomy: ParcelAgronomy, onEdit: () -> Unit) {
         val known = agronomy.irrigationSystem != null || agronomy.irrigationNetwork != null ||
             agronomy.irrigationSector != null || agronomy.irrigationDays.isNotEmpty()
         if (!known) {
-            Text("Aún no has indicado cómo se riega esta parcela.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+            Text("Aún no has indicado cómo se riega esta parcela.", style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
             TextButton(onClick = onEdit) { Text("Añadir datos de riego") }
         } else {
             // Only what the farmer told us: no grid of dashes.
@@ -637,7 +635,7 @@ internal fun ParcelEditor(
             Icon(if (moreOpen || oliveError != null) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoOliveDark)
             Column(Modifier.weight(1f)) {
                 Text("Más datos del olivar", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
-                if (!moreOpen && oliveError == null) Text("Olivos, riego y Catastro", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                if (!moreOpen && oliveError == null) Text("Olivos, riego y Catastro", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
             }
         }
         // An error in a folded field opens the fold, so the farmer sees what to fix.
@@ -679,7 +677,7 @@ internal fun ParcelEditor(
             )
             MoTextField(draft.province, { draft = draft.copy(province = it) }, "Provincia", Modifier.fillMaxWidth().testTag("parcel-province"))
             MoTextField(draft.notes, { draft = draft.copy(notes = it) }, "Notas", Modifier.fillMaxWidth(), singleLine = false)
-            Text("Los datos escritos aquí se guardan como entrada manual; la app no los presenta como verificados por Catastro.", color = MoTextSecondary)
+            Text("Los datos escritos aquí se guardan como entrada manual; la app no los presenta como verificados por Catastro.", color = MoSurfaceTokens.secondaryText)
         }
         MoPrimaryButton(
             "Guardar parcela",
@@ -709,7 +707,7 @@ private fun GroveFields(draft: ParcelDraft, oliveError: String?, onChange: (Parc
         supportingText = oliveError,
     )
     MoTextField(draft.variety, { onChange(draft.copy(variety = it.take(80))) }, "Variedad (Picual, Hojiblanca…)", Modifier.fillMaxWidth().testTag("parcel-variety"))
-    Text("Riego", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    Text("Riego", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         IrrigationSystem.entries.forEach { system ->
             FilterChip(
@@ -724,7 +722,7 @@ private fun GroveFields(draft: ParcelDraft, oliveError: String?, onChange: (Parc
     if (draft.irrigationSystem != null && draft.irrigationSystem != IrrigationSystem.DRYLAND) {
         MoTextField(draft.irrigationNetwork, { onChange(draft.copy(irrigationNetwork = it.take(80))) }, "Comunidad de regantes / red", Modifier.fillMaxWidth().testTag("parcel-irrigation-network"))
         MoTextField(draft.irrigationSector, { onChange(draft.copy(irrigationSector = it.take(80))) }, "Sector", Modifier.fillMaxWidth().testTag("parcel-irrigation-sector"))
-        Text("Días habituales de riego", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        Text("Días habituales de riego", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             DayOfWeek.entries.forEach { day ->
                 val selected = day in draft.irrigationDays

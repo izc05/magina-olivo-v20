@@ -67,11 +67,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Box
@@ -96,6 +93,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun AgendaRoute(
@@ -177,7 +175,7 @@ fun AgendaScreen(
         )
     }
 
-    Scaffold(Modifier.fillMaxSize().testTag("calendar-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("calendar-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),
@@ -200,14 +198,14 @@ fun AgendaScreen(
                     Text("Activar avisos")
                 }
             }
-            state.message?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("agenda-message")) }
+            state.message?.let { Text(it, color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("agenda-message")) }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("agenda-error")) }
             when {
                 state.isLoading -> CircularProgressIndicator()
                 view == AgendaView.MONTH -> {
                     val shown = YearMonth.parse(month)
                     val day = LocalDate.parse(selectedDay)
-                    Surface(shape = MoShape.card, color = MoWarmWhite, border = BorderStroke(1.dp, MoOutline)) {
+                    Surface(shape = MoShape.card, color = MoSurfaceTokens.cardSurface, border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke)) {
                         MoMonthCalendar(
                             month = shown,
                             selected = day,
@@ -274,7 +272,7 @@ private enum class AgendaView { AGENDA, MONTH }
 
 @Composable
 private fun AgendaViewSwitch(view: AgendaView, onChange: (AgendaView) -> Unit) {
-    Surface(shape = MoShape.pill, color = MoSurfaceSoft, border = BorderStroke(1.dp, MoOutline), modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = MoShape.pill, color = MoSurfaceSoft, border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(4.dp)) {
             listOf(AgendaView.AGENDA to "Agenda", AgendaView.MONTH to "Mes").forEach { (option, label) ->
                 val active = option == view
@@ -337,8 +335,8 @@ private fun AgendaRow(
     Surface(
         modifier = Modifier.fillMaxWidth().testTag("agenda-row").clickable(role = Role.Button, onClick = onSelected),
         shape = MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(Modifier.padding(start = MoSpacing.sm, end = MoSpacing.xs, top = 10.dp, bottom = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
@@ -354,10 +352,10 @@ private fun AgendaRow(
                     entry.parcelNames.takeIf { it.isNotEmpty() }?.joinToString(", "),
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
             planningLine(entry.planning?.copy(startTime = null))?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("agenda-planning"))
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("agenda-planning"))
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (entry.reminders.isNotEmpty()) {
