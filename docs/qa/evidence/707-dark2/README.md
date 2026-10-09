@@ -19,3 +19,10 @@ local artifacts; no original work, photos or agricultural records were removed.
 
 Independent final-SHA review and the three remote gates must precede integration.
 Physical Gate21 remains pending owner acceptance.
+
+CI sampling fix: `707-dark2-ci-threebutton-red.txt` reproduces the two first remote
+failures (Android navigation scrim sampled at the root's bottom edge). Four
+`707-dark2-ci-*-green.txt` logs verify all six harness cases in LIGHT/DARK with
+three-button/gesture navigation: 24 repeated executions PASS. Exact background
+comparison now samples both Scaffold gutters at half-height, outside system bars.
+`707-dark2-ci-sampling-build.txt`: test APK PASS 2m33s; production code unchanged.

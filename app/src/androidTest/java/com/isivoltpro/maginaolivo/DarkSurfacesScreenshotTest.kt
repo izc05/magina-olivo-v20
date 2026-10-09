@@ -152,7 +152,12 @@ class DarkSurfacesScreenshotTest {
     private fun expectBackground(tag: String) {
         val bitmap = compose.onNodeWithTag(tag).captureToImage().asAndroidBitmap()
         val scheme = if (mode == AppearanceMode.DARK) MoDarkColorScheme else MoLightColorScheme
-        assertEquals("$tag background must follow appearance", scheme.background.toArgb(), bitmap.getPixel(bitmap.width - 2, bitmap.height - 2))
+        // Both screens inset their content horizontally. Sample the exposed Scaffold
+        // gutters halfway down, outside Android's three-button navigation-bar scrim.
+        // captureToImage includes that system overlay at the bottom on API 35.
+        for (x in listOf(2, bitmap.width - 3)) {
+            assertEquals("$tag background must follow appearance at x=$x", scheme.background.toArgb(), bitmap.getPixel(x, bitmap.height / 2))
+        }
     }
 
     private fun capture(tag: String, name: String) {
