@@ -351,6 +351,7 @@ fun AppNavigation(
             }
             composable(RootDestination.Profile.route) {
                 ProfileRoute(
+                    appearanceStore = compositionRoot.appearanceStore,
                     appVersion = appVersionLabel(
                         com.isivoltpro.maginaolivo.BuildConfig.VERSION_NAME,
                         com.isivoltpro.maginaolivo.BuildConfig.BUILD_NUMBER,

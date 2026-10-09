@@ -6,10 +6,6 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AppearanceStoreTest {
-    @Test fun incompleteScreenMigrationCannotActivateDarkAppearanceInProduction() {
-        AppearanceMode.entries.forEach { assertEquals(AppearanceMode.LIGHT, productionAppearanceMode(it)) }
-    }
-
     @Test fun unknownOrAbsentValuesFollowSystem() {
         listOf(null, "", "night", "dark", "garbage").forEach {
             assertEquals(AppearanceMode.SYSTEM, AppearanceMode.fromStoredValue(it))

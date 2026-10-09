@@ -31,11 +31,6 @@ interface AppearanceStore {
     suspend fun setMode(mode: AppearanceMode): Boolean
 }
 
-/** Temporary release guard, removed in DARK-3 together with the final Perfil selector. */
-internal fun productionAppearanceMode(stored: AppearanceMode): AppearanceMode = when (stored) {
-    AppearanceMode.SYSTEM, AppearanceMode.LIGHT, AppearanceMode.DARK -> AppearanceMode.LIGHT
-}
-
 internal interface AppearanceStorage {
     fun read(): String?
     fun write(value: String): Boolean
