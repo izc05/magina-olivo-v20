@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.isivoltpro.maginaolivo.R
 import com.isivoltpro.maginaolivo.ui.brand.MaginaOlivoWordmark
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
@@ -114,9 +114,9 @@ fun MoPhotoHeader(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).semantics { heading() },
                 )
-                // A status chip on a photo needs its own light backing to stay legible.
+                // A status chip on a photo needs its own theme surface to stay legible.
                 trailing?.let { chip ->
-                    Surface(shape = RoundedCornerShape(50), color = MoWarmWhite.copy(alpha = 0.92f)) {
+                    Surface(shape = RoundedCornerShape(50), color = MoSurfaceTokens.cardSurface) {
                         Box(Modifier.padding(2.dp)) { chip() }
                     }
                 }
@@ -173,7 +173,7 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
                         Text(
                             stat.value,
                             style = MaterialTheme.typography.titleMedium,
-                            color = MoInk,
+                            color = MoColors.current.bodyText,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -187,7 +187,7 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
                     // Wrap rather than clip: a label or unit is never cut with large text.
                     Column {
                         Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText)
-                        Text(stat.value, style = MaterialTheme.typography.titleMedium, color = MoInk)
+                        Text(stat.value, style = MaterialTheme.typography.titleMedium, color = MoColors.current.bodyText)
                     }
                 }
             }
@@ -215,7 +215,7 @@ fun MoStatTile(stat: MoStat, modifier: Modifier = Modifier) {
             Text(
                 stat.value,
                 style = MaterialTheme.typography.titleMedium,
-                color = MoInk,
+                color = MoColors.current.bodyText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -228,7 +228,7 @@ fun MoStatTile(stat: MoStat, modifier: Modifier = Modifier) {
 fun MoLabeledValue(label: String, value: String?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText)
-        Text(value ?: "—", style = MaterialTheme.typography.bodyLarge, color = MoInk)
+        Text(value ?: "—", style = MaterialTheme.typography.bodyLarge, color = MoColors.current.bodyText)
     }
 }
 
@@ -256,7 +256,7 @@ fun MoSectionCard(
                 Text(
                     title,
                     style = MaterialTheme.typography.titleLarge,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                     modifier = Modifier.weight(1f).semantics { heading() },
                 )
                 action?.invoke()

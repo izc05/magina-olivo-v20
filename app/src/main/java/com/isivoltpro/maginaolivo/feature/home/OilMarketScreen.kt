@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.home
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -41,13 +45,7 @@ import com.isivoltpro.maginaolivo.domain.market.OilCategory
 import com.isivoltpro.maginaolivo.domain.market.OilMarketSeries
 import com.isivoltpro.maginaolivo.domain.market.OilTrends
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoEarthText
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarning
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.ZoneId
@@ -78,7 +76,7 @@ fun OilMarketScreen(
 ) {
     Scaffold(
         Modifier.fillMaxSize().testTag("oil-market-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
@@ -86,7 +84,7 @@ fun OilMarketScreen(
                 .padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            Text("Mercado del aceite", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Mercado del aceite", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             pulse?.let {
                 MoSectionHeader("Pulso diario")
                 it()
@@ -101,7 +99,7 @@ fun OilMarketScreen(
                         "Fuente: ${official.value.sourceName} · precios en almazara o bodega, €/kg · " +
                             "consultado ${FETCHED.format(official.fetchedAt.atZone(zone))}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoColors.current.secondaryText,
                         modifier = Modifier.testTag("oil-market-source"),
                     )
                 }
@@ -114,20 +112,21 @@ fun OilMarketScreen(
     }
 }
 
-private val LINES = listOf(
-    OilCategory.AOVE to MoOliveDark,
-    OilCategory.AOV to MoWarning,
-    OilCategory.AOL to MoEarthText,
-)
+
 
 @Composable
 internal fun OilMarketChart(series: OilMarketSeries, compact: Boolean = false) {
+    val lines = listOf(
+        OilCategory.AOVE to MoColors.current.primaryText,
+        OilCategory.AOV to MoColors.current.warningAccent,
+        OilCategory.AOL to MoColors.current.earthText,
+    )
     val weeks = OilTrends.chartWeeks(series)
     if (weeks.isEmpty()) {
         Note("Sin semanas publicadas todavía.", "oil-market-chart-empty")
         return
     }
-    val values = LINES.associate { (category, _) -> category to weeks.map { OilTrends.valueAt(series, category, it) } }
+    val values = lines.associate { (category, _) -> category to weeks.map { OilTrends.valueAt(series, category, it) } }
     val all = values.values.flatten().filterNotNull()
     val summary = chartSummary(weeks.first(), weeks.last(), values)
     val low = all.minOf { it }.toFloat()
@@ -136,7 +135,7 @@ internal fun OilMarketChart(series: OilMarketSeries, compact: Boolean = false) {
     val span = (high - low).takeIf { it > 0f } ?: 0.1f
     val bottom = low - span * 0.15f
     val top = high + span * 0.15f
-    val grid = MoOutline
+    val grid = MoSurfaceTokens.cardStroke
     Canvas(
         Modifier.fillMaxWidth().height(if (compact) 118.dp else 180.dp).testTag("oil-market-chart").semantics { contentDescription = summary },
     ) {
@@ -147,7 +146,7 @@ internal fun OilMarketChart(series: OilMarketSeries, compact: Boolean = false) {
             val gy = size.height * f
             drawLine(grid, Offset(0f, gy), Offset(size.width, gy), strokeWidth = 1.dp.toPx())
         }
-        LINES.forEach { (category, color) ->
+        lines.forEach { (category, color) ->
             val points = values.getValue(category)
             val path = Path()
             var drawing = false
@@ -165,11 +164,11 @@ internal fun OilMarketChart(series: OilMarketSeries, compact: Boolean = false) {
         }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Semana ${OilTrends.weekOf(weeks.first())}", style = MaterialTheme.typography.labelSmall, color = MoTextSecondary)
-        Text("Semana ${OilTrends.weekOf(weeks.last())}", style = MaterialTheme.typography.labelSmall, color = MoTextSecondary)
+        Text("Semana ${OilTrends.weekOf(weeks.first())}", style = MaterialTheme.typography.labelSmall, color = MoColors.current.secondaryText)
+        Text("Semana ${OilTrends.weekOf(weeks.last())}", style = MaterialTheme.typography.labelSmall, color = MoColors.current.secondaryText)
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        LINES.forEach { (category, color) ->
+        lines.forEach { (category, color) ->
             val latest = OilTrends.of(series, category)?.latest?.valueEurPerKg
             Row(
                 Modifier.weight(1f).semantics(mergeDescendants = true) {}.testTag("oil-market-legend-${category.name.lowercase()}"),
@@ -180,13 +179,13 @@ internal fun OilMarketChart(series: OilMarketSeries, compact: Boolean = false) {
                 Text(
                     "${category.label}\n${latest?.let { OilTrends.euros(it) } ?: "—"}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                     maxLines = 2,
                 )
             }
         }
     }
-    if (!compact) Text(summary, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("oil-market-chart-summary"))
+    if (!compact) Text(summary, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("oil-market-chart-summary"))
 }
 
 /** The chart in words: range per category and how many weeks had no published price. */
@@ -196,7 +195,7 @@ internal fun chartSummary(
     values: Map<OilCategory, List<BigDecimal?>>,
 ): String {
     val weeks = values.values.firstOrNull()?.size ?: 0
-    val parts = LINES.mapNotNull { (category, _) ->
+    val parts = listOf(OilCategory.AOVE, OilCategory.AOV, OilCategory.AOL).mapNotNull { category ->
         val own = values[category].orEmpty()
         val known = own.filterNotNull()
         if (known.isEmpty()) return@mapNotNull "${category.label} sin datos"

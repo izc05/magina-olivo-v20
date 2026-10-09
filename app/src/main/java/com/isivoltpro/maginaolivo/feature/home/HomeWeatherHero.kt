@@ -39,14 +39,12 @@ import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
 import com.isivoltpro.maginaolivo.domain.weather.WeatherMoods
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoPhotoBrand
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoTint
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSoftGold
-import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldText
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.Instant
 import java.time.ZoneId
@@ -118,8 +116,8 @@ internal fun HomeWeatherHero(
                     modifier = Modifier.size(48.dp).testTag("home-open-alerts")
                         .semantics { contentDescription = "Avisos y calendario" },
                     shape = androidx.compose.foundation.shape.CircleShape,
-                    color = MoWarmWhite,
-                    contentColor = MoOliveDark,
+                    color = MoSurfaceTokens.cardSurface,
+                    contentColor = MoColors.current.primaryText,
                 ) {
                     Box(contentAlignment = Alignment.Center) { Icon(MoIcons.Bell, null, Modifier.size(24.dp)) }
                 }
@@ -204,19 +202,19 @@ internal fun HomeWeatherHero(
                     onClick = onForecast,
                     modifier = Modifier.fillMaxWidth().testTag("home-weather-hero"),
                     shape = MoShape.field,
-                    color = MoWarmWhite.copy(alpha = 0.96f),
+                    color = MoSurfaceTokens.cardSurface.copy(alpha = 0.96f),
                 ) {
                     Row(
                         Modifier.heightIn(min = 56.dp).padding(horizontal = MoSpacing.sm, vertical = MoSpacing.xs),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
                     ) {
-                        Icon(MoIcons.Weather, null, tint = MoInfoText, modifier = Modifier.size(24.dp))
+                        Icon(MoIcons.Weather, null, tint = MoColors.current.infoText, modifier = Modifier.size(24.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Ver previsión", style = MaterialTheme.typography.labelLarge, color = MoOliveDark)
-                            Text("Próximos días y radar", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                            Text("Ver previsión", style = MaterialTheme.typography.labelLarge, color = MoColors.current.primaryText)
+                            Text("Próximos días y radar", style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText)
                         }
-                        Icon(MoIcons.ChevronRight, null, tint = MoOliveDark, modifier = Modifier.size(20.dp))
+                        Icon(MoIcons.ChevronRight, null, tint = MoColors.current.primaryText, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -225,7 +223,7 @@ internal fun HomeWeatherHero(
 }
 
 @Composable
-internal fun WeatherTemperature(temperatureC: Int, modifier: Modifier = Modifier, color: Color = MoOliveDark) {
+internal fun WeatherTemperature(temperatureC: Int, modifier: Modifier = Modifier, color: Color = MoColors.current.primaryText) {
     Text(
         "$temperatureC°",
         style = MaterialTheme.typography.displayLarge.copy(
@@ -253,9 +251,9 @@ internal fun WeatherConditionIcon(condition: WeatherCondition?, modifier: Modifi
         null -> MoIcons.Calendar
     }
     val tint = when {
-        condition == WeatherCondition.CLEAR -> if (onPhoto) MoSoftGold else MoSoftGoldText
+        condition == WeatherCondition.CLEAR -> if (onPhoto) MoSoftGold else MoColors.current.valueText
         onPhoto -> if (condition == WeatherCondition.RAIN || condition == WeatherCondition.SNOW) MoInfoTint else MoWarmWhite
-        else -> MoInfoText
+        else -> MoColors.current.infoText
     }
     Icon(icon, contentDescription = null, tint = tint, modifier = modifier)
 }

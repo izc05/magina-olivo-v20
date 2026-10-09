@@ -1,0 +1,40 @@
+
+com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest:
+Error in marketEmptyStateHasTheActiveBackground(com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest):
+java.lang.AssertionError: oil-market-root background must follow appearance expected:<-15263468> but was:<-3289652>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest.expectBackground(DarkSurfacesScreenshotTest.kt:155)
+	at com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest.marketEmptyStateHasTheActiveBackground(DarkSurfacesScreenshotTest.kt:95)
+.
+Error in radarOfflineHasTheActiveBackground(com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest):
+java.lang.AssertionError: radar-root background must follow appearance expected:<-15263468> but was:<-3289652>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest.expectBackground(DarkSurfacesScreenshotTest.kt:155)
+	at com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest.radarOfflineHasTheActiveBackground(DarkSurfacesScreenshotTest.kt:112)
+...
+
+Time: 8.809
+There were 2 failures:
+1) marketEmptyStateHasTheActiveBackground(com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest)
+java.lang.AssertionError: oil-market-root background must follow appearance expected:<-15263468> but was:<-3289652>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest.expectBackground(DarkSurfacesScreenshotTest.kt:155)
+	at com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest.marketEmptyStateHasTheActiveBackground(DarkSurfacesScreenshotTest.kt:95)
+2) radarOfflineHasTheActiveBackground(com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest)
+java.lang.AssertionError: radar-root background must follow appearance expected:<-15263468> but was:<-3289652>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest.expectBackground(DarkSurfacesScreenshotTest.kt:155)
+	at com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest.radarOfflineHasTheActiveBackground(DarkSurfacesScreenshotTest.kt:112)
+
+FAILURES!!!
+Tests run: 6,  Failures: 2
+
+

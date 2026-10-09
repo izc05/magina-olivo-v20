@@ -1,0 +1,6 @@
+
+com.isivoltpro.maginaolivo.MyProfileScreenTest:..
+
+Time: 5.636
+
+OK (2 tests)

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.profile
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,7 +48,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import kotlinx.coroutines.launch
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
@@ -155,7 +156,7 @@ fun ProfileScreen(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
             OliveMark(Modifier.size(48.dp))
             Column {
-                Text("Perfil", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+                Text("Perfil", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
                 Text("Tus datos se guardan primero en este teléfono.", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
             }
         }

@@ -36,6 +36,16 @@ data class MoPalette(
     val skyTint: Color,
     val cloudText: Color,
     val cloudTint: Color,
+    val successText: Color = MoSuccessText,
+    val successTint: Color = MoSuccessTint,
+    val successAccent: Color = MoSuccess,
+    val errorAccent: Color = MoError,
+    val selectionText: Color = MoOlivePrimary,
+    val infoAccent: Color = MoInfo,
+    val warningAccent: Color = MoWarning,
+    val earthAccent: Color = MoEarth,
+    val goldAccent: Color = MoSoftGold,
+    val placeholderShade: Color = MoCream,
 )
 
 val MoLightPalette = MoPalette(
@@ -54,6 +64,11 @@ val MoDarkPalette = MoPalette(
     Color(0xFFA5D6C8), Color(0xFF213930), Color(0xFFF2B69C), Color(0xFF402B22),
     Color(0xFFE2CC90), Color(0xFF38321F), Color(0xFFA8D4F5), Color(0xFF203544),
     Color(0xFF26343B), Color(0xFFC4CFD9), Color(0xFF2D3338),
+    successText = Color(0xFFB6D39E), successTint = Color(0xFF293A24),
+    successAccent = Color(0xFFB6D39E), errorAccent = Color(0xFFFFB6AC),
+    selectionText = Color(0xFFB6D39E), infoAccent = Color(0xFFB0D1E0),
+    warningAccent = Color(0xFFECCB86), earthAccent = Color(0xFFE6BD9E), goldAccent = Color(0xFFE2CC90),
+    placeholderShade = MoDarkColorScheme.surface,
 )
 
 internal val LocalMoPalette = staticCompositionLocalOf { MoLightPalette }

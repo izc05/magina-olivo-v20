@@ -1,0 +1,7 @@
+PASS 360 dp LIGHT font1.3: 6 tests
+PASS 360 dp DARK font1.3: 6 tests
+PASS 390 dp LIGHT font1.3: 6 tests
+PASS 390 dp DARK font1.3: 6 tests
+PASS 430 dp LIGHT font1.3: 6 tests
+PASS 430 dp DARK font1.3: 6 tests
+PASS matrix: 36 test executions,54 PNG, synthetic harness; no physical acceptance

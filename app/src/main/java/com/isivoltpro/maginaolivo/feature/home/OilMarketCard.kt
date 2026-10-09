@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.home
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -47,12 +49,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoErrorText
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoSuccessText
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
@@ -77,7 +75,7 @@ internal fun OilMarketCard(
         Column(Modifier.padding(MoSpacing.sm), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                 MoIconBadge(MoIcons.Euro)
-                Text("Mercado del aceite", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+                Text("Mercado del aceite", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
             }
             when (official) {
                 is FeedState.Value -> {
@@ -125,16 +123,16 @@ internal fun OfficialTrend(official: FeedState.Value<OilMarketSeries>) {
 @Composable
 private fun TrendRow(trend: OilTrend, lagging: Boolean) {
     val tint = when (trend.direction) {
-        TrendDirection.UP -> MoSuccessText
-        TrendDirection.DOWN -> MoErrorText
+        TrendDirection.UP -> MoColors.current.successText
+        TrendDirection.DOWN -> MoColors.current.errorText
         else -> MoSurfaceTokens.secondaryText
     }
     Row(
         Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("home-market-trend"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(trend.category.label, style = MaterialTheme.typography.bodyMedium, color = MoInk, modifier = Modifier.weight(1f))
-        Text(OilTrends.euros(trend.latest.valueEurPerKg), style = MaterialTheme.typography.titleSmall, color = MoInk)
+        Text(trend.category.label, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.bodyText, modifier = Modifier.weight(1f))
+        Text(OilTrends.euros(trend.latest.valueEurPerKg), style = MaterialTheme.typography.titleSmall, color = MoColors.current.bodyText)
         val change = OilTrends.label(trend).removePrefix(trend.category.label).trim().takeIf { trend.direction != null }
         val ownWeek = "semana ${OilTrends.week(trend.latest)}"
         val text = when {

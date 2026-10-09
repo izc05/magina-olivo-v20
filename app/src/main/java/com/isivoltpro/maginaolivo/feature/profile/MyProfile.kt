@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.profile
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -50,9 +52,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -223,11 +223,11 @@ private fun LocationSheet(
             .testTag("profile-location-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Tu municipio", style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
+        Text("Tu municipio", style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
         Text(
             "Se usa para el tiempo de Inicio cuando tus fincas no tienen municipio o están en varios. Déjalo vacío para quitarlo.",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
         MoTextField(municipality, { municipality = it }, "Municipio", Modifier.fillMaxWidth().testTag("profile-municipality-field"))
         MoTextField(province, { province = it }, "Provincia (opcional)", Modifier.fillMaxWidth().testTag("profile-province-field"))
@@ -258,11 +258,11 @@ private fun CooperativeSheet(
             .testTag("profile-cooperative-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
-        Text("Tu cooperativa", style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
+        Text("Tu cooperativa", style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
         Text(
             "Elige una de tus cooperativas o almazaras. Es la misma lista que usas en pesadas y gastos: no se crea ninguna copia.",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
         CooperativeOption("Ninguna", selected = current == null, enabled = !isSaving, tag = "profile-cooperative-none") { onChoose(null) }
         cooperatives.forEach { cooperative ->
@@ -270,7 +270,7 @@ private fun CooperativeSheet(
                 onChoose(cooperative.id)
             }
         }
-        Text("¿No está en la lista?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark, modifier = Modifier.padding(top = MoSpacing.sm))
+        Text("¿No está en la lista?", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText, modifier = Modifier.padding(top = MoSpacing.sm))
         MoTextField(newName, { newName = it }, "Nombre de la cooperativa", Modifier.fillMaxWidth().testTag("profile-new-cooperative"))
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("profile-error")) }
         MoPrimaryButton(
@@ -329,7 +329,7 @@ fun ReminderSettings(
             horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Avisos de trabajos planificados", style = MaterialTheme.typography.bodyLarge, color = MoOliveDark)
+                Text("Avisos de trabajos planificados", style = MaterialTheme.typography.bodyLarge, color = MoColors.current.primaryText)
                 Text(
                     when {
                         !preferences.enabled -> "Desactivados: no suena ninguno; se guardan para cuando los actives."
@@ -337,7 +337,7 @@ fun ReminderSettings(
                         else -> "Activados. Android controla el sonido y la vibración."
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                 )
             }
             Switch(checked = preferences.enabled, onCheckedChange = null, enabled = !isSaving)
@@ -346,7 +346,7 @@ fun ReminderSettings(
             if (!notificationsOn) {
                 MoTertiaryButton("Revisar notificaciones", onNotifications, Modifier.testTag("profile-reminders-notifications"))
             }
-            Text("Aviso del día anterior, a las", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+            Text("Aviso del día anterior, a las", style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 ReminderPreferences.PREVIOUS_DAY_CHOICES.forEach { hour ->
                     FilterChip(

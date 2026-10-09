@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +12,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
@@ -29,7 +30,7 @@ fun MoConfirmationSheet(
         modifier = modifier.fillMaxWidth(),
         shape = MoShape.hero,
         color = MoSurfaceTokens.cardSurface,
-        contentColor = MoOliveDark,
+        contentColor = MoColors.current.primaryText,
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.lg),
@@ -74,7 +75,7 @@ fun MoBottomActionSheet(
         modifier = modifier.fillMaxWidth(),
         shape = MoShape.hero,
         color = MoSurfaceTokens.cardSurface,
-        contentColor = MoOliveDark,
+        contentColor = MoColors.current.primaryText,
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.lg),

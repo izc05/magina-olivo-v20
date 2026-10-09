@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,10 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
-import com.isivoltpro.maginaolivo.ui.theme.MoError
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
@@ -101,8 +101,8 @@ fun MoErrorState(
             Surface(
                 modifier = Modifier.size(50.dp),
                 shape = RoundedCornerShape(16.dp),
-                color = MoError.copy(alpha = 0.10f),
-                contentColor = MoError,
+                color = MoColors.current.errorAccent.copy(alpha = 0.10f),
+                contentColor = MoColors.current.errorAccent,
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text("!", style = MaterialTheme.typography.headlineMedium)
@@ -144,14 +144,14 @@ fun MoListSkeleton(
                             .fillMaxWidth(0.48f)
                             .height(17.dp),
                         shape = RoundedCornerShape(8.dp),
-                        color = MoSurfaceSoft,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                     ) {}
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth(0.78f)
                             .height(13.dp),
                         shape = RoundedCornerShape(8.dp),
-                        color = MoSurfaceSoft,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                     ) {}
                     Spacer(Modifier.height(2.dp))
                 }

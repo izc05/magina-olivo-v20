@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
@@ -64,7 +65,7 @@ fun MoParcelRow(
                 Text(
                     text = name,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                 )
                 Text(
                     text = variety ?: "Variedad sin registrar",
@@ -79,7 +80,7 @@ fun MoParcelRow(
                 Text(
                     text = area,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(

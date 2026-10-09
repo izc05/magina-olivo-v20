@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,13 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.isivoltpro.maginaolivo.ui.theme.MoInfo
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
-import com.isivoltpro.maginaolivo.ui.theme.MoWarning
-import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 enum class MoSyncState {
@@ -39,7 +34,7 @@ fun MoSourceFreshness(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
-        color = if (stale) MoWarning.copy(alpha = 0.10f) else MoSurfaceSoft,
+        color = if (stale) MoColors.current.warningAccent.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant,
         border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
@@ -50,13 +45,13 @@ fun MoSourceFreshness(
             Text(
                 text = if (stale) "!" else "i",
                 style = MaterialTheme.typography.labelLarge,
-                color = if (stale) MoWarningText else MoInfoText,
+                color = if (stale) MoColors.current.warningText else MoColors.current.infoText,
             )
             Column {
                 Text(
                     text = source,
                     style = MaterialTheme.typography.labelLarge,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                 )
                 Text(
                     text = freshness,
@@ -75,8 +70,8 @@ fun MoOfflineBanner(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MoWarning.copy(alpha = 0.12f),
-        contentColor = MoOliveDark,
+        color = MoColors.current.warningAccent.copy(alpha = 0.12f),
+        contentColor = MoColors.current.primaryText,
         border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
@@ -84,7 +79,7 @@ fun MoOfflineBanner(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("!", color = MoWarningText, style = MaterialTheme.typography.titleMedium)
+            Text("!", color = MoColors.current.warningText, style = MaterialTheme.typography.titleMedium)
             Text(message, style = MaterialTheme.typography.bodyMedium)
         }
     }
@@ -96,8 +91,8 @@ fun MoSyncStatus(
     modifier: Modifier = Modifier,
 ) {
     val (label, tone) = when (state) {
-        MoSyncState.Synced -> "Sincronizado" to MoOliveMid
-        MoSyncState.Pending -> "Pendiente de sincronizar" to MoWarningText
+        MoSyncState.Synced -> "Sincronizado" to MoColors.current.actionText
+        MoSyncState.Pending -> "Pendiente de sincronizar" to MoColors.current.warningText
         MoSyncState.Offline -> "Solo en este dispositivo" to MoSurfaceTokens.secondaryText
     }
 

@@ -1,0 +1,8 @@
+
+com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest:......
+
+Time: 9.269
+
+OK (6 tests)
+
+
