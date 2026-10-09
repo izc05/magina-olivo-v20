@@ -117,6 +117,8 @@ internal fun ExpenseEditor(
     askCategory: Boolean = activityLocked,
     /** #415: «Guardar y añadir foto» — saves like [onSave], then the Gasto opens for its photo. */
     onSaveWithPhoto: ((ExpenseForm) -> Unit)? = null,
+    /** #411: a new expense opened from a concrete Campaign keeps that Campaign as context. */
+    campaignLocked: Boolean = false,
     /**
      * #475: the question a day's jornales/maquinaria cost gets, read from the day as it is (a
      * calculation of that kind exists; with jornales paid it can only add). Null asks nothing.
@@ -124,6 +126,7 @@ internal fun ExpenseEditor(
     dayCostQuestion: suspend (UUID, ExpenseCategory) -> com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? = { _, _ -> null },
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
+    val lockedCampaignId = initial.campaignId.takeIf { campaignLocked }
     var categoryChosen by rememberSaveable(initial, askCategory) { mutableStateOf(!askCategory) }
     // #411: a new Farm-level expense may start deliberately undecided; existing/explicit
     // Campaign expenses and ordinary editors keep their current classification.
@@ -172,6 +175,14 @@ internal fun ExpenseEditor(
                     modifier = Modifier.testTag("expense-work-campaign"),
                 )
             }
+        } else if (lockedCampaignId != null) {
+            val campaign = options.campaigns.firstOrNull { it.id == lockedCampaignId }
+            Text(
+                "Recogida · ${campaign?.choiceLabel() ?: "Campaña seleccionada"}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("expense-campaign-context"),
+            )
         } else if (recollection != null) {
             Column(Modifier.fillMaxWidth().selectableGroup().testTag("expense-kind")) {
                 Text("¿Dónde pertenece este gasto?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
@@ -484,6 +495,7 @@ internal fun ExpenseEditor(
             "Relacionado con",
             listOf(Choice(null, "Ninguno")) + options.activities
                 .filter { work -> lockedParcelId == null || work.targets.any { it.parcelId == lockedParcelId } }
+                .filter { work -> lockedCampaignId == null || work.campaignId == lockedCampaignId }
                 .map { Choice(it.id.toString(), "${it.description} · ${it.activityDate}") },
             form.activityId?.toString(),
             { key ->
@@ -491,9 +503,11 @@ internal fun ExpenseEditor(
                 val chosen = key?.let(UUID::fromString)?.let { id -> options.activities.firstOrNull { it.id == id } }
                 if (chosen?.id != form.activityId) {
                     form = form.withActivity(chosen)
+                    // The Campaign entry remains context when its optional work link is removed.
+                    if (lockedCampaignId != null) form = form.copy(campaignId = lockedCampaignId)
                     // Codex #522: dropping the work asks Recogida / Fuera de campaña again, in every
                     // editor, unless a recolección day still gives the Campaign.
-                    campaignChoiceMade = chosen != null || form.harvestId != null
+                    campaignChoiceMade = chosen != null || form.harvestId != null || lockedCampaignId != null
                 }
             },
             { picker = null },
