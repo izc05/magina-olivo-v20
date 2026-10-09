@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
@@ -47,6 +50,8 @@ fun MoBottomBar(
     selectedIndex: Int,
     onSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** CR-014: separate Button, outside the selectable tab list. */
+    onAddRecord: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -65,6 +70,21 @@ fun MoBottomBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             items.forEachIndexed { index, item ->
+                if (index == 2 && onAddRecord != null) {
+                    Box(Modifier.weight(0.75f), contentAlignment = Alignment.Center) {
+                        Surface(
+                            modifier = Modifier.size(52.dp).clickable(role = Role.Button, onClick = onAddRecord)
+                                .semantics { contentDescription = "Añadir registro" }.testTag("bottom-add-record"),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(MoIcons.Plus, null, modifier = Modifier.size(28.dp))
+                            }
+                        }
+                    }
+                }
                 val selected = index == selectedIndex
                 val color = if (selected || item.isPrimaryAction) MoOlivePrimary else MoSurfaceTokens.secondaryText
 
@@ -128,7 +148,8 @@ fun MoBottomBar(
                         style = MaterialTheme.typography.labelMedium,
                         color = color,
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        maxLines = 1,
+                        maxLines = 2,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
                 }
             }

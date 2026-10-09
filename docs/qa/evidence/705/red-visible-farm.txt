@@ -1,0 +1,37 @@
+
+com.isivoltpro.maginaolivo.AppNavigationTest:
+Error in globalAddKeepsTheVisibleNotebookFarmAfterCancellingAnotherFarm(com.isivoltpro.maginaolivo.AppNavigationTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Finca Contexto A' (ignoreCase: false))
+Semantics of the node:
+Node #598 at (l=55.0, t=1354.0, r=475.0, b=1418.0)px, Tag: 'quick-register-farm'
+Text = '[Finca Contexto B]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 4 siblings
+Selector used: (TestTag = 'quick-register-farm')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.globalAddKeepsTheVisibleNotebookFarmAfterCancellingAnotherFarm(AppNavigationTest.kt:133)
+
+
+Time: 29.349
+There was 1 failure:
+1) globalAddKeepsTheVisibleNotebookFarmAfterCancellingAnotherFarm(com.isivoltpro.maginaolivo.AppNavigationTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Finca Contexto A' (ignoreCase: false))
+Semantics of the node:
+Node #598 at (l=55.0, t=1354.0, r=475.0, b=1418.0)px, Tag: 'quick-register-farm'
+Text = '[Finca Contexto B]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 4 siblings
+Selector used: (TestTag = 'quick-register-farm')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.globalAddKeepsTheVisibleNotebookFarmAfterCancellingAnotherFarm(AppNavigationTest.kt:133)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1

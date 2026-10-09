@@ -6,11 +6,14 @@ import org.junit.Test
 
 class AppDestinationTest {
     @Test
-    fun rootDestinationsFollowFrozenOrder() {
+    fun routeOwnersKeepLegacyAlertsButTheBottomBarHasFourTabs() {
         assertEquals(
             listOf("Inicio", "Mi Campo", "Cuaderno", "Avisos", "Perfil"),
             RootDestination.entries.map { it.label },
         )
+        assertEquals(listOf("Inicio", "Mi Campo", "Cuaderno", "Perfil"), bottomNavigationRoots.map { it.label })
+        assertEquals(-1, bottomNavigationRoots.indexOf(RootDestination.Alerts))
+        assertEquals(emptyList<RootDestination>(), RootDestination.entries.filter { it.isPrimaryAction })
     }
 
     @Test
@@ -38,7 +41,7 @@ class AppDestinationTest {
         assertEquals("deliveries/new/{farmId}?parcelId={parcelId}", AppDestination.NewPesadaPattern)
         assertEquals("expenses/farm/{farmId}?parcelId={parcelId}&campaignId={campaignId}&activityId={activityId}&quick={quick}", AppDestination.FarmExpensesPattern)
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.TodayHarvestPattern))
-        assertEquals(RootDestination.Notebook, RootDestination.entries.single { it.isPrimaryAction })
+        assertEquals(2, bottomNavigationRoots.indexOf(RootDestination.Notebook))
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))
         // Phase 20B-radar: the radar belongs to Inicio.
         assertEquals(RootDestination.Home, AppDestination.rootForRoute(AppDestination.Radar))

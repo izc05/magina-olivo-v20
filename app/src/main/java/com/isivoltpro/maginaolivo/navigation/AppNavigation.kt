@@ -68,6 +68,8 @@ import com.isivoltpro.maginaolivo.feature.notebook.NotebookHubTab
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookQuickAction
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookOrigin
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookRootRoute
+import com.isivoltpro.maginaolivo.feature.notebook.GlobalQuickActions
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -75,7 +77,7 @@ import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScr
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
 import java.util.UUID
 
-private val bottomBarItems = RootDestination.entries.map { destination ->
+private val bottomBarItems = bottomNavigationRoots.map { destination ->
     MoBottomBarItem(
         label = destination.label,
         symbol = destination.symbol,
@@ -117,6 +119,10 @@ fun AppNavigation(
     var notebookTabRequest by rememberSaveable { mutableStateOf<String?>(null) }
     // The Parcel of the Cuaderno a work action was tapped on, handed to the work form.
     var registerParcelId by rememberSaveable { mutableStateOf<String?>(null) }
+    var quickActionOpen by rememberSaveable { mutableStateOf(false) }
+    var quickFarmRequest by rememberSaveable { mutableStateOf<String?>(null) }
+    var quickParcelRequest by rememberSaveable { mutableStateOf<String?>(null) }
+    var quickCampaignRequest by rememberSaveable { mutableStateOf<String?>(null) }
     // #369: from Inicio the Cuaderno is the general hub (ROOT); from a Farm or a Parcel it opens
     // over that screen with the Farm fixed, and Back returns there. A Parcel's Cuaderno keeps
     // that Parcel on its own back-stack entry, so no other Cuaderno picks it up.
@@ -150,9 +156,18 @@ fun AppNavigation(
             if (currentRoot != null) {
                 MoBottomBar(
                     items = bottomBarItems,
-                    selectedIndex = currentRoot.ordinal,
-                    // UX-B (Issue #246): every tab is a real root; "Registrar hoy" lives in Cuaderno.
-                    onSelected = { index -> navController.navigateToRoot(RootDestination.entries[index]) },
+                    selectedIndex = bottomNavigationRoots.indexOf(currentRoot),
+                    onSelected = { index -> navController.navigateToRoot(bottomNavigationRoots[index]) },
+                    onAddRecord = {
+                        if (!quickActionOpen) {
+                            quickFarmRequest = backStackEntry?.arguments?.getString("farmId")
+                                ?: backStackEntry?.savedStateHandle?.get<String>(NOTEBOOK_FARM_ID_KEY)
+                            quickParcelRequest = backStackEntry?.arguments?.getString("parcelId")
+                                ?: backStackEntry?.savedStateHandle?.get<String>(NOTEBOOK_PARCEL_ID_KEY)
+                            quickCampaignRequest = backStackEntry?.arguments?.getString("campaignId")
+                            quickActionOpen = true
+                        }
+                    },
                 )
             }
         },
@@ -182,6 +197,7 @@ fun AppNavigation(
                         persistence = persistence,
                         clock = compositionRoot.clock,
                         onCalendar = { navController.navigate(AppDestination.Calendar) },
+                        onAlerts = { navController.navigate(RootDestination.Alerts.route) { launchSingleTop = true } },
                         // CR-011 §17: a running campaign opens its Farm's Cuaderno on Campaña.
                         onCampaign = { farmId ->
                             if (farmId == null) {
@@ -244,6 +260,7 @@ fun AppNavigation(
                     NotebookRootRoute(
                         persistence = persistence,
                         activeFarmStore = compositionRoot.activeFarmStore,
+                        onActiveFarmChanged = { farmId -> entry.savedStateHandle[NOTEBOOK_FARM_ID_KEY] = farmId?.toString() },
                         onQuickAction = { action, farmId, running ->
                             registerFarmId = farmId.toString()
                             // CR-011 §8/§14: Jornal opens today's recolección day of this Farm by
@@ -930,6 +947,39 @@ fun AppNavigation(
             }
         }
     }
+    if (quickActionOpen) {
+        ModalBottomSheet(
+            onDismissRequest = { quickActionOpen = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MoSurfaceTokens.cardSurface,
+        ) {
+            val persistence = compositionRoot.localPersistence
+            if (persistence == null) PersistenceUnavailableScreen() else GlobalQuickActions(
+                persistence = persistence,
+                activeFarmStore = compositionRoot.activeFarmStore,
+                contextualFarmId = quickFarmRequest?.let { runCatching { UUID.fromString(it) }.getOrNull() },
+                contextualParcelId = quickParcelRequest?.let { runCatching { UUID.fromString(it) }.getOrNull() },
+                contextualCampaignId = quickCampaignRequest?.let { runCatching { UUID.fromString(it) }.getOrNull() },
+                onGoToFields = {
+                    quickActionOpen = false
+                    navController.navigateToRoot(RootDestination.Olivar)
+                },
+                onQuickAction = { action, farmId, running, parcelId ->
+                    // Clear the latch before opening a writer; repeated taps cannot open it twice.
+                    if (quickActionOpen) {
+                        quickActionOpen = false
+                        registerFarmId = farmId.toString()
+                        registerParcelId = parcelId?.toString()
+                        if (action == NotebookQuickAction.LABOUR && running) {
+                            navController.navigate(AppDestination.todayHarvest(farmId.toString())) { launchSingleTop = true }
+                        } else {
+                            navController.openQuickAction(action, farmId, parcelId?.toString())
+                        }
+                    }
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -964,6 +1014,7 @@ private fun NavHostController.navigateToRoot(destination: RootDestination) {
 
 /** #369: where a Cuaderno opened from a Farm or a Parcel records that origin (and the Parcel). */
 private const val NOTEBOOK_ORIGIN_KEY = "notebook-origin"
+private const val NOTEBOOK_FARM_ID_KEY = "notebook-farm-id"
 private const val NOTEBOOK_PARCEL_ID_KEY = "notebook-parcel-id"
 private const val NOTEBOOK_PARCEL_NAME_KEY = "notebook-parcel-name"
 private const val RELATED_EXPENSE_ADDED_KEY = "related-expense-added"

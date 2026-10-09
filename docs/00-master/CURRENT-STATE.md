@@ -17,7 +17,12 @@ review and foundation / gate3-emulator / gate3-evidence SUCCESS on its final SHA
 - B1 agricultural evidence: 284 current offline instrumented tests PASS, retained C1/C2 records,
   costs/payments, snapshots and photo verified. Upgrade DEV1606→1609 kept identical backups.
   See [B0/B1 evidence](../qa/ANDROID-711-B1-AGRICULTURAL-EVIDENCE-2026-10-09.md).
-- Current productive slice: B2 contrast #706. CR-014 navigation #705 and dark appearance #707
+- B2 contrast #706: #713 merged as `324af37a8ff83efdb12c71482fa5b9c1caba432d`; reviewed HEAD
+  `330e21f943773aac772e1c01e0a523d212a805b8`, all three checks SUCCESS, 526 JVM / 89 directed UI
+  and 63 evidence PNG. See [contrast evidence](../qa/ANDROID-706-SURFACE-CONTRAST-2026-10-09.md).
+- Current productive slice: CR-014 navigation #705, branch `codex/705-cr014-navigation`.
+  Approved [CR-014](RC1.2-CHANGE-REQUEST-014-GLOBAL-ADD-NAVIGATION.md) changes the bar to four
+  tabs and a central action; legacy Agenda routes stay. Dark appearance #707
   follow in separate PRs according to approved #708/#711; maps/GPS B3, weather B4, candidate B5.
 - Expense classification follows the later #411 owner decision: generic Cuaderno asks explicitly;
   creation from a concrete Campaign keeps its Farm/Campaign context. The 3 October preselection

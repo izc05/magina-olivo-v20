@@ -1,0 +1,83 @@
+
+com.isivoltpro.maginaolivo.AppNavigationTest:
+Error in centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation(com.isivoltpro.maginaolivo.AppNavigationTest):
+java.lang.AssertionError: Failed: assertDoesNotExist.
+Reason: Did not expect any node but found '1' node that satisfies: (TestTag = 'bottom-Avisos')
+Node found:
+Node #63 at (l=644.0, t=2117.0, r=851.0, b=2260.0)px, Tag: 'bottom-Avisos'
+Focused = 'false'
+IsContainer = 'true'
+Role = 'Tab'
+Selected = 'false'
+Text = '[Avisos]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 4 siblings
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertDoesNotExist(SemanticsNodeInteraction.kt:101)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation(AppNavigationTest.kt:58)
+
+Error in homeBellOpensTheRealAgendaAndBackReturnsHome(com.isivoltpro.maginaolivo.AppNavigationTest):
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'home-open-alerts')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode$default(SemanticsNodeInteraction.kt:83)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.homeBellOpensTheRealAgendaAndBackReturnsHome(AppNavigationTest.kt:101)
+
+Error in globalAddOffersTheSixExistingActionsOnTheChosenFarm(com.isivoltpro.maginaolivo.AppNavigationTest):
+java.lang.AssertionError: Failed to inject touch input.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'bottom-add-record')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performTouchInput(Actions.kt:403)
+	at androidx.compose.ui.test.AndroidActions.performClickImpl(Actions.android.kt:23)
+	at androidx.compose.ui.test.ActionsKt.performClick(Actions.kt:61)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.globalAddOffersTheSixExistingActionsOnTheChosenFarm(AppNavigationTest.kt:86)
+
+
+Time: 22.751
+There were 3 failures:
+1) centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation(com.isivoltpro.maginaolivo.AppNavigationTest)
+java.lang.AssertionError: Failed: assertDoesNotExist.
+Reason: Did not expect any node but found '1' node that satisfies: (TestTag = 'bottom-Avisos')
+Node found:
+Node #63 at (l=644.0, t=2117.0, r=851.0, b=2260.0)px, Tag: 'bottom-Avisos'
+Focused = 'false'
+IsContainer = 'true'
+Role = 'Tab'
+Selected = 'false'
+Text = '[Avisos]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 4 siblings
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertDoesNotExist(SemanticsNodeInteraction.kt:101)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation(AppNavigationTest.kt:58)
+2) homeBellOpensTheRealAgendaAndBackReturnsHome(com.isivoltpro.maginaolivo.AppNavigationTest)
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'home-open-alerts')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode$default(SemanticsNodeInteraction.kt:83)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.homeBellOpensTheRealAgendaAndBackReturnsHome(AppNavigationTest.kt:101)
+3) globalAddOffersTheSixExistingActionsOnTheChosenFarm(com.isivoltpro.maginaolivo.AppNavigationTest)
+java.lang.AssertionError: Failed to inject touch input.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'bottom-add-record')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performTouchInput(Actions.kt:403)
+	at androidx.compose.ui.test.AndroidActions.performClickImpl(Actions.android.kt:23)
+	at androidx.compose.ui.test.ActionsKt.performClick(Actions.kt:61)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.globalAddOffersTheSixExistingActionsOnTheChosenFarm(AppNavigationTest.kt:86)
+
+FAILURES!!!
+Tests run: 3,  Failures: 3

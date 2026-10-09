@@ -1,9 +1,8 @@
 package com.isivoltpro.maginaolivo.navigation
 
 /**
- * The five roots of the bottom bar. UX-B (Issue #246, CR-007): Inicio · Mi Campo · Cuaderno ·
- * Avisos · Perfil. Cuaderno is the centre (daily register); the old `register` and `calendar`
- * routes stay as nested routes under Cuaderno and Avisos, so nothing that opened them breaks.
+ * Operational route owners, including legacy Avisos. CR-014 displays four tabs and a
+ * separate central action; route ownership must never be used as a bottom-bar index.
  */
 enum class RootDestination(
     val route: String,
@@ -25,7 +24,6 @@ enum class RootDestination(
         route = "cuaderno",
         label = "Cuaderno",
         symbol = "▤",
-        isPrimaryAction = true,
     ),
     Alerts(
         route = "avisos",
@@ -38,6 +36,11 @@ enum class RootDestination(
         symbol = "○",
     ),
 }
+
+/** CR-014: + is an action between Mi Campo and Cuaderno, never a route or tab. */
+val bottomNavigationRoots = listOf(
+    RootDestination.Home, RootDestination.Olivar, RootDestination.Notebook, RootDestination.Profile,
+)
 
 object AppDestination {
     const val Onboarding = "onboarding"

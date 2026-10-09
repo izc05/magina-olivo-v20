@@ -1,0 +1,9 @@
+Serial=emulator-5580
+Captured before instrumentation=2026-10-09T13:25:48.3867601+02:00
+APK_SHA256=d6dbae2f8058595548d46adb8b633f65b239fce6c4bbb10552df377d070d2363
+airplane_mode_on=1
+
+Active default network: none
+  mDefaultNetwork=null
+Wifi is disabled
+Wifi scanning is only available when wifi is enabled

@@ -19,6 +19,7 @@ Before changing code or architecture, read:
 11. `docs/00-master/RC1.2-CHANGE-REQUEST-010-CAMPANA-SIMPLE-AUTOMATIZADA.md`
 12. `docs/00-master/RC1.2-CHANGE-REQUEST-011-SIMPLIFICACION-UX.md`
 12a. `docs/00-master/RC1.2-CHANGE-REQUEST-013-PESADA-MANUAL-OCR-APLAZADO.md` (OCR deferred beyond 1.0; Pesada manual + optional photo)
+12b. `docs/00-master/RC1.2-CHANGE-REQUEST-014-GLOBAL-ADD-NAVIGATION.md` (owner-approved #705: four tabs + central action; Avisos from Home)
 13. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
 14. `docs/design/VISUAL_DESIGN_LOCK.md`
 15. `docs/design/DESIGN_SYSTEM.md`
@@ -42,12 +43,14 @@ Do not turn the new Android app back into the old territorial V20 portal. **Mág
 
 ## Frozen primary navigation
 
-`Inicio · Mi Campo · Cuaderno · Avisos · Perfil` (CR-007, Issue #246)
+`Inicio · Mi Campo · [+] · Cuaderno · Perfil` (CR-014, Issue #705)
 
-Cuaderno is the centre and holds the daily actions directly (CR-011: Trabajo · Riego ·
-Tratamiento · Pesada · Jornal · Gasto; one Cuaderno, opened on a Farm from Mi Campo);
-`Registrar (+)` is no longer a root and the agenda lives under Avisos. Do not redesign or add
-root tabs without an approved Change Request.
+There are four selectable tabs; the central + is a Button «Añadir registro», never a root or
+selected tab. Cuaderno retains its six daily actions (CR-011: Trabajo · Riego · Tratamiento ·
+Pesada · Jornal · Gasto); + reuses those actions and existing forms with validated Farm/Parcel
+context. Avisos and the real Agenda open from the Home bell «Avisos y calendario»; legacy
+Avisos/Calendar/reminder routes remain. CR-014 supersedes the CR-007 bar layout only.
+Do not redesign or add root tabs without an approved Change Request.
 
 ## Current phase rule
 

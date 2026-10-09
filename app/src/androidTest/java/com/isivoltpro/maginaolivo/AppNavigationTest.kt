@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo
 
 import android.content.Context
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -30,6 +32,7 @@ import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.isivoltpro.maginaolivo.feature.deliveries.PESADA_NO_RUNNING_CAMPAIGN
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -50,6 +53,101 @@ class AppNavigationTest {
             .outerRule(ClearOnboardingStateRule())
             .around(composeRule)
 
+    /** #705 / CR-014: the central control is an action, never a selected fifth tab. */
+    @Test
+    fun centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation() {
+        enterMainShell()
+        val before = agriculturalCounts()
+        composeRule.onNodeWithTag("bottom-Avisos").assertDoesNotExist()
+        for (label in listOf("Inicio", "Mi Campo", "Cuaderno", "Perfil")) {
+            composeRule.onNodeWithTag("bottom-$label").performClick().assertIsSelected()
+            val add = composeRule.onNodeWithTag("bottom-add-record")
+            val semantics = add.fetchSemanticsNode().config
+            assertEquals(Role.Button, semantics[SemanticsProperties.Role])
+            assertEquals(null, semantics.getOrNull(SemanticsProperties.Selected))
+            add.performClick()
+            waitForTag("quick-register-sheet")
+            composeRule.onNodeWithText("Añadir registro").assertExists()
+            if (label == "Cuaderno") {
+                composeRule.activityRule.scenario.recreate()
+                waitForTag("quick-register-sheet")
+            }
+            pressBack()
+            composeRule.onNodeWithTag("quick-register-sheet").assertDoesNotExist()
+            composeRule.onNodeWithTag("bottom-$label").assertIsSelected()
+        }
+        assertEquals(before, agriculturalCounts())
+    }
+
+    /** A real Farm is validated before the global action opens the existing form. */
+    @Test
+    fun globalAddOffersTheSixExistingActionsOnTheChosenFarm() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca CR014")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca CR014")
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        chooseNotebookFarm("Finca CR014")
+        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("bottom-add-record").performClick()
+        waitForTag("quick-register-sheet")
+        for (action in listOf("work", "irrigation", "treatment", "weighing", "labour", "expense")) {
+            composeRule.onNodeWithTag("notebook-quick-$action").assertExists()
+        }
+        clickByTag("notebook-quick-work")
+        waitForTag("register-activity-root")
+        composeRule.onNodeWithTag("quick-register-sheet").assertDoesNotExist()
+        waitForText("Finca CR014")
+    }
+
+    /** Cancelling a global Farm change must not replace the visible Notebook context. */
+    @Test
+    fun globalAddKeepsTheVisibleNotebookFarmAfterCancellingAnotherFarm() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        for (name in listOf("Finca Contexto A", "Finca Contexto B")) {
+            openSheet("add-farm", "farm-name")
+            composeRule.onNodeWithTag("farm-name").performTextInput(name)
+            saveEditor("save-farm", "farm-name")
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isEmpty()
+            }
+        }
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        chooseNotebookFarm("Finca Contexto A")
+        composeRule.onNodeWithTag("bottom-add-record").performClick()
+        waitForTag("quick-register-farm")
+        composeRule.onNodeWithTag("quick-register-farm").assertTextContains("Finca Contexto A")
+        composeRule.onNode(hasText("Cambiar finca") and hasAnyAncestor(hasTestTag("quick-register-sheet")))
+            .performScrollTo().performClick()
+        composeRule.onNode(hasText("Finca Contexto B") and hasAnyAncestor(hasTestTag("quick-register-sheet")))
+            .performScrollTo().performClick()
+        composeRule.onNodeWithTag("quick-register-farm").assertTextContains("Finca Contexto B")
+        pressBack()
+        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca Contexto A", substring = true)
+        for (recreate in listOf(false, true)) {
+            if (recreate) composeRule.activityRule.scenario.recreate()
+            composeRule.onNodeWithTag("bottom-add-record").performClick()
+            waitForTag("quick-register-farm")
+            composeRule.onNodeWithTag("quick-register-farm").assertTextContains("Finca Contexto A")
+            pressBack()
+        }
+    }
+
+    @Test
+    fun homeBellOpensTheRealAgendaAndBackReturnsHome() {
+        enterMainShell()
+        val bell = composeRule.onNodeWithTag("home-open-alerts")
+        assertEquals("Avisos y calendario", bell.fetchSemanticsNode().config[SemanticsProperties.ContentDescription].single())
+        bell.performClick()
+        waitForTag("calendar-root")
+        composeRule.onNodeWithTag("agenda-plan-work").assertExists()
+        pressBack()
+        waitForTag("home-reference-root")
+    }
+
     @Test
     fun completedOnboardingStaysCompletedAfterActivityRecreation() {
         enterMainShell()
@@ -68,11 +166,12 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick().assertIsSelected()
         composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
 
-        // UX-B (Issue #246): Cuaderno is the centre; Avisos holds the agenda.
+        // CR-014: Cuaderno is a tab; the Home bell holds the same real Agenda.
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick().assertIsSelected()
         composeRule.onNodeWithTag("notebook-root").assertIsDisplayed()
 
-        composeRule.onNodeWithTag("bottom-Avisos").performClick().assertIsSelected()
+        composeRule.onNodeWithTag("bottom-Inicio").performClick()
+        composeRule.onNodeWithTag("home-open-alerts").performClick()
         composeRule.onNodeWithTag("calendar-root").assertIsDisplayed()
 
         composeRule.onNodeWithTag("bottom-Perfil").performClick().assertIsSelected()
@@ -96,13 +195,13 @@ class AppNavigationTest {
     @Test
     fun activeRootSurvivesActivityRecreation() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Avisos").performClick()
+        composeRule.onNodeWithTag("home-open-alerts").performClick()
 
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag("calendar-root").assertIsDisplayed()
-        composeRule.onNodeWithTag("bottom-Avisos").assertIsSelected()
+        composeRule.onNodeWithTag("bottom-Avisos").assertDoesNotExist()
     }
 
     @Test
@@ -196,12 +295,15 @@ class AppNavigationTest {
 
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         chooseNotebookFarm("Finca Pesada E2E")
-        clickByTag("notebook-quick-weighing")
+        val before = agriculturalCounts()
+        openGlobalQuickAction("weighing")
         waitForTag("delivery-editor")
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
 
+        waitForText(PESADA_NO_RUNNING_CAMPAIGN)
         pressBack()
         composeRule.waitForIdle()
+        assertEquals(before, agriculturalCounts())
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         chooseNotebookFarm("Finca Pesada E2E")
         clickByTag("notebook-quick-expense")
@@ -870,6 +972,24 @@ class AppNavigationTest {
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithText("Campaña Jornal E2E", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
+        cancelGlobalWithoutAgriculturalWrites()
+        val beforePesada = agriculturalCounts()
+        openGlobalQuickAction("weighing")
+        waitForTag("delivery-editor")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            runCatching {
+                composeRule.onNodeWithTag("delivery-context")
+                    .assertTextContains("Finca Jornal E2E", substring = true)
+                    .assertTextContains("Campaña Jornal E2E", substring = true)
+            }.isSuccess
+        }
+        pressBack()
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("delivery-editor").fetchSemanticsNodes().isEmpty()
+        }
+        assertEquals(beforePesada, agriculturalCounts())
+        pressBack()
+        waitForTag("notebook-root")
         clickByTag("notebook-quick-labour")
         // Build 683: the container alone renders while still loading; wait for the day itself.
         waitForTagOrDumpScreen("day-resource-labour")
@@ -879,7 +999,8 @@ class AppNavigationTest {
         // Back and Jornal again, before any restart: the same day opens again.
         pressBack()
         waitForTag("notebook-root")
-        clickByTag("notebook-quick-labour")
+        cancelGlobalWithoutAgriculturalWrites()
+        openGlobalQuickAction("labour")
         waitForTagOrDumpScreen("day-resource-labour")
         closeJornalFocus()
 
@@ -940,12 +1061,12 @@ class AppNavigationTest {
     fun avisosPlansWorkAndCuadernoRegistersIt() {
         // CR-011 §12: the Cuaderno records what happened; Avisos plans the future.
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Avisos").performClick()
+        composeRule.onNodeWithTag("home-open-alerts").performClick()
         clickByTag("agenda-plan-work")
         waitForTag("register-activity-root")
         waitForText("Planificar trabajo")
-        // Planning stays under the tab where it started.
-        composeRule.onNodeWithTag("bottom-Avisos").assertIsSelected()
+        // Legacy planning remains under Agenda; there is no Avisos tab after CR-014.
+        composeRule.onNodeWithTag("bottom-Avisos").assertDoesNotExist()
         assertEquals(0, composeRule.onAllNodesWithText("Registrar trabajo").fetchSemanticsNodes().size)
         assertEquals(0, composeRule.onAllNodesWithText("Registrar o planificar").fetchSemanticsNodes().size)
     }
@@ -992,6 +1113,36 @@ class AppNavigationTest {
         composeRule.onNodeWithText("Saltar").performClick()
         waitForTag("home-reference-root")
         composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
+    }
+
+    private fun cancelGlobalWithoutAgriculturalWrites() {
+        val before = agriculturalCounts()
+        composeRule.onNodeWithTag("bottom-add-record").performClick()
+        waitForTag("quick-register-sheet")
+        pressBack()
+        composeRule.onNodeWithTag("quick-register-sheet").assertDoesNotExist()
+        assertEquals(before, agriculturalCounts())
+    }
+
+    private fun openGlobalQuickAction(action: String) {
+        composeRule.onNodeWithTag("bottom-add-record").performClick()
+        waitForTag("quick-register-sheet")
+        val selector = hasTestTag("notebook-quick-$action") and hasAnyAncestor(hasTestTag("quick-register-sheet"))
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            runCatching { composeRule.onNode(selector).assertIsEnabled() }.isSuccess
+        }
+        composeRule.onNode(selector).performScrollTo().performClick()
+        composeRule.onNodeWithTag("quick-register-sheet").assertDoesNotExist()
+    }
+
+    private fun agriculturalCounts(): List<Long> {
+        val database = MaginaOlivoDatabase.getInstance(ApplicationProvider.getApplicationContext<Context>())
+        return listOf("farms", "parcels", "activities", "harvests", "deliveries", "expenses").map { table ->
+            database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                check(cursor.moveToFirst())
+                cursor.getLong(0)
+            }
+        }
     }
 
     /**
