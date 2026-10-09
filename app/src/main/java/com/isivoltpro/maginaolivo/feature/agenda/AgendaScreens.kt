@@ -3,10 +3,8 @@ package com.isivoltpro.maginaolivo.feature.agenda
 import androidx.compose.foundation.layout.WindowInsets
 import android.Manifest
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -43,7 +41,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -52,6 +49,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
+import com.isivoltpro.maginaolivo.data.reminder.ReminderNotifier
+import com.isivoltpro.maginaolivo.data.reminder.notificationSettingsIntent
+import com.isivoltpro.maginaolivo.data.reminder.notificationsAllowed
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.activity.AgendaEntry
 import com.isivoltpro.maginaolivo.domain.agenda.AgendaBucket
@@ -112,10 +112,10 @@ fun AgendaRoute(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var notificationsOn by remember { mutableStateOf(notificationsAllowed(context)) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { notificationsOn = notificationsAllowed(context) }
+    var notificationsOn by remember { mutableStateOf(notificationsAllowed(context, ReminderNotifier.CHANNEL_ID)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { notificationsOn = notificationsAllowed(context, ReminderNotifier.CHANNEL_ID) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        notificationsOn = granted && notificationsAllowed(context)
+        notificationsOn = granted && notificationsAllowed(context, ReminderNotifier.CHANNEL_ID)
     }
     AgendaScreen(
         state = state,
@@ -124,11 +124,7 @@ fun AgendaRoute(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !permissionGranted(context)) {
                 permission.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                context.startActivity(
-                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
+                context.startActivity(notificationSettingsIntent(context, ReminderNotifier.CHANNEL_ID))
             }
         },
         onActivitySelected = onActivitySelected,
@@ -142,9 +138,6 @@ fun AgendaRoute(
 private fun permissionGranted(context: Context): Boolean =
     Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-
-private fun notificationsAllowed(context: Context): Boolean =
-    permissionGranted(context) && NotificationManagerCompat.from(context).areNotificationsEnabled()
 
 /**
  * Calendario — the planned work of every Farm (UI polish v2: two views).

@@ -84,6 +84,7 @@ class ReminderNotifier(
         val manager = NotificationManagerCompat.from(context)
         if (!permitted || !manager.areNotificationsEnabled()) return false
         ensureChannel(context)
+        if (!notificationsAllowed(context, CHANNEL_ID)) return false
         val open = context.packageManager.getLaunchIntentForPackage(context.packageName)
             ?.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             ?.putExtra(EXTRA_ACTIVITY_ID, activityId.toString())

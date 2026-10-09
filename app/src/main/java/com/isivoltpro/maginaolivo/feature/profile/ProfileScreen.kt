@@ -1,11 +1,5 @@
 package com.isivoltpro.maginaolivo.feature.profile
 
-import android.Manifest
-import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,8 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,6 +33,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
+import com.isivoltpro.maginaolivo.data.reminder.ReminderNotifier
+import com.isivoltpro.maginaolivo.data.reminder.notificationSettingsIntent
+import com.isivoltpro.maginaolivo.data.reminder.notificationsAllowed
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
@@ -82,18 +77,15 @@ fun ProfileRoute(
     } else {
         null
     }
-    var notificationsOn by remember { mutableStateOf(notificationsAllowed(context)) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { notificationsOn = notificationsAllowed(context) }
+    var notificationsOn by remember { mutableStateOf(notificationsAllowed(context, ReminderNotifier.CHANNEL_ID)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { notificationsOn = notificationsAllowed(context, ReminderNotifier.CHANNEL_ID) }
+    val openNotifications = {
+        context.startActivity(notificationSettingsIntent(context, ReminderNotifier.CHANNEL_ID))
+    }
     ProfileScreen(
         appVersion = appVersion,
         notificationsOn = notificationsOn,
-        onNotifications = {
-            context.startActivity(
-                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
-        },
+        onNotifications = openNotifications,
         onMachinery = onMachinery,
         onAgronomicPeople = onAgronomicPeople,
         developerGalleryEnabled = developerGalleryEnabled,
@@ -117,18 +109,18 @@ fun ProfileRoute(
         reminderSettings = if (profileViewModel != null) {
             {
                 val state by profileViewModel.state.collectAsStateWithLifecycle()
-                ReminderSettings(state.settings.reminders, state.isSaving, profileViewModel::saveReminders)
+                ReminderSettings(
+                    preferences = state.settings.reminders,
+                    isSaving = state.isSaving,
+                    notificationsOn = notificationsOn,
+                    onNotifications = openNotifications,
+                    onChange = profileViewModel::saveReminders,
+                )
             }
         } else {
             null
         },
     )
-}
-
-private fun notificationsAllowed(context: Context): Boolean {
-    val permitted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-    return permitted && NotificationManagerCompat.from(context).areNotificationsEnabled()
 }
 
 @Composable

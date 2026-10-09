@@ -8,6 +8,7 @@ import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -88,13 +89,52 @@ class MyProfileScreenTest {
         }
     }
 
+    @Test fun anEnabledReminderPreferenceDoesNotGuaranteeSoundFromAndroid() {
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ReminderSettings(ReminderPreferences(enabled = true), isSaving = false, notificationsOn = true, onNotifications = {}) { }
+            }
+        }
+        composeRule.onNodeWithText("Suenan en este teléfono.").assertDoesNotExist()
+    }
+
+    @Test fun androidBlockingNotificationsDoesNotTurnOffTheStoredReminderPreference() {
+        var openedSettings = false
+        val changes = mutableListOf<ReminderPreferences>()
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ReminderSettings(
+                    ReminderPreferences(enabled = true), isSaving = false,
+                    notificationsOn = false, onNotifications = { openedSettings = true },
+                ) { changes += it }
+            }
+        }
+        composeRule.onNodeWithTag("profile-reminders-switch").assertIsOn()
+        composeRule.onNodeWithText("Android bloquea los avisos en este teléfono.").assertExists()
+        composeRule.onNodeWithTag("profile-reminders-notifications").performClick()
+        composeRule.runOnIdle {
+            assertEquals(true, openedSettings)
+            assertEquals(emptyList<ReminderPreferences>(), changes)
+        }
+    }
+
+    @Test fun aDisabledReminderPreferenceDoesNotOfferAnAndroidPermissionFix() {
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ReminderSettings(ReminderPreferences(enabled = false), isSaving = false, notificationsOn = false, onNotifications = {}) { }
+            }
+        }
+        composeRule.onNodeWithTag("profile-reminders-notifications").assertDoesNotExist()
+        composeRule.onNodeWithText("Android bloquea los avisos en este teléfono.").assertDoesNotExist()
+    }
+
     /** Phase 21B: one switch for every reminder and the day-before hour, 08:00 by default. */
     @Test fun remindersCanBeSwitchedOffAndTheDayBeforeHourChosen() {
         val changes = mutableListOf<ReminderPreferences>()
         var preferences by mutableStateOf(ReminderPreferences())
         composeRule.setContent {
             MaginaOlivoTheme {
-                ReminderSettings(preferences, isSaving = false) { changes += it; preferences = it }
+                ReminderSettings(preferences, isSaving = false, notificationsOn = true, onNotifications = {}) { changes += it; preferences = it }
             }
         }
         composeRule.onNodeWithText("08:00").assertIsSelected()
