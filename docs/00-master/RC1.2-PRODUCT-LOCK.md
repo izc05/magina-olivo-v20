@@ -255,3 +255,18 @@ CR-003 resolves the display-brand decision:
 ## 15. Agent rule
 
 If a branch assumes Jaén-only domain logic, hard-codes Catastro as Parcel identity, restricts OCR to delivery tickets, or ignores the approved Mágina Olivo visual contract, it conflicts with RC1.2 + CR-003 and must stop for correction.
+
+## 16. CR-014 — owner-approved navigation amendment
+
+[Issue #705](https://github.com/izc05/magina-olivo-v20/issues/705), approved by the owner on
+2026-10-08 and sequenced by #708/#711: `Inicio | Mi Campo | [+] | Cuaderno | Perfil`.
+Exactly four selectable tabs; + is a central Button «Añadir registro», not a fifth root.
+It opens the six existing NotebookQuickAction choices and existing agricultural forms after
+validating the active Farm/Workspace/Parcel context. Opening/cancelling never creates a
+Jornada, Expense or other agricultural record. Unknown campaign state never means no campaign.
+
+Avisos opens from a >=48dp Home bell with «Avisos y calendario». Preserve the actual Agenda,
+Calendar/PlanWork/reminder routes and Back. No unverified unread badge or new message inbox.
+Cuaderno retains its Diary/Phyto/Expenses/Campaign views and operational/history separation.
+See [CR-014](RC1.2-CHANGE-REQUEST-014-GLOBAL-ADD-NAVIGATION.md). This amendment changes the
+CR-007 primary bar layout; all data, offline, Gate and visual invariants remain binding.

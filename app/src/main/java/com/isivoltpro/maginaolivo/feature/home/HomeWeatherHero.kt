@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,6 +79,7 @@ internal fun HomeWeatherHero(
     now: Instant,
     weatherMotion: Boolean?,
     onForecast: () -> Unit,
+    onAlerts: () -> Unit,
 ) {
     val minHeight = (LocalConfiguration.current.screenHeightDp * 0.52f).coerceIn(360f, 460f).dp
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))) {
@@ -108,7 +110,20 @@ internal fun HomeWeatherHero(
             Modifier.fillMaxWidth().heightIn(min = minHeight).padding(MoSpacing.screen),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            MoPhotoBrand()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                Box(Modifier.weight(1f)) { MoPhotoBrand() }
+                Surface(
+                    onClick = onAlerts,
+                    modifier = Modifier.size(48.dp).testTag("home-open-alerts")
+                        .semantics { contentDescription = "Avisos y calendario" },
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = MoWarmWhite,
+                    contentColor = MoOliveDark,
+                ) {
+                    Box(contentAlignment = Alignment.Center) { Icon(MoIcons.Bell, null, Modifier.size(24.dp)) }
+                }
+            }
             Spacer(Modifier.height(MoSpacing.lg))
             Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                 Column {

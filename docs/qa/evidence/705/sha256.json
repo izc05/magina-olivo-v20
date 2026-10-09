@@ -1,0 +1,247 @@
+[
+  {
+    "file": "after-add-fields-360-font13.png",
+    "bytes": 158174,
+    "sha256": "3bc8d725e63b9bcc6fcad5fc202f435f12fc98b5324eeb6f68c29d83214aa8d6"
+  },
+  {
+    "file": "after-add-fields-390-font13.png",
+    "bytes": 171350,
+    "sha256": "d8f0aa5802aef4dada1150a39d793f556de8dbf512cfa29f6eaa4eb7ad90fc4f"
+  },
+  {
+    "file": "after-add-fields-430-font13.png",
+    "bytes": 189451,
+    "sha256": "354f09267bf786f32afd218691a77eadc03dad13f61690f77920982309091d03"
+  },
+  {
+    "file": "after-add-home-360-font13.png",
+    "bytes": 410211,
+    "sha256": "f302d1091ceb8fa3c2c0f94838e80d250e9a080d1cf5d705af064459b280d4fa"
+  },
+  {
+    "file": "after-add-home-390-font13.png",
+    "bytes": 609354,
+    "sha256": "8e88d84079960241b64892ad59b282d42f3e70f3909f43417729d38cc8e00edd"
+  },
+  {
+    "file": "after-add-home-430-font13.png",
+    "bytes": 966883,
+    "sha256": "005c2fa0de37078d9ceedcd8b35e75d5bfb47d6c04571480afb17feb9c04384f"
+  },
+  {
+    "file": "after-add-notebook-360-font13.png",
+    "bytes": 145323,
+    "sha256": "a284e844c933305b03ded3687bb30a2ded2d8eb24693f73806d2df6884dbf8c4"
+  },
+  {
+    "file": "after-add-notebook-390-font13.png",
+    "bytes": 161007,
+    "sha256": "2e00727832127f097cf60822217fc9726a95a398fe76df1412294a35320595ff"
+  },
+  {
+    "file": "after-add-notebook-430-font13.png",
+    "bytes": 173700,
+    "sha256": "327a0555432beb12c450ca437469666bcb8b5c810fea895d375e598a01cc343d"
+  },
+  {
+    "file": "after-add-profile-360-font13.png",
+    "bytes": 162384,
+    "sha256": "7d058de948971354acd80b9af79367961395b65b8725ba5c60d57900621e8df9"
+  },
+  {
+    "file": "after-add-profile-390-font13.png",
+    "bytes": 177176,
+    "sha256": "bbd9a11269ef3c846a2319bc751d35fab0417e36b190794c41daba7ca3813d66"
+  },
+  {
+    "file": "after-add-profile-430-font13.png",
+    "bytes": 203413,
+    "sha256": "449235348030fd9ba3e487a47bcc865f0894e074c4bf14e0cc8f70bb29603f2c"
+  },
+  {
+    "file": "after-agenda-360-font13.png",
+    "bytes": 152272,
+    "sha256": "1524ea5d279099c32bdbd88bd4ef508ef8df3a6ba4f4fab73fb48f8169189b1b"
+  },
+  {
+    "file": "after-agenda-390-font13.png",
+    "bytes": 141308,
+    "sha256": "95fb7d0af54f1f33e3b34d003ab7962c628fb30ff42e0c74b2e2b8500522066c"
+  },
+  {
+    "file": "after-agenda-430-font13.png",
+    "bytes": 129559,
+    "sha256": "1ab7b1884749020de986523cd764291fd80090c684df583ea4627d662f29c6d4"
+  },
+  {
+    "file": "after-farm-selector-360-font13.png",
+    "bytes": 195230,
+    "sha256": "2ce725ddb54f910cf20c1f99d0912641361595a48e3829e0b43307373174ea07"
+  },
+  {
+    "file": "after-farm-selector-390-font13.png",
+    "bytes": 205470,
+    "sha256": "83776d6a155bb7e25bf91f197f6e20480e5b0cfa3ebb3c32de350cee6cc99ef8"
+  },
+  {
+    "file": "after-farm-selector-430-font13.png",
+    "bytes": 228058,
+    "sha256": "f28702b8de65ea4fc4f99537552f4182bf273ea55198a50d3811c7eaffc5270a"
+  },
+  {
+    "file": "after-fields-360-font13.png",
+    "bytes": 250056,
+    "sha256": "e8b5ec1fc0d1edd004c9f38fa28b7a86a850484b49048a5dedbfbce81c50a72c"
+  },
+  {
+    "file": "after-fields-390-font13.png",
+    "bytes": 272913,
+    "sha256": "953674f4026eb6b547dfdbcf49dbc01889ebf0ce7f055c688f05be542912621d"
+  },
+  {
+    "file": "after-fields-430-font13.png",
+    "bytes": 281939,
+    "sha256": "f65953b3cb38c2800a6fc76cd6fe1e099c802311d3d7cadfe42a3d228ae20c26"
+  },
+  {
+    "file": "after-home-360-font13.png",
+    "bytes": 1298245,
+    "sha256": "cf3eefce2f7c6337fcba027c67cdd6f87038a13e7a7296e263cf58bb939f9253"
+  },
+  {
+    "file": "after-home-390-font13.png",
+    "bytes": 1483817,
+    "sha256": "275e3bdf71ffa71ed187f0acd62f5c7e6ac7f1febf9e837404f6147453b7768c"
+  },
+  {
+    "file": "after-home-430-font13.png",
+    "bytes": 1658835,
+    "sha256": "59ca6e74ee74c069f2d8d27d1d08afacbc666ea1461015ac8b2fa6ada95b5a5c"
+  },
+  {
+    "file": "after-irrigation-keyboard-360-font13.png",
+    "bytes": 171932,
+    "sha256": "cd8f07f973ffb882c58858df012d0ea1c31e7e62c25a56a48aea35ea52dde484"
+  },
+  {
+    "file": "after-irrigation-keyboard-390-font13.png",
+    "bytes": 180895,
+    "sha256": "54580e63de0c0baa5733028e1e4582e6585197c459cd29b35bf54b6b75fadb26"
+  },
+  {
+    "file": "after-irrigation-keyboard-430-font13.png",
+    "bytes": 190286,
+    "sha256": "db9af3918d2d8a33dc66879bbcb659014e7035c1e0153d6b3054d25069d0c072"
+  },
+  {
+    "file": "after-notebook-360-font13.png",
+    "bytes": 197687,
+    "sha256": "f294c71b769103fe4b6a4ed9e794c6b38b983243cfbb6d1c637d69d7c83fbbc0"
+  },
+  {
+    "file": "after-notebook-390-font13.png",
+    "bytes": 204883,
+    "sha256": "77404dd39a8839b136c6359e340ad85bbf66cd6d34f7fad5055e8bb5705380c4"
+  },
+  {
+    "file": "after-notebook-430-font13.png",
+    "bytes": 215899,
+    "sha256": "da8bc23ec1074d2b0baa07859b51e36a4d74fc91eeb06b48aa6c5b236f3d7235"
+  },
+  {
+    "file": "after-profile-360-font13.png",
+    "bytes": 260321,
+    "sha256": "876b446772df36bb7dac1aabc485de70afc451b2972d394f17c7285de0f2066f"
+  },
+  {
+    "file": "after-profile-390-font13.png",
+    "bytes": 276368,
+    "sha256": "1c2a3461954f0f5c54d0e8cc43207c4495129a6720fec6f4d0ed010afb8124bd"
+  },
+  {
+    "file": "after-profile-430-font13.png",
+    "bytes": 288228,
+    "sha256": "04ba68794131554b591eb226093e4a19f1829a296f19aa72c1b10c5fc31240f6"
+  },
+  {
+    "file": "before-reflow-agenda-360-font13.png",
+    "bytes": 150326,
+    "sha256": "00c09474e46c665bcb37204549b130b1a99d5296124479827f612560ebc9a71c"
+  },
+  {
+    "file": "before-reflow-agenda-390-font13.png",
+    "bytes": 138351,
+    "sha256": "84796cc7ce25703f3accf4df05aa213460e8d3ed5af64944daf5173ede7472f0"
+  },
+  {
+    "file": "before-reflow-agenda-430-font13.png",
+    "bytes": 127325,
+    "sha256": "f8f83614a39ce3a039b83279b9c69ca0badc2065fcaa83e06841ae7d8711698f"
+  },
+  {
+    "file": "expense-form.xml",
+    "bytes": 11418,
+    "sha256": "d325f2119762e723f3aba787c6c879010af89480700c52010c5aa3eebd815e0a"
+  },
+  {
+    "file": "irrigation-form.xml",
+    "bytes": 20732,
+    "sha256": "c0388322b589851d46536df41c2dbf517d46562d3544ea902c133c4d86c98f34"
+  },
+  {
+    "file": "irrigation-keyboard-360-ime.txt",
+    "bytes": 54,
+    "sha256": "51845601f07ecc878915fc269cd504f6628a5b3872c79b796b62d87af3645dd2"
+  },
+  {
+    "file": "irrigation-keyboard-390-ime.txt",
+    "bytes": 54,
+    "sha256": "51845601f07ecc878915fc269cd504f6628a5b3872c79b796b62d87af3645dd2"
+  },
+  {
+    "file": "irrigation-keyboard-430-ime.txt",
+    "bytes": 54,
+    "sha256": "51845601f07ecc878915fc269cd504f6628a5b3872c79b796b62d87af3645dd2"
+  },
+  {
+    "file": "local-62-instrumentation.txt",
+    "bytes": 42450,
+    "sha256": "f7dc0f5da31b25d02573dcd885307a3311d8bb49c28ca61352b6073547a12917"
+  },
+  {
+    "file": "local-foundation.txt",
+    "bytes": 11384,
+    "sha256": "a334a15dcdec433873408df9581a9d170215ffcd2de887876aed6c10c05fb80a"
+  },
+  {
+    "file": "local-offline-navigation.txt",
+    "bytes": 77,
+    "sha256": "9d2734c6293776009f5762621e32a3aa6e6e107baa9c1480df74c122ad0fea49"
+  },
+  {
+    "file": "offline-network-state.txt",
+    "bytes": 305,
+    "sha256": "e5f06761a73cc1808f3e413248580cf9293cd8afea9cbb6681a251c19ae552be"
+  },
+  {
+    "file": "red-navigation.txt",
+    "bytes": 5296,
+    "sha256": "01ca93bbe22311f13517d4c30e414bb346d181130793373ef1c19bae19c24b76"
+  },
+  {
+    "file": "red-parcel-context.txt",
+    "bytes": 2839,
+    "sha256": "887a0fdd477be62ceab197703dbae74b1ba9afb2e7a2a878ec2acee0415a6962"
+  },
+  {
+    "file": "red-visible-farm.txt",
+    "bytes": 2124,
+    "sha256": "7a43c4c9945628dfcb1d28cd4c7f951261a70a2db7a2eed69e8df7d7db0b9613"
+  },
+  {
+    "file": "treatment-form.xml",
+    "bytes": 21740,
+    "sha256": "4f13e98a6bcd33035135cbda654daaa47dea64c8f2b932289498086770b0b812"
+  }
+]

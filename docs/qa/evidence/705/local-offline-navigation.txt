@@ -1,0 +1,6 @@
+
+com.isivoltpro.maginaolivo.AppNavigationTest:..
+
+Time: 25.197
+
+OK (2 tests)

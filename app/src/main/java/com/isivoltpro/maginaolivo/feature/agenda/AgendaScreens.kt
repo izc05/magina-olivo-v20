@@ -11,6 +11,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -145,7 +147,7 @@ private fun permissionGranted(context: Context): Boolean =
  *
  * It reads only this phone's data, so it works the same in the field with no signal.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AgendaScreen(
     state: AgendaUiState,
@@ -182,10 +184,17 @@ fun AgendaScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
             Spacer(Modifier.height(MoSpacing.sm))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
-                // CR-011 §20: Avisos' section colour is amber.
-                MoIconBadge(MoIcons.Bell, tint = MoIconTone.ALERT.tint, container = MoIconTone.ALERT.container)
-                Text(title, style = MaterialTheme.typography.headlineLarge, color = MoOliveDark, modifier = Modifier.weight(1f))
+            // Let the action move below the heading when large text leaves too little room.
+            FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                    // CR-011 §20: Avisos' section colour is amber.
+                    MoIconBadge(MoIcons.Bell, tint = MoIconTone.ALERT.tint, container = MoIconTone.ALERT.container)
+                    Text(title, style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+                }
                 MoPrimaryButton("Planificar trabajo", onPlanWork, Modifier.testTag("agenda-plan-work"))
             }
             AgendaViewSwitch(view) { view = it }

@@ -143,6 +143,8 @@ fun NotebookRootRoute(
     onTabRequestHandled: () -> Unit = {},
     /** #369: only the Cuaderno tab offers «Cambiar finca». */
     origin: NotebookOrigin = NotebookOrigin.ROOT,
+    /** Validated visible context for global actions on this navigation entry. */
+    onActiveFarmChanged: (UUID?) -> Unit = {},
 ) {
     // The same Farm list the register flow already uses; no second source.
     val farmsViewModel: RegisterActivityViewModel = viewModel(
@@ -158,7 +160,10 @@ fun NotebookRootRoute(
     // #427: validate persisted/navigation context only after the active Farm list is known.
     // Never persist an archived/foreign request; repair a stale stored UUID to a real fallback.
     LaunchedEffect(farms.isLoading, farms.error, farmRequest, activeFarmIds) {
-        if (farms.isLoading || farms.error != null) return@LaunchedEffect
+        if (farms.isLoading || farms.error != null) {
+            onActiveFarmChanged(null)
+            return@LaunchedEffect
+        }
 
         val stored = chosen?.let { runCatching { UUID.fromString(it) }.getOrNull() }
         val requested = farmRequest?.takeIf { it in activeFarmIds }
@@ -167,6 +172,7 @@ fun NotebookRootRoute(
         val staleStored = stored != null && stored !in activeFarmIds && requested == null
 
         chosen = resolved?.toString()
+        onActiveFarmChanged(resolved)
         if (resolved != null) activeFarmStore.set(resolved) else activeFarmStore.clear()
 
         // Parcel context belongs to the Farm that supplied it. Drop it only when that context
@@ -201,6 +207,8 @@ fun NotebookRootRoute(
         notebook = notebook?.first,
         actions = activeFarm?.let { actionsFor(it.id).copy(onLabour = { campaignId -> labourCampaign = campaignId.toString() }) },
         onSelectFarm = { id ->
+            if (id !in activeFarmIds) return@NotebookHomeScreen
+            onActiveFarmChanged(id)
             chosen = id.toString()
             activeFarmStore.set(id)
             // A Parcel belongs to its Farm: another Farm drops it.
@@ -373,7 +381,10 @@ fun NotebookHomeScreen(
 
 /** CR-011 §4–5: the six actions as large, labelled tiles, three per row; one tap opens the form. */
 @Composable
-private fun QuickActionGrid(onQuickAction: (NotebookQuickAction) -> Unit) {
+internal fun QuickActionGrid(
+    onQuickAction: (NotebookQuickAction) -> Unit,
+    isEnabled: (NotebookQuickAction) -> Boolean = { true },
+) {
     // Device check (build 683): at 360 dp with large text «Tratamiento» broke onto two lines.
     // Three tiles per row only when a tile still fits the longest label at this font scale.
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -381,7 +392,7 @@ private fun QuickActionGrid(onQuickAction: (NotebookQuickAction) -> Unit) {
         // Each tile gets the width left after the two gaps between three tiles (Codex #305).
         val tileWidth = (maxWidth - MoSpacing.xs * 2) / 3
         val columns = if (tileWidth >= QUICK_TILE_MIN_WIDTH * fontScale) 3 else 2
-        QuickActionRows(columns, onQuickAction)
+        QuickActionRows(columns, onQuickAction, isEnabled)
     }
 }
 
@@ -389,25 +400,25 @@ private fun QuickActionGrid(onQuickAction: (NotebookQuickAction) -> Unit) {
 private val QUICK_TILE_MIN_WIDTH = 104.dp
 
 @Composable
-private fun QuickActionRows(columns: Int, onQuickAction: (NotebookQuickAction) -> Unit) {
+private fun QuickActionRows(columns: Int, onQuickAction: (NotebookQuickAction) -> Unit, isEnabled: (NotebookQuickAction) -> Boolean) {
     Column(Modifier.fillMaxWidth().testTag("notebook-quick-actions"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         NotebookQuickAction.entries.chunked(columns).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                row.forEach { action -> QuickActionTile(action, { onQuickAction(action) }, Modifier.weight(1f)) }
+                row.forEach { action -> QuickActionTile(action, { onQuickAction(action) }, Modifier.weight(1f), isEnabled(action)) }
             }
         }
     }
 }
 
 @Composable
-private fun QuickActionTile(action: NotebookQuickAction, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun QuickActionTile(action: NotebookQuickAction, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val icon = action.icon()
     val tone = action.tone()
     Surface(
         modifier = modifier
             .heightIn(min = 88.dp)
             .clip(MoShape.card)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .testTag(action.tag),
         shape = MoShape.card,
         color = MoSurfaceTokens.cardSurface,

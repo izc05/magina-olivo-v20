@@ -63,6 +63,7 @@ fun HomeRoute(
     onActivitySelected: (UUID) -> Unit,
     /** Phase 20D-3: the oil market screen (12-week official chart). */
     onOilMarket: () -> Unit = {},
+    onAlerts: () -> Unit = onCalendar,
 ) {
     val viewModel: HomeViewModel = viewModel(
         key = "home",
@@ -92,6 +93,7 @@ fun HomeRoute(
         state, LocalTime.now(), onCalendar, onWeatherWeek, onCampaign, onActivitySelected, clock.nowInstant(),
         onOilMarket = onOilMarket,
         onRetryLocalData = viewModel::retryLocalData,
+        onAlerts = onAlerts,
     )
 }
 
@@ -115,6 +117,7 @@ fun HomeScreen(
     /** Phase 20D-3: opens the oil market screen; the card offers it once there are official weeks. */
     onOilMarket: (() -> Unit)? = null,
     onRetryLocalData: () -> Unit = {},
+    onAlerts: () -> Unit = onCalendar,
 ) {
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
@@ -133,6 +136,7 @@ fun HomeScreen(
                 now = feedNow,
                 weatherMotion = weatherMotion,
                 onForecast = onWeatherWeek,
+                onAlerts = onAlerts,
             )
             Column(
                 Modifier.padding(horizontal = MoSpacing.screen),

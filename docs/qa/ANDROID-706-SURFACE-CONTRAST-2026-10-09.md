@@ -1,6 +1,6 @@
 # #706 — contraste de superficies Android
 
-Issue [#706](https://github.com/izc05/magina-olivo-v20/issues/706), B2 de [#711](https://github.com/izc05/magina-olivo-v20/issues/711). Rama `codex/706-surface-contrast`, base main `45e21fe05624ba68a6020c43258ef75e1351c700`. Android únicamente; Web V3 pausada. Estado: implementación y validación en curso, no integrada.
+Issue [#706](https://github.com/izc05/magina-olivo-v20/issues/706), B2 de [#711](https://github.com/izc05/magina-olivo-v20/issues/711). Rama `codex/706-surface-contrast`, base main `45e21fe05624ba68a6020c43258ef75e1351c700`. Android únicamente; Web V3 pausada. Estado: integrada mediante PR #713 el 2026-10-09T09:28:15Z.
 
 ## Cambio acotado
 
@@ -44,4 +44,4 @@ La APK local de QA no incluye `SUPABASE_ANON_KEY`, que el CI recibe de su config
 
 ## Integración y siguiente bloque
 
-PR, SHA final y controles `foundation`, `gate3-emulator`, `gate3-evidence`: pendientes. Las capturas finales tienen revisión independiente conforme; falta vincularla al SHA final. No integrar hasta comprobar los tres SUCCESS sobre el mismo SHA. Después, continuar #705/CR-014 en una PR separada. La APK candidata desde main y el móvil físico corresponden a B5; Gate21 permanece abierto.
+PR #713 integrada. HEAD revisado `330e21f943773aac772e1c01e0a523d212a805b8`, merge main `324af37a8ff83efdb12c71482fa5b9c1caba432d`. Revisión independiente final conforme y los tres controles SUCCESS sobre ese HEAD: Android run37893515488, evidencia run37893515594. Logs remotos confirman 690 instrumentadas, 196 offline y cuatro tandas de 14 capturas, sin sumar pruebas solapadas. Resultado publicado en #711/#696/#706 y #706 cerrado. Continúa #705/CR-014 en PR separada. La APK candidata desde main y el móvil físico corresponden a B5; Gate21 permanece abierto.

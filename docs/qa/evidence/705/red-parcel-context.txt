@@ -1,0 +1,34 @@
+
+com.isivoltpro.maginaolivo.GlobalQuickActionsTest:..
+Error in archivingTheParcelWhileTheSheetIsOpenDropsItsContext(com.isivoltpro.maginaolivo.GlobalQuickActionsTest):
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 5000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.isivoltpro.maginaolivo.GlobalQuickActionsTest.awaitNoParcel(GlobalQuickActionsTest.kt:192)
+	at com.isivoltpro.maginaolivo.GlobalQuickActionsTest.archivingTheParcelWhileTheSheetIsOpenDropsItsContext(GlobalQuickActionsTest.kt:97)
+...
+Error in movingTheParcelToAnotherFarmWhileOpenDropsItsContext(com.isivoltpro.maginaolivo.GlobalQuickActionsTest):
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 5000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.isivoltpro.maginaolivo.GlobalQuickActionsTest.awaitNoParcel(GlobalQuickActionsTest.kt:192)
+	at com.isivoltpro.maginaolivo.GlobalQuickActionsTest.movingTheParcelToAnotherFarmWhileOpenDropsItsContext(GlobalQuickActionsTest.kt:106)
+...
+
+Time: 31.77
+There were 2 failures:
+1) archivingTheParcelWhileTheSheetIsOpenDropsItsContext(com.isivoltpro.maginaolivo.GlobalQuickActionsTest)
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 5000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.isivoltpro.maginaolivo.GlobalQuickActionsTest.awaitNoParcel(GlobalQuickActionsTest.kt:192)
+	at com.isivoltpro.maginaolivo.GlobalQuickActionsTest.archivingTheParcelWhileTheSheetIsOpenDropsItsContext(GlobalQuickActionsTest.kt:97)
+2) movingTheParcelToAnotherFarmWhileOpenDropsItsContext(com.isivoltpro.maginaolivo.GlobalQuickActionsTest)
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 5000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.isivoltpro.maginaolivo.GlobalQuickActionsTest.awaitNoParcel(GlobalQuickActionsTest.kt:192)
+	at com.isivoltpro.maginaolivo.GlobalQuickActionsTest.movingTheParcelToAnotherFarmWhileOpenDropsItsContext(GlobalQuickActionsTest.kt:106)
+
+FAILURES!!!
+Tests run: 10,  Failures: 2
