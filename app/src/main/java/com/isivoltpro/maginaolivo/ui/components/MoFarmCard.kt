@@ -28,13 +28,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
  * UI polish v2: a Farm card that reads as a real place — photo (or the olive-grove
@@ -64,8 +63,8 @@ fun MoFarmCard(
             if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
         ),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = BorderStroke(1.dp, MoOutline),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column {
@@ -87,7 +86,7 @@ fun MoFarmCard(
                     modifier = Modifier.align(Alignment.TopEnd).padding(MoSpacing.xs),
                     shape = CircleShape,
                     color = if (campaignActive) MoOliveTint else MoWarmWhite,
-                    contentColor = if (campaignActive) MoOliveMid else MoTextSecondary,
+                    contentColor = if (campaignActive) MoOliveMid else MoSurfaceTokens.secondaryText,
                 ) {
                     Text(
                         text = campaignStatus,
@@ -108,11 +107,11 @@ fun MoFarmCard(
                     color = MoOliveDark,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(MoIcons.Location, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(15.dp))
+                    Icon(MoIcons.Location, contentDescription = null, tint = MoSurfaceTokens.secondaryText, modifier = Modifier.size(15.dp))
                     Text(
                         text = municipality,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                     )
                 }
                 if (olives != null && campaignKilos != null) {
@@ -161,7 +160,7 @@ private fun FarmMetric(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
         )
     }
 }

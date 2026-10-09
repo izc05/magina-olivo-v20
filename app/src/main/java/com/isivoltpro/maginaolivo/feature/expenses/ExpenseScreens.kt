@@ -64,19 +64,17 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 internal fun relationSource(persistence: LocalPersistence) = RelationSource(
     workspaces = persistence.workspaceRepository,
@@ -208,7 +206,7 @@ fun ExpensesScreen(
     // The Farm's parcels and works are offered in the form from the start.
     LaunchedEffect(presetFarmId) { presetFarmId?.let(onFarmSelected) }
 
-    Scaffold(Modifier.fillMaxSize().testTag("expenses-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("expenses-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),
@@ -219,7 +217,7 @@ fun ExpensesScreen(
             Text(
                 "Solo suman los gastos confirmados. Los borradores esperan tu revisión.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
             if (presetCampaignId != null) {
                 val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(presetCampaignId, state.expenses, emptyList())
@@ -258,8 +256,8 @@ fun ExpensesScreen(
             TextButton(onClick = onOrganizations, modifier = Modifier.testTag("open-organizations")) {
                 Text("Proveedores y organizaciones")
             }
-            if (state.isSaving) Text("Guardando…", color = MoTextSecondary)
-            state.message?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("expenses-message")) }
+            if (state.isSaving) Text("Guardando…", color = MoSurfaceTokens.secondaryText)
+            state.message?.let { Text(it, color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("expenses-message")) }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("expenses-error")) }
 
             if (state.openDocuments.isNotEmpty()) {
@@ -278,7 +276,7 @@ fun ExpensesScreen(
                 // #450: shares only within one currency; with several, each currency has its own list.
                 byCurrency.forEach { ledger ->
                     if (byCurrency.size > 1) {
-                        Text("En ${ledger.currency}", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary,
+                        Text("En ${ledger.currency}", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText,
                             modifier = Modifier.testTag("expenses-categories-${ledger.currency}"))
                     }
                     // #500: checked sums; a category or total that overflows reads «No disponible», never negative.
@@ -311,7 +309,7 @@ fun ExpensesScreen(
             onEditorClosed()
             if (contextual) onContextDone?.invoke(false)
         }
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { closeEditor() }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, onDismissRequest = { closeEditor() }) {
             ExpenseEditor(
                 // #378: outside a campaign, Jornal is the Farm's labour — said so, with Mano de obra chosen.
                 title = if (presetLabour) LABOUR_OUTSIDE_CAMPAIGN_TITLE else "Nuevo gasto",
@@ -374,7 +372,7 @@ internal fun DocumentUploadSheet(
         pendingCapture = null
         if (saved && target != null) onPicked(selectedType, target)
     }
-    ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = onDismiss) {
+    ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, onDismissRequest = onDismiss) {
         MoBottomActionSheet(
             title = "Subir documento",
             body = "Leeremos el documento en este dispositivo. Nada se apunta como gasto hasta que lo revises.",
@@ -428,7 +426,7 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("expense-row"),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         // CR-011 §23: icon in the Gasto colour, the concept, then when / what / who, then status.
         Row(
@@ -443,7 +441,7 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
                     listOfNotNull(DATE_FORMAT.format(expense.expenseDate), expense.category.label(), expense.supplierName)
                         .joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                 )
                 if (expense.status == ExpenseStatus.DRAFT) {
                     MoStatusChip("Borrador · no suma", tone = MoStatusTone.Warning)
@@ -452,7 +450,7 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
             Text(
                 Money.format(expense.amountMinor, expense.currency),
                 style = MaterialTheme.typography.titleMedium,
-                color = if (expense.status == ExpenseStatus.DRAFT) MoTextSecondary else MoOlivePrimary,
+                color = if (expense.status == ExpenseStatus.DRAFT) MoSurfaceTokens.secondaryText else MoOlivePrimary,
             )
         }
     }
@@ -464,7 +462,7 @@ private fun CategoryRow(label: String, amountMinor: Long?, totalMinor: Long?, cu
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Row(
             Modifier.fillMaxWidth().padding(MoSpacing.md),
@@ -473,7 +471,7 @@ private fun CategoryRow(label: String, amountMinor: Long?, totalMinor: Long?, cu
         ) {
             Column(Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-                Text(share?.let { "$it %" } ?: "—", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+                Text(share?.let { "$it %" } ?: "—", style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText)
             }
             Text(amountMinor?.let { Money.format(it, currency) } ?: "No disponible", style = MaterialTheme.typography.titleMedium, color = MoInk)
         }
@@ -485,14 +483,14 @@ internal fun DocumentRow(document: DocumentExtraction, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("document-row"),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             Text(document.documentType.label(), style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
             Text(
                 DATE_FORMAT.format(document.createdAt.atZone(ZoneId.systemDefault()).toLocalDate()),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
             MoStatusChip(document.status.label(), tone = document.status.tone())
         }

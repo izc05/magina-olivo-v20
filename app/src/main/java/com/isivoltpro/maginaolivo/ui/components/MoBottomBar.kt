@@ -29,9 +29,8 @@ import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 
 data class MoBottomBarItem(
@@ -51,11 +50,11 @@ fun MoBottomBar(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MoWarmWhite,
+        color = MoSurfaceTokens.cardSurface,
         contentColor = MoOliveDark,
         tonalElevation = 0.dp,
         shadowElevation = 3.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline.copy(alpha = 0.6f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
             modifier = Modifier
@@ -67,7 +66,7 @@ fun MoBottomBar(
         ) {
             items.forEachIndexed { index, item ->
                 val selected = index == selectedIndex
-                val color = if (selected || item.isPrimaryAction) MoOlivePrimary else MoTextSecondary
+                val color = if (selected || item.isPrimaryAction) MoOlivePrimary else MoSurfaceTokens.secondaryText
 
                 Column(
                     modifier = Modifier

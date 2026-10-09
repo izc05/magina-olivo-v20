@@ -88,17 +88,15 @@ import com.isivoltpro.maginaolivo.ui.components.MoSelectField
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun DeliveriesRoute(
@@ -196,7 +194,7 @@ fun DeliveriesScreen(
     // A saved Pesada («Guardar y añadir otra») starts the next one from itself, not from the seed.
     LaunchedEffect(state.nextFormGeneration) { ticketSeed = null }
 
-    Scaffold(Modifier.fillMaxSize().testTag("deliveries-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("deliveries-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),
@@ -207,7 +205,7 @@ fun DeliveriesScreen(
             Text(
                 "Lo que llevas a la cooperativa o almazara. El rendimiento se añade cuando llega el análisis.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
             val canRecord = state.contexts.isNotEmpty() && !state.contextsReadFailed && !state.isSaving
             // #342: kilos are typed and confirmed by the farmer; there is no ticket-reading entry.
@@ -238,13 +236,13 @@ fun DeliveriesScreen(
                     Text(
                         "Para registrar una pesada, una finca necesita una campaña activa o en recolección.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                         modifier = Modifier.testTag("delivery-no-campaign"),
                     )
                 }
             }
-            if (state.isSaving) Text("Guardando…", color = MoTextSecondary)
-            state.message?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("deliveries-message")) }
+            if (state.isSaving) Text("Guardando…", color = MoSurfaceTokens.secondaryText)
+            state.message?.let { Text(it, color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("deliveries-message")) }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("deliveries-error")) }
 
             if (state.openTickets.isNotEmpty()) {
@@ -253,14 +251,14 @@ fun DeliveriesScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth().clickable { onTicketSelected(ticket.id) }.testTag("ticket-row"),
                         shape = MoShape.card,
-                        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+                        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
                     ) {
                         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                             Text("Vale de entrega", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                             Text(
                                 DATE_FORMAT.format(ticket.createdAt.atZone(ZoneId.systemDefault()).toLocalDate()),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MoTextSecondary,
+                                color = MoSurfaceTokens.secondaryText,
                             )
                             MoStatusChip("Sin confirmar · no cuenta", tone = ticket.status.tone())
                         }
@@ -327,7 +325,7 @@ fun DeliveriesScreen(
                                 status == YieldStatus.PENDING -> "Todas las pesadas tienen su rendimiento."
                                 else -> "Ninguna pesada con estos filtros."
                             },
-                            color = MoTextSecondary,
+                            color = MoSurfaceTokens.secondaryText,
                             modifier = Modifier.testTag("pesada-search-empty"),
                         )
                     }
@@ -480,7 +478,7 @@ private fun CampaignDeliveriesCard(campaign: CampaignDeliveries) {
     Card(
         modifier = Modifier.fillMaxWidth().testTag("campaign-deliveries"),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             Text(
@@ -497,7 +495,7 @@ private fun CampaignDeliveriesCard(campaign: CampaignDeliveries) {
             Text(
                 "${summary.deliveryCount} ${if (summary.deliveryCount == 1) "pesada" else "pesadas"}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
             YieldLine("Rendimiento graso", summary.fatYield?.hundredths, summary.coveragePercent(summary.fatYield), "campaign-fat-yield")
             YieldLine(
@@ -521,7 +519,7 @@ private fun YieldLine(label: String, hundredths: Int?, coverage: Int?, tag: Stri
             "$label: ${Percent.format(hundredths)} ponderado · con análisis el $coverage % de los kilos"
         },
         style = MaterialTheme.typography.bodyMedium,
-        color = MoTextSecondary,
+        color = MoSurfaceTokens.secondaryText,
         modifier = Modifier.testTag(tag),
     )
 }
@@ -531,7 +529,7 @@ private fun DeliveryRow(delivery: Delivery, onAddYield: (() -> Unit)? = null, on
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("delivery-row"),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         // CR-011 §23: icon + what the farmer recognises first (kg · destination), then when.
         Row(
@@ -554,7 +552,7 @@ private fun DeliveryRow(delivery: Delivery, onAddYield: (() -> Unit)? = null, on
                         delivery.ticketNumber?.let { "vale $it" },
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                 )
                 val analysis = delivery.analysis
                 if (analysis?.fatYieldHundredths != null) {
@@ -606,7 +604,7 @@ internal fun DeliveryEditor(
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
-        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
         if (farmLocked) {
             // #373/#375: «Salinillas · Campaña 2026-2027» as fixed context, never a selector.
             Text(
@@ -618,7 +616,7 @@ internal fun DeliveryEditor(
                 style = MaterialTheme.typography.titleMedium,
                 color = when {
                     context != null -> MoOliveDark
-                    contextLoading -> MoTextSecondary
+                    contextLoading -> MoSurfaceTokens.secondaryText
                     else -> MaterialTheme.colorScheme.error
                 },
                 modifier = Modifier.testTag("delivery-context"),
@@ -628,7 +626,7 @@ internal fun DeliveryEditor(
         }
         errors.farm?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (!farmLocked) {
-            context?.let { Text("Campaña ${it.campaignName}", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
+            context?.let { Text("Campaña ${it.campaignName}", style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             Box(Modifier.weight(2f)) {
@@ -649,7 +647,7 @@ internal fun DeliveryEditor(
             Text(
                 "Se guarda en el día de recolección de su fecha.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
                 modifier = Modifier.testTag("delivery-day-note"),
             )
         }
@@ -662,7 +660,7 @@ internal fun DeliveryEditor(
             Text(
                 "Ahora: $now",
                 style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
                 modifier = Modifier.testTag("delivery-destination-now"),
             )
         }
@@ -680,7 +678,7 @@ internal fun DeliveryEditor(
             modifier = Modifier.fillMaxWidth().testTag("delivery-net"),
         )
         // Issue #254 (CODEX-3): every Pesada says where its olives were picked.
-        Text("Origen de la aceituna", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        Text("Origen de la aceituna", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
         Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             PesadaOrigin.entries.forEach { option ->
                 FilterChip(
@@ -698,7 +696,7 @@ internal fun DeliveryEditor(
         )
 
         MoSectionHeader("Parcelas de origen")
-        if (context == null) Text("Elige primero la finca.", color = MoTextSecondary)
+        if (context == null) Text("Elige primero la finca.", color = MoSurfaceTokens.secondaryText)
         context?.parcels?.forEach { parcel ->
             val checked = parcel.parcelId in form.parcelIds
             Row(
@@ -828,7 +826,7 @@ private fun SplitOption(title: String, body: String, selected: Boolean, tag: Str
         RadioButton(selected = selected, onClick = onClick)
         Column {
             Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(body, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+            Text(body, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
         }
     }
 }
@@ -891,7 +889,7 @@ fun DeliveryDetailScreen(
     var sheet by rememberSaveable { mutableStateOf(if (openYield) "yield" else null) }
     OnEachSave(state.saveCount) { sheet = null }
 
-    Scaffold(Modifier.fillMaxSize().testTag("delivery-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("delivery-detail-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(MoSpacing.screen),
@@ -908,7 +906,7 @@ fun DeliveryDetailScreen(
                     if (analysis == null) {
                         Text(
                             "Sin análisis todavía. La pesada cuenta en kilos; su rendimiento se añade cuando llegue.",
-                            color = MoTextSecondary,
+                            color = MoSurfaceTokens.secondaryText,
                             modifier = Modifier.testTag("delivery-yield-pending"),
                         )
                     } else {
@@ -946,11 +944,11 @@ fun DeliveryDetailScreen(
                             } else {
                                 "La campaña está cerrada y el rendimiento ya está confirmado. Para corregir este histórico, reabre la campaña."
                             },
-                            color = MoTextSecondary,
+                            color = MoSurfaceTokens.secondaryText,
                             modifier = Modifier.testTag("delivery-read-only"),
                         )
                     }
-                    state.message?.let { Text(it, color = MoTextSecondary) }
+                    state.message?.let { Text(it, color = MoSurfaceTokens.secondaryText) }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     attachmentContent()
                 }
@@ -1023,7 +1021,7 @@ private fun YieldEditor(
         Text(
             "Se guarda aparte: la pesada no cambia.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
         )
         MoTextField(
             form.fat, { form = form.copy(fat = it) }, "Rendimiento graso (%)",
@@ -1054,7 +1052,7 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
     Text(
         listOfNotNull(delivery.farmName, delivery.campaignName).joinToString(" · "),
         style = MaterialTheme.typography.bodyLarge,
-        color = MoTextSecondary,
+        color = MoSurfaceTokens.secondaryText,
     )
     MoMetricCard(
         "Kilos pesados",
@@ -1071,7 +1069,7 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
         Text(
             "Forma parte del día de recolección de su fecha: sus kilos cuentan en el total de ese día.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
             modifier = Modifier.testTag("delivery-in-jornada"),
         )
     }
@@ -1087,7 +1085,7 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
                 if (share.allocation == HarvestAllocation.EXACT && share.weightGrams != null) Weight.format(share.weightGrams)
                 else "Kilos no conocidos",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
         }
     }
@@ -1095,14 +1093,14 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
         null -> Text(
             "Sin repartir entre parcelas: No disponible",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
             modifier = Modifier.testTag("delivery-unallocated"),
         )
         else -> if (unallocated > 0) {
             Text(
                 "Sin repartir entre parcelas: ${Weight.format(unallocated)}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
                 modifier = Modifier.testTag("delivery-unallocated"),
             )
         }
@@ -1113,7 +1111,7 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
 @Composable
 private fun DetailValue(label: String, value: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
         Text(value ?: "Sin registrar", style = MaterialTheme.typography.bodyLarge)
     }
 }
@@ -1175,7 +1173,7 @@ fun TicketReviewScreen(
     attachmentContent: @Composable () -> Unit = {},
 ) {
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
-    Scaffold(Modifier.fillMaxSize().testTag("ticket-review-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("ticket-review-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
@@ -1186,7 +1184,7 @@ fun TicketReviewScreen(
                 extraction == null -> MoErrorState("Vale no disponible", state.error ?: "No está guardado en este dispositivo.")
                 extraction.status == OcrStatus.CONFIRMED -> Text(
                     "Este vale ya se confirmó como pesada.",
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                     modifier = Modifier.padding(horizontal = MoSpacing.screen),
                 )
                 else -> {
@@ -1232,7 +1230,7 @@ fun TicketReviewScreen(
                     extraction.rawText?.takeIf { it.isNotBlank() }?.let { raw ->
                         Column(Modifier.padding(horizontal = MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                             MoSectionHeader("Texto leído")
-                            Text(raw, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                            Text(raw, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
                         }
                     }
                 }

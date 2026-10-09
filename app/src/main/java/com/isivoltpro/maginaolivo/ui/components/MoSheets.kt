@@ -13,8 +13,7 @@ import androidx.compose.ui.Modifier
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun MoConfirmationSheet(
@@ -29,7 +28,7 @@ fun MoConfirmationSheet(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MoShape.hero,
-        color = MoWarmWhite,
+        color = MoSurfaceTokens.cardSurface,
         contentColor = MoOliveDark,
     ) {
         Column(
@@ -43,7 +42,7 @@ fun MoConfirmationSheet(
             Text(
                 text = body,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -74,7 +73,7 @@ fun MoBottomActionSheet(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MoShape.hero,
-        color = MoWarmWhite,
+        color = MoSurfaceTokens.cardSurface,
         contentColor = MoOliveDark,
     ) {
         Column(
@@ -89,7 +88,7 @@ fun MoBottomActionSheet(
                 Text(
                     text = body,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                 )
             }
             content()

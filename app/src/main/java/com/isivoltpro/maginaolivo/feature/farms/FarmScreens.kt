@@ -52,10 +52,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
@@ -70,6 +68,7 @@ import java.time.LocalDate
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun FarmListRoute(
@@ -209,7 +208,7 @@ fun FarmListScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("farms-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         LazyColumn(
@@ -239,7 +238,7 @@ fun FarmListScreen(
                 Text(
                     text = "Organiza tu explotación por fincas y parcelas.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                 )
             }
 
@@ -294,7 +293,7 @@ fun FarmListScreen(
                     Text(
                         text = "No encontramos ninguna finca",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                         modifier = Modifier.testTag("farm-search-empty"),
                     )
                 }
@@ -425,7 +424,7 @@ fun FarmDetailScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("farm-detail-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         when {
@@ -487,7 +486,7 @@ fun FarmDetailScreen(
                 Text("Archivar finca", style = MaterialTheme.typography.headlineSmall)
                 Text(
                     "La finca desaparecerá de la lista activa, pero conservará sus datos y podrás restaurarla.",
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                 )
                 MoDestructiveButton(
                     text = "Archivar",
@@ -598,7 +597,7 @@ private fun SectionEntry(section: FarmSection, icon: ImageVector, subtitle: Stri
         icon = icon,
         onClick = { onOpen(section) },
         modifier = Modifier.testTag("farm-section-${section.name.lowercase()}"),
-        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary) },
+        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText) },
     )
 }
 
@@ -629,7 +628,7 @@ private fun FarmTotals(farms: List<Farm>) {
             Text(
                 "Añade superficie a tus parcelas para calcular rendimientos.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
         }
     }
@@ -702,7 +701,7 @@ private fun FarmEditor(
         Text(
             "Se guardará primero en este dispositivo.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
         )
         MoTextField(
             value = name,

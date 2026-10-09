@@ -44,11 +44,10 @@ import com.isivoltpro.maginaolivo.R
 import com.isivoltpro.maginaolivo.ui.brand.MaginaOlivoWordmark
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
  * Design v3 (CR-004, owner mockups 2026-09-23): photographic header that bleeds to the top
@@ -143,8 +142,8 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
         shadowElevation = 1.dp,
     ) {
         BoxWithConstraints {
@@ -154,7 +153,7 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
         val stacked = fontScale > 1.15f || maxWidth / stats.size.coerceAtLeast(1) < (128 * fontScale).dp
         Row(Modifier.padding(vertical = MoSpacing.sm, horizontal = MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
             stats.forEachIndexed { index, stat ->
-                if (index > 0) Box(Modifier.width(1.dp).height(36.dp).background(MoOutline))
+                if (index > 0) Box(Modifier.width(1.dp).height(36.dp).background(MoSurfaceTokens.cardStroke))
                 if (stacked) {
                     Column(
                         Modifier.weight(1f).padding(horizontal = 6.dp),
@@ -167,7 +166,7 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
                         Text(
                             stat.label,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MoTextSecondary,
+                            color = MoSurfaceTokens.secondaryText,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -187,7 +186,7 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
                     if (stats.size <= 3) MoIconBadge(stat.icon, size = 36)
                     // Wrap rather than clip: a label or unit is never cut with large text.
                     Column {
-                        Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+                        Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText)
                         Text(stat.value, style = MaterialTheme.typography.titleMedium, color = MoInk)
                     }
                 }
@@ -203,8 +202,8 @@ fun MoStatTile(stat: MoStat, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.heightIn(min = 96.dp),
         shape = MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(
             Modifier.padding(vertical = MoSpacing.sm, horizontal = 4.dp),
@@ -212,7 +211,7 @@ fun MoStatTile(stat: MoStat, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             MoIconBadge(stat.icon, size = 34)
-            Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, maxLines = 1)
+            Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText, maxLines = 1)
             Text(
                 stat.value,
                 style = MaterialTheme.typography.titleMedium,
@@ -228,7 +227,7 @@ fun MoStatTile(stat: MoStat, modifier: Modifier = Modifier) {
 @Composable
 fun MoLabeledValue(label: String, value: String?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText)
         Text(value ?: "—", style = MaterialTheme.typography.bodyLarge, color = MoInk)
     }
 }
@@ -247,8 +246,8 @@ fun MoSectionCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {

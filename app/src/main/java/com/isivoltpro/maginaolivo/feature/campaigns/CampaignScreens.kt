@@ -52,11 +52,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -79,6 +75,7 @@ import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import java.time.LocalDate
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun FarmCampaignsRoute(farmId: UUID, persistence: LocalPersistence, onCampaignSelected: (UUID) -> Unit) {
@@ -148,12 +145,12 @@ fun FarmCampaignsSection(
 private fun CampaignRow(campaign: Campaign, summary: CampaignCardSummary?, onSelected: (UUID) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { onSelected(campaign.id) }.testTag("campaign-row"),
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text(campaign.name, style = MaterialTheme.typography.titleSmall); Text("Inicio ${campaign.startDate.format(SHORT_DATE)}", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary) }
+                Column(Modifier.weight(1f)) { Text(campaign.name, style = MaterialTheme.typography.titleSmall); Text("Inicio ${campaign.startDate.format(SHORT_DATE)}", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText) }
                 MoStatusChip(campaign.status.label(), tone = campaign.status.tone())
             }
             // #246: a quick summary outside, the full detail inside.
@@ -177,7 +174,7 @@ internal fun CampaignEditor(
         MoTextField(name, { name = it }, "Nombre", isError = nameError != null, supportingText = nameError, modifier = Modifier.testTag("campaign-name"))
         MoDateInputField(date, { date = it }, "Fecha de inicio", isError = dateError != null, supportingText = dateError, modifier = Modifier.testTag("campaign-start-date"))
         MoSectionHeader("Parcelas")
-        if (parcels.isEmpty()) Text("Primero añade una parcela a esta finca.", color = MoTextSecondary)
+        if (parcels.isEmpty()) Text("Primero añade una parcela a esta finca.", color = MoSurfaceTokens.secondaryText)
         parcels.forEach { parcel ->
             val checked = parcel.id.toString() in selected
             Row(Modifier.fillMaxWidth().testTag("campaign-parcel-option").clickable { selected = if (checked) selected - parcel.id.toString() else selected + parcel.id.toString() }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -279,7 +276,7 @@ fun CampaignDetailRoute(
     )
     // #365: the one Jornales detail (people and payments) of this campaign, as from the Cuaderno.
     if (labourOpen) {
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { labourOpen = false }) {
+        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, onDismissRequest = { labourOpen = false }) {
             com.isivoltpro.maginaolivo.feature.harvests.LabourPaymentsRoute(
                 campaignId,
                 persistence,
@@ -313,7 +310,7 @@ fun CampaignDetailScreen(
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var editor by rememberSaveable { mutableStateOf(false) }
     OnEachSave(state.saveCount) { editor = false }
-    Scaffold(Modifier.fillMaxSize().testTag("campaign-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("campaign-detail-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen, vertical = MoSpacing.sm),
@@ -338,7 +335,7 @@ fun CampaignDetailScreen(
                             "${campaign.snapshots.size} ${if (campaign.snapshots.size == 1) "parcela" else "parcelas"}",
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                     )
                     MoMetricGrid(
                         content = listOf(
@@ -394,7 +391,7 @@ fun CampaignDetailScreen(
                         Text(
                             "Además, ${Weight.format(legacy)} registrados sin pesada (histórico): no entran en el total de kg pesados.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MoTextSecondary,
+                            color = MoSurfaceTokens.secondaryText,
                             modifier = Modifier.testTag("campaign-legacy-kilos"),
                         )
                     }
@@ -417,7 +414,7 @@ fun CampaignDetailScreen(
                         icon = MoIcons.Harvest,
                         onClick = onHarvests,
                         modifier = Modifier.testTag("campaign-open-harvests"),
-                        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp)) },
+                        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText, modifier = Modifier.size(18.dp)) },
                     )
                     MoCompactListItem(
                         title = "Pesadas",
@@ -425,7 +422,7 @@ fun CampaignDetailScreen(
                         icon = MoIcons.Delivery,
                         onClick = onDeliveries,
                         modifier = Modifier.testTag("campaign-open-deliveries"),
-                        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp)) },
+                        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText, modifier = Modifier.size(18.dp)) },
                     )
                     MoCompactListItem(
                         title = "Jornales",
@@ -433,7 +430,7 @@ fun CampaignDetailScreen(
                         icon = MoIcons.People,
                         onClick = onLabour,
                         modifier = Modifier.testTag("campaign-open-labour"),
-                        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp)) },
+                        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText, modifier = Modifier.size(18.dp)) },
                     )
                     Spacer(Modifier.height(MoSpacing.xs))
                     when (campaign.status) {
@@ -446,7 +443,7 @@ fun CampaignDetailScreen(
                                         "Para activar la campaña, selecciona al menos una parcela."
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MoTextSecondary,
+                                    color = MoSurfaceTokens.secondaryText,
                                     modifier = Modifier.testTag("campaign-parcels-required"),
                                 )
                                 if (state.parcels.isNotEmpty()) {
@@ -473,7 +470,7 @@ fun CampaignDetailScreen(
                         // CR-010: once active the farmer records Pesadas straight away; no «Iniciar recolección».
                         CampaignStatus.ACTIVE, CampaignStatus.HARVEST -> MoDestructiveButton("Cerrar campaña", { confirmation = "close" }, modifier = Modifier.fillMaxWidth().testTag("close-campaign"), enabled = !state.isSaving)
                         CampaignStatus.CLOSED -> {
-                            Text("Histórico protegido", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
+                            Text("Histórico protegido", style = MaterialTheme.typography.titleSmall, color = MoSurfaceTokens.secondaryText)
                             MoSecondaryButton("Reabrir campaña", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-campaign"))
                         }
                     }
@@ -498,7 +495,7 @@ fun CampaignDetailScreen(
                     "archive" -> "El borrador desaparecerá de la lista. Sus datos no se borran."
                     else -> "Esta acción actualizará el estado de la campaña guardada en este dispositivo."
                 },
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
             if (confirmation == "close" && summary.costComplete == false) {
                 // #449: closing is allowed; the farmer is told the cost/kg stays marked incomplete.

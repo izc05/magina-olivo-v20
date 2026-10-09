@@ -17,13 +17,11 @@ import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoInfo
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarning
 import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 enum class MoSyncState {
     Synced,
@@ -42,7 +40,7 @@ fun MoSourceFreshness(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         color = if (stale) MoWarning.copy(alpha = 0.10f) else MoSurfaceSoft,
-        border = BorderStroke(1.dp, if (stale) MoWarning.copy(alpha = 0.45f) else MoOutline),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -63,7 +61,7 @@ fun MoSourceFreshness(
                 Text(
                     text = freshness,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                 )
             }
         }
@@ -79,7 +77,7 @@ fun MoOfflineBanner(
         modifier = modifier.fillMaxWidth(),
         color = MoWarning.copy(alpha = 0.12f),
         contentColor = MoOliveDark,
-        border = BorderStroke(1.dp, MoWarning.copy(alpha = 0.35f)),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -100,15 +98,15 @@ fun MoSyncStatus(
     val (label, tone) = when (state) {
         MoSyncState.Synced -> "Sincronizado" to MoOliveMid
         MoSyncState.Pending -> "Pendiente de sincronizar" to MoWarningText
-        MoSyncState.Offline -> "Solo en este dispositivo" to MoTextSecondary
+        MoSyncState.Offline -> "Solo en este dispositivo" to MoSurfaceTokens.secondaryText
     }
 
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(999.dp),
-        color = tone.copy(alpha = 0.10f),
+        color = MoSurfaceTokens.tintedCard(tone, 0.10f),
         contentColor = tone,
-        border = BorderStroke(1.dp, tone.copy(alpha = 0.28f)),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Text(
             text = label,

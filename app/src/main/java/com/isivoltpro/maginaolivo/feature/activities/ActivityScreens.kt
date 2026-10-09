@@ -78,12 +78,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import androidx.compose.foundation.layout.size
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
@@ -93,6 +89,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import java.time.LocalDate
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun FarmActivitiesRoute(
@@ -284,7 +281,7 @@ fun RegisterActivityRoute(
     }
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("register-activity-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         Column(
@@ -381,7 +378,7 @@ internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) ->
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
         Text(if (planning) "¿Qué trabajo quieres planificar?" else "¿Qué trabajo vas a apuntar?", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
-        Text(farmName, style = MaterialTheme.typography.titleMedium, color = MoTextSecondary)
+        Text(farmName, style = MaterialTheme.typography.titleMedium, color = MoSurfaceTokens.secondaryText)
         workTypes(planning).forEach { type ->
             MoCompactListItem(
                 title = type.label(),
@@ -434,15 +431,15 @@ private fun FarmChoiceRow(farm: Farm, onSelected: () -> Unit) {
             .fillMaxWidth()
             .testTag("register-farm-option")
             .clickable(role = Role.Button, onClick = onSelected),
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = BorderStroke(1.dp, MoOutline),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(Modifier.padding(MoSpacing.md)) {
             Text(farm.name, style = MaterialTheme.typography.titleMedium)
             Text(
                 "${farm.parcelCount} parcelas",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
         }
     }
@@ -452,8 +449,8 @@ private fun FarmChoiceRow(farm: Farm, onSelected: () -> Unit) {
 private fun ActivityRow(activity: Activity, onSelected: (UUID) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { onSelected(activity.id) }.testTag("activity-row"),
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = BorderStroke(1.dp, MoOutline),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm, vertical = 10.dp),
@@ -466,10 +463,10 @@ private fun ActivityRow(activity: Activity, onSelected: (UUID) -> Unit) {
                 Text(
                     "${activity.type.label()} · ${activity.compactDateLabel()}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                     maxLines = 1,
                 )
-                Text(activity.targetsLabel(), style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, maxLines = 1)
+                Text(activity.targetsLabel(), style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText, maxLines = 1)
             }
             MoStatusChip(activity.status.label(), tone = activity.status.tone())
         }
@@ -793,7 +790,7 @@ internal fun ActivityEditor(
                 Column(Modifier.weight(1f)) {
                     Text("Detalles de ${activityType.label().lowercase()}", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
                     if (!agronomicDetailsOpen) {
-                        Text("Datos opcionales", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                        Text("Datos opcionales", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
                     }
                 }
             }
@@ -813,7 +810,7 @@ internal fun ActivityEditor(
                         "Esta campaña todavía no tiene parcelas disponibles para la jornada."
                     else -> "Primero añade una parcela a esta finca."
                 },
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
             )
         }
         parcelsError?.let {
@@ -895,7 +892,7 @@ internal fun ActivityEditor(
                             else -> "Hora, personas, maquinaria, avisos y notas"
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                     )
                 }
             }
@@ -1109,7 +1106,7 @@ fun ActivityDetailScreen(
     }
     var editor by rememberSaveable { mutableStateOf(false) }
     OnEachSave(state.saveCount) { editor = false }
-    Scaffold(Modifier.fillMaxSize().testTag("activity-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("activity-detail-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding()
                 .verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
@@ -1123,7 +1120,7 @@ fun ActivityDetailScreen(
                     val activity = state.activity
                     // UI polish v2: one first card with what the farmer needs at a glance.
                     ActivityHeaderCard(activity)
-                    activity.notes?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
+                    activity.notes?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText) }
                     if (activity.targets.size > 1) {
                         MoSectionHeader("Parcelas afectadas")
                     }
@@ -1194,13 +1191,13 @@ fun ActivityDetailScreen(
                         when {
                             campaignClosed -> Text(
                                 "La campaña está cerrada. Reábrela para añadir gastos de recogida.",
-                                style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                                style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText,
                                 modifier = Modifier.testTag("activity-add-expense-closed"),
                             )
                             historic != null -> Text(
                                 "El coste histórico de ${Money.format(historic)} ya está contabilizado. " +
                                     "Añade otro gasto solo si es un importe distinto.",
-                                style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                                style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText,
                                 modifier = Modifier.testTag("activity-add-expense-note"),
                             )
                         }
@@ -1234,7 +1231,7 @@ fun ActivityDetailScreen(
                             }
                         }
                         ActivityStatus.COMPLETED -> {
-                            Text("Trabajo realizado", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
+                            Text("Trabajo realizado", style = MaterialTheme.typography.titleSmall, color = MoSurfaceTokens.secondaryText)
                             if (onCorrect != null) {
                                 val harvestContextMissing =
                                     activity.type == ActivityType.HARVEST_DAY && correctionCampaign == null
@@ -1248,7 +1245,7 @@ fun ActivityDetailScreen(
                                     Text(
                                         "La campaña está cerrada. Reábrela antes de corregir este histórico.",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MoTextSecondary,
+                                        color = MoSurfaceTokens.secondaryText,
                                         modifier = Modifier.testTag("correct-activity-closed"),
                                     )
                                 }
@@ -1262,7 +1259,7 @@ fun ActivityDetailScreen(
                             if (costHeld) CostToReview(costToReview("volver a planificarlo"), historicCostExpenseId, onOpenExpense)
                         }
                         ActivityStatus.CANCELLED -> {
-                            Text("Trabajo cancelado", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
+                            Text("Trabajo cancelado", style = MaterialTheme.typography.titleSmall, color = MoSurfaceTokens.secondaryText)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                 MoSecondaryButton("Reabrir", { confirmation = "reopen" }, modifier = Modifier.weight(1f).testTag("reopen-activity"), enabled = !costHeld)
                                 MoDestructiveButton("Archivar", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"), enabled = !costHeld && relatedExpenses.isEmpty())
@@ -1345,7 +1342,7 @@ fun ActivityDetailScreen(
                     } else {
                         "Esta acción actualizará el estado del trabajo guardado en este dispositivo."
                     },
-                    color = MoTextSecondary,
+                    color = MoSurfaceTokens.secondaryText,
                 )
                 val confirm = {
                     when (confirmation) {
@@ -1416,7 +1413,7 @@ private fun ActivityTypedDetailFields(
         }
         if (retired.isNotEmpty()) {
             // Kept so an older record loses nothing; new records no longer ask for these.
-            Text("Datos anteriores de este registro", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
+            Text("Datos anteriores de este registro", style = MaterialTheme.typography.titleSmall, color = MoSurfaceTokens.secondaryText)
             retired.forEach { key -> DetailInput(fields, key, errors) }
         }
     }
@@ -1553,7 +1550,7 @@ private fun ActivityDetailSummary(detail: ActivityDetail) {
             Text(
                 "${key.detailFieldLabel()}: ${value.detailValueLabel()}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
                 modifier = Modifier.testTag("activity-detail-value"),
             )
         }
@@ -1683,8 +1680,8 @@ private fun ActivityHeaderCard(activity: Activity) {
     androidx.compose.material3.Surface(
         modifier = Modifier.fillMaxWidth().testTag("activity-header"),
         shape = com.isivoltpro.maginaolivo.ui.theme.MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
@@ -1747,7 +1744,7 @@ private fun LinkedExpensesHoldArchive(
     if (expenses.isEmpty()) return
     Text(
         LINKED_EXPENSES_TEXT,
-        style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+        style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText,
         modifier = Modifier.fillMaxWidth().testTag("activity-linked-expenses-note"),
     )
     LinkedExpensesList(expenses, onOpenExpense)
@@ -1776,7 +1773,7 @@ private fun LinkedExpensesList(
 private fun CostToReview(text: String, expenseId: UUID?, onOpenExpense: ((UUID) -> Unit)?) {
     Text(
         text,
-        style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+        style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText,
         modifier = Modifier.fillMaxWidth().testTag("activity-cost-to-review"),
     )
     if (expenseId != null && onOpenExpense != null) {

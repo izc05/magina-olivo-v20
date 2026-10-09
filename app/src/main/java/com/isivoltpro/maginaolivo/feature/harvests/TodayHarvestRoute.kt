@@ -21,11 +21,11 @@ import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.withTimeoutOrNull
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 internal const val LOG_TAG = "MaginaOlivo"
 private const val OPEN_DAY_TIMEOUT_MS = 10_000L
@@ -63,7 +63,7 @@ fun TodayHarvestRoute(
     }
     when (val result = day) {
         null -> Box(
-            Modifier.fillMaxSize().background(MoCream).testTag("harvest-today-loading"),
+            Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).testTag("harvest-today-loading"),
             contentAlignment = Alignment.Center,
         ) { CircularProgressIndicator() }
         is AppResult.Success -> HarvestDetailRoute(
@@ -78,7 +78,7 @@ fun TodayHarvestRoute(
             initialResource = JORNADA_RESOURCE_LABOUR,
         )
         is AppResult.Failure -> Box(
-            Modifier.fillMaxSize().background(MoCream).statusBarsPadding().padding(MoSpacing.screen)
+            Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).statusBarsPadding().padding(MoSpacing.screen)
                 .testTag("harvest-today-error"),
         ) {
             MoErrorState(

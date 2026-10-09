@@ -33,16 +33,14 @@ import com.isivoltpro.maginaolivo.ui.theme.MoError
 import com.isivoltpro.maginaolivo.ui.theme.MoErrorText
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 private val SPANISH = Locale.forLanguageTag("es-ES")
 private val LONG_DATE = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM 'de' yyyy", SPANISH)
@@ -75,8 +73,8 @@ fun MoDateInputField(
                 .heightIn(min = MoSize.fieldMinHeight)
                 .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Elegir fecha") { open = true },
             shape = MoShape.field,
-            color = MoSurfaceSoft,
-            border = BorderStroke(1.dp, if (isError) MoError else MoOutline),
+            color = MoSurfaceTokens.cardElevated,
+            border = BorderStroke(1.dp, if (isError) MoError else MoSurfaceTokens.cardStroke),
         ) {
             Row(
                 Modifier.padding(horizontal = MoSpacing.md, vertical = 8.dp),
@@ -84,18 +82,18 @@ fun MoDateInputField(
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(label, style = MaterialTheme.typography.labelMedium, color = if (isError) MoErrorText else MoTextSecondary)
+                    Text(label, style = MaterialTheme.typography.labelMedium, color = if (isError) MoErrorText else MoSurfaceTokens.secondaryText)
                     Text(
                         date?.format(SHORT_DATE) ?: if (optional) "Sin fecha" else "Elegir fecha",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = if (date == null) MoTextSecondary else MoInk,
+                        color = if (date == null) MoSurfaceTokens.secondaryText else MoInk,
                     )
                 }
                 Icon(MoIcons.Calendar, contentDescription = null, tint = MoOliveMid, modifier = Modifier.size(22.dp))
             }
         }
         if (supportingText != null) {
-            Text(supportingText, style = MaterialTheme.typography.bodySmall, color = if (isError) MoErrorText else MoTextSecondary, modifier = Modifier.padding(start = MoSpacing.md))
+            Text(supportingText, style = MaterialTheme.typography.bodySmall, color = if (isError) MoErrorText else MoSurfaceTokens.secondaryText, modifier = Modifier.padding(start = MoSpacing.md))
         }
     }
     if (open) {
@@ -138,7 +136,7 @@ fun MoDatePickerSheet(
                 .testTag("date-picker-sheet"),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
-            Text(title, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+            Text(title, style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
             Text(selected.spanishLong(), style = MaterialTheme.typography.headlineMedium, color = MoInk, modifier = Modifier.testTag("date-picker-selected"))
             Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 QuickDay("Hoy", "date-picker-today") { selected = today; month = YearMonth.from(today) }
@@ -166,8 +164,8 @@ private fun QuickDay(text: String, tag: String, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.heightIn(min = 40.dp).clickable(role = Role.Button, onClick = onClick).testTag(tag),
         shape = MoShape.pill,
-        color = MoSurfaceSoft,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardElevated,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Text(text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp), style = MaterialTheme.typography.labelLarge, color = MoInk)
     }

@@ -50,14 +50,12 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.theme.MoErrorText
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSuccessText
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
  * «Mercado del aceite» preview on Inicio: only the official weekly trend from the Junta, compacted
@@ -73,8 +71,8 @@ internal fun OilMarketCard(
     Surface(
         modifier = Modifier.fillMaxWidth().testTag("home-market"),
         shape = MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(Modifier.padding(MoSpacing.sm), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
@@ -88,7 +86,7 @@ internal fun OilMarketCard(
                     Text(
                         "${latest?.let { "Semana ${OilTrends.week(it)} · " }.orEmpty()}${official.value.sourceName} · €/kg · precio en almazara",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoSurfaceTokens.secondaryText,
                         modifier = Modifier.testTag("home-market-official-source"),
                     )
                     if (official.stale) MoStatusChip("Dato antiguo", tone = MoStatusTone.Warning, modifier = Modifier.testTag("home-market-official-stale"))
@@ -117,7 +115,7 @@ internal fun OfficialTrend(official: FeedState.Value<OilMarketSeries>) {
             "Semana ${OilTrends.week(latest)} (${latest.periodStart.format(DAY)}–${latest.periodEnd.format(DAY)}) · " +
                 "${series.sourceName} · precio en almazara",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoSurfaceTokens.secondaryText,
             modifier = Modifier.weight(1f).testTag("home-market-official-source"),
         )
         if (official.stale) MoStatusChip("Dato antiguo", tone = MoStatusTone.Warning, modifier = Modifier.testTag("home-market-official-stale"))
@@ -129,7 +127,7 @@ private fun TrendRow(trend: OilTrend, lagging: Boolean) {
     val tint = when (trend.direction) {
         TrendDirection.UP -> MoSuccessText
         TrendDirection.DOWN -> MoErrorText
-        else -> MoTextSecondary
+        else -> MoSurfaceTokens.secondaryText
     }
     Row(
         Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("home-market-trend"),
@@ -154,7 +152,7 @@ private fun TrendRow(trend: OilTrend, lagging: Boolean) {
 
 @Composable
 internal fun Note(text: String, tag: String) {
-    Text(text, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag(tag))
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag(tag))
 }
 
 /**
@@ -236,7 +234,7 @@ internal fun AoveNetPulse() {
             Text(
                 "Fuente: AOVE.net · referencia orientativa diaria, no es una cotización oficial",
                 style = MaterialTheme.typography.labelSmall,
-                color = MoTextSecondary,
+                color = MoSurfaceTokens.secondaryText,
                 modifier = Modifier.weight(1f),
             )
             TextButton(onClick = { openInBrowser(context, Uri.parse(AOVE_NET_DETAIL)) }, modifier = Modifier.testTag("home-market-pulse-detail")) {

@@ -1,0 +1,317 @@
+[
+  {
+    "file": "after-agenda-360-font13.png",
+    "bytes": 159450,
+    "sha256": "fa1622b2fdff20e5234ef0ec7329ac338e0d73f06edf77eb12f4b01acfe205b0"
+  },
+  {
+    "file": "after-agenda-390-font13.png",
+    "bytes": 151423,
+    "sha256": "91ce7a7dd35181530db6c231f58ad06d9e68d5b8cb58965f0337532a2bc30451"
+  },
+  {
+    "file": "after-agenda-430-font13.png",
+    "bytes": 139882,
+    "sha256": "e5845ec0cc08147283062815058ea84720363012f8edfe2a9eadd5237c6bdc49"
+  },
+  {
+    "file": "after-campaign-360-font13.png",
+    "bytes": 220352,
+    "sha256": "84f5337738e0ef6a25c947a71fa0eac90f0092b0eaafe6d56eacd246d71a30c8"
+  },
+  {
+    "file": "after-campaign-390-font13.png",
+    "bytes": 226609,
+    "sha256": "8b6b1685d94772aa58010c7db1836b92c9a04f87713a8e03bc75db31f8655776"
+  },
+  {
+    "file": "after-campaign-430-font13.png",
+    "bytes": 230165,
+    "sha256": "707763938f9a0980eb94fad5e4d9649033e01d3d87fe6cc49eef60720d3199e6"
+  },
+  {
+    "file": "after-campaign-detail-360-font13.png",
+    "bytes": 262630,
+    "sha256": "caf24510ad23277bcb19cac2804d0f37e2b8cac21eae926db354fde8c889b94f"
+  },
+  {
+    "file": "after-campaign-detail-390-font13.png",
+    "bytes": 273339,
+    "sha256": "d2aba472b409524e522bbe2b950b49e541a1599f20ba27f767ced34bb20f31bd"
+  },
+  {
+    "file": "after-campaign-detail-430-font13.png",
+    "bytes": 268322,
+    "sha256": "07ada6795d6229f2fce1fb8a451b6a8c4abde5a1de55f70293dce3ef1e3def00"
+  },
+  {
+    "file": "after-expense-360-font13.png",
+    "bytes": 227278,
+    "sha256": "6e11453b795917ded309583a575d9a2104df694a7bdf39f9b4b26a470fbf25f7"
+  },
+  {
+    "file": "after-expense-390-font13.png",
+    "bytes": 228132,
+    "sha256": "67c481233fc8dbbd4f14c2ff51463223c03b3207ee5770a490067b3d5c590714"
+  },
+  {
+    "file": "after-expense-430-font13.png",
+    "bytes": 239675,
+    "sha256": "6c29f678dac1cd9a70d2ee189ad3670bb3e7e0629d57eac8d49c4f6ec8cae166"
+  },
+  {
+    "file": "after-expense-keyboard-360-font13.png",
+    "bytes": 193157,
+    "sha256": "d2dc6c51d4fea5de4e41b13d1ce7c2d294141a20fe177b094d1eba8282f78c8b"
+  },
+  {
+    "file": "after-expense-keyboard-390-font13.png",
+    "bytes": 197034,
+    "sha256": "69d561428bffde99514d08c7ac7436d4d19d61c9866be0b9e5759eeadbb95c39"
+  },
+  {
+    "file": "after-expense-keyboard-430-font13.png",
+    "bytes": 225932,
+    "sha256": "8b21be7a9f31fce619bb340a30d8c005030d0f5311b67e7e8e28c7f560eeac83"
+  },
+  {
+    "file": "after-fields-360-font13.png",
+    "bytes": 253130,
+    "sha256": "3e0c3d73bc6d5d43cc42b446b152557cdfcc70f4884676b148c5d4c57d23825a"
+  },
+  {
+    "file": "after-fields-390-font13.png",
+    "bytes": 278631,
+    "sha256": "1bf2e90842dc4ff39ad26073a2f1be524527496e932ee2b6c26043d1e7d6c5c8"
+  },
+  {
+    "file": "after-fields-430-font13.png",
+    "bytes": 287038,
+    "sha256": "8cd38bebb1abe57ce92a2948a07bc0b1e24e9b40063c70c0c293989d62893056"
+  },
+  {
+    "file": "after-home-360-font13.png",
+    "bytes": 1306478,
+    "sha256": "ed274cd18ab70e9fb9847ea93606db413a67b0115512d9ae5afbe8cf2493f813"
+  },
+  {
+    "file": "after-home-390-font13.png",
+    "bytes": 1492863,
+    "sha256": "64d299267487d4940e95defe08aa0a17cf1d2d906d13777d5898dc239e9850f9"
+  },
+  {
+    "file": "after-home-430-font13.png",
+    "bytes": 1666310,
+    "sha256": "8924ce21cc8a3695e08bba180c6fd82038ef005f403f0fd52d459e8c3a1b3100"
+  },
+  {
+    "file": "after-notebook-360-font13.png",
+    "bytes": 196042,
+    "sha256": "1a03dbda9da7f9c31122a43ce9dabcfb8583ed35948bd4a0a8f75a77d9ead8c4"
+  },
+  {
+    "file": "after-notebook-390-font13.png",
+    "bytes": 207599,
+    "sha256": "016ba1f6972f9d4493c7c4997cbf04e8b8287d72935028ad65714f566dbe0512"
+  },
+  {
+    "file": "after-notebook-430-font13.png",
+    "bytes": 213527,
+    "sha256": "fc069be907e346870f30744d59f04a504f7f02eed6d71cf2d4afb24ded6e4c96"
+  },
+  {
+    "file": "after-parcel-360-font13.png",
+    "bytes": 1403892,
+    "sha256": "670140ce683eaa1f83822db3e266d49ebcaaf5b31cd64f576d608b483eb1cebe"
+  },
+  {
+    "file": "after-parcel-390-font13.png",
+    "bytes": 1594170,
+    "sha256": "f068402a808f007da92f5150df80f6f4e6c0eab35e555c6ac084224ac09125de"
+  },
+  {
+    "file": "after-parcel-430-font13.png",
+    "bytes": 1846276,
+    "sha256": "c5bf61315ea711c7d7899a2fbde7c6145328504843f02e084e27051cde1d4df7"
+  },
+  {
+    "file": "after-profile-360-font13.png",
+    "bytes": 273220,
+    "sha256": "769cc505ebcd868e60aefbb2431be1174458af3b7180053afb4705f3cffede16"
+  },
+  {
+    "file": "after-profile-390-font13.png",
+    "bytes": 282988,
+    "sha256": "482316ae843fece6f4cc2c30c988a7daeee78a1fc66149dc4aa9d625e2c4e345"
+  },
+  {
+    "file": "after-profile-430-font13.png",
+    "bytes": 293956,
+    "sha256": "db18292140faa7fb1142f3951f833976f144a1688b09ec9df3a7eb53540bef8a"
+  },
+  {
+    "file": "after-treatment-360-font13.png",
+    "bytes": 157252,
+    "sha256": "026e73028ee8b0184244238f4e3c72644427342b17de1a4749713b316b00683f"
+  },
+  {
+    "file": "after-treatment-390-font13.png",
+    "bytes": 162507,
+    "sha256": "5cbb73173fde2eec313d3d83e9f65a6f9e6d632344eac2871f675a702abb7159"
+  },
+  {
+    "file": "after-treatment-430-font13.png",
+    "bytes": 163153,
+    "sha256": "daa60313ae696b83ffb7d1e455afd7c7dda26f7c6ecb03d7996d1e5eb905328c"
+  },
+  {
+    "file": "before-agenda-360-font13.png",
+    "bytes": 154030,
+    "sha256": "346d7d723882e2eacfa74246a561fded3270975ed7be944f72c26807b8f95b3e"
+  },
+  {
+    "file": "before-agenda-390-font13.png",
+    "bytes": 147121,
+    "sha256": "d035a38115b4f4ea04919e0bc1b9009a19f654312c6c276cd6821818d77d1220"
+  },
+  {
+    "file": "before-agenda-430-font13.png",
+    "bytes": 137055,
+    "sha256": "39fb0f73aebe57a25e1b7419ab32ef96092f7b444bbf242886d2fe7226be563c"
+  },
+  {
+    "file": "before-campaign-360-font13.png",
+    "bytes": 208064,
+    "sha256": "f9f5b86d30b986d88afa518f178bd8641083ac0ab153eb27bb5fd9886394eaf5"
+  },
+  {
+    "file": "before-campaign-390-font13.png",
+    "bytes": 219931,
+    "sha256": "d1e4a7381aff1c8c7380a70a89be4be73ca4868e193423ff96dd910eb7cdcfe0"
+  },
+  {
+    "file": "before-campaign-430-font13.png",
+    "bytes": 224979,
+    "sha256": "03b807f566b15968fc70e8a9580614b84ce637e86c48eb6c7389bc211b005a8d"
+  },
+  {
+    "file": "before-campaign-detail-360-font13.png",
+    "bytes": 257063,
+    "sha256": "d2cf20259b2384c7dc6a0603023c550df7cd57dea63deffc64e4290478a78cae"
+  },
+  {
+    "file": "before-campaign-detail-390-font13.png",
+    "bytes": 267481,
+    "sha256": "221f6d388230f227f045b432296af2c3920e0e6e587026636a6de38150147ead"
+  },
+  {
+    "file": "before-campaign-detail-430-font13.png",
+    "bytes": 264207,
+    "sha256": "217e8e1740e329b727bb2a010250eabc13f0fcbf3804f910d1516274aebcc853"
+  },
+  {
+    "file": "before-expense-360-font13.png",
+    "bytes": 224643,
+    "sha256": "131a71d388d950fd994f1cc65ae4dd73295f87042ec77147aa87d1e4f135f4a8"
+  },
+  {
+    "file": "before-expense-390-font13.png",
+    "bytes": 223835,
+    "sha256": "4b0dbf02b4df8f04ee36654415e11be784dc616e4f58e3893a0d683e7bdacf17"
+  },
+  {
+    "file": "before-expense-430-font13.png",
+    "bytes": 236795,
+    "sha256": "7a4103bc9e75e6d6daba80f1ab67b8dbc82e9c84cb9e7c5596c098926e4d8ef5"
+  },
+  {
+    "file": "before-fields-360-font13.png",
+    "bytes": 246176,
+    "sha256": "f7bb64a9d812dc6d7055cc220c92969809ee2df9a4936cea09e2c719a4eea719"
+  },
+  {
+    "file": "before-fields-390-font13.png",
+    "bytes": 271025,
+    "sha256": "73f5c687e98f2b244ac62a381cecfababc2cfd3bd3cb4b7e64a6f5d75cb16f1c"
+  },
+  {
+    "file": "before-fields-430-font13.png",
+    "bytes": 280960,
+    "sha256": "a1d20e60b7bfd047dff3d4babac1109fc68f27729ba3d4f43f425eeb588d48e3"
+  },
+  {
+    "file": "before-home-360-font13.png",
+    "bytes": 1392184,
+    "sha256": "fc2a662ba1300761be352328f290b3907cd7d5d4e54c89b6d762239c3d0236a4"
+  },
+  {
+    "file": "before-home-390-font13.png",
+    "bytes": 1513310,
+    "sha256": "f71cae7c7cfe9fac95242d64712bd737183ad8fa306c7ea5351933a34dc468bd"
+  },
+  {
+    "file": "before-home-430-font13.png",
+    "bytes": 1685179,
+    "sha256": "a40dc5666817e740f5f655ab749a8e00f5ac4281091caefa92878150129e559a"
+  },
+  {
+    "file": "before-notebook-360-font13.png",
+    "bytes": 182009,
+    "sha256": "eb1967e1faac085cd302bfe856ba5f28cd57bb757cde22edd895240d65f3ceb0"
+  },
+  {
+    "file": "before-notebook-390-font13.png",
+    "bytes": 196346,
+    "sha256": "54a1a7a96663e7215f063613382b644bf6cda3f8c0db367ae2a8351f3c80cabb"
+  },
+  {
+    "file": "before-notebook-430-font13.png",
+    "bytes": 205014,
+    "sha256": "f839a6fa6f29c4668e124b4d18f5baa9cf76f33249a098cb8603cfaad38dd76d"
+  },
+  {
+    "file": "before-parcel-360-font13.png",
+    "bytes": 1403867,
+    "sha256": "a9248bff72391e83cee2c3f89910df0ae9fd14969000cc011af7557c1c6c6174"
+  },
+  {
+    "file": "before-parcel-390-font13.png",
+    "bytes": 1596827,
+    "sha256": "9b1d8653eed7d11b9269b1c512be99c5f4d9d39aa1f863cbb40bc99ee40a3bea"
+  },
+  {
+    "file": "before-parcel-430-font13.png",
+    "bytes": 1850427,
+    "sha256": "cde0554b92b123cfede0f2e31da862f03808e7ce26207de6f254a37c6dd0a6cd"
+  },
+  {
+    "file": "before-profile-360-font13.png",
+    "bytes": 253137,
+    "sha256": "2eae49bb0c053616dde1e789cd6adbb021f00e90aa0e30b58fa3d30c3924d848"
+  },
+  {
+    "file": "before-profile-390-font13.png",
+    "bytes": 275250,
+    "sha256": "58a1be70fe057e72e05055ecbf17e53c0333c7261bf9987e4e05801980cc4cfb"
+  },
+  {
+    "file": "before-profile-430-font13.png",
+    "bytes": 288957,
+    "sha256": "5204424799ff7972ba37bc879443a8eed642b9487eb802252ac1e1c5bca6269c"
+  },
+  {
+    "file": "before-treatment-360-font13.png",
+    "bytes": 152421,
+    "sha256": "c0edfb6a0857bd2344380a8a87533e5f4db71712ded6102304e5f7a82333f4b6"
+  },
+  {
+    "file": "before-treatment-390-font13.png",
+    "bytes": 156404,
+    "sha256": "215effaf7c6b9a0aa1d857252d5cc55d923e5e9940a3123498f25d68201147e3"
+  },
+  {
+    "file": "before-treatment-430-font13.png",
+    "bytes": 159178,
+    "sha256": "9b62b419cf4077fa3f184768e8d2494b842b198ce655c8f61bb50e74195f911d"
+  }
+]

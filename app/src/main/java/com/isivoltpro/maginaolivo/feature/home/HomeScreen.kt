@@ -40,11 +40,9 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.LocalTime
@@ -52,6 +50,7 @@ import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
 fun HomeRoute(
@@ -120,7 +119,7 @@ fun HomeScreen(
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
         Modifier.fillMaxSize().testTag("home-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
@@ -250,7 +249,7 @@ private fun Quiet(title: String, body: String, icon: ImageVector, tag: String) {
         title = title,
         subtitle = body,
         icon = icon,
-        iconTint = MoTextSecondary,
+        iconTint = MoSurfaceTokens.secondaryText,
         iconContainer = MoSurfaceSoft,
         modifier = Modifier.testTag(tag),
     )

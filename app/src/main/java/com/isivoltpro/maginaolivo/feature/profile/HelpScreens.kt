@@ -19,13 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /** Phase 21C — Perfil → Ayuda y privacidad. Everything here is read from the phone. */
 enum class HelpTopic(val route: String, val title: String) {
@@ -102,7 +101,7 @@ fun HelpRoute(topic: HelpTopic) {
 @Composable
 fun HelpScreen(topic: HelpTopic, notes: List<NoteBlock>? = null) {
     Column(
-        Modifier.fillMaxSize().background(MoCream).statusBarsPadding().verticalScroll(rememberScrollState())
+        Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).statusBarsPadding().verticalScroll(rememberScrollState())
             .padding(horizontal = MoSpacing.screen).testTag("help-${topic.route}"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
