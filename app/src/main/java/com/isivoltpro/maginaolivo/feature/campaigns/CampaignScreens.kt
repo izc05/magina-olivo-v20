@@ -166,13 +166,14 @@ private fun CampaignRow(campaign: Campaign, summary: CampaignCardSummary?, onSel
 internal fun CampaignEditor(
     parcels: List<CampaignParcelOption>, nameError: String?, dateError: String?, isSaving: Boolean,
     onSave: (CampaignDraft) -> Unit, onCancel: () -> Unit, initial: CampaignDraft = CampaignDraft(),
+    isEditing: Boolean = false,
 ) {
     var name by rememberSaveable(initial.name) { mutableStateOf(initial.name) }
     var date by rememberSaveable(initial.startDate) { mutableStateOf(initial.startDate?.toString().orEmpty()) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.md)) {
-        Text("Nueva campaña", style = MaterialTheme.typography.headlineSmall)
+        Text(if (isEditing) "Editar campaña" else "Nueva campaña", style = MaterialTheme.typography.headlineSmall)
         MoTextField(name, { name = it }, "Nombre", isError = nameError != null, supportingText = nameError, modifier = Modifier.testTag("campaign-name"))
         MoDateInputField(date, { date = it }, "Fecha de inicio", isError = dateError != null, supportingText = dateError, modifier = Modifier.testTag("campaign-start-date"))
         MoSectionHeader("Parcelas")
@@ -484,7 +485,8 @@ fun CampaignDetailScreen(
     val campaign = state.campaign
     if (editor && campaign != null) ModalBottomSheet(onDismissRequest = { editor = false }) {
         CampaignEditor(state.parcels, null, null, state.isSaving, onUpdate, { editor = false },
-            CampaignDraft(campaign.name, campaign.startDate, campaign.snapshots.map { it.parcelId }.toSet(), campaign.notes.orEmpty()))
+            CampaignDraft(campaign.name, campaign.startDate, campaign.snapshots.map { it.parcelId }.toSet(), campaign.notes.orEmpty()),
+            isEditing = true)
     }
     if (confirmation != null) ModalBottomSheet(onDismissRequest = { confirmation = null }) {
         val destructive = confirmation == "close" || confirmation == "archive"

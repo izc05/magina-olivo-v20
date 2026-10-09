@@ -35,6 +35,7 @@ class CampaignScreensTest {
         compose.setContent { MaginaOlivoTheme {
             CampaignEditor(emptyList(), null, null, false, { saved = true }, {})
         } }
+        compose.onNodeWithText("Nueva campaña").assertIsDisplayed()
         compose.onNodeWithTag("campaign-name").assertIsDisplayed()
         compose.onNodeWithTag("save-campaign").performClick()
         assertTrue(saved)
@@ -75,6 +76,7 @@ class CampaignScreensTest {
             .performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithText("Activar campaña").assertCountEquals(0)
         compose.onNodeWithTag("campaign-select-parcels").performScrollTo().performClick()
+        compose.onNodeWithText("Editar campaña").assertIsDisplayed()
         compose.onNodeWithTag("campaign-parcel-option").assertIsDisplayed()
     }
 
