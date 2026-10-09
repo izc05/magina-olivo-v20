@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.domain.notebook.FarmNotebook
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -65,8 +67,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import java.util.UUID
@@ -303,7 +303,7 @@ fun NotebookHomeScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.sm))
-            Text("Mi Cuaderno", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Mi Cuaderno", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             when {
                 isLoading -> CircularProgressIndicator(Modifier.testTag("notebook-root-loading"))
                 error != null -> MoErrorState("No pudimos abrir tus fincas", error, onRetry = onRetry)
@@ -328,7 +328,7 @@ fun NotebookHomeScreen(
                                 verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                             ) {
                                 Text("Finca", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
-                                Text(activeFarm.name, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+                                Text(activeFarm.name, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
                                 // Status in words as well as colour (accessibility contract).
                                 MoStatusChip(
                                     campaignChipText(runningCampaign?.name, runningCampaign?.status),
@@ -432,7 +432,7 @@ private fun QuickActionTile(action: NotebookQuickAction, onClick: () -> Unit, mo
             Box(Modifier.size(40.dp).background(tone.container, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = tone.tint)
             }
-            Text(action.label, style = MaterialTheme.typography.labelLarge, color = MoInk, textAlign = TextAlign.Center, maxLines = 2)
+            Text(action.label, style = MaterialTheme.typography.labelLarge, color = MoColors.current.bodyText, textAlign = TextAlign.Center, maxLines = 2)
         }
     }
 }

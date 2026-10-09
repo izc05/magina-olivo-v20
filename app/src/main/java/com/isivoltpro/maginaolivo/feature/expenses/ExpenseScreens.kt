@@ -1,4 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.expenses
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 
 import androidx.compose.foundation.layout.WindowInsets
@@ -64,8 +66,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import java.time.LocalDate
@@ -73,7 +73,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 internal fun relationSource(persistence: LocalPersistence) = RelationSource(
@@ -213,7 +212,7 @@ fun ExpensesScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.md))
-            Text(if (presetCampaignId == null) "Gastos y documentos" else "Gastos de recogida", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text(if (presetCampaignId == null) "Gastos y documentos" else "Gastos de recogida", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             Text(
                 "Solo suman los gastos confirmados. Los borradores esperan tu revisión.",
                 style = MaterialTheme.typography.bodyLarge,
@@ -436,7 +435,7 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
         ) {
             MoIconBadge(MoIcons.Euro, tint = MoIconTone.MONEY.tint, container = MoIconTone.MONEY.container)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-                Text(expense.concept, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+                Text(expense.concept, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
                 Text(
                     listOfNotNull(DATE_FORMAT.format(expense.expenseDate), expense.category.label(), expense.supplierName)
                         .joinToString(" · "),
@@ -450,7 +449,7 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
             Text(
                 Money.format(expense.amountMinor, expense.currency),
                 style = MaterialTheme.typography.titleMedium,
-                color = if (expense.status == ExpenseStatus.DRAFT) MoSurfaceTokens.secondaryText else MoOlivePrimary,
+                color = if (expense.status == ExpenseStatus.DRAFT) MoSurfaceTokens.secondaryText else MoColors.current.primaryButton,
             )
         }
     }
@@ -470,10 +469,10 @@ private fun CategoryRow(label: String, amountMinor: Long?, totalMinor: Long?, cu
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+                Text(label, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
                 Text(share?.let { "$it %" } ?: "—", style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText)
             }
-            Text(amountMinor?.let { Money.format(it, currency) } ?: "No disponible", style = MaterialTheme.typography.titleMedium, color = MoInk)
+            Text(amountMinor?.let { Money.format(it, currency) } ?: "No disponible", style = MaterialTheme.typography.titleMedium, color = MoColors.current.bodyText)
         }
     }
 }
@@ -486,7 +485,7 @@ internal fun DocumentRow(document: DocumentExtraction, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            Text(document.documentType.label(), style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+            Text(document.documentType.label(), style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
             Text(
                 DATE_FORMAT.format(document.createdAt.atZone(ZoneId.systemDefault()).toLocalDate()),
                 style = MaterialTheme.typography.bodyMedium,

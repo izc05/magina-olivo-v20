@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
@@ -47,10 +51,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
 
 @Composable
@@ -105,7 +106,7 @@ fun ExpenseDetailScreen(
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     OnEachSave(state.saveCount) { editorVisible = false }
 
-    Scaffold(Modifier.fillMaxSize().testTag("expense-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("expense-detail-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(MoSpacing.screen),
@@ -126,13 +127,13 @@ fun ExpenseDetailScreen(
                             } else {
                                 "Se calcula solo. Para cambiarlo, cambia los jornales, la maquinaria o los precios del día."
                             },
-                            color = MoTextSecondary,
+                            color = MoColors.current.secondaryText,
                             modifier = Modifier.testTag("expense-calculated-note"),
                         )
                     } else if (expense.status == ExpenseStatus.DRAFT) {
                         Text(
                             "Este gasto viene de un documento revisado y todavía no suma. Confírmalo cuando estés seguro del importe.",
-                            color = MoTextSecondary,
+                            color = MoColors.current.secondaryText,
                         )
                         MoPrimaryButton(
                             "Confirmar gasto",
@@ -146,7 +147,7 @@ fun ExpenseDetailScreen(
                         Text(
                             "Este coste se anotó en un trabajo. Si ese trabajo ya no se da por hecho: consérvalo " +
                                 "como gasto independiente si el dinero se gastó, o elimínalo para dejar de contabilizarlo.",
-                            color = MoTextSecondary,
+                            color = MoColors.current.secondaryText,
                             modifier = Modifier.testTag("expense-activity-cost-note"),
                         )
                         MoSecondaryButton(
@@ -160,7 +161,7 @@ fun ExpenseDetailScreen(
                         MoSecondaryButton("Editar gasto", { editorVisible = true }, Modifier.fillMaxWidth().testTag("edit-expense"))
                         MoSecondaryButton("Eliminar gasto", { confirmation = "delete" }, Modifier.fillMaxWidth().testTag("delete-expense"))
                     }
-                    state.message?.let { Text(it, color = MoTextSecondary) }
+                    state.message?.let { Text(it, color = MoColors.current.secondaryText) }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     attachmentContent()
                 }
@@ -227,7 +228,7 @@ fun ExpenseDetailScreen(
 
 @Composable
 private fun ExpenseSummaryBlock(expense: Expense) {
-    Text(expense.concept, style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
+    Text(expense.concept, style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText)
     if (expense.status == ExpenseStatus.DRAFT) {
         MoStatusChip("Borrador · no suma", tone = MoStatusTone.Warning, modifier = Modifier.testTag("expense-draft-chip"))
     } else {
@@ -270,7 +271,7 @@ private fun ExpenseSummaryBlock(expense: Expense) {
             Text(
                 "Las líneas suman ${Money.format(linesTotal, expense.currency)}; cuenta el total del gasto.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
         }
     }
@@ -279,7 +280,7 @@ private fun ExpenseSummaryBlock(expense: Expense) {
 @Composable
 private fun DetailValue(label: String, value: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
         Text(value ?: "Sin registrar", style = MaterialTheme.typography.bodyLarge)
     }
 }

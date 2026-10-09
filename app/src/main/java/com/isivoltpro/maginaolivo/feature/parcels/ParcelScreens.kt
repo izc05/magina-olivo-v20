@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.parcels
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.ui.unit.dp
 import java.time.ZoneId
@@ -28,7 +30,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoPhotoHeader
 import com.isivoltpro.maginaolivo.ui.components.MoSectionCard
 import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatTile
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import java.time.DayOfWeek
 import java.time.format.DateTimeFormatter
@@ -66,7 +67,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.Surface
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -132,7 +132,7 @@ internal fun ParcelAddMethodOptions(
         Modifier.fillMaxWidth().padding(top = MoSpacing.xs).padding(bottom = MoSpacing.sm),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("¿Cómo quieres añadirla?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+        Text("¿Cómo quieres añadirla?", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
         MoCompactListItem(
             title = "A mano",
             subtitle = "Escribe el nombre y los datos que tengas",
@@ -443,7 +443,7 @@ private fun ParcelDataBlocks(parcel: Parcel) {
             Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 Column(Modifier.semantics(mergeDescendants = true) {}.testTag("parcel-area-hero")) {
                     Text("Superficie", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
-                    Text(parcel.areaLabel(), style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
+                    Text(parcel.areaLabel(), style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText)
                     parcel.areaNote()?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText) }
                 }
                 // Phase 18: the saved boundary, drawn from this phone's copy (works offline).
@@ -475,7 +475,7 @@ private fun ParcelDataBlocks(parcel: Parcel) {
             Text(
                 parcel.notes?.takeIf { it.isNotBlank() } ?: "Sin notas. Puedes añadirlas al editar la parcela.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (parcel.notes.isNullOrBlank()) MoSurfaceTokens.secondaryText else MoInk,
+                color = if (parcel.notes.isNullOrBlank()) MoSurfaceTokens.secondaryText else MoColors.current.bodyText,
             )
         }
     }
@@ -509,7 +509,7 @@ private fun ParcelTabs(selected: ParcelTab, onSelect: (ParcelTab) -> Unit) {
     TabRow(
         selectedTabIndex = selected.ordinal,
         containerColor = MoSurfaceTokens.cardSurface,
-        contentColor = MoOliveDark,
+        contentColor = MoColors.current.primaryText,
         modifier = Modifier.clip(MoShape.card),
     ) {
         ParcelTab.entries.forEach { tab ->
@@ -521,7 +521,7 @@ private fun ParcelTabs(selected: ParcelTab, onSelect: (ParcelTab) -> Unit) {
                     Text(
                         tab.label,
                         style = MaterialTheme.typography.labelLarge,
-                        color = if (tab == selected) MoOliveDark else MoSurfaceTokens.secondaryText,
+                        color = if (tab == selected) MoColors.current.primaryText else MoSurfaceTokens.secondaryText,
                     )
                 },
             )
@@ -632,9 +632,9 @@ internal fun ParcelEditor(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
-            Icon(if (moreOpen || oliveError != null) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoOliveDark)
+            Icon(if (moreOpen || oliveError != null) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoColors.current.primaryText)
             Column(Modifier.weight(1f)) {
-                Text("Más datos del olivar", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+                Text("Más datos del olivar", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
                 if (!moreOpen && oliveError == null) Text("Olivos, riego y Catastro", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
             }
         }

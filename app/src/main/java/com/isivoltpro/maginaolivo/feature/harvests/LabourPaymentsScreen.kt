@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import androidx.compose.material3.MaterialTheme
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -64,7 +68,7 @@ internal fun LabourPaymentsScreen(state: LabourPaymentsUiState, initialPerson: U
     }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen).testTag("labour-payments-root"), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
         MoTertiaryButton(if (person == null) "Cerrar" else "Volver a jornales", { if (person == null) onClose() else person = null; onClearError() }, enabled = !state.isSaving)
-        Text(if (account == null) "Jornales de la campaña" else account.person.name, style = MaterialTheme.typography.headlineSmall, color = MoLabourText)
+        Text(if (account == null) "Jornales de la campaña" else account.person.name, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.labourText)
         state.campaign?.let { Text(it.name, color = MoSurfaceTokens.secondaryText) }
         when {
             state.isLoading -> CircularProgressIndicator(Modifier.testTag("labour-payments-loading"))
@@ -78,19 +82,19 @@ internal fun LabourPaymentsScreen(state: LabourPaymentsUiState, initialPerson: U
                     val date = state.days.firstOrNull { it.id == row.harvestId }?.harvestDate
                     val price = row.appliedRate
                     val cost = account.costs.firstOrNull { it.labourEntryId == row.id }
-                    MoCompactListItem(title = date?.format(WORK_DATE) ?: "Fecha no disponible", subtitle = "${row.label()} · " + (cost?.let { Money.format(it.amountMinor, it.currency) } ?: if (price == null) "Precio sin confirmar" else "Coste sin atribuir"), icon = MoIcons.People, iconTint = MoLabourText, iconContainer = MoLabourTint, modifier = Modifier.testTag("labour-person-work-row"))
+                    MoCompactListItem(title = date?.format(WORK_DATE) ?: "Fecha no disponible", subtitle = "${row.label()} · " + (cost?.let { Money.format(it.amountMinor, it.currency) } ?: if (price == null) "Precio sin confirmar" else "Coste sin atribuir"), icon = MoIcons.People, iconTint = MoColors.current.labourText, iconContainer = MoColors.current.labourTint, modifier = Modifier.testTag("labour-person-work-row"))
                 }
                 MoSectionHeader("Pagos", Modifier.testTag("labour-person-payments"))
                 val ownPayments = state.payments.filter { it.workerId == account.person.workerId }.sortedByDescending { it.paymentDate }
                 if (ownPayments.isEmpty()) Text("Sin pagos registrados", color = MoSurfaceTokens.secondaryText)
                 ownPayments.forEach { payment ->
-                    MoCompactListItem(title = "${payment.paymentDate.format(WORK_DATE)} · ${Money.format(payment.amountMinor, payment.currency)}", subtitle = payment.note, icon = MoIcons.Euro, iconTint = MoInfoText, iconContainer = MoInfoTint, modifier = Modifier.testTag("labour-person-payment-row"), trailing = { MoTertiaryButton("Corregir", { removeId = payment.id.toString(); onClearError() }, enabled = !state.isSaving, modifier = Modifier.testTag("payment-correct")) })
+                    MoCompactListItem(title = "${payment.paymentDate.format(WORK_DATE)} · ${Money.format(payment.amountMinor, payment.currency)}", subtitle = payment.note, icon = MoIcons.Euro, iconTint = MoColors.current.infoText, iconContainer = MoColors.current.infoTint, modifier = Modifier.testTag("labour-person-payment-row"), trailing = { MoTertiaryButton("Corregir", { removeId = payment.id.toString(); onClearError() }, enabled = !state.isSaving, modifier = Modifier.testTag("payment-correct")) })
                 }
             }
             else -> {
                 val named = state.accounts.size
                 if (named > 0) Text(if (named == 1) "1 persona con nombre" else "$named personas con nombre", color = MoSurfaceTokens.secondaryText)
-                if (state.entries.isNotEmpty()) Text(LabourSummary.of(state.entries).label(), color = MoLabourText)
+                if (state.entries.isNotEmpty()) Text(LabourSummary.of(state.entries).label(), color = MoColors.current.labourText)
                 val status = state.campaign.status
                 // #365: the campaign already knows its Farm, so the entry is right here.
                 // Codex #401: a day before the campaign starts cannot be opened; say when it can.
@@ -119,7 +123,7 @@ internal fun LabourPaymentsScreen(state: LabourPaymentsUiState, initialPerson: U
                     LabourPersonCard(current, { person = current.person.workerId.toString() }, { currency -> person = current.person.workerId.toString(); paymentCurrency = currency; savedAtOpen = state.saved; onClearError() }, state.isSaving)
                 }
                 val unnamed = LabourByWorker.unnamed(state.entries)
-                if (!unnamed.isEmpty) MoCompactListItem("Sin identificar", subtitle = unnamed.label() + " · Histórico sin pagos por persona", icon = MoIcons.People, iconTint = MoLabourText, iconContainer = MoLabourTint, modifier = Modifier.semantics(mergeDescendants = true) {}.testTag("notebook-worker-labour-unnamed"))
+                if (!unnamed.isEmpty) MoCompactListItem("Sin identificar", subtitle = unnamed.label() + " · Histórico sin pagos por persona", icon = MoIcons.People, iconTint = MoColors.current.labourText, iconContainer = MoColors.current.labourTint, modifier = Modifier.semantics(mergeDescendants = true) {}.testTag("notebook-worker-labour-unnamed"))
             }
         }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-payments-error")) }
@@ -140,22 +144,22 @@ internal fun LabourPaymentsScreen(state: LabourPaymentsUiState, initialPerson: U
 
 @Composable
 private fun LabourPersonCard(account: LabourAccount, onDetail: (() -> Unit)?, onPay: (String) -> Unit, saving: Boolean) {
-    Surface(color = MoSurfaceTokens.cardSurface, shape = MoShape.card, border = BorderStroke(1.dp, MoLabourTint), modifier = Modifier.fillMaxWidth().testTag("notebook-worker-labour")) {
+    Surface(color = MoSurfaceTokens.cardSurface, shape = MoShape.card, border = BorderStroke(1.dp, MoColors.current.labourTint), modifier = Modifier.fillMaxWidth().testTag("notebook-worker-labour")) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-                MoIconBadge(MoIcons.People, tint = MoLabourText, container = MoLabourTint)
+                MoIconBadge(MoIcons.People, tint = MoColors.current.labourText, container = MoColors.current.labourTint)
                 Column {
                     Text(account.person.name, style = MaterialTheme.typography.titleMedium)
                     Text("${account.person.jornadas} ${if (account.person.jornadas == 1) "día" else "días"} · ${account.person.summary.label()}", color = MoSurfaceTokens.secondaryText)
                 }
             }
-            if (account.unconfirmed) Text("Precio sin confirmar o coste sin atribuir. El saldo de esos jornales no está disponible.", color = MoWarningText, modifier = Modifier.testTag("labour-unconfirmed"))
+            if (account.unconfirmed) Text("Precio sin confirmar o coste sin atribuir. El saldo de esos jornales no está disponible.", color = MoColors.current.warningText, modifier = Modifier.testTag("labour-unconfirmed"))
             account.balances.forEach { balance ->
-                Text("${Money.format(balance.generatedMinor, balance.currency)} generados", color = MoLabourText, modifier = Modifier.testTag("person-generated"))
+                Text("${Money.format(balance.generatedMinor, balance.currency)} generados", color = MoColors.current.labourText, modifier = Modifier.testTag("person-generated"))
                 Text(buildAnnotatedString {
-                    withStyle(SpanStyle(color = MoSuccessText)) { append("${Money.format(balance.paidMinor, balance.currency)} pagados") }
+                    withStyle(SpanStyle(color = MoColors.current.successText)) { append("${Money.format(balance.paidMinor, balance.currency)} pagados") }
                     append(" · ")
-                    withStyle(SpanStyle(color = MoWarningText)) { append("${Money.format(balance.pendingMinor, balance.currency)} pendientes") }
+                    withStyle(SpanStyle(color = MoColors.current.warningText)) { append("${Money.format(balance.pendingMinor, balance.currency)} pendientes") }
                 }, color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("person-paid-pending"))
                 LabourPaymentStatus(balance.state)
                 if (balance.pendingMinor > 0) MoSecondaryButton("Registrar pago${if (account.balances.size > 1) " (${balance.currency})" else ""}", { onPay(balance.currency) }, enabled = !saving, modifier = Modifier.fillMaxWidth().testTag("person-register-payment"))
@@ -169,8 +173,8 @@ private fun LabourPersonCard(account: LabourAccount, onDetail: (() -> Unit)?, on
 @Composable
 internal fun LabourPaymentStatus(state: LabourPaymentState) {
     val text = when (state) { LabourPaymentState.PENDING -> "Pendiente"; LabourPaymentState.PARTIAL -> "Pago parcial"; LabourPaymentState.PAID -> "Pagado" }
-    val foreground = when (state) { LabourPaymentState.PENDING -> MoWarningText; LabourPaymentState.PARTIAL -> MoInfoText; LabourPaymentState.PAID -> MoSuccessText }
-    val background = when (state) { LabourPaymentState.PENDING -> MoWarningTint; LabourPaymentState.PARTIAL -> MoInfoTint; LabourPaymentState.PAID -> MoSuccessTint }
+    val foreground = when (state) { LabourPaymentState.PENDING -> MoColors.current.warningText; LabourPaymentState.PARTIAL -> MoColors.current.infoText; LabourPaymentState.PAID -> MoColors.current.successText }
+    val background = when (state) { LabourPaymentState.PENDING -> MoColors.current.warningTint; LabourPaymentState.PARTIAL -> MoColors.current.infoTint; LabourPaymentState.PAID -> MoColors.current.successTint }
     val icon = when (state) { LabourPaymentState.PENDING -> MoIcons.Clock; LabourPaymentState.PARTIAL -> MoIcons.Euro; LabourPaymentState.PAID -> MoIcons.Check }
     Surface(color = background, contentColor = foreground, shape = MoShape.pill, modifier = Modifier.testTag("payment-state-${state.name}")) {
         Row(Modifier.padding(MoSpacing.xs), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) { Icon(icon, contentDescription = text, modifier = Modifier.size(18.dp)); Text(text, style = MaterialTheme.typography.labelLarge) }

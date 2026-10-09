@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,7 +52,7 @@ fun ComponentCatalogueReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("component-catalogue-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -79,7 +82,7 @@ fun ComponentCatalogueReferenceScreen(
             Text(
                 text = "Botones",
                 style = MaterialTheme.typography.titleLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -92,7 +95,7 @@ fun ComponentCatalogueReferenceScreen(
             Text(
                 text = "Campos",
                 style = MaterialTheme.typography.titleLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             MoTextField(
                 value = "La Solana",
@@ -114,7 +117,7 @@ fun ComponentCatalogueReferenceScreen(
             Text(
                 text = "Métricas y estados",
                 style = MaterialTheme.typography.titleLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -150,7 +153,7 @@ fun ComponentCatalogueReferenceScreen(
             Text(
                 text = "Estados",
                 style = MaterialTheme.typography.titleLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             MoEmptyState(
                 title = "Aún no hay datos",
@@ -168,7 +171,7 @@ fun ComponentCatalogueReferenceScreen(
             Text(
                 text = "Sheets",
                 style = MaterialTheme.typography.titleLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             MoConfirmationSheet(
                 title = "Confirmar entrega",
@@ -183,7 +186,7 @@ fun ComponentCatalogueReferenceScreen(
                 Text(
                     text = "Cámara · Archivo · Galería",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                 )
             }
 

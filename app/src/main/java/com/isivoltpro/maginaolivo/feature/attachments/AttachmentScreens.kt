@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.attachments
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import android.content.ActivityNotFoundException
 import android.content.ContentResolver
 import android.content.Context
@@ -59,11 +61,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -151,9 +150,9 @@ fun AttachmentsSection(
         }
     }
     if (state.isSaving) {
-        Text("Guardando adjunto…", color = MoTextSecondary, modifier = Modifier.testTag("attachment-saving"))
+        Text("Guardando adjunto…", color = MoColors.current.secondaryText, modifier = Modifier.testTag("attachment-saving"))
     }
-    state.message?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("attachment-message")) }
+    state.message?.let { Text(it, color = MoColors.current.secondaryText, modifier = Modifier.testTag("attachment-message")) }
     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("attachment-error")) }
 
     if (chooserVisible) {
@@ -243,7 +242,7 @@ private fun AttachmentRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(attachment.detailLabel(), style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+            Text(attachment.detailLabel(), style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText)
             val (label, tone) = attachment.statusLabel()
             MoStatusChip(label, tone = tone)
         }
@@ -259,13 +258,13 @@ private fun AttachmentPreview(attachment: Attachment, displayLabel: String) {
         modifier = Modifier
             .size(56.dp)
             .clip(MoShape.field)
-            .background(MoSurfaceSoft),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             if (attachment.kind == AttachmentKind.PDF) "PDF" else "FOTO",
             style = MaterialTheme.typography.labelMedium,
-            color = MoOliveDark,
+            color = MoColors.current.primaryText,
         )
         if (model != null) {
             AsyncImage(

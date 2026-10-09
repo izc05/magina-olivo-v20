@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.maps
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.compose.foundation.BorderStroke
@@ -24,6 +28,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -40,11 +45,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
-import com.isivoltpro.maginaolivo.ui.theme.MoSoftGold
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import kotlin.math.roundToInt
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -150,6 +150,7 @@ fun ParcelMap(
     val labelVerticalSpacingPx = with(density) { LABEL_VERTICAL_SPACING.roundToPx() }
     val framePadding = remember(cameraInsets, frameMarginPx) { cameraInsets.withMargin(frameMarginPx) }
     val effectiveBase = base ?: if (imagery) MapBase.AERIAL else MapBase.NONE
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleReady by remember { mutableStateOf(false) }
     // Frame the farmer's own parcels when they change, not on every selection tap.
@@ -193,9 +194,9 @@ fun ParcelMap(
         }
     }
     val showsMyLocation = myLocation != null
-    LaunchedEffect(map, effectiveBase, cadastreLines, overlayTiles, showsMyLocation) {
+    LaunchedEffect(map, effectiveBase, cadastreLines, overlayTiles, showsMyLocation, dark) {
         styleReady = false
-        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines, overlayTiles, showsMyLocation))) { styleReady = true }
+        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines, overlayTiles, showsMyLocation, dark))) { styleReady = true }
     }
     LaunchedEffect(map, styleReady, myLocation) {
         val point = myLocation ?: return@LaunchedEffect
@@ -303,7 +304,7 @@ fun ParcelMap(
                 MapBase.NONE -> "Límites guardados en el teléfono"
             } + (overlayAttribution?.let { " · $it" } ?: ""),
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-            color = MoInk,
+            color = MoColors.current.bodyText,
             modifier = Modifier.align(Alignment.BottomStart)
                 .padding(start = 4.dp, bottom = with(density) { cameraInsets.bottomPx.toDp() } + 4.dp)
                 .semantics { contentDescription = "Atribución del mapa" },
@@ -316,15 +317,15 @@ private fun ParcelNumber(label: String, modifier: Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = MoWarmWhite.copy(alpha = 0.92f),
-        border = BorderStroke(1.dp, MoSoftGold),
+        color = MoSurfaceTokens.cardSurface.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, MoColors.current.goldAccent),
     ) {
         Text(
             label,
             modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MoOliveDark,
+            color = MoColors.current.primaryText,
         )
     }
 }
@@ -336,12 +337,12 @@ private fun MapButton(symbol: String, description: String, onClick: () -> Unit) 
         onClick = onClick,
         modifier = Modifier.size(44.dp).semantics { contentDescription = description },
         shape = RoundedCornerShape(12.dp),
-        color = MoWarmWhite.copy(alpha = 0.95f),
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface.copy(alpha = 0.95f),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
         shadowElevation = 2.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(symbol, style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
+            Text(symbol, style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
         }
     }
 }
@@ -458,7 +459,11 @@ internal fun parcelStyle(imagery: Boolean): String = parcelStyle(if (imagery) Ma
  * to twice its size: roads, olive rows and boundaries looked blurred on the phone. Catastro's
  * WMS is asked for real 512 px images and stays at 512.
  */
-internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: String? = null, myLocation: Boolean = false): String {
+internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: String? = null, myLocation: Boolean = false, dark: Boolean = false): String {
+    // Theme our own canvas only. Raster source pixels and raster paints stay unchanged.
+    val background = if (dark) "#171914" else "#F3F1E6"
+    val savedLine = if (dark && base == MapBase.NONE) "#B6D39E" else "#25371C"
+    val candidateLine = if (dark && base == MapBase.NONE) "#E2CC90" else "#8A6A1F"
     val sources = buildList {
         add(""""saved-parcels":{"type":"geojson","data":{"type":"FeatureCollection","features":[]}}""")
         if (myLocation) add(""""my-location":{"type":"geojson","data":{"type":"FeatureCollection","features":[]}}""")
@@ -475,12 +480,12 @@ internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: St
         overlayTiles?.let { add(""""overlay":{"type":"raster","tileSize":${overlayTileSize(it)},"maxzoom":$OVERLAY_MAX_ZOOM,"tiles":["$it"]}""") }
     }.joinToString(",")
     val layers = buildList {
-        add("""{"id":"background","type":"background","paint":{"background-color":"#F3F1E6"}}""")
+        add("""{"id":"background","type":"background","paint":{"background-color":"$background"}}""")
         if (base != MapBase.NONE) add("""{"id":"base","type":"raster","source":"base"}""")
         if (cadastreLines && base != MapBase.NONE) add("""{"id":"cadastre","type":"raster","source":"cadastre","minzoom":15}""")
         if (overlayTiles != null) add("""{"id":"overlay","type":"raster","source":"overlay","paint":{"raster-opacity":0.7}}""")
         add("""{"id":"parcels-fill","type":"fill","source":"saved-parcels","paint":{"fill-color":["case",["get","selected"],"#CDA449",["==",["get","kind"],"CANDIDATE"],"#F4EAD0","#567342"],"fill-opacity":["case",["get","selected"],0.55,["==",["get","kind"],"CANDIDATE"],0.30,0.38]}}""")
-        add("""{"id":"parcels-line","type":"line","source":"saved-parcels","paint":{"line-color":["case",["==",["get","kind"],"CANDIDATE"],"#8A6A1F","#25371C"],"line-width":["case",["get","selected"],4,["==",["get","kind"],"CANDIDATE"],2,3]}}""")
+        add("""{"id":"parcels-line","type":"line","source":"saved-parcels","paint":{"line-color":["case",["==",["get","kind"],"CANDIDATE"],"$candidateLine","$savedLine"],"line-width":["case",["get","selected"],4,["==",["get","kind"],"CANDIDATE"],2,3]}}""")
         // #361: «Mi ubicación» — a blue dot with a soft halo, above everything else.
         if (myLocation) {
             add("""{"id":"my-location-halo","type":"circle","source":"my-location","paint":{"circle-radius":18,"circle-color":"#1D6FD8","circle-opacity":0.18}}""")

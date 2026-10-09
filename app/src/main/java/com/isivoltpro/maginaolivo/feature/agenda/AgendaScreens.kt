@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.agenda
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.WindowInsets
 import android.Manifest
 import android.content.Context
@@ -69,9 +71,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
@@ -84,12 +84,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.isivoltpro.maginaolivo.domain.agenda.Agenda
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoMonthCalendar
-import com.isivoltpro.maginaolivo.ui.theme.MoErrorText
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import java.time.YearMonth
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -193,7 +188,7 @@ fun AgendaScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
                     // CR-011 §20: Avisos' section colour is amber.
                     MoIconBadge(MoIcons.Bell, tint = MoIconTone.ALERT.tint, container = MoIconTone.ALERT.container)
-                    Text(title, style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+                    Text(title, style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
                 }
                 MoPrimaryButton("Planificar trabajo", onPlanWork, Modifier.testTag("agenda-plan-work"))
             }
@@ -281,7 +276,7 @@ private enum class AgendaView { AGENDA, MONTH }
 
 @Composable
 private fun AgendaViewSwitch(view: AgendaView, onChange: (AgendaView) -> Unit) {
-    Surface(shape = MoShape.pill, color = MoSurfaceSoft, border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke), modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = MoShape.pill, color = MaterialTheme.colorScheme.surfaceVariant, border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(4.dp)) {
             listOf(AgendaView.AGENDA to "Agenda", AgendaView.MONTH to "Mes").forEach { (option, label) ->
                 val active = option == view
@@ -292,8 +287,8 @@ private fun AgendaViewSwitch(view: AgendaView, onChange: (AgendaView) -> Unit) {
                         .selectable(selected = active, role = Role.Tab, onClick = { onChange(option) })
                         .testTag("agenda-view-${option.name.lowercase()}"),
                     shape = MoShape.pill,
-                    color = if (active) MoOlivePrimary else Color.Transparent,
-                    contentColor = if (active) MoWarmWhite else MoInk,
+                    color = if (active) MoColors.current.primaryButton else Color.Transparent,
+                    contentColor = if (active) MoColors.current.onPrimaryButton else MoColors.current.bodyText,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal)
@@ -350,7 +345,7 @@ private fun AgendaRow(
         Column(Modifier.padding(start = MoSpacing.sm, end = MoSpacing.xs, top = 10.dp, bottom = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                 MoIconBadge(entry.type.icon(), size = 36)
-                Text(entry.description, style = MaterialTheme.typography.titleSmall, color = MoInk, modifier = Modifier.weight(1f))
+                Text(entry.description, style = MaterialTheme.typography.titleSmall, color = MoColors.current.bodyText, modifier = Modifier.weight(1f))
                 if (overdue) MoStatusChip("Atrasado", tone = MoStatusTone.Warning)
             }
             Text(
@@ -369,17 +364,17 @@ private fun AgendaRow(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (entry.reminders.isNotEmpty()) {
                     val waiting = entry.reminders.count { it.firedAt == null }
-                    Icon(MoIcons.Bell, contentDescription = null, tint = MoInfoText, modifier = Modifier.size(16.dp))
+                    Icon(MoIcons.Bell, contentDescription = null, tint = MoColors.current.infoText, modifier = Modifier.size(16.dp))
                     Text(
                         if (waiting == 0) " Avisos enviados" else if (waiting == 1) " 1 aviso" else " $waiting avisos",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MoInfoText,
+                        color = MoColors.current.infoText,
                         modifier = Modifier.testTag("agenda-reminders"),
                     )
                 }
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onCancel, enabled = enabled, modifier = Modifier.testTag("agenda-cancel")) {
-                    Text("Cancelar", color = MoErrorText)
+                    Text("Cancelar", color = MoColors.current.errorText)
                 }
                 TextButton(onClick = onComplete, enabled = enabled, modifier = Modifier.testTag("agenda-complete")) { Text("Hecho") }
             }

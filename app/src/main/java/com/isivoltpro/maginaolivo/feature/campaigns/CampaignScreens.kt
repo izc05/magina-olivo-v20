@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.campaigns
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.clickable
@@ -70,7 +72,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
 import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
 import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import java.time.LocalDate
@@ -324,7 +325,7 @@ fun CampaignDetailScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
                         // CR-011 §20: Campaña's section colour is the deep green.
                         MoIconBadge(MoIcons.Campaign, tint = MoKpiKind.CAMPAIGN.tint, container = MoKpiKind.CAMPAIGN.container)
-                        Text(campaign.name, style = MaterialTheme.typography.headlineMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
+                        Text(campaign.name, style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText, modifier = Modifier.weight(1f))
                         MoStatusChip(campaign.status.label(), tone = campaign.status.tone())
                     }
                     Text(
@@ -502,7 +503,7 @@ fun CampaignDetailScreen(
                 Text(
                     "Hay costes sin confirmar. Puedes cerrar la campaña, pero el coste/kg quedará marcado como incompleto.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = com.isivoltpro.maginaolivo.ui.theme.MoWarningText,
+                    color = MoColors.current.warningText,
                     modifier = Modifier.testTag("close-cost-warning"),
                 )
             }

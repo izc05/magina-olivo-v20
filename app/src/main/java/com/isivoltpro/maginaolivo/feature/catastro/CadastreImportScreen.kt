@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.catastro
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,13 +43,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
@@ -102,7 +101,7 @@ fun CadastreImportScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("catastro-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
@@ -110,11 +109,11 @@ fun CadastreImportScreen(
                 .padding(horizontal = MoSpacing.screen, vertical = MoSpacing.md),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
         ) {
-            Text("Buscar en Catastro", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Buscar en Catastro", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             Text(
                 "Consulta una parcela real por su referencia catastral. Revísala antes de incorporarla a una finca.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
             Row {
                 onNear?.let { androidx.compose.material3.TextButton(onClick = { showMap = !showMap }) { Text(if (showMap) "Cerrar mapa" else "Elegir en mapa") } }
@@ -125,7 +124,7 @@ fun CadastreImportScreen(
                     Text(
                         "Toca la zona y luego el número de tu parcela.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoColors.current.secondaryText,
                         modifier = Modifier.weight(1f),
                     )
                     com.isivoltpro.maginaolivo.feature.maps.MapBase.entries.forEach { option ->
@@ -154,7 +153,7 @@ fun CadastreImportScreen(
             }
             // Several parcels from a GML file and no map open: choose by number here instead.
             if (!showMap && state.candidates.size > 1) {
-                Text("Elige una de las ${state.candidates.size} parcelas del archivo", color = MoTextSecondary)
+                Text("Elige una de las ${state.candidates.size} parcelas del archivo", color = MoColors.current.secondaryText)
                 state.candidates.forEach { option ->
                     androidx.compose.material3.TextButton(onClick = { onSelect(option.reference) }, enabled = !state.saving) { Text(option.reference) }
                 }
@@ -180,14 +179,14 @@ fun CadastreImportScreen(
             state.candidate?.let { candidate ->
                 Card(
                     shape = MoShape.card,
-                    colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+                    colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
                     modifier = Modifier.fillMaxWidth().testTag("catastro-candidate"),
                 ) {
                     Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                         Text(
                             com.isivoltpro.maginaolivo.feature.maps.defaultParcelName(candidate.reference),
                             style = MaterialTheme.typography.titleLarge,
-                            color = MoOliveDark,
+                            color = MoColors.current.primaryText,
                         )
                         Text(
                             listOfNotNull(candidate.reference, candidate.areaM2?.let { "${formatHectares(it)} ha" }).joinToString(" · "),
@@ -198,19 +197,19 @@ fun CadastreImportScreen(
                         Text(
                             "Contorno recibido del servicio INSPIRE de la Dirección General del Catastro. La copia guardada no es un certificado catastral actualizado.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MoTextSecondary,
+                            color = MoColors.current.secondaryText,
                         )
                     }
                 }
-                Text("Incorporar a una finca", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+                Text("Incorporar a una finca", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
                 if (state.farms.isEmpty()) {
-                    Text("Crea primero una finca en Mi Campo.", color = MoTextSecondary)
+                    Text("Crea primero una finca en Mi Campo.", color = MoColors.current.secondaryText)
                 } else {
                     state.farms.forEach { farm ->
                         Card(
                             onClick = { selectedFarm = farm.id.toString() },
                             modifier = Modifier.fillMaxWidth().testTag("catastro-farm-${farm.id}"),
-                            colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+                            colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
                         ) {
                             Row(
                                 Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm),
@@ -261,6 +260,8 @@ private fun CandidateGeometryPreview(candidate: CadastralCandidate, modifier: Mo
     val longitudeScale = kotlin.math.cos(Math.toRadians((minLat + maxLat) / 2))
     val lonSpan = ((maxLon - minLon) * longitudeScale).takeIf { it > 0 } ?: 1.0
     val latSpan = (maxLat - minLat).takeIf { it > 0 } ?: 1.0
+    val fillColor = MoColors.current.primaryButton.copy(alpha = 0.20f)
+    val strokeColor = MoColors.current.primaryText
     Canvas(modifier.testTag("catastro-geometry-preview")) {
         val scale = minOf(size.width.toDouble() * 0.84 / lonSpan, size.height.toDouble() * 0.84 / latSpan).toFloat()
         val usedWidth = (lonSpan * scale).toFloat()
@@ -277,8 +278,8 @@ private fun CandidateGeometryPreview(candidate: CadastralCandidate, modifier: Mo
                 }
                 path.close()
             }
-            drawPath(path, MoOlivePrimary.copy(alpha = 0.20f))
-            drawPath(path, MoOliveDark, style = Stroke(width = 3.dp.toPx()))
+            drawPath(path, fillColor)
+            drawPath(path, strokeColor, style = Stroke(width = 3.dp.toPx()))
         }
     }
 }

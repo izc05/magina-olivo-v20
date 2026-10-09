@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -9,7 +11,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 import com.isivoltpro.maginaolivo.domain.machinery.MachineOption
 import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
 import androidx.compose.foundation.BorderStroke
@@ -78,7 +79,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import androidx.compose.foundation.layout.size
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
@@ -294,7 +294,7 @@ fun RegisterActivityRoute(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
         ) {
             if (selectedTypeName == null) {
-                Text(if (planning) "Planificar trabajo" else "Registrar trabajo", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+                Text(if (planning) "Planificar trabajo" else "Registrar trabajo", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             }
             when {
                 state.isLoading -> CircularProgressIndicator()
@@ -377,7 +377,7 @@ internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) ->
         Modifier.fillMaxWidth().testTag("activity-type-chooser"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
-        Text(if (planning) "¿Qué trabajo quieres planificar?" else "¿Qué trabajo vas a apuntar?", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text(if (planning) "¿Qué trabajo quieres planificar?" else "¿Qué trabajo vas a apuntar?", style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text(farmName, style = MaterialTheme.typography.titleMedium, color = MoSurfaceTokens.secondaryText)
         workTypes(planning).forEach { type ->
             MoCompactListItem(
@@ -785,10 +785,10 @@ internal fun ActivityEditor(
                 Icon(
                     if (agronomicDetailsOpen) MoIcons.ChevronDown else MoIcons.ChevronRight,
                     contentDescription = null,
-                    tint = MoOliveMid,
+                    tint = MoColors.current.actionText,
                 )
                 Column(Modifier.weight(1f)) {
-                    Text("Detalles de ${activityType.label().lowercase()}", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
+                    Text("Detalles de ${activityType.label().lowercase()}", style = MaterialTheme.typography.titleSmall, color = MoColors.current.actionText)
                     if (!agronomicDetailsOpen) {
                         Text("Datos opcionales", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
                     }
@@ -882,9 +882,9 @@ internal fun ActivityEditor(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
-            Icon(if (showMore) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoOliveMid)
+            Icon(if (showMore) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoColors.current.actionText)
             Column(Modifier.weight(1f)) {
-                Text("Más opciones", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
+                Text("Más opciones", style = MaterialTheme.typography.titleSmall, color = MoColors.current.actionText)
                 if (!showMore) {
                     Text(
                         when {
@@ -1178,7 +1178,7 @@ fun ActivityDetailScreen(
                         if (relatedExpenseAdded) {
                             Text(
                                 "Gasto añadido · queda vinculado a este trabajo en Gastos.",
-                                style = MaterialTheme.typography.bodyMedium, color = MoOliveDark,
+                                style = MaterialTheme.typography.bodyMedium, color = MoColors.current.primaryText,
                                 modifier = Modifier.fillMaxWidth().testTag("activity-expense-added"),
                             )
                         }
@@ -1406,8 +1406,8 @@ private fun ActivityTypedDetailFields(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
             ) {
-                Icon(if (advancedOpen) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoOliveMid)
-                Text("Más detalles", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
+                Icon(if (advancedOpen) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoColors.current.actionText)
+                Text("Más detalles", style = MaterialTheme.typography.titleSmall, color = MoColors.current.actionText)
             }
             if (advancedOpen || layout.advanced.any { it in errors }) layout.advanced.forEach { key -> DetailInput(fields, key, errors) }
         }
@@ -1685,7 +1685,7 @@ private fun ActivityHeaderCard(activity: Activity) {
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
-                Text(activity.description, style = MaterialTheme.typography.headlineMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
+                Text(activity.description, style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText, modifier = Modifier.weight(1f))
                 MoStatusChip(activity.status.label(), tone = activity.status.tone())
             }
             HeaderLine(activity.type.icon(), activity.type.label())
@@ -1702,7 +1702,7 @@ private fun ActivityHeaderCard(activity: Activity) {
 private fun HeaderLine(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         androidx.compose.material3.Icon(icon, contentDescription = null, tint = com.isivoltpro.maginaolivo.ui.components.MoIconTone.of(icon).tint, modifier = Modifier.size(18.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = com.isivoltpro.maginaolivo.ui.theme.MoInk)
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.bodyText)
     }
 }
 
@@ -1729,7 +1729,7 @@ private fun editableAreaHa(areaM2: Double): String =
 /** A small label over a group of chips, lighter than a section header. */
 @Composable
 private fun FormLabel(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, color = MoOliveDark, modifier = Modifier.padding(top = MoSpacing.xs))
+    Text(text, style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText, modifier = Modifier.padding(top = MoSpacing.xs))
 }
 
 /**
@@ -1757,7 +1757,7 @@ private fun LinkedExpensesList(
     onOpenExpense: ((UUID) -> Unit)?,
 ) {
     if (expenses.isNotEmpty() && onOpenExpense != null) {
-        Text("Ver gastos vinculados", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+        Text("Ver gastos vinculados", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
         expenses.forEach { expense ->
             MoTertiaryButton(
                 "${expense.concept} · ${Money.format(expense.amountMinor, expense.currency)}",

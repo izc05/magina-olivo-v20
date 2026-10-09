@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -52,7 +54,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
@@ -232,7 +233,7 @@ fun FarmListScreen(
                     Text(
                         text = "Mis fincas",
                         style = MaterialTheme.typography.headlineLarge,
-                        color = MoOliveDark,
+                        color = MoColors.current.primaryText,
                     )
                 }
                 Text(
@@ -322,7 +323,7 @@ fun FarmListScreen(
                         Text(
                             text = farm.name,
                             style = MaterialTheme.typography.titleMedium,
-                            color = MoOliveDark,
+                            color = MoColors.current.primaryText,
                         )
                         MoSecondaryButton(
                             text = "Restaurar finca",
@@ -697,7 +698,7 @@ private fun FarmEditor(
             .padding(horizontal = MoSpacing.screen),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text(
             "Se guardará primero en este dispositivo.",
             style = MaterialTheme.typography.bodyMedium,

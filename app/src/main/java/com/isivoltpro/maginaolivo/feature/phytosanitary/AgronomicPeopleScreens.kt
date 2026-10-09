@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.phytosanitary
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,10 +54,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.time.LocalDate
 import java.util.UUID
 
@@ -88,7 +89,7 @@ fun AgronomicPeopleScreen(
 
     Scaffold(
         Modifier.fillMaxSize().testTag("agronomic-people-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
@@ -97,11 +98,11 @@ fun AgronomicPeopleScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.md))
-            Text("Aplicadores y asesores", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Aplicadores y asesores", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             Text(
                 "Personas que intervienen en tratamientos o asesoramiento. Se guardan primero en este teléfono.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
             MoPrimaryButton(
                 "Añadir persona",
@@ -109,7 +110,7 @@ fun AgronomicPeopleScreen(
                 Modifier.fillMaxWidth().testTag("add-agronomic-person"),
                 enabled = !state.isSaving,
             )
-            state.message?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("agronomic-people-message")) }
+            state.message?.let { Text(it, color = MoColors.current.secondaryText, modifier = Modifier.testTag("agronomic-people-message")) }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("agronomic-people-error")) }
             when {
                 state.isLoading -> CircularProgressIndicator()
@@ -211,7 +212,7 @@ private fun PersonEditor(
         ) {
             Column(Modifier.weight(1f)) {
                 Text("También es asesor", style = MaterialTheme.typography.bodyLarge)
-                Text("Actívalo solo si realiza asesoramiento agronómico.", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                Text("Actívalo solo si realiza asesoramiento agronómico.", style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText)
             }
             Switch(
                 checked = form.isAdvisor,
@@ -263,7 +264,7 @@ fun AgronomicPersonDetailScreen(
 
     Scaffold(
         Modifier.fillMaxSize().testTag("agronomic-person-detail-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
@@ -276,7 +277,7 @@ fun AgronomicPersonDetailScreen(
                 state.isLoading -> CircularProgressIndicator()
                 person == null -> MoErrorState("Persona no disponible", state.error ?: "No está guardada en este dispositivo.")
                 else -> {
-                    Text(person.displayName, style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
+                    Text(person.displayName, style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText)
                     Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                         if (person.isAdvisor) MoStatusChip("Asesor", tone = MoStatusTone.Info)
                         if (person.archived) MoStatusChip("Archivado", tone = MoStatusTone.Neutral)
@@ -286,7 +287,7 @@ fun AgronomicPersonDetailScreen(
 
                     MoSectionHeader("Credenciales")
                     if (state.credentials.isEmpty()) {
-                        Text("Sin carné o ROPO registrado.", color = MoTextSecondary)
+                        Text("Sin carné o ROPO registrado.", color = MoColors.current.secondaryText)
                     } else {
                         state.credentials.forEach { CredentialRow(it) }
                     }
@@ -321,7 +322,7 @@ fun AgronomicPersonDetailScreen(
                             enabled = !state.isSaving,
                         )
                     }
-                    state.message?.let { Text(it, color = MoTextSecondary) }
+                    state.message?.let { Text(it, color = MoColors.current.secondaryText) }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             }
@@ -381,7 +382,7 @@ private fun CredentialRow(credential: AgronomicCredential) {
                 if (validity.isNotBlank()) add(validity)
             }.joinToString(" · "),
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
     }
 }
@@ -417,7 +418,7 @@ private fun CredentialEditor(
                 Modifier.weight(1f).testTag("credential-kind-advisor"),
             )
         }
-        Text("Tipo: ${credentialKindLabel(kind)}", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+        Text("Tipo: ${credentialKindLabel(kind)}", style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText)
         MoTextField(number, { number = it; error = null }, "Nº carné / ROPO", modifier = Modifier.fillMaxWidth().testTag("credential-number"))
         MoTextField(category, { category = it }, "Categoría (opcional)", modifier = Modifier.fillMaxWidth().testTag("credential-category"))
         MoDateInputField(from, { from = it }, "Válida desde (opcional)", modifier = Modifier.testTag("credential-valid-from"))
@@ -456,7 +457,7 @@ private fun CredentialEditor(
 @Composable
 private fun DetailValue(label: String, value: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
         Text(value ?: "Sin registrar", style = MaterialTheme.typography.bodyLarge)
     }
 }

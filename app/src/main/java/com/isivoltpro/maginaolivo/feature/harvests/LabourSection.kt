@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,9 +19,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
 
 internal fun LabourUnit.label(): String = when (this) {
@@ -83,21 +83,21 @@ internal fun JornadaLabour(
         Text(
             "Cargando jornales…",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             modifier = Modifier.testTag("jornada-labour-loading"),
         )
     } else if (summary.isEmpty) {
         Text(
             "Sin jornales anotados.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             modifier = Modifier.testTag("jornada-no-labour"),
         )
     } else {
         Text(
             "${if (summary.people == 1) "1 persona" else "${summary.people} personas"} · ${summary.label()}",
             style = MaterialTheme.typography.bodyLarge,
-            color = MoOliveDark,
+            color = MoColors.current.primaryText,
             modifier = Modifier.testTag("jornada-labour-summary"),
         )
         labour.forEach { entry ->
@@ -105,8 +105,8 @@ internal fun JornadaLabour(
                 title = entry.workerName ?: "Sin identificar · ${entry.quantity} personas",
                 subtitle = entry.label() + if (entry.appliedRate == null) " · Precio sin confirmar" else "",
                 onClick = entry.workerId?.let { { onPerson(it) } },
-                iconTint = com.isivoltpro.maginaolivo.ui.theme.MoLabourText,
-                iconContainer = com.isivoltpro.maginaolivo.ui.theme.MoLabourTint,
+                iconTint = MoColors.current.labourText,
+                iconContainer = MoColors.current.labourTint,
                 icon = if (entry.workerId != null) MoIcons.Person else MoIcons.People,
                 modifier = Modifier.testTag("jornada-labour"),
                 trailing = if (editable) {
@@ -117,7 +117,7 @@ internal fun JornadaLabour(
             )
         }
     }
-    message?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("jornada-labour-message")) }
+    message?.let { Text(it, color = MoColors.current.secondaryText, modifier = Modifier.testTag("jornada-labour-message")) }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("jornada-labour-error")) }
     if (editable) {
         MoSecondaryButton("Registrar jornales", onRegister, Modifier.fillMaxWidth().testTag("jornada-register-labour"))

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.deliveries
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
@@ -88,14 +90,11 @@ import com.isivoltpro.maginaolivo.ui.components.MoSelectField
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
@@ -201,7 +200,7 @@ fun DeliveriesScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.md))
-            Text("Pesadas", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Pesadas", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             Text(
                 "Lo que llevas a la cooperativa o almazara. El rendimiento se añade cuando llega el análisis.",
                 style = MaterialTheme.typography.bodyLarge,
@@ -254,7 +253,7 @@ fun DeliveriesScreen(
                         colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
                     ) {
                         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                            Text("Vale de entrega", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+                            Text("Vale de entrega", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
                             Text(
                                 DATE_FORMAT.format(ticket.createdAt.atZone(ZoneId.systemDefault()).toLocalDate()),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -366,7 +365,7 @@ fun DeliveriesScreen(
                     Text(
                         "Pesada guardada. Registra la siguiente.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MoOliveDark,
+                        color = MoColors.current.primaryText,
                         modifier = Modifier.padding(horizontal = MoSpacing.screen).testTag("delivery-saved-next"),
                     )
                 }
@@ -484,12 +483,12 @@ private fun CampaignDeliveriesCard(campaign: CampaignDeliveries) {
             Text(
                 listOfNotNull(campaign.farmName, campaign.campaignName).joinToString(" · "),
                 style = MaterialTheme.typography.titleMedium,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Text(
                 summary.deliveredGrams?.let(Weight::format) ?: "No disponible",
                 style = MaterialTheme.typography.headlineSmall,
-                color = MoOlivePrimary,
+                color = MoColors.current.primaryButton,
                 modifier = Modifier.testTag("campaign-delivered-total"),
             )
             Text(
@@ -542,7 +541,7 @@ private fun DeliveryRow(delivery: Delivery, onAddYield: (() -> Unit)? = null, on
                 Text(
                     listOfNotNull(Weight.format(delivery.netGrams), delivery.destinationName).joinToString(" · "),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MoInk,
+                    color = MoColors.current.bodyText,
                 )
                 Text(
                     listOfNotNull(
@@ -603,7 +602,7 @@ internal fun DeliveryEditor(
         Modifier.fillMaxWidth().then(scrolling).padding(horizontal = MoSpacing.screen).testTag("delivery-editor"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
         if (farmLocked) {
             // #373/#375: «Salinillas · Campaña 2026-2027» as fixed context, never a selector.
@@ -615,7 +614,7 @@ internal fun DeliveryEditor(
                 },
                 style = MaterialTheme.typography.titleMedium,
                 color = when {
-                    context != null -> MoOliveDark
+                    context != null -> MoColors.current.primaryText
                     contextLoading -> MoSurfaceTokens.secondaryText
                     else -> MaterialTheme.colorScheme.error
                 },
@@ -767,7 +766,7 @@ internal fun DeliveryEditor(
                     Text(
                         "Foto del recibo añadida",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MoOliveDark,
+                        color = MoColors.current.primaryText,
                         modifier = Modifier.weight(1f).testTag("delivery-receipt-added"),
                     )
                     TextButton(onClick = { form = form.copy(receiptUri = null) }, modifier = Modifier.testTag("delivery-remove-receipt")) {
@@ -1017,7 +1016,7 @@ private fun YieldEditor(
             .testTag("yield-editor"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Rendimiento de la pesada", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text("Rendimiento de la pesada", style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text(
             "Se guarda aparte: la pesada no cambia.",
             style = MaterialTheme.typography.bodyMedium,
@@ -1048,7 +1047,7 @@ private fun YieldEditor(
 
 @Composable
 private fun DeliverySummaryBlock(delivery: Delivery) {
-    Text("Pesada del ${DATE_FORMAT.format(delivery.deliveryDate)}", style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
+    Text("Pesada del ${DATE_FORMAT.format(delivery.deliveryDate)}", style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText)
     Text(
         listOfNotNull(delivery.farmName, delivery.campaignName).joinToString(" · "),
         style = MaterialTheme.typography.bodyLarge,

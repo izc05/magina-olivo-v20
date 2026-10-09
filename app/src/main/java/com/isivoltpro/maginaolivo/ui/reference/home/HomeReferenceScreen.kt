@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.home
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -77,7 +80,7 @@ fun HomeReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("home-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = if (showBottomBar) ScaffoldDefaults.contentWindowInsets else WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (showBottomBar) {
@@ -102,12 +105,12 @@ fun HomeReferenceScreen(
             Text(
                 text = "Tu explotación, al día",
                 style = MaterialTheme.typography.headlineLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Text(
                 text = "Tus fincas, campañas y tareas, reunidas en un lugar.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
 
             Spacer(Modifier.height(MoSpacing.md))
@@ -172,7 +175,7 @@ private fun TerritoryHero() {
             )
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(colors = listOf(Color.Transparent, MoOliveDark.copy(alpha = 0.78f))),
+                    Brush.verticalGradient(colors = listOf(Color.Transparent, MoColors.current.primaryText.copy(alpha = 0.78f))),
                 ),
             )
 
@@ -205,15 +208,15 @@ private fun WeatherSummaryCard(
         onClick = onClick,
         modifier = modifier,
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.md),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("Tiempo y avisos", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-            Text("Consulta la información de tu zona.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+            Text("Tiempo y avisos", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
+            Text("Consulta la información de tu zona.", style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
         }
     }
 }
@@ -227,15 +230,15 @@ private fun CampaignSummaryCard(
         onClick = onClick,
         modifier = modifier,
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoOlivePrimary),
+        colors = CardDefaults.cardColors(containerColor = MoColors.current.primaryButton),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.md),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("Campaña", style = MaterialTheme.typography.titleMedium, color = MoWarmWhite)
-            Text("Consulta el estado y los registros de tus campañas.", style = MaterialTheme.typography.bodyMedium, color = MoWarmWhite)
+            Text("Campaña", style = MaterialTheme.typography.titleMedium, color = MoColors.current.onPrimaryButton)
+            Text("Consulta el estado y los registros de tus campañas.", style = MaterialTheme.typography.bodyMedium, color = MoColors.current.onPrimaryButton)
         }
     }
 }
@@ -264,7 +267,7 @@ private fun QuickActions(
                         onClick = onClick,
                         modifier = if (row.size == 1) Modifier.fillMaxWidth() else Modifier.weight(1f),
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+                        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     ) {
                         Row(
@@ -275,16 +278,16 @@ private fun QuickActions(
                             Surface(
                                 modifier = Modifier.size(44.dp),
                                 shape = RoundedCornerShape(14.dp),
-                                color = MoOlivePrimary.copy(alpha = 0.10f),
+                                color = MoColors.current.primaryButton.copy(alpha = 0.10f),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(icon, contentDescription = null, tint = MoOlivePrimary, modifier = Modifier.size(24.dp))
+                                    Icon(icon, contentDescription = null, tint = MoColors.current.primaryButton, modifier = Modifier.size(24.dp))
                                 }
                             }
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MoOliveDark,
+                                color = MoColors.current.primaryText,
                                 maxLines = 2,
                             )
                         }
@@ -300,7 +303,7 @@ private fun OilMarketCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.cardLarge,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
@@ -311,7 +314,7 @@ private fun OilMarketCard() {
             Text(
                 text = "Los precios aparecerán aquí cuando exista una fuente conectada y verificable.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
         }
     }
@@ -322,7 +325,7 @@ private fun CooperativeNewsCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Row(
             modifier = Modifier.padding(MoSpacing.md),
@@ -342,11 +345,11 @@ private fun CooperativeNewsCard() {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text("ACTUALIDAD", style = MaterialTheme.typography.labelMedium, color = MoSoftGoldText)
-                Text("Avisos de tu cooperativa", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+                Text("Avisos de tu cooperativa", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
                 Text(
                     "Aquí aparecerán los avisos cuando la cooperativa esté conectada.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                 )
             }
         }

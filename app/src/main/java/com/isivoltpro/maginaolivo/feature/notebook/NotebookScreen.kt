@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
 import com.isivoltpro.maginaolivo.domain.analytics.CampaignDashboard
 import androidx.compose.foundation.verticalScroll
@@ -65,16 +69,12 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
 import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.ui.components.MoIconTone
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -111,7 +111,7 @@ internal fun WorkRow(work: Activity, onClick: () -> Unit) {
         icon = work.type.icon(),
         onClick = onClick,
         modifier = Modifier.testTag("notebook-work"),
-        container = if (pending) MoSurfaceSoft else MoWarmWhite,
+        container = if (pending) MaterialTheme.colorScheme.surfaceVariant else MoSurfaceTokens.cardSurface,
         trailing = { MoStatusChip(work.status.label(), tone = work.status.tone(), icon = work.status.chipIcon()) },
     )
 }
@@ -140,7 +140,7 @@ internal fun RecollectionActions(notebook: CampaignNotebook, actions: NotebookAc
             legacy?.let { "Además, ${Weight.format(it)} registrados sin pesada (histórico)" }
                 ?: "Kilos históricos sin pesada no disponibles",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             modifier = Modifier.testTag("notebook-legacy-kilos"),
         )
     }
@@ -217,7 +217,7 @@ internal fun ExpenseRow(expense: Expense, relatedWork: String? = null, onClick: 
         iconContainer = MoIconTone.MONEY.container,
         onClick = onClick,
         modifier = Modifier.testTag("notebook-expense"),
-        container = if (expense.status == ExpenseStatus.DRAFT) MoSurfaceSoft else MoWarmWhite,
+        container = if (expense.status == ExpenseStatus.DRAFT) MaterialTheme.colorScheme.surfaceVariant else MoSurfaceTokens.cardSurface,
         trailing = { if (expense.status == ExpenseStatus.DRAFT) MoStatusChip("Borrador", tone = MoStatusTone.Neutral) },
     )
 }
@@ -285,7 +285,7 @@ internal fun SummaryTab(
                 legacy?.let { "Las gráficas solo incluyen pesadas. ${Weight.format(it)} registrados sin pesada (histórico) no aparecen en ellas." }
                     ?: "Las gráficas solo incluyen pesadas. Kilos históricos sin pesada no disponibles.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
                 modifier = Modifier.testTag("notebook-chart-legacy-note"),
             )
         }
@@ -294,16 +294,16 @@ internal fun SummaryTab(
         CampaignComparisonList(comparison, onSelectCampaign)
     }
     if (machineryDetail) {
-        androidx.compose.material3.ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { machineryDetail = false },
+        androidx.compose.material3.ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, onDismissRequest = { machineryDetail = false },
             sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                 MoSectionHeader("Maquinaria de la campaña")
-                if (notebook.equipment.isEmpty()) Text("Sin maquinaria anotada", color = MoTextSecondary)
+                if (notebook.equipment.isEmpty()) Text("Sin maquinaria anotada", color = MoColors.current.secondaryText)
                 notebook.equipment.forEach { line ->
                     MoCompactListItem(title = "${line.quantity} · ${line.type.title()}",
                         subtitle = notebook.harvests.firstOrNull { it.id == line.harvestId }?.harvestDate?.format(DATE_FORMAT),
-                        icon = line.type.icon(), iconTint = com.isivoltpro.maginaolivo.ui.theme.MoEarthText,
-                        iconContainer = com.isivoltpro.maginaolivo.ui.theme.MoEarthTint,
+                        icon = line.type.icon(), iconTint = MoColors.current.earthText,
+                        iconContainer = MoColors.current.earthTint,
                         onClick = { machineryDetail = false; onHarvest(line.harvestId) })
                 }
                 com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton("Cerrar", { machineryDetail = false })
@@ -340,7 +340,7 @@ private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long?)
         Text(
             "Primera pesada ${date(dashboard.firstPesada)} · última ${date(dashboard.lastPesada)}",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             modifier = Modifier.testTag("dashboard-pesada-dates"),
         )
     }
@@ -359,7 +359,7 @@ private fun ParcelYields(notebook: CampaignNotebook) {
         Text(
             "Las pesadas de esta campaña mezclan parcelas sin reparto conocido: su rendimiento cuenta solo en el total.",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             modifier = Modifier.testTag("notebook-parcel-yield-none"),
         )
         return
@@ -372,17 +372,17 @@ private fun ParcelYields(notebook: CampaignNotebook) {
                     parcel.fatYield?.let { "Sobre el ${parcel.coveragePercent} % de ${Weight.format(parcel.attributedGrams)}" }
                         ?: "${Weight.format(parcel.attributedGrams)} · rendimiento pendiente",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                 )
             }
-            Text(parcel.fatYield?.let { Percent.format(it.hundredths) } ?: "—", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+            Text(parcel.fatYield?.let { Percent.format(it.hundredths) } ?: "—", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
         }
     }
     notebook.deliverySummary.unallocatedGrams?.takeIf { it > 0 }?.let { unallocated ->
         Text(
             "${Weight.format(unallocated)} sin reparto por parcela cuentan solo en el total de la campaña.",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
     }
 }
