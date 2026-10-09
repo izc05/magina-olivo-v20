@@ -217,6 +217,9 @@ private fun CampaignTabs() {
 
 @Composable
 private fun CampaignBars(modifier: Modifier = Modifier) {
+    val axisColor = MoSurfaceTokens.cardStroke
+    val currentBar = MoColors.current.primaryButton
+    val historyBar = MoColors.current.goldAccent.copy(alpha = 0.72f)
     Canvas(modifier = modifier) {
         val values = listOf(0.55f, 0.72f, 0.61f, 0.88f)
         val labels = values.size
@@ -224,7 +227,7 @@ private fun CampaignBars(modifier: Modifier = Modifier) {
         val barWidth = (size.width - gap * (labels + 1)) / labels
 
         drawLine(
-            color = MoOutline,
+            color = axisColor,
             start = Offset(0f, size.height - 2f),
             end = Offset(size.width, size.height - 2f),
             strokeWidth = 2f,
@@ -234,7 +237,7 @@ private fun CampaignBars(modifier: Modifier = Modifier) {
             val left = gap + index * (barWidth + gap)
             val top = size.height * (1f - value)
             drawRoundRect(
-                color = if (index == values.lastIndex) MoOlivePrimary else MoSoftGold.copy(alpha = 0.72f),
+                color = if (index == values.lastIndex) currentBar else historyBar,
                 topLeft = Offset(left, top),
                 size = androidx.compose.ui.geometry.Size(barWidth, size.height - top - 4f),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f, 10f),

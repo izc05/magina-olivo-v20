@@ -11,6 +11,7 @@ import com.isivoltpro.maginaolivo.feature.maps.ParcelMap
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.roundToInt
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -30,8 +31,9 @@ class DarkOfflineMapTest {
         compose.waitUntil(timeoutMillis = 25_000) { snapshot.get() != null }
         val bitmap = snapshot.get()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val config = context.resources.configuration
         val output = File(context.filesDir, "dark3-evidence").apply { mkdirs() }
-        File(output, "offline-map-${mode.name.lowercase()}.png").outputStream().use {
+        File(output, "offline-map-${mode.name.lowercase()}-${config.screenWidthDp}dp-font${(config.fontScale * 100).roundToInt()}.png").outputStream().use {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
         }
         val expected = if (mode == AppearanceMode.DARK) 0xFF171914.toInt() else 0xFFF3F1E6.toInt()

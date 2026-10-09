@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.testTag
@@ -22,9 +25,12 @@ import com.isivoltpro.maginaolivo.feature.parcels.ParcelDraft
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelEditor
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.io.File
+import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import org.junit.Rule
 import org.junit.Test
 
@@ -44,8 +50,9 @@ class DarkAgriculturalSurfacesTest {
     }
 
     @Test fun farmEditorHasReadableContrastAndReachableSave() {
+        var saved: FarmDraft? = null
         show {
-            FarmDetailScreen(FarmDetailUiState(isLoading = false, farm = UiPolishFixtures.farms.first()), {}, {}, {}, {})
+            FarmDetailScreen(FarmDetailUiState(isLoading = false, farm = UiPolishFixtures.farms.first()), { saved = it }, {}, {}, {})
         }
         capture("farm-photo")
         compose.onNodeWithText("Editar finca").performScrollTo().performClick()
@@ -56,8 +63,15 @@ class DarkAgriculturalSurfacesTest {
             compose.waitForIdle()
         }
         expectReadableText(compose.onAllNodesWithText("Editar finca", useUnmergedTree = true).onLast())
-        capture("farm-editor")
+        capture("farm-editor-top")
+        compose.onNodeWithTag("farm-name").performClick().performTextInput(" QA")
+        capture("farm-editor-keyboard")
+        closeSoftKeyboard()
+        compose.waitForIdle()
         compose.onNodeWithTag("save-farm").performScrollTo().assertIsDisplayed()
+        capture("farm-editor-save")
+        compose.onNodeWithTag("save-farm").performClick()
+        compose.runOnIdle { assertTrue("Edited draft reaches the existing save callback", saved?.name?.contains(" QA") == true) }
     }
 
     @Test fun campaignHeadingHasReadableContrast() {
@@ -93,6 +107,46 @@ class DarkAgriculturalSurfacesTest {
         show { ParcelEditor("Nueva parcela", ParcelDraft(), false, null, null, {}, {}) }
         expectReadableText(compose.onNodeWithText("Más datos del olivar", useUnmergedTree = true))
         capture("parcel-editor")
+    }
+
+    @Test fun thePhotographKeepsItsPixelsWhenAppearanceChanges() {
+        var selectedMode by mutableStateOf(AppearanceMode.LIGHT)
+        compose.setContent {
+            MaginaOlivoTheme(selectedMode) {
+                FarmDetailScreen(FarmDetailUiState(isLoading = false, farm = UiPolishFixtures.farms.first()), {}, {}, {}, {})
+            }
+        }
+        compose.waitForIdle()
+        val light = compose.onNodeWithTag("farm-detail-root").captureToImage().asAndroidBitmap()
+        compose.runOnIdle { selectedMode = AppearanceMode.DARK }
+        compose.waitForIdle()
+        val dark = compose.onNodeWithTag("farm-detail-root").captureToImage().asAndroidBitmap()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val config = context.resources.configuration
+        val directory = File(context.filesDir, "dark3-evidence").apply { mkdirs() }
+        for ((label, bitmap) in listOf("light" to light, "dark" to dark)) {
+            File(directory, "photo-identity-$label-${config.screenWidthDp}dp-font${(config.fontScale * 100).roundToInt()}.png")
+                .outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        }
+        // Inside the photograph's upper half, away from bars, title/chips and rounded corners.
+        val x = light.width / 4
+        val y = light.height / 12
+        val size = 32
+        val lightPixels = IntArray(size * size)
+        val darkPixels = IntArray(size * size)
+        light.getPixels(lightPixels, 0, size, x, y, size, size)
+        dark.getPixels(darkPixels, 0, size, x, y, size, size)
+        assertTrue("The source photograph must have varied pixels", lightPixels.toSet().size > 8)
+        assertEquals("Photo dimensions stay stable", light.width, dark.width)
+        assertEquals("Photo height stays stable", light.height, dark.height)
+        // GPU readback can round an unchanged 8-bit channel by one level (19/1024 pixels
+        // in the diagnostic capture). Larger changes still reveal a filter or inversion.
+        assertTrue("Appearance must not filter the photograph", lightPixels.indices.all { index ->
+            listOf(0, 8, 16, 24).all { shift ->
+                abs(((lightPixels[index] ushr shift) and 255) -
+                    ((darkPixels[index] ushr shift) and 255)) <= 1
+            }
+        })
     }
 
     private fun show(content: @Composable () -> Unit) {
@@ -132,7 +186,8 @@ class DarkAgriculturalSurfacesTest {
         val config = context.resources.configuration
         val output = File(context.filesDir, "dark3-evidence").apply { mkdirs() }
         val file = File(output, "$name-${mode.name.lowercase()}-${config.screenWidthDp}dp-font${(config.fontScale * 100).roundToInt()}.png")
-        val bitmap = compose.onAllNodes(isRoot()).onLast().captureToImage().asAndroidBitmap()
+        // Full native window includes the real modal and IME; a root node may be its underlay.
+        val bitmap = checkNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
         file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         check(file.length() > 0)
     }

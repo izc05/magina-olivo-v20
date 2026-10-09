@@ -16,7 +16,11 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.core.view.WindowCompat
 import com.isivoltpro.maginaolivo.app.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.test.platform.app.InstrumentationRegistry
+import android.graphics.Bitmap
+import java.io.File
 import java.util.UUID
+import kotlin.math.roundToInt
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -31,16 +35,19 @@ class AppearanceSettingsTest {
         compose.onNodeWithTag("profile-appearance").performScrollTo().performClick()
         compose.onNodeWithTag("appearance-option-SYSTEM").assertIsSelected()
         compose.onNodeWithTag("appearance-option-LIGHT").assertExists()
+        capture("appearance-choices")
         compose.onNodeWithTag("appearance-option-DARK").performClick()
         compose.waitUntil(5_000) { store.mode.value == AppearanceMode.DARK }
         expectBackground(0xFF171914.toInt(), lightIcons = false)
         expectSummary("Oscuro")
+        capture("appearance-dark-profile")
         compose.onNodeWithTag("profile-appearance").performClick()
         compose.onNodeWithTag("appearance-option-DARK").assertIsSelected()
         compose.onNodeWithTag("appearance-option-LIGHT").performClick()
         compose.waitUntil(5_000) { store.mode.value == AppearanceMode.LIGHT }
         expectBackground(0xFFF1ECDF.toInt(), lightIcons = true)
         expectSummary("Claro")
+        capture("appearance-light-profile")
     }
 
     @Test fun cancellingTheSheetKeepsTheConfirmedPreference() {
@@ -62,10 +69,12 @@ class AppearanceSettingsTest {
         compose.onNodeWithTag("profile-appearance").performScrollTo().performClick()
         compose.onNodeWithTag("appearance-option-DARK").performClick()
         compose.onNodeWithText("No se pudo guardar la apariencia. Inténtalo de nuevo.").assertIsDisplayed()
+        capture("appearance-write-error")
         compose.onNodeWithTag("appearance-option-LIGHT").assertIsSelected()
         assertEquals(AppearanceMode.LIGHT, store.mode.value)
-        compose.onNodeWithTag("appearance-cancel").performClick()
+        compose.onNodeWithTag("appearance-cancel").performScrollTo().assertIsDisplayed().performClick()
         expectBackground(0xFFF1ECDF.toInt(), lightIcons = true)
+        compose.onNodeWithTag("bottom-Mi Campo").performClick().assertIsSelected()
     }
 
     @Test fun productionUsesAnAlreadyConfirmedDarkMode() {
@@ -151,5 +160,16 @@ class AppearanceSettingsTest {
             assertEquals("Status bar uses dark icons on a light surface", lightIcons, controller.isAppearanceLightStatusBars)
             assertEquals("Navigation bar uses dark icons on a light surface", lightIcons, controller.isAppearanceLightNavigationBars)
         }
+    }
+
+    private fun capture(name: String) {
+        compose.waitForIdle()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val config = context.resources.configuration
+        val output = File(context.filesDir, "dark3-evidence").apply { mkdirs() }
+        val file = File(output, "$name-${config.screenWidthDp}dp-font${(config.fontScale * 100).roundToInt()}.png")
+        val bitmap = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+        file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
     }
 }
