@@ -1,6 +1,6 @@
 # #705 — CR-014 navegación Android
 
-Codex implementa el único slice Android productivo, rama `codex/705-cr014-navigation`, desde main `324af37a8ff83efdb12c71482fa5b9c1caba432d` (#713). [Contrato aprobado](../00-master/RC1.2-CHANGE-REQUEST-014-GLOBAL-ADD-NAVIGATION.md). Validación local terminada; revisión del commit y tres controles remotos pendientes antes de integrar.
+Codex implementa el único slice Android productivo, rama `codex/705-cr014-navigation`, desde main `324af37a8ff83efdb12c71482fa5b9c1caba432d` (#713). [Contrato aprobado](../00-master/RC1.2-CHANGE-REQUEST-014-GLOBAL-ADD-NAVIGATION.md). Integrada mediante PR #716 el2026-10-09T11:57:42Z. HEAD revisado `783184558b5d0d1e16a8e19543e795a7daced235`; merge/main `db072b672e40c3bc60e0a7b2fe2f5a6532de58c7`.
 
 ## Comportamiento y datos
 
@@ -30,4 +30,8 @@ El emulador retenido **5566**, sus datos y fotos permanecen intactos. Los fixtur
 
 ## Integración y siguiente bloque
 
-Integrar únicamente tras revisión independiente del SHA final y SUCCESS de foundation, gate3-emulator y gate3-evidence sobre ese mismo SHA. CI/PR/merge todavía pendientes; no se anticipan resultados remotos. Después continúa #707 (apariencia), seguido de B3/B4/B5 según #711/#696. Gate21 en móvil físico pendiente del propietario; Web V3 pausada.
+[PR #716](https://github.com/izc05/magina-olivo-v20/pull/716) integrada con revisión independiente conforme del HEAD final y foundation/gate3-emulator/gate3-evidence SUCCESS sobre ese SHA. Runs [Android37924317943](https://github.com/izc05/magina-olivo-v20/actions/runs/37924317943) y [evidencia37924317936](https://github.com/izc05/magina-olivo-v20/actions/runs/37924317936): 704 instrumentadas,196offline y cuatro ejecuciones14capturas en cada pipeline; no sumar casos repetidos. Foundation build9m20s. MainCI37926969086 SUCCESS.
+
+APK DEV1614: artefacto11613164558 del run37924317943, caduca2026-10-23T11:42:12Z; SHA256 `07d685d357a69e776a8dec0ce902b64c6214315ab25f1ca7f690d0a2cc29647c`. La APK candidata Gate21 definitiva llegará tras los bloques restantes desde main integrado.
+
+Continúa #707 DARK-1, luego DARK-2/DARK-3 y B3/B4/B5 según #711/#696. Gate21 físico pendiente del propietario; Web V3 pausada.

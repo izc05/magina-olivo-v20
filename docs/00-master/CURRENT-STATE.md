@@ -20,10 +20,13 @@ review and foundation / gate3-emulator / gate3-evidence SUCCESS on its final SHA
 - B2 contrast #706: #713 merged as `324af37a8ff83efdb12c71482fa5b9c1caba432d`; reviewed HEAD
   `330e21f943773aac772e1c01e0a523d212a805b8`, all three checks SUCCESS, 526 JVM / 89 directed UI
   and 63 evidence PNG. See [contrast evidence](../qa/ANDROID-706-SURFACE-CONTRAST-2026-10-09.md).
-- Current productive slice: CR-014 navigation #705, branch `codex/705-cr014-navigation`.
-  Approved [CR-014](RC1.2-CHANGE-REQUEST-014-GLOBAL-ADD-NAVIGATION.md) changes the bar to four
-  tabs and a central action; legacy Agenda routes stay. Dark appearance #707
-  follow in separate PRs according to approved #708/#711; maps/GPS B3, weather B4, candidate B5.
+- B2 navigation #705: #716 merged as `db072b672e40c3bc60e0a7b2fe2f5a6532de58c7`; reviewed HEAD
+  `783184558b5d0d1e16a8e19543e795a7daced235`, all three checks SUCCESS, main CI37926969086 SUCCESS.
+  Local526JVM/62UI/two repeated offline cases; CI704UI/196offline/4x14captures;36localPNG.
+  See [navigation evidence](../qa/ANDROID-705-CR014-NAVIGATION-2026-10-09.md).
+- Current productive slice: #707 DARK-1, branch `codex/707-dark1-theme` from integrated main.
+  Device appearance preference and semantic tokens first; DARK-2 components then DARK-3 full
+  screens/Perfil selector in separate sequential PRs. Maps/GPS B3, weather B4, candidate B5 follow.
 - Expense classification follows the later #411 owner decision: generic Cuaderno asks explicitly;
   creation from a concrete Campaign keeps its Farm/Campaign context. The 3 October preselection
   description below is historical and superseded. #522 relation cleanup in general editors remains.

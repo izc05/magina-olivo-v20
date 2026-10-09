@@ -1,0 +1,8 @@
+
+com.isivoltpro.maginaolivo.AppearanceContractTest:..
+com.isivoltpro.maginaolivo.AppNavigationTest:...............................
+com.isivoltpro.maginaolivo.MyProfileScreenTest:.......
+
+Time: 315.613
+
+OK (40 tests)
