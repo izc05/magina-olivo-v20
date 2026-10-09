@@ -337,6 +337,7 @@ fun ExpensesScreen(
                 requireCampaignChoice = presetFarmId != null && presetCampaignId == null && !presetLabour && presetActivityId == null,
                 // #375: from a Farm's Cuaderno or a campaign, the Farm is context, not a question.
                 farmLocked = presetFarmId != null,
+                campaignLocked = presetCampaignId != null,
                 activityLocked = presetActivityId != null,
             )
         }

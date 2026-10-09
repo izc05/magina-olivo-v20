@@ -47,6 +47,72 @@ class RecollectionChoiceUiTest {
     private val running = campaign(farm.id, "2026/27", CampaignStatus.HARVEST)
     private val options = RelationOptions(farms = listOf(farm, otherFarm), campaigns = listOf(running), campaignsFor = farm.id)
 
+    @Test fun creatingFromACampaignKeepsItsContextWithoutAnAmbiguousChoice() {
+        var saved: ExpenseForm? = null
+        campaignExpense { saved = it }
+        rule.onNodeWithTag("expense-kind").assertDoesNotExist()
+        rule.onNodeWithTag("expense-campaign-context").assertTextContains("2026/27", substring = true)
+        rule.onNodeWithTag("expense-farm").assertDoesNotExist()
+        rule.onNodeWithTag("expense-concept").performScrollTo().performTextInput("Gasoil de recogida")
+        rule.onNodeWithTag("expense-amount").performScrollTo().performTextInput("40")
+        rule.onNodeWithTag("save-expense").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertNotNull(saved)
+            assertEquals(farm.id, saved?.farmId)
+            assertEquals(running.id, saved?.campaignId)
+        }
+    }
+
+    @Test fun campaignContextOffersOnlyCompatibleWorksAndSurvivesRemovingTheLink() {
+        fun work(name: String, campaignId: UUID?) = com.isivoltpro.maginaolivo.domain.activity.Activity(
+            id = UUID.randomUUID(), workspaceId = workspace, farmId = farm.id, campaignId = campaignId,
+            type = com.isivoltpro.maginaolivo.domain.activity.ActivityType.OTHER,
+            status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+            activityDate = date, description = name, notes = null, targets = emptyList(), version = 1,
+        )
+        val compatible = work("Transporte de recogida", running.id)
+        val general = work("Poda general", null)
+        val historical = work("Transporte de otra campaña", UUID.randomUUID())
+        var saved: ExpenseForm? = null
+        campaignExpense(options.copy(activities = listOf(compatible, general, historical))) { saved = it }
+        rule.onNodeWithTag("expense-more-details").performScrollTo().performClick()
+        rule.onNodeWithTag("expense-activity").performScrollTo().performClick()
+        rule.onNodeWithTag("choice-${general.id}").assertDoesNotExist()
+        rule.onNodeWithTag("choice-${historical.id}").assertDoesNotExist()
+        rule.onNodeWithTag("choice-${compatible.id}").performClick()
+        rule.onNodeWithTag("expense-work-campaign").performScrollTo().assertTextContains("2026/27", substring = true)
+        rule.onNodeWithTag("expense-activity").performScrollTo().performClick()
+        rule.onNodeWithTag("choice-none").performClick()
+        rule.onNodeWithTag("expense-kind").assertDoesNotExist()
+        rule.onNodeWithTag("expense-campaign-context").performScrollTo().assertTextContains("2026/27", substring = true)
+        rule.onNodeWithTag("expense-concept").performScrollTo().performTextInput("Sacos de recogida")
+        rule.onNodeWithTag("expense-amount").performScrollTo().performTextInput("20")
+        rule.onNodeWithTag("save-expense").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertNotNull(saved)
+            assertEquals(farm.id, saved?.farmId)
+            assertEquals(running.id, saved?.campaignId)
+            assertNull(saved?.activityId)
+        }
+    }
+
+    @Test fun campaignContextRemainsExplicitWhileCampaignOptionsLoad() {
+        campaignExpense(options.copy(campaigns = emptyList(), campaignsFor = null)) {}
+        rule.onNodeWithTag("expense-kind").assertDoesNotExist()
+        rule.onNodeWithTag("expense-campaign-context").assertTextContains("Recogida", substring = true)
+        rule.onNodeWithTag("expense-farm").assertDoesNotExist()
+    }
+
+    private fun campaignExpense(loaded: RelationOptions = options, onSave: (ExpenseForm) -> Unit) {
+        rule.setContent { MaginaOlivoTheme {
+            ExpensesScreen(
+                ExpensesUiState(isLoading = false, options = loaded), date, onSave, {}, { _, _ -> }, {}, {}, {}, {},
+                presetFarmId = farm.id, presetCampaignId = running.id,
+            )
+        } }
+        rule.onNodeWithTag("add-expense").performClick()
+    }
+
     @Test fun cuadernoGastoRequiresAnExplicitChoice() {
         rule.setContent {
             MaginaOlivoTheme {
