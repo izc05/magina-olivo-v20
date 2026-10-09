@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,10 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
@@ -94,13 +94,13 @@ private fun MoChoiceField(
                 Text(
                     text = value,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                 )
             }
             Text(
                 text = symbol,
                 style = MaterialTheme.typography.titleMedium,
-                color = MoOliveMid,
+                color = MoColors.current.actionText,
             )
         }
     }

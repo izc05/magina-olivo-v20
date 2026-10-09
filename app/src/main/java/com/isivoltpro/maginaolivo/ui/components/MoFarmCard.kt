@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,8 +18,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,12 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
@@ -85,8 +81,8 @@ fun MoFarmCard(
                 Surface(
                     modifier = Modifier.align(Alignment.TopEnd).padding(MoSpacing.xs),
                     shape = CircleShape,
-                    color = if (campaignActive) MoOliveTint else MoWarmWhite,
-                    contentColor = if (campaignActive) MoOliveMid else MoSurfaceTokens.secondaryText,
+                    color = if (campaignActive) MoColors.current.actionTint else MoSurfaceTokens.cardSurface,
+                    contentColor = if (campaignActive) MoColors.current.actionText else MoSurfaceTokens.secondaryText,
                 ) {
                     Text(
                         text = campaignStatus,
@@ -104,7 +100,7 @@ fun MoFarmCard(
                 Text(
                     text = name,
                     style = MaterialTheme.typography.titleLarge.copy(fontFamily = MaterialTheme.typography.headlineMedium.fontFamily),
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(MoIcons.Location, contentDescription = null, tint = MoSurfaceTokens.secondaryText, modifier = Modifier.size(15.dp))
@@ -136,8 +132,8 @@ fun MoFarmCard(
                 }
                 if (nextWork != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Icon(MoIcons.Calendar, contentDescription = null, tint = MoInfoText, modifier = Modifier.size(15.dp))
-                        Text(nextWork, style = MaterialTheme.typography.bodySmall, color = MoInfoText)
+                        Icon(MoIcons.Calendar, contentDescription = null, tint = MoColors.current.infoText, modifier = Modifier.size(15.dp))
+                        Text(nextWork, style = MaterialTheme.typography.bodySmall, color = MoColors.current.infoText)
                     }
                 }
             }
@@ -155,7 +151,7 @@ private fun FarmMetric(
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall,
-            color = MoInk,
+            color = MoColors.current.bodyText,
         )
         Text(
             text = label,

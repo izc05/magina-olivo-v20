@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,12 +31,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 
 data class MoBottomBarItem(
     val label: String,
@@ -56,7 +54,7 @@ fun MoBottomBar(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MoSurfaceTokens.cardSurface,
-        contentColor = MoOliveDark,
+        contentColor = MoColors.current.primaryText,
         tonalElevation = 0.dp,
         shadowElevation = 3.dp,
         border = androidx.compose.foundation.BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
@@ -86,7 +84,7 @@ fun MoBottomBar(
                     }
                 }
                 val selected = index == selectedIndex
-                val color = if (selected || item.isPrimaryAction) MoOlivePrimary else MoSurfaceTokens.secondaryText
+                val color = if (selected || item.isPrimaryAction) MoColors.current.selectionText else MoSurfaceTokens.secondaryText
 
                 Column(
                     modifier = Modifier
@@ -105,12 +103,12 @@ fun MoBottomBar(
                         Surface(
                             modifier = Modifier.size(40.dp),
                             shape = CircleShape,
-                            color = MoOlivePrimary,
-                            contentColor = MoWarmWhite,
+                            color = MoColors.current.primaryButton,
+                            contentColor = MoColors.current.onPrimaryButton,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 if (item.icon != null) {
-                                    Icon(item.icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = MoWarmWhite)
+                                    Icon(item.icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = MoColors.current.onPrimaryButton)
                                 } else {
                                     Text(
                                         text = item.symbol,
@@ -126,7 +124,7 @@ fun MoBottomBar(
                         // so the active root never depends on colour alone.
                         Surface(
                             shape = RoundedCornerShape(999.dp),
-                            color = if (selected) MoOliveTint else Color.Transparent,
+                            color = if (selected) MoColors.current.actionTint else Color.Transparent,
                             contentColor = color,
                         ) {
                             Box(Modifier.padding(horizontal = 14.dp, vertical = 3.dp), contentAlignment = Alignment.Center) {

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.home
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,13 +41,10 @@ import com.isivoltpro.maginaolivo.feature.maps.ParcelMap
 import com.isivoltpro.maginaolivo.feature.maps.labelPoint
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
-import com.isivoltpro.maginaolivo.ui.theme.MoRainText
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -130,7 +129,7 @@ fun RadarScreen(
 ) {
     Scaffold(
         Modifier.fillMaxSize().testTag("radar-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
@@ -143,8 +142,8 @@ fun RadarScreen(
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                 modifier = Modifier.testTag("radar-title"),
             ) {
-                androidx.compose.material3.Icon(MoIcons.Rain, null, tint = MoRainText, modifier = Modifier.size(32.dp))
-                Text("Radar de lluvia", style = MaterialTheme.typography.headlineLarge, color = MoRainText)
+                androidx.compose.material3.Icon(MoIcons.Rain, null, tint = MoColors.current.rainText, modifier = Modifier.size(32.dp))
+                Text("Radar de lluvia", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.rainText)
             }
             when (state) {
                 RadarUiState.Loading -> CircularProgressIndicator(Modifier.testTag("radar-loading"))
@@ -183,7 +182,7 @@ private fun RadarReady(
     Text(
         radarTimeLabel(state.frame.time, frames.last().time, zone),
         style = MaterialTheme.typography.titleMedium,
-        color = MoOliveDark,
+        color = MoColors.current.primaryText,
         modifier = Modifier.testTag("radar-time"),
     )
     ParcelMap(
@@ -208,7 +207,7 @@ private fun RadarReady(
         Text(
             state.radar.attribution,
             style = MaterialTheme.typography.labelSmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             modifier = Modifier.weight(1f).testTag("radar-attribution"),
         )
         MoSecondaryButton("Actualizar", onRetry, Modifier.testTag("radar-refresh"))

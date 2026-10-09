@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.profile
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,8 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -106,7 +106,7 @@ fun HelpScreen(topic: HelpTopic, notes: List<NoteBlock>? = null) {
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
         Spacer(Modifier.height(MoSpacing.sm))
-        Text(topic.title, style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
+        Text(topic.title, style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText)
         when (topic) {
             HelpTopic.NEWS -> News(notes)
             HelpTopic.PRIVACY -> Sections(PRIVACY)
@@ -141,7 +141,7 @@ private fun Sections(sections: List<Pair<String, String>>) {
 
 @Composable
 private fun Body(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = MaterialTheme.typography.bodyMedium, color = MoInk, modifier = modifier)
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.bodyText, modifier = modifier)
 }
 
 private const val CHANGELOG_ASSET = "CHANGELOG-APP.md"

@@ -1,0 +1,6 @@
+
+com.isivoltpro.maginaolivo.DarkComponentsContractTest:...
+
+Time: 8.019
+
+OK (3 tests)

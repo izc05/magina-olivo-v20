@@ -40,9 +40,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.LocalTime
@@ -254,7 +252,7 @@ private fun Quiet(title: String, body: String, icon: ImageVector, tag: String) {
         subtitle = body,
         icon = icon,
         iconTint = MoSurfaceTokens.secondaryText,
-        iconContainer = MoSurfaceSoft,
+        iconContainer = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.testTag(tag),
     )
 }

@@ -1,0 +1,53 @@
+
+com.isivoltpro.maginaolivo.DarkComponentsContractTest:
+Error in warningChipUsesTheReadableNightForegroundToBuildItsOpaqueTint(com.isivoltpro.maginaolivo.DarkComponentsContractTest):
+java.lang.AssertionError: theme-chip must use the active palette expected:<-13093078> but was:<-13816800>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.expectPaint-4WTKRHQ(DarkComponentsContractTest.kt:69)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.warningChipUsesTheReadableNightForegroundToBuildItsOpaqueTint(DarkComponentsContractTest.kt:51)
+
+Error in iconFamilyChangesItsActualContainerWithTheTheme(com.isivoltpro.maginaolivo.DarkComponentsContractTest):
+java.lang.AssertionError: theme-badge must use the active palette expected:<-13094369> but was:<-593959>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.expectPaint-4WTKRHQ(DarkComponentsContractTest.kt:69)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.iconFamilyChangesItsActualContainerWithTheTheme(DarkComponentsContractTest.kt:44)
+
+Error in primaryButtonChangesItsActualPaintAndReturnsToTheOriginalLightColor(com.isivoltpro.maginaolivo.DarkComponentsContractTest):
+java.lang.AssertionError: theme-button must use the active palette expected:<-4795490> but was:<-12690894>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.expectPaint-4WTKRHQ(DarkComponentsContractTest.kt:69)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.primaryButtonChangesItsActualPaintAndReturnsToTheOriginalLightColor(DarkComponentsContractTest.kt:35)
+
+
+Time: 10.576
+There were 3 failures:
+1) warningChipUsesTheReadableNightForegroundToBuildItsOpaqueTint(com.isivoltpro.maginaolivo.DarkComponentsContractTest)
+java.lang.AssertionError: theme-chip must use the active palette expected:<-13093078> but was:<-13816800>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.expectPaint-4WTKRHQ(DarkComponentsContractTest.kt:69)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.warningChipUsesTheReadableNightForegroundToBuildItsOpaqueTint(DarkComponentsContractTest.kt:51)
+2) iconFamilyChangesItsActualContainerWithTheTheme(com.isivoltpro.maginaolivo.DarkComponentsContractTest)
+java.lang.AssertionError: theme-badge must use the active palette expected:<-13094369> but was:<-593959>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.expectPaint-4WTKRHQ(DarkComponentsContractTest.kt:69)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.iconFamilyChangesItsActualContainerWithTheTheme(DarkComponentsContractTest.kt:44)
+3) primaryButtonChangesItsActualPaintAndReturnsToTheOriginalLightColor(com.isivoltpro.maginaolivo.DarkComponentsContractTest)
+java.lang.AssertionError: theme-button must use the active palette expected:<-4795490> but was:<-12690894>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.expectPaint-4WTKRHQ(DarkComponentsContractTest.kt:69)
+	at com.isivoltpro.maginaolivo.DarkComponentsContractTest.primaryButtonChangesItsActualPaintAndReturnsToTheOriginalLightColor(DarkComponentsContractTest.kt:35)
+
+FAILURES!!!
+Tests run: 3,  Failures: 3

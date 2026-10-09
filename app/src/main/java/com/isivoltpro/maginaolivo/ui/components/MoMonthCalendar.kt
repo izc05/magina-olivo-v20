@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,12 +31,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.isivoltpro.maginaolivo.ui.theme.MoInfo
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -67,17 +63,17 @@ fun MoMonthCalendar(
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { onMonthChange(month.minusMonths(1)) }, modifier = Modifier.testTag("$tagPrefix-previous")) {
-                Icon(MoIcons.ChevronLeft, contentDescription = "Mes anterior", tint = MoInk)
+                Icon(MoIcons.ChevronLeft, contentDescription = "Mes anterior", tint = MoColors.current.bodyText)
             }
             Text(
                 month.spanishTitle(),
                 modifier = Modifier.weight(1f).testTag("$tagPrefix-month"),
                 style = MaterialTheme.typography.titleMedium,
-                color = MoInk,
+                color = MoColors.current.bodyText,
                 textAlign = TextAlign.Center,
             )
             IconButton(onClick = { onMonthChange(month.plusMonths(1)) }, modifier = Modifier.testTag("$tagPrefix-next")) {
-                Icon(MoIcons.ChevronRight, contentDescription = "Mes siguiente", tint = MoInk)
+                Icon(MoIcons.ChevronRight, contentDescription = "Mes siguiente", tint = MoColors.current.bodyText)
             }
         }
         Row(Modifier.fillMaxWidth()) {
@@ -86,7 +82,7 @@ fun MoMonthCalendar(
                     day,
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -137,9 +133,9 @@ private fun DayCell(date: LocalDate, isSelected: Boolean, isToday: Boolean, mark
         Surface(
             modifier = Modifier.size(36.dp),
             shape = CircleShape,
-            color = if (isSelected) MoOlivePrimary else Color.Transparent,
-            contentColor = if (isSelected) MoWarmWhite else MoInk,
-            border = if (isToday && !isSelected) BorderStroke(1.5.dp, MoOliveMid) else null,
+            color = if (isSelected) MoColors.current.primaryButton else Color.Transparent,
+            contentColor = if (isSelected) MoColors.current.onPrimaryButton else MoColors.current.bodyText,
+            border = if (isToday && !isSelected) BorderStroke(1.5.dp, MoColors.current.actionText) else null,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
@@ -154,7 +150,7 @@ private fun DayCell(date: LocalDate, isSelected: Boolean, isToday: Boolean, mark
                 .padding(top = 2.dp)
                 .size(5.dp),
         ) {
-            if (marker > 0) Surface(Modifier.size(5.dp), shape = CircleShape, color = if (isSelected) MoOlivePrimary else MoInfo) {}
+            if (marker > 0) Surface(Modifier.size(5.dp), shape = CircleShape, color = if (isSelected) MoColors.current.primaryButton else MoColors.current.infoAccent) {}
         }
     }
 }

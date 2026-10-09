@@ -30,9 +30,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoPalette
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
@@ -80,7 +79,7 @@ fun MoSummaryMetric(
                 if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MoIconTone.of(icon).tint)
                 Text(label, style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(value, style = MaterialTheme.typography.titleMedium, color = MoInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(value, style = MaterialTheme.typography.titleMedium, color = MoColors.current.bodyText, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (supportingText != null) {
                 Text(supportingText, style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText, maxLines = 2)
             }
@@ -93,14 +92,23 @@ fun MoSummaryMetric(
  * never its icon: Pesadas value-gold, jornales olive, machinery earth, costs blue; general
  * campaign figures (days, works) keep the brand's deep olive.
  */
-enum class MoKpiKind(val tint: Color, val container: Color) {
-    PESADAS(MoIconTone.VALUE.tint, MoIconTone.VALUE.container),
-    JORNALES(MoIconTone.LABOUR.tint, MoIconTone.LABOUR.container),
-    MAQUINARIA(MoIconTone.LAND.tint, MoIconTone.LAND.container),
-    COSTES(MoIconTone.MONEY.tint, MoIconTone.MONEY.container),
-    TOTAL(com.isivoltpro.maginaolivo.ui.theme.MoInfoText, com.isivoltpro.maginaolivo.ui.theme.MoInfoTint),
-    YIELD(com.isivoltpro.maginaolivo.ui.theme.MoSuccessText, com.isivoltpro.maginaolivo.ui.theme.MoSuccessTint),
-    CAMPAIGN(MoOliveDark, MoOliveTint),
+enum class MoKpiKind {
+    PESADAS, JORNALES, MAQUINARIA, COSTES, TOTAL, YIELD, CAMPAIGN;
+
+    fun colors(palette: MoPalette): MoToneColors = when (this) {
+        PESADAS -> MoIconTone.VALUE.colors(palette)
+        JORNALES -> MoIconTone.LABOUR.colors(palette)
+        MAQUINARIA -> MoIconTone.LAND.colors(palette)
+        COSTES -> MoIconTone.MONEY.colors(palette)
+        TOTAL -> MoIconTone.WATER.colors(palette)
+        YIELD -> MoToneColors(palette.successText, palette.successTint)
+        CAMPAIGN -> MoToneColors(palette.primaryText, palette.actionTint)
+    }
+
+    val tint: Color
+        @Composable get() = colors(MoColors.current).tint
+    val container: Color
+        @Composable get() = colors(MoColors.current).container
 }
 
 /**
@@ -141,7 +149,7 @@ fun MoKpiMetric(
                     }
                     Text(label, style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText, maxLines = 2)
                 }
-                Text(value, style = MaterialTheme.typography.headlineSmall, color = MoInk)
+                Text(value, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.bodyText)
                 if (supportingText != null) {
                     Text(supportingText, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
                 }
@@ -200,7 +208,7 @@ fun MoCompactListItem(
                 MoIconBadge(icon, tint = iconTint ?: tone.tint, container = iconContainer ?: tone.container)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, color = MoInk, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(title, style = MaterialTheme.typography.titleSmall, color = MoColors.current.bodyText, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (subtitle != null) {
                     Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }

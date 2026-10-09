@@ -1,28 +1,16 @@
 package com.isivoltpro.maginaolivo.ui.components
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoPalette
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
-import com.isivoltpro.maginaolivo.ui.theme.MoEarthText
-import com.isivoltpro.maginaolivo.ui.theme.MoEarthTint
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoTint
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
-import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldText
-import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldTint
-import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
-import com.isivoltpro.maginaolivo.ui.theme.MoWarningTint
-import com.isivoltpro.maginaolivo.ui.theme.MoLabourText
-import com.isivoltpro.maginaolivo.ui.theme.MoLabourTint
-import com.isivoltpro.maginaolivo.ui.theme.MoMoneyText
-import com.isivoltpro.maginaolivo.ui.theme.MoMoneyTint
-import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentText
-import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentTint
 
 /**
  * UI polish v2 — one coherent family of outlined agricultural icons (DESIGN_SYSTEM §7),
@@ -97,26 +85,47 @@ object MoIcons {
  * (CR-004 addendum). Only palette tokens: the shape still carries the meaning and every
  * icon keeps its text label, so colour never communicates alone.
  */
-enum class MoIconTone(val tint: Color, val container: Color) {
+@Immutable
+data class MoToneColors(val tint: Color, val container: Color)
+
+enum class MoIconTone {
     /** Olivar and field work. */
-    GROVE(MoOliveMid, MoOliveTint),
+    GROVE,
     /** Land and resources: parcels, surface, map, place, people, machinery. */
-    LAND(MoEarthText, MoEarthTint),
+    LAND,
     /** Water, planning and records: irrigation, calendar, reminders, documents. */
-    WATER(MoInfoText, MoInfoTint),
+    WATER,
     /** Value: harvest, deliveries, kg, yield, money. */
-    VALUE(MoSoftGoldText, MoSoftGoldTint),
+    VALUE,
     /** Incidents and notices. */
-    ALERT(MoWarningText, MoWarningTint),
+    ALERT,
     /**
      * CR-011 §20: section accents for the Tratamiento, Jornal and Gasto actions. They are chosen
      * by the call site (Cuaderno tiles, KPIs), never by glyph: a blower also uses the spray icon
      * and an organization the people icon, and those stay in their own family.
      */
-    TREATMENT(MoTreatmentText, MoTreatmentTint),
-    LABOUR(MoLabourText, MoLabourTint),
-    MONEY(MoMoneyText, MoMoneyTint),
+    TREATMENT,
+    LABOUR,
+    MONEY,
     ;
+
+    fun colors(palette: MoPalette): MoToneColors = with(palette) {
+        when (this@MoIconTone) {
+            GROVE -> MoToneColors(actionText, actionTint)
+            LAND -> MoToneColors(earthText, earthTint)
+            WATER -> MoToneColors(infoText, infoTint)
+            VALUE -> MoToneColors(valueText, valueTint)
+            ALERT -> MoToneColors(warningText, warningTint)
+            TREATMENT -> MoToneColors(treatmentText, treatmentTint)
+            LABOUR -> MoToneColors(labourText, labourTint)
+            MONEY -> MoToneColors(moneyText, moneyTint)
+        }
+    }
+
+    val tint: Color
+        @Composable get() = colors(MoColors.current).tint
+    val container: Color
+        @Composable get() = colors(MoColors.current).container
 
     companion object {
         private val byName: Map<String, MoIconTone> by lazy {

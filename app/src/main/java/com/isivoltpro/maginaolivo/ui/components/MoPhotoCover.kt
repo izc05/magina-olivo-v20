@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,12 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSage
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 
 @Composable
 fun MoPhotoCover(
@@ -51,7 +50,7 @@ fun MoPhotoCover(
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                listOf(Color.Transparent, MoCream.copy(alpha = 0.92f)),
+                                listOf(Color.Transparent, MoColors.current.placeholderShade.copy(alpha = 0.92f)),
                                 startY = 0f,
                             ),
                         ),
@@ -85,12 +84,12 @@ fun MoPhotoCover(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineMedium,
-                    color = if (imageModel == null) MoOliveDark else Color.White,
+                    color = if (imageModel == null) MoColors.current.primaryText else Color.White,
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (imageModel == null) MoTextSecondary else Color.White,
+                    color = if (imageModel == null) MoColors.current.secondaryText else Color.White,
                 )
             }
         }
