@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -16,19 +17,19 @@ import androidx.room.PrimaryKey
     ],
 )
 data class TerritorialMunicipalityEntity(
-    @PrimaryKey val slug: String,
-    val name: String,
-    val province: String = "Jaén",
-    val ineCode: String?,
-    val aemetCode: String,
-    val comarca: String = "Sierra Mágina",
-    val officialUrl: String? = null,
-    val electronicSeatUrl: String? = null,
-    val centerLatitude: Double? = null,
-    val centerLongitude: Double? = null,
-    val sourceUrl: String,
-    val lastCheckedAtMs: Long = System.currentTimeMillis(),
-    val active: Boolean = true,
+    @PrimaryKey @ColumnInfo(name = "slug") val slug: String,
+    @ColumnInfo(name = "name") val name: String,
+    @ColumnInfo(name = "province") val province: String = "Jaén",
+    @ColumnInfo(name = "ine_code") val ineCode: String?,
+    @ColumnInfo(name = "aemet_code") val aemetCode: String,
+    @ColumnInfo(name = "comarca") val comarca: String = "Sierra Mágina",
+    @ColumnInfo(name = "official_url") val officialUrl: String? = null,
+    @ColumnInfo(name = "electronic_seat_url") val electronicSeatUrl: String? = null,
+    @ColumnInfo(name = "center_latitude") val centerLatitude: Double? = null,
+    @ColumnInfo(name = "center_longitude") val centerLongitude: Double? = null,
+    @ColumnInfo(name = "source_url") val sourceUrl: String,
+    @ColumnInfo(name = "last_checked_at_ms") val lastCheckedAtMs: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "active") val active: Boolean = true,
 )
 
 /**
@@ -50,20 +51,20 @@ data class TerritorialMunicipalityEntity(
     ],
 )
 data class IrrigationCommunityEntity(
-    @PrimaryKey val id: String,
-    val officialName: String,
-    val shortName: String? = null,
-    val entityType: String = "community_of_irrigation", // "community_of_irrigation", "sat_irrigation"
-    val primaryMunicipalitySlug: String,
-    val address: String? = null,
-    val phone: String? = null,
-    val email: String? = null,
-    val websiteUrl: String? = null,
-    val electronicSeatUrl: String? = null,
-    val verificationStatus: String = "candidate", // "candidate", "verified", "collaborating"
-    val sourceBulletinRef: String? = null,
-    val lastCheckedAtMs: Long = System.currentTimeMillis(),
-    val active: Boolean = true,
+    @PrimaryKey @ColumnInfo(name = "id") val id: String,
+    @ColumnInfo(name = "official_name") val officialName: String,
+    @ColumnInfo(name = "short_name") val shortName: String? = null,
+    @ColumnInfo(name = "entity_type") val entityType: String = "community_of_irrigation",
+    @ColumnInfo(name = "primary_municipality_slug") val primaryMunicipalitySlug: String,
+    @ColumnInfo(name = "address") val address: String? = null,
+    @ColumnInfo(name = "phone") val phone: String? = null,
+    @ColumnInfo(name = "email") val email: String? = null,
+    @ColumnInfo(name = "website_url") val websiteUrl: String? = null,
+    @ColumnInfo(name = "electronic_seat_url") val electronicSeatUrl: String? = null,
+    @ColumnInfo(name = "verification_status") val verificationStatus: String = "candidate",
+    @ColumnInfo(name = "source_bulletin_ref") val sourceBulletinRef: String? = null,
+    @ColumnInfo(name = "last_checked_at_ms") val lastCheckedAtMs: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "active") val active: Boolean = true,
 )
 
 /**
@@ -85,19 +86,19 @@ data class IrrigationCommunityEntity(
     ],
 )
 data class CommunityWaterNoticeEntity(
-    @PrimaryKey val id: String,
-    val communityId: String,
-    val sectorCode: String? = null,
-    val noticeType: String = "shift_schedule", // "shift_schedule", "water_cut", "schedule_change", "general_notice"
-    val title: String,
-    val body: String,
-    val startsAtEpochMs: Long,
-    val endsAtEpochMs: Long,
-    val sourceType: String = "public_bulletin", // "community_verified", "public_bulletin"
-    val sourceUrl: String? = null,
-    val status: String = "published", // "draft", "published", "revoked", "expired"
-    val publishedAtEpochMs: Long = System.currentTimeMillis(),
-    val expiresAtEpochMs: Long? = null,
+    @PrimaryKey @ColumnInfo(name = "id") val id: String,
+    @ColumnInfo(name = "community_id") val communityId: String,
+    @ColumnInfo(name = "sector_code") val sectorCode: String? = null,
+    @ColumnInfo(name = "notice_type") val noticeType: String = "shift_schedule",
+    @ColumnInfo(name = "title") val title: String,
+    @ColumnInfo(name = "body") val body: String,
+    @ColumnInfo(name = "starts_at_epoch_ms") val startsAtEpochMs: Long,
+    @ColumnInfo(name = "ends_at_epoch_ms") val endsAtEpochMs: Long,
+    @ColumnInfo(name = "source_type") val sourceType: String = "public_bulletin",
+    @ColumnInfo(name = "source_url") val sourceUrl: String? = null,
+    @ColumnInfo(name = "status") val status: String = "published",
+    @ColumnInfo(name = "published_at_epoch_ms") val publishedAtEpochMs: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "expires_at_epoch_ms") val expiresAtEpochMs: Long? = null,
 )
 
 /**
@@ -120,15 +121,15 @@ data class CommunityWaterNoticeEntity(
     ],
 )
 data class PersonalIrrigationPlanEntity(
-    @PrimaryKey val id: String,
-    val workspaceId: String,
-    val plotId: String,
-    val sectorCode: String? = null,
-    val scheduledAtEpochMs: Long,
-    val durationMinutes: Int,
-    val linkedNoticeId: String? = null,
-    val status: String = "planned", // "planned", "reprogrammed", "cancelled", "completed"
-    val reminderMinutesBefore: Int = 30,
-    val createdAtEpochMs: Long = System.currentTimeMillis(),
-    val updatedAtEpochMs: Long = System.currentTimeMillis(),
+    @PrimaryKey @ColumnInfo(name = "id") val id: String,
+    @ColumnInfo(name = "workspace_id") val workspaceId: String,
+    @ColumnInfo(name = "plot_id") val plotId: String,
+    @ColumnInfo(name = "sector_code") val sectorCode: String? = null,
+    @ColumnInfo(name = "scheduled_at_epoch_ms") val scheduledAtEpochMs: Long,
+    @ColumnInfo(name = "duration_minutes") val durationMinutes: Int,
+    @ColumnInfo(name = "linked_notice_id") val linkedNoticeId: String? = null,
+    @ColumnInfo(name = "status") val status: String = "planned",
+    @ColumnInfo(name = "reminder_minutes_before") val reminderMinutesBefore: Int = 30,
+    @ColumnInfo(name = "created_at_epoch_ms") val createdAtEpochMs: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "updated_at_epoch_ms") val updatedAtEpochMs: Long = System.currentTimeMillis(),
 )

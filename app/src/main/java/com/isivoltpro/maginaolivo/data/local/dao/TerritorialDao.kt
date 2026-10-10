@@ -26,7 +26,7 @@ interface TerritorialDao {
     suspend fun insertMunicipalities(municipalities: List<TerritorialMunicipalityEntity>)
 
     // Comunidades de Regantes
-    @Query("SELECT * FROM irrigation_communities WHERE primary_municipality_slug = :municipalitySlug AND active = 1 ORDER BY officialName ASC")
+    @Query("SELECT * FROM irrigation_communities WHERE primary_municipality_slug = :municipalitySlug AND active = 1 ORDER BY official_name ASC")
     fun getCommunitiesByMunicipality(municipalitySlug: String): Flow<List<IrrigationCommunityEntity>>
 
     @Query("SELECT * FROM irrigation_communities WHERE id = :id AND active = 1 LIMIT 1")
