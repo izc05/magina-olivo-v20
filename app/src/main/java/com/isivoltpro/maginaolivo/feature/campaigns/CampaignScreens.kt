@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
@@ -67,6 +68,8 @@ import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
 import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
+import com.isivoltpro.maginaolivo.feature.reports.shareReport
+import com.isivoltpro.maginaolivo.feature.reports.writeCampaignReport
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
 import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
@@ -266,6 +269,15 @@ fun CampaignDetailRoute(
             },
         )
     }
+    // Phase 25: the Farm's name and place head the report; without it the campaign's own
+    // snapshot is used, so a renamed or archived Farm never rewrites printed history.
+    val farm by remember(state.campaign?.farmId) {
+        state.campaign?.farmId?.let { persistence.farmRepository.observeById(it) }
+            ?: kotlinx.coroutines.flow.flowOf(null)
+    }.collectAsStateWithLifecycle(null)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var reportStatus by remember { mutableStateOf<String?>(null) }
     CampaignDetailScreen(
         state, vm::update, vm::activate, vm::markHarvest, vm::closeToday, vm::reopen, vm::archivePreparation,
         summary = summary,
@@ -274,6 +286,27 @@ fun CampaignDetailRoute(
         // Creation, when allowed, lives inside that scoped list.
         onDeliveries = onDeliveries,
         onLabour = { labourOpen = true },
+        onReport = {
+            val campaign = state.campaign
+            if (campaign != null) {
+                reportStatus = "Preparando el informe…"
+                scope.launch {
+                    val written = runCatching {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            writeCampaignReport(context, campaign, farm, deliveries, harvests, expenses)
+                        }
+                    }
+                    reportStatus = written.fold(
+                        onSuccess = { file ->
+                            shareReport(context, file)
+                                .fold({ "Informe listo: ${file.name}" }, { "El informe está guardado, pero no hay con qué abrirlo." })
+                        },
+                        onFailure = { "No hemos podido crear el informe en este teléfono." },
+                    )
+                }
+            }
+        },
+        reportStatus = reportStatus,
     )
     // #365: the one Jornales detail (people and payments) of this campaign, as from the Cuaderno.
     if (labourOpen) {
@@ -307,6 +340,10 @@ fun CampaignDetailScreen(
     onHarvests: () -> Unit = {},
     onDeliveries: () -> Unit = {},
     onLabour: () -> Unit = {},
+    /** Phase 25: writes the campaign's PDF and offers to share it. */
+    onReport: () -> Unit = {},
+    /** What the report action is doing, or why it could not; null while nothing is said. */
+    reportStatus: String? = null,
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var editor by rememberSaveable { mutableStateOf(false) }
@@ -431,6 +468,15 @@ fun CampaignDetailScreen(
                         icon = MoIcons.People,
                         onClick = onLabour,
                         modifier = Modifier.testTag("campaign-open-labour"),
+                        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText, modifier = Modifier.size(18.dp)) },
+                    )
+                    // Phase 25: the campaign's report, written on this phone and shared from here.
+                    MoCompactListItem(
+                        title = "Informe PDF de la campaña",
+                        subtitle = reportStatus ?: "Producción, costes, pesadas y días, con lo que falte dicho",
+                        icon = MoIcons.Document,
+                        onClick = onReport,
+                        modifier = Modifier.testTag("campaign-report-pdf"),
                         trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText, modifier = Modifier.size(18.dp)) },
                     )
                     Spacer(Modifier.height(MoSpacing.xs))
