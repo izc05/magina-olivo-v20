@@ -100,6 +100,18 @@ class FarmMapScreenTest {
         hasTextUnder("farm-map-my-location-shown", "El punto azul es tu ubicación.")
     }
 
+    /**
+     * #711 B3 (owner's order): the map opens on the PNOA photo with the official boundaries
+     * already drawn. «Ocultar» is only offered for a layer that is being drawn right now.
+     */
+    @Test fun theMapOpensOnThePhotoWithTheOfficialBoundariesAlreadyDrawn() {
+        composeRule.setContent { MaginaOlivoTheme { screen(FarmMapState(mode = FarmMapMode.VIEW)) } }
+        composeRule.onNodeWithTag("farm-map-layer").assertTextContains("Foto a\u00e9rea")
+        composeRule.onNodeWithTag("farm-map-layer").performClick()
+        composeRule.onNodeWithText("Ocultar linderos de Catastro").assertExists()
+        composeRule.onNodeWithText("Ocultar recintos SIGPAC (referencia)").assertExists()
+    }
+
     /** The notices are plain containers: their text lives in child nodes. */
     private fun hasTextUnder(tag: String, text: String) {
         composeRule.onNode(
