@@ -6,7 +6,12 @@ import com.isivoltpro.maginaolivo.app.DemoFarmSeeder
 import com.isivoltpro.maginaolivo.app.DevTools
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.isRunning
+import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
+import com.isivoltpro.maginaolivo.domain.activity.ActivityType
+import com.isivoltpro.maginaolivo.domain.machinery.MachineCategory
+import com.isivoltpro.maginaolivo.domain.machinery.MachineDraft
 import com.isivoltpro.maginaolivo.domain.analytics.FarmOverview
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
@@ -101,6 +106,38 @@ class DemoFarmSeederTest {
         val history = FarmOverview.of("2025/26", listOf(demo), campaigns, deliveries, expenses)
         assertEquals(5_100_000L, history.delivery.deliveredGrams)       // kept apart
 
+        // #696: every work the contract gives structured fields to carries its typed detail, so the
+        // treatment, abonado, poda, suelo, riego, mantenimiento and incidencia blocks all show data.
+        val works = persistence.activityRepository.observeForFarm(demo.id).first()
+        assertTrue(works.filter { it.type != ActivityType.OBSERVATION }.all { it.detail != null })
+        assertEquals(1, works.count { it.detail is ActivityDetail.Incident })
+        val treatments = works.mapNotNull { it.detail as? ActivityDetail.Phytosanitary }
+        assertEquals(4, treatments.size)                                // three done, one planned
+        assertTrue(treatments.all { !it.reason.isNullOrBlank() })
+        // An irrigation price is a historical tariff snapshot: its estimate is exactly unit x quantity.
+        val irrigations = works.mapNotNull { it.detail as? ActivityDetail.Irrigation }
+        assertEquals(5, irrigations.size)
+        assertEquals(4, irrigations.count { it.price != null })
+        irrigations.mapNotNull { it.price }.forEach { price ->
+            assertEquals(Math.round(price.unitPriceMinor!! * price.quantity!!), price.estimatedAmountMinor)
+        }
+        // La Loma is dryland in the demo, so it is never watered.
+        val dryland = parcels.getValue("La Loma").id
+        assertTrue(
+            works.filter { it.type == ActivityType.IRRIGATION }
+                .none { work -> work.targets.any { it.parcelId == dryland } },
+        )
+        // Planned work ahead of today, with its hour, crew and reminders: Calendario and avisos.
+        val plannedWork = works.filter { it.status == ActivityStatus.PLANNED }
+        assertEquals(2, plannedWork.size)
+        assertTrue(plannedWork.all { it.planning?.startTime != null && it.reminders.isNotEmpty() })
+        assertTrue(plannedWork.all { it.activityDate.isAfter(LocalDate.now()) })
+        // Maquinaria: the demo machines exist and the works that used them are read from the machine.
+        val machines = persistence.machineRepository.observeActive().first().filter { it.name.endsWith("(DEMO)") }
+        assertEquals(3, machines.size)
+        val tractor = machines.single { it.category == MachineCategory.TRACTOR }
+        assertEquals(2, persistence.machineRepository.observeUses(tractor.id).first().size)
+
         assertTrue(tools.reset() is AppResult.Success)
         val fresh = demoFarms(workspace).single()
         assertTrue(fresh.id != demo.id)
@@ -123,9 +160,18 @@ class DemoFarmSeederTest {
             NewParcel(farmId = realFarm, displayName = "Parcela real QA", managedAreaM2 = 5_000.0),
         ).let { assertTrue(it is AppResult.Success) }
 
+        val realMachine = (persistence.machineRepository.create(
+            MachineDraft(name = "Tractor real QA ${UUID.randomUUID()}", category = MachineCategory.TRACTOR),
+        ) as AppResult.Success).value
+
         assertTrue(tools.load() is AppResult.Success)
         assertEquals(1, demoFarms(workspace).size)   // the real Farm sharing the name is not one
         assertTrue(tools.remove() is AppResult.Success)
+
+        // The demo machines leave the pickers by their own mark; a real machine is never touched.
+        val machinesLeft = persistence.machineRepository.observeActive().first()
+        assertTrue(machinesLeft.none { it.name.endsWith("(DEMO)") })
+        assertTrue(machinesLeft.any { it.id == realMachine })
 
         assertEquals(emptyList<Farm>(), demoFarms(workspace))
         val real = persistence.farmRepository.observeActive(workspace).first().single { it.id == realFarm }
@@ -136,6 +182,7 @@ class DemoFarmSeederTest {
         assertTrue(tools.remove() is AppResult.Success)
         assertEquals(1L, persistence.farmRepository.observeActive(workspace).first().single { it.id == realFarm }.parcelCount)
         persistence.farmRepository.archive(realFarm)
+        persistence.machineRepository.archive(realMachine)
         Unit
     }
 
