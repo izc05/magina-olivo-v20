@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.map
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -54,7 +57,7 @@ fun MapCatastroReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("map-catastro-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -72,12 +75,12 @@ fun MapCatastroReferenceScreen(
                 Text(
                     text = "Mapa y Catastro",
                     style = MaterialTheme.typography.headlineLarge,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                 )
                 Text(
                     text = "Localiza, revisa e incorpora parcelas a tu olivar.",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                 )
                 Spacer(Modifier.height(MoSpacing.sm))
                 SearchReferenceBar()
@@ -109,7 +112,7 @@ fun MapCatastroReferenceScreen(
                         .padding(MoSpacing.md)
                         .fillMaxWidth(),
                     shape = MoShape.cardLarge,
-                    colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+                    colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 ) {
                     Column(
@@ -125,28 +128,28 @@ fun MapCatastroReferenceScreen(
                                 Text(
                                     text = "Parcela encontrada",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MoTextSecondary,
+                                    color = MoColors.current.secondaryText,
                                 )
                                 Text(
                                     text = "Polígono 12 · Parcela 48",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = MoOliveDark,
+                                    color = MoColors.current.primaryText,
                                 )
                                 Text(
                                     text = "2,34 ha · Huelma, Jaén",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MoTextSecondary,
+                                    color = MoColors.current.secondaryText,
                                 )
                             }
                             Surface(
                                 shape = RoundedCornerShape(999.dp),
-                                color = MoOlivePrimary.copy(alpha = 0.11f),
+                                color = MoColors.current.primaryButton.copy(alpha = 0.11f),
                             ) {
                                 Text(
                                     text = "Catastro",
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MoOlivePrimary,
+                                    color = MoColors.current.primaryButton,
                                     fontWeight = FontWeight.SemiBold,
                                 )
                             }
@@ -155,7 +158,7 @@ fun MapCatastroReferenceScreen(
                         Text(
                             text = "Geometría y datos mostrados solo como maqueta visual.",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MoTextSecondary,
+                            color = MoColors.current.secondaryText,
                         )
 
                         MoPrimaryButton(
@@ -175,8 +178,8 @@ private fun SearchReferenceBar() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = BorderStroke(1.dp, MoOutline),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
@@ -187,7 +190,7 @@ private fun SearchReferenceBar() {
             Text(
                 text = "⌕",
                 style = MaterialTheme.typography.titleLarge,
-                color = MoOlivePrimary,
+                color = MoColors.current.primaryButton,
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -195,12 +198,12 @@ private fun SearchReferenceBar() {
                 Text(
                     text = "Buscar por referencia catastral",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                 )
                 Text(
                     text = "También podrás seleccionar sobre el mapa",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                 )
             }
         }
@@ -219,11 +222,11 @@ private fun MapLegend() {
         )
         LegendItem(
             label = "Seleccionada",
-            color = MoOlivePrimary,
+            color = MoColors.current.primaryButton,
         )
         LegendItem(
             label = "Ya guardada",
-            color = MoOliveDark,
+            color = MoColors.current.primaryText,
         )
     }
 }
@@ -245,7 +248,7 @@ private fun LegendItem(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
     }
 }
@@ -345,15 +348,15 @@ private fun MapControl(symbol: String) {
     Surface(
         modifier = Modifier.size(44.dp),
         shape = CircleShape,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoSurfaceTokens.cardSurface,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
         shadowElevation = 2.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = symbol,
                 style = MaterialTheme.typography.titleMedium,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
         }
     }

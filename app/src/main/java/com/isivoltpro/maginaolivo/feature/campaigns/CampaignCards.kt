@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.campaigns
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -29,15 +31,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.feature.harvests.harvestDayCount
 import com.isivoltpro.maginaolivo.feature.harvests.harvestDays
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
-import com.isivoltpro.maginaolivo.ui.theme.MoEarthText
-import com.isivoltpro.maginaolivo.ui.theme.MoEarthTint
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentText
-import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentTint
-import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
-import com.isivoltpro.maginaolivo.ui.theme.MoWarningTint
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness
 import java.util.UUID
 
@@ -132,11 +126,12 @@ private fun CampaignFactKind.icon(): ImageVector = when (this) {
     CampaignFactKind.YIELD -> MoIcons.Percent
 }
 
+@Composable
 private fun CampaignFactKind.colors(): Pair<Color, Color> = when (this) {
-    CampaignFactKind.PRODUCTION -> MoOliveDark to MoOliveTint
-    CampaignFactKind.TIME -> MoWarningText to MoWarningTint
-    CampaignFactKind.COST -> MoEarthText to MoEarthTint
-    CampaignFactKind.YIELD -> MoTreatmentText to MoTreatmentTint
+    CampaignFactKind.PRODUCTION -> MoColors.current.primaryText to MoColors.current.actionTint
+    CampaignFactKind.TIME -> MoColors.current.warningText to MoColors.current.warningTint
+    CampaignFactKind.COST -> MoColors.current.earthText to MoColors.current.earthTint
+    CampaignFactKind.YIELD -> MoColors.current.treatmentText to MoColors.current.treatmentTint
 }
 
 /** The card's figures as small tinted chips that wrap on narrow screens. */

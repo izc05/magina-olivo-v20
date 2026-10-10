@@ -1,0 +1,23 @@
+Performing Streamed Install
+Success
+Performing Streamed Install
+Success
+11 native captures saved to artifacts\696-e2e\707-dark3-matrix-final\360dp-font130-threebutton-light-captures
+PASS 360dp-font130-threebutton-light (8 tests)
+11 native captures saved to artifacts\696-e2e\707-dark3-matrix-final\360dp-font130-threebutton-dark-captures
+PASS 360dp-font130-threebutton-dark (8 tests)
+4 native captures saved to artifacts\696-e2e\707-dark3-matrix-final\appearance-360dp-font130-threebutton-captures
+PASS appearance 360dp/threebutton (6 tests)
+11 native captures saved to artifacts\696-e2e\707-dark3-matrix-final\390dp-font130-gestural-light-captures
+PASS 390dp-font130-gestural-light (8 tests)
+11 native captures saved to artifacts\696-e2e\707-dark3-matrix-final\390dp-font130-gestural-dark-captures
+PASS 390dp-font130-gestural-dark (8 tests)
+4 native captures saved to artifacts\696-e2e\707-dark3-matrix-final\appearance-390dp-font130-gestural-captures
+PASS appearance 390dp/gestural (6 tests)
+11 native captures saved to artifacts\696-e2e\707-dark3-matrix-final\430dp-font130-threebutton-light-captures
+PASS 430dp-font130-threebutton-light (8 tests)
+11 native captures saved to artifacts\696-e2e\707-dark3-matrix-final\430dp-font130-threebutton-dark-captures
+PASS 430dp-font130-threebutton-dark (8 tests)
+4 native captures saved to artifacts\696-e2e\707-dark3-matrix-final\appearance-430dp-font130-threebutton-captures
+PASS appearance 430dp/threebutton (6 tests)
+PASS: 48 agricultural/native-map and 18 appearance matrix executions

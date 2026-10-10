@@ -1,0 +1,685 @@
+
+com.isivoltpro.maginaolivo.ActivityEditorCompactTest:....................
+com.isivoltpro.maginaolivo.ActivityEditorPresetTest:..
+com.isivoltpro.maginaolivo.ActivityRelatedExpenseTest:.............
+com.isivoltpro.maginaolivo.AppNavigationTest:......................
+Error in cuadernoJornalOpensTodaysDayOnceAndItSurvivesARestart(com.isivoltpro.maginaolivo.AppNavigationTest):
+java.lang.AssertionError: Timed out waiting for clickable node "Finca Jornal E2E".
+Current screen roots:
+Printing with useUnmergedTree = 'true'
+Node #21552 at (l=0.0, t=128.0, r=1080.0, b=2268.0)px
+ |-Node #21553 at (l=0.0, t=128.0, r=1080.0, b=2268.0)px
+   IsContainer = 'true'
+   Shape = 'RectangleShape'
+    |-Node #21945 at (l=0.0, t=128.0, r=1080.0, b=2103.0)px
+    |  |-Node #21946 at (l=0.0, t=128.0, r=1080.0, b=2103.0)px, Tag: 'farms-root'
+    |    IsContainer = 'true'
+    |    Shape = 'RectangleShape'
+    |     |-Node #21958 at (l=0.0, t=128.0, r=1080.0, b=2103.0)px, Tag: 'farm-list'
+    |       CollectionInfo = 'CollectionInfo(rowCount=5, columnCount=1)'
+    |       IsTraversalGroup = 'true'
+    |       Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@a114e7b'
+    |       VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=100.0, reverseScrolling=false)'
+    |       Actions = [GetScrollViewportLength, IndexForKey, ScrollBy, ScrollByOffset, ScrollToIndex]
+    |        |-Node #21961 at (l=55.0, t=161.0, r=427.0, b=248.0)px
+    |        | Text = '[Mis fincas]'
+    |        | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #21962 at (l=55.0, t=248.0, r=878.0, b=296.0)px
+    |        | Text = '[Organiza tu explotación por fincas y parcelas.]'
+    |        | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #21984 at (l=55.0, t=329.0, r=1025.0, b=681.0)px, Tag: 'farm-totals'
+    |        |  |-Node #21988 at (l=55.0, t=329.0, r=1025.0, b=494.0)px
+    |        |  | IsContainer = 'true'
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |  |  |-Node #21995 at (l=94.0, t=362.0, r=193.0, b=461.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #21999 at (l=215.0, t=365.0, r=311.0, b=404.0)px
+    |        |  |  | Text = '[Fincas]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22000 at (l=215.0, t=404.0, r=241.0, b=458.0)px
+    |        |  |  | Text = '[1]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22001 at (l=538.0, t=362.0, r=541.0, b=461.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22003 at (l=558.0, t=362.0, r=657.0, b=461.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22007 at (l=679.0, t=365.0, r=808.0, b=404.0)px
+    |        |  |  | Text = '[Parcelas]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22008 at (l=679.0, t=404.0, r=705.0, b=458.0)px
+    |        |  |    Text = '[1]'
+    |        |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #21990 at (l=55.0, t=516.0, r=1025.0, b=681.0)px
+    |        |    IsContainer = 'true'
+    |        |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |     |-Node #22012 at (l=94.0, t=549.0, r=193.0, b=648.0)px
+    |        |     | IsContainer = 'true'
+    |        |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |     |-Node #22016 at (l=215.0, t=552.0, r=364.0, b=591.0)px
+    |        |     | Text = '[Superficie]'
+    |        |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |     |-Node #22017 at (l=215.0, t=591.0, r=250.0, b=645.0)px
+    |        |     | Text = '[—]'
+    |        |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |     |-Node #22018 at (l=538.0, t=549.0, r=541.0, b=648.0)px
+    |        |     | Shape = 'RectangleShape'
+    |        |     |-Node #22020 at (l=558.0, t=549.0, r=657.0, b=648.0)px
+    |        |     | IsContainer = 'true'
+    |        |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |     |-Node #22024 at (l=679.0, t=552.0, r=770.0, b=591.0)px
+    |        |     | Text = '[Olivos]'
+    |        |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |     |-Node #22025 at (l=679.0, t=591.0, r=714.0, b=645.0)px
+    |        |       Text = '[—]'
+    |        |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #21985 at (l=55.0, t=692.0, r=979.0, b=734.0)px
+    |        | Text = '[Añade superficie a tus parcelas para calcular rendimientos.]'
+    |        | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #22070 at (l=55.0, t=767.0, r=1025.0, b=1807.0)px, Tag: 'farm-overview'
+    |        |  |-Node #22072 at (l=55.0, t=772.0, r=657.0, b=826.0)px
+    |        |  | Text = '[Resumen de la explotación]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22074 at (l=657.0, t=767.0, r=1025.0, b=831.0)px, Tag: 'farm-overview-period'
+    |        |  | Text = '[Campaña 2025/26]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22075 at (l=55.0, t=853.0, r=1025.0, b=1018.0)px, Tag: 'farm-overview-production'
+    |        |  | IsContainer = 'true'
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |  |  |-Node #22089 at (l=94.0, t=886.0, r=193.0, b=985.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22093 at (l=215.0, t=889.0, r=390.0, b=928.0)px
+    |        |  |  | Text = '[Kg pesados]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22094 at (l=215.0, t=928.0, r=250.0, b=982.0)px
+    |        |  |  | Text = '[—]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22095 at (l=538.0, t=886.0, r=541.0, b=985.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22097 at (l=558.0, t=886.0, r=657.0, b=985.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22101 at (l=679.0, t=889.0, r=866.0, b=928.0)px
+    |        |  |  | Text = '[Rendimiento]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22102 at (l=679.0, t=928.0, r=714.0, b=982.0)px
+    |        |  |    Text = '[—]'
+    |        |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22077 at (l=55.0, t=1040.0, r=1025.0, b=1205.0)px, Tag: 'farm-overview-costs'
+    |        |  | IsContainer = 'true'
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |  |  |-Node #22106 at (l=94.0, t=1073.0, r=193.0, b=1172.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22110 at (l=215.0, t=1076.0, r=440.0, b=1115.0)px
+    |        |  |  | Text = '[Coste recogida]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22111 at (l=215.0, t=1115.0, r=250.0, b=1169.0)px
+    |        |  |  | Text = '[—]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22112 at (l=538.0, t=1073.0, r=541.0, b=1172.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22114 at (l=558.0, t=1073.0, r=657.0, b=1172.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22118 at (l=679.0, t=1076.0, r=953.0, b=1115.0)px
+    |        |  |  | Text = '[Coste recogida/kg]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22119 at (l=679.0, t=1115.0, r=714.0, b=1169.0)px
+    |        |  |    Text = '[—]'
+    |        |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22079 at (l=55.0, t=1227.0, r=617.0, b=1269.0)px, Tag: 'farm-overview-note'
+    |        |  | Text = '[1 de 1 fincas con campaña 2025/26]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22080 at (l=55.0, t=1291.0, r=550.0, b=1336.0)px
+    |        |  | Text = '[Gastos generales del periodo]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22081 at (l=55.0, t=1358.0, r=1025.0, b=1653.0)px, Tag: 'farm-overview-general'
+    |        |  | IsContainer = 'true'
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |  |  |-Node #22123 at (l=192.0, t=1391.0, r=269.0, b=1468.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22126 at (l=94.0, t=1474.0, r=366.0, b=1560.0)px
+    |        |  |  | Text = '[Fuera de campaña]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22127 at (l=94.0, t=1566.0, r=366.0, b=1620.0)px
+    |        |  |  | Text = '[—]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22128 at (l=383.0, t=1456.0, r=386.0, b=1555.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22130 at (l=501.0, t=1415.0, r=578.0, b=1492.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22133 at (l=403.0, t=1498.0, r=676.0, b=1537.0)px
+    |        |  |  | Text = '[Coste total]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22134 at (l=403.0, t=1543.0, r=676.0, b=1597.0)px
+    |        |  |  | Text = '[—]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22135 at (l=693.0, t=1456.0, r=696.0, b=1555.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22137 at (l=811.0, t=1415.0, r=888.0, b=1492.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22140 at (l=713.0, t=1498.0, r=986.0, b=1537.0)px
+    |        |  |  | Text = '[Coste total/kg]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22141 at (l=713.0, t=1543.0, r=986.0, b=1597.0)px
+    |        |  |    Text = '[—]'
+    |        |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22083 at (l=55.0, t=1675.0, r=339.0, b=1807.0)px, Tag: 'farm-overview-by-farm'
+    |        |    Focused = 'false'
+    |        |    Role = 'Button'
+    |        |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+    |        |    Actions = [OnClick, RequestFocus]
+    |        |    MergeDescendants = 'true'
+    |        |     |-Node #22085 at (l=88.0, t=1719.0, r=306.0, b=1764.0)px
+    |        |       Text = '[Ver por finca]'
+    |        |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #22144 at (l=55.0, t=1840.0, r=1025.0, b=2019.0)px, Tag: 'farm-search'
+    |        | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+    |        | EditableText = ''
+    |        | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@22e9ade'
+    |        | Focused = 'false'
+    |        | ImeAction = 'Default'
+    |        | InputText = ''
+    |        | IsEditable = 'true'
+    |        | TextSelectionRange = 'TextRange(0, 0)'
+    |        | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+    |        | MergeDescendants = 'true'
+    |        |  |-Node #22148 at (l=55.0, t=1865.0, r=1025.0, b=2019.0)px
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 16.0.dp), topEnd = CornerSize(size = 16.0.dp), bottomEnd = CornerSize(size = 16.0.dp), bottomStart = CornerSize(size = 16.0.dp))'
+    |        |  |-Node #22153 at (l=99.0, t=1910.0, r=370.0, b=1974.0)px
+    |        |  | Text = '[Buscar finca…]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22150 at (l=99.0, t=1916.0, r=981.0, b=1968.0)px
+    |        |    Shape = 'RectangleShape'
+    |        |-Node #22154 at (l=55.0, t=2052.0, r=1025.0, b=2184.0)px, Tag: 'add-farm'
+    |          Focused = 'false'
+    |          Role = 'Button'
+    |          Shape = 'RoundedCornerShape(topStart = CornerSize(size = 16.0.dp), topEnd = CornerSize(size = 16.0.dp), bottomEnd = CornerSize(size = 16.0.dp), bottomStart = CornerSize(size = 16.0.dp))'
+    |          Actions = [OnClick, RequestFocus]
+    |          MergeDescendants = 'true'
+    |           |-Node #22157 at (l=423.0, t=2096.0, r=657.0, b=2141.0)px
+    |             Text = '[+ Añadir finca]'
+    |             Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |-Node #21571 at (l=0.0, t=2103.0, r=1080.0, b=2268.0)px
+      IsContainer = 'true'
+      Shape = 'RectangleShape'
+       |-Node #21573 at (l=22.0, t=2114.0, r=240.0, b=2257.0)px, Tag: 'bottom-Inicio'
+       | Focused = 'false'
+       | Role = 'Tab'
+       | Selected = 'false'
+       | Actions = [OnClick, RequestFocus]
+       | MergeDescendants = 'true'
+       |  |-Node #21574 at (l=62.0, t=2128.0, r=201.0, b=2205.0)px
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 999.0.dp), topEnd = CornerSize(size = 999.0.dp), bottomEnd = CornerSize(size = 999.0.dp), bottomStart = CornerSize(size = 999.0.dp))'
+       |  |-Node #21577 at (l=92.0, t=2205.0, r=171.0, b=2244.0)px
+       |    Text = '[Inicio]'
+       |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node #21578 at (l=240.0, t=2114.0, r=458.0, b=2257.0)px, Tag: 'bottom-Mi Campo'
+       | Focused = 'false'
+       | Role = 'Tab'
+       | Selected = 'true'
+       | Actions = [OnClick, RequestFocus]
+       | MergeDescendants = 'true'
+       |  |-Node #21579 at (l=280.0, t=2128.0, r=419.0, b=2205.0)px
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 999.0.dp), topEnd = CornerSize(size = 999.0.dp), bottomEnd = CornerSize(size = 999.0.dp), bottomStart = CornerSize(size = 999.0.dp))'
+       |  |-Node #21582 at (l=273.0, t=2205.0, r=426.0, b=2244.0)px
+       |    Text = '[Mi Campo]'
+       |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node #21584 at (l=469.0, t=2114.0, r=612.0, b=2257.0)px, Tag: 'bottom-add-record'
+       | ContentDescription = '[Añadir registro]'
+       | Focused = 'false'
+       | IsContainer = 'true'
+       | Role = 'Button'
+       | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       | Actions = [OnClick, RequestFocus]
+       | MergeDescendants = 'true'
+       |-Node #21587 at (l=622.0, t=2114.0, r=840.0, b=2257.0)px, Tag: 'bottom-Cuaderno'
+       | Focused = 'false'
+       | Role = 'Tab'
+       | Selected = 'false'
+       | Actions = [OnClick, RequestFocus]
+       | MergeDescendants = 'true'
+       |  |-Node #21588 at (l=662.0, t=2128.0, r=801.0, b=2205.0)px
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 999.0.dp), topEnd = CornerSize(size = 999.0.dp), bottomEnd = CornerSize(size = 999.0.dp), bottomStart = CornerSize(size = 999.0.dp))'
+       |  |-Node #21591 at (l=660.0, t=2205.0, r=802.0, b=2244.0)px
+       |    Text = '[Cuaderno]'
+       |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node #21592 at (l=840.0, t=2114.0, r=1058.0, b=2257.0)px, Tag: 'bottom-Perfil'
+         Focused = 'false'
+         Role = 'Tab'
+         Selected = 'false'
+         Actions = [OnClick, RequestFocus]
+         MergeDescendants = 'true'
+          |-Node #21593 at (l=880.0, t=2128.0, r=1019.0, b=2205.0)px
+          | IsContainer = 'true'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 999.0.dp), topEnd = CornerSize(size = 999.0.dp), bottomEnd = CornerSize(size = 999.0.dp), bottomStart = CornerSize(size = 999.0.dp))'
+          |-Node #21596 at (l=911.0, t=2205.0, r=987.0, b=2244.0)px
+            Text = '[Perfil]'
+            Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Campaign detail screen:
+Printing with useUnmergedTree = 'true'
+There were 0 nodes found!
+Confirmation sheet title:
+Printing with useUnmergedTree = 'true'
+There were 0 nodes found!
+Confirmation button:
+Printing with useUnmergedTree = 'true'
+There were 0 nodes found!
+Lifecycle nodes present:
+  edit-campaign -> 0
+  activate-campaign -> 0
+  close-campaign -> 0
+  reopen-campaign -> 0
+  campaign-row -> 0
+
+	at com.isivoltpro.maginaolivo.AppNavigationTest.waitForNodeOrDump(AppNavigationTest.kt:1237)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.clickByText(AppNavigationTest.kt:1339)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.cuadernoJornalOpensTodaysDayOnceAndItSurvivesARestart(AppNavigationTest.kt:1022)
+	... 67 trimmed
+Caused by: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 15000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.waitForNodeOrDump(AppNavigationTest.kt:1235)
+	... 70 more
+........
+com.isivoltpro.maginaolivo.AppearanceContractTest:..
+com.isivoltpro.maginaolivo.AppearanceSettingsTest:.......
+com.isivoltpro.maginaolivo.ArchivedMachineSheetTest:.
+com.isivoltpro.maginaolivo.AttachmentsSectionTest:....
+com.isivoltpro.maginaolivo.BackupPolicyDeviceTest:.
+com.isivoltpro.maginaolivo.CadastreImportScreenTest:.......
+com.isivoltpro.maginaolivo.CampaignAddLabourTest:......
+com.isivoltpro.maginaolivo.CampaignChartsScreenTest:........
+com.isivoltpro.maginaolivo.CampaignScreensTest:..........
+com.isivoltpro.maginaolivo.CostCompletenessCardsTest:.
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:....................
+com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest:.......
+com.isivoltpro.maginaolivo.DarkComponentsContractTest:...
+com.isivoltpro.maginaolivo.DarkMapAttributionTest:..
+com.isivoltpro.maginaolivo.DarkOfflineMapTest:.
+com.isivoltpro.maginaolivo.DarkReferenceChartTest:.
+com.isivoltpro.maginaolivo.DarkReferencePhotoTest:.
+com.isivoltpro.maginaolivo.DarkSurfacesScreenshotTest:......
+com.isivoltpro.maginaolivo.DemoFarmSeederTest:.
+com.isivoltpro.maginaolivo.EquipmentScreenTest:.........
+com.isivoltpro.maginaolivo.ExpenseDayRoleEditorTest:....
+com.isivoltpro.maginaolivo.ExpensesCurrencyTest:.
+com.isivoltpro.maginaolivo.FarmMapScreenTest:......
+com.isivoltpro.maginaolivo.FarmOverviewScreenTest:..
+com.isivoltpro.maginaolivo.FarmScreensTest:..........
+com.isivoltpro.maginaolivo.FormDetailsDisclosureTest:.....
+com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest:..............
+com.isivoltpro.maginaolivo.GlobalQuickActionsTest:..........
+com.isivoltpro.maginaolivo.HarvestsNoOpenDayTest:.
+com.isivoltpro.maginaolivo.HomeFeedsScreenTest:...........
+com.isivoltpro.maginaolivo.HomeOilMarketScreenTest:..
+com.isivoltpro.maginaolivo.JornadaCostScreenTest:......
+com.isivoltpro.maginaolivo.JornadaScreenTest:....
+com.isivoltpro.maginaolivo.JornalFocusScreenTest:..
+com.isivoltpro.maginaolivo.LabourByWorkerScreenTest:..
+com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest:........
+com.isivoltpro.maginaolivo.LabourDeviceCheckTest:...
+com.isivoltpro.maginaolivo.LabourPaymentsUiTest:...................
+com.isivoltpro.maginaolivo.LabourScreenTest:..
+com.isivoltpro.maginaolivo.MainActivitySmokeTest:..
+com.isivoltpro.maginaolivo.ManualPesadaUiTest:........
+com.isivoltpro.maginaolivo.MoStatStripAccessibilityTest:.
+com.isivoltpro.maginaolivo.MyProfileScreenTest:.......
+com.isivoltpro.maginaolivo.NotebookChronologyTest:.
+com.isivoltpro.maginaolivo.NotebookHomeScreenTest:...............
+com.isivoltpro.maginaolivo.NotificationAccessTest:...
+com.isivoltpro.maginaolivo.OilMarketScreenTest:....
+com.isivoltpro.maginaolivo.OnEachSaveTest:..
+com.isivoltpro.maginaolivo.ParcelScreensTest:.......
+com.isivoltpro.maginaolivo.PesadaContextTest:.....
+com.isivoltpro.maginaolivo.PesadaSearchScreenTest:.
+com.isivoltpro.maginaolivo.Phase3CampaignRegisterReferenceTest:..
+com.isivoltpro.maginaolivo.Phase3ComponentCatalogueTest:.
+com.isivoltpro.maginaolivo.Phase3HarvestExpensesWeatherReferenceTest:...
+com.isivoltpro.maginaolivo.Phase3MapReferenceTest:.
+com.isivoltpro.maginaolivo.Phase3OlivarReferenceTest:..
+com.isivoltpro.maginaolivo.Phase3ParcelOcrReferenceTest:..
+com.isivoltpro.maginaolivo.PhytosanitaryResourceUiTest:....
+com.isivoltpro.maginaolivo.RadarScreenTest:.....
+com.isivoltpro.maginaolivo.RecoleccionTwoFarmsTest:.
+com.isivoltpro.maginaolivo.RecollectionChoiceUiTest:....................
+com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest:...
+com.isivoltpro.maginaolivo.WeatherMoodLayerTest:..
+com.isivoltpro.maginaolivo.WeatherWeekScreenTest:.......
+com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest:..................
+com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest:..............
+com.isivoltpro.maginaolivo.data.local.AgriculturalYearContractTest:.
+com.isivoltpro.maginaolivo.data.local.AttachmentContractTest:................
+com.isivoltpro.maginaolivo.data.local.AttachmentFixtureIsolationTest:....
+com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest:...................
+com.isivoltpro.maginaolivo.data.local.CoreWorkspaceBoundaryContractTest:.
+com.isivoltpro.maginaolivo.data.local.DayCostContractTest:......................
+com.isivoltpro.maginaolivo.data.local.DeliveryContractTest:......................
+com.isivoltpro.maginaolivo.data.local.EquipmentContractTest:....
+com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest:...........................................................
+com.isivoltpro.maginaolivo.data.local.HarvestContractTest:...............
+com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest:..
+com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest:...........
+com.isivoltpro.maginaolivo.data.local.LabourContractTest:....
+com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest:..................
+com.isivoltpro.maginaolivo.data.local.MachineryContractTest:........
+com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest:..
+com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmCoverRepositoryTest:..
+com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest:.............
+com.isivoltpro.maginaolivo.data.local.OilMarketFeedContractTest:...
+com.isivoltpro.maginaolivo.data.local.OrganizationRepositoryContractTest:..
+com.isivoltpro.maginaolivo.data.local.PhytosanitaryResourcesContractTest:......
+com.isivoltpro.maginaolivo.data.local.ProfileSettingsContractTest:......
+com.isivoltpro.maginaolivo.data.local.RecollectionFlowContractTest:.
+com.isivoltpro.maginaolivo.data.local.ReminderPreferencesContractTest:....
+com.isivoltpro.maginaolivo.data.local.RoomMigrationTest:..........................
+com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest:...........................
+com.isivoltpro.maginaolivo.data.local.WeatherFeedContractTest:.......
+com.isivoltpro.maginaolivo.data.local.WorkspaceReadScopeContractTest:.
+com.isivoltpro.maginaolivo.data.remote.EdgeOilMarketResponseTest:....
+com.isivoltpro.maginaolivo.data.remote.EdgeRadarResponseTest:..
+com.isivoltpro.maginaolivo.data.remote.EdgeWeatherResponseTest:.....
+
+Time: 861.266
+There was 1 failure:
+1) cuadernoJornalOpensTodaysDayOnceAndItSurvivesARestart(com.isivoltpro.maginaolivo.AppNavigationTest)
+java.lang.AssertionError: Timed out waiting for clickable node "Finca Jornal E2E".
+Current screen roots:
+Printing with useUnmergedTree = 'true'
+Node #21552 at (l=0.0, t=128.0, r=1080.0, b=2268.0)px
+ |-Node #21553 at (l=0.0, t=128.0, r=1080.0, b=2268.0)px
+   IsContainer = 'true'
+   Shape = 'RectangleShape'
+    |-Node #21945 at (l=0.0, t=128.0, r=1080.0, b=2103.0)px
+    |  |-Node #21946 at (l=0.0, t=128.0, r=1080.0, b=2103.0)px, Tag: 'farms-root'
+    |    IsContainer = 'true'
+    |    Shape = 'RectangleShape'
+    |     |-Node #21958 at (l=0.0, t=128.0, r=1080.0, b=2103.0)px, Tag: 'farm-list'
+    |       CollectionInfo = 'CollectionInfo(rowCount=5, columnCount=1)'
+    |       IsTraversalGroup = 'true'
+    |       Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@a114e7b'
+    |       VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=100.0, reverseScrolling=false)'
+    |       Actions = [GetScrollViewportLength, IndexForKey, ScrollBy, ScrollByOffset, ScrollToIndex]
+    |        |-Node #21961 at (l=55.0, t=161.0, r=427.0, b=248.0)px
+    |        | Text = '[Mis fincas]'
+    |        | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #21962 at (l=55.0, t=248.0, r=878.0, b=296.0)px
+    |        | Text = '[Organiza tu explotación por fincas y parcelas.]'
+    |        | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #21984 at (l=55.0, t=329.0, r=1025.0, b=681.0)px, Tag: 'farm-totals'
+    |        |  |-Node #21988 at (l=55.0, t=329.0, r=1025.0, b=494.0)px
+    |        |  | IsContainer = 'true'
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |  |  |-Node #21995 at (l=94.0, t=362.0, r=193.0, b=461.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #21999 at (l=215.0, t=365.0, r=311.0, b=404.0)px
+    |        |  |  | Text = '[Fincas]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22000 at (l=215.0, t=404.0, r=241.0, b=458.0)px
+    |        |  |  | Text = '[1]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22001 at (l=538.0, t=362.0, r=541.0, b=461.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22003 at (l=558.0, t=362.0, r=657.0, b=461.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22007 at (l=679.0, t=365.0, r=808.0, b=404.0)px
+    |        |  |  | Text = '[Parcelas]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22008 at (l=679.0, t=404.0, r=705.0, b=458.0)px
+    |        |  |    Text = '[1]'
+    |        |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #21990 at (l=55.0, t=516.0, r=1025.0, b=681.0)px
+    |        |    IsContainer = 'true'
+    |        |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |     |-Node #22012 at (l=94.0, t=549.0, r=193.0, b=648.0)px
+    |        |     | IsContainer = 'true'
+    |        |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |     |-Node #22016 at (l=215.0, t=552.0, r=364.0, b=591.0)px
+    |        |     | Text = '[Superficie]'
+    |        |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |     |-Node #22017 at (l=215.0, t=591.0, r=250.0, b=645.0)px
+    |        |     | Text = '[—]'
+    |        |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |     |-Node #22018 at (l=538.0, t=549.0, r=541.0, b=648.0)px
+    |        |     | Shape = 'RectangleShape'
+    |        |     |-Node #22020 at (l=558.0, t=549.0, r=657.0, b=648.0)px
+    |        |     | IsContainer = 'true'
+    |        |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |     |-Node #22024 at (l=679.0, t=552.0, r=770.0, b=591.0)px
+    |        |     | Text = '[Olivos]'
+    |        |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |     |-Node #22025 at (l=679.0, t=591.0, r=714.0, b=645.0)px
+    |        |       Text = '[—]'
+    |        |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #21985 at (l=55.0, t=692.0, r=979.0, b=734.0)px
+    |        | Text = '[Añade superficie a tus parcelas para calcular rendimientos.]'
+    |        | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #22070 at (l=55.0, t=767.0, r=1025.0, b=1807.0)px, Tag: 'farm-overview'
+    |        |  |-Node #22072 at (l=55.0, t=772.0, r=657.0, b=826.0)px
+    |        |  | Text = '[Resumen de la explotación]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22074 at (l=657.0, t=767.0, r=1025.0, b=831.0)px, Tag: 'farm-overview-period'
+    |        |  | Text = '[Campaña 2025/26]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22075 at (l=55.0, t=853.0, r=1025.0, b=1018.0)px, Tag: 'farm-overview-production'
+    |        |  | IsContainer = 'true'
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |  |  |-Node #22089 at (l=94.0, t=886.0, r=193.0, b=985.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22093 at (l=215.0, t=889.0, r=390.0, b=928.0)px
+    |        |  |  | Text = '[Kg pesados]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22094 at (l=215.0, t=928.0, r=250.0, b=982.0)px
+    |        |  |  | Text = '[—]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22095 at (l=538.0, t=886.0, r=541.0, b=985.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22097 at (l=558.0, t=886.0, r=657.0, b=985.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22101 at (l=679.0, t=889.0, r=866.0, b=928.0)px
+    |        |  |  | Text = '[Rendimiento]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22102 at (l=679.0, t=928.0, r=714.0, b=982.0)px
+    |        |  |    Text = '[—]'
+    |        |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22077 at (l=55.0, t=1040.0, r=1025.0, b=1205.0)px, Tag: 'farm-overview-costs'
+    |        |  | IsContainer = 'true'
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |  |  |-Node #22106 at (l=94.0, t=1073.0, r=193.0, b=1172.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22110 at (l=215.0, t=1076.0, r=440.0, b=1115.0)px
+    |        |  |  | Text = '[Coste recogida]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22111 at (l=215.0, t=1115.0, r=250.0, b=1169.0)px
+    |        |  |  | Text = '[—]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22112 at (l=538.0, t=1073.0, r=541.0, b=1172.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22114 at (l=558.0, t=1073.0, r=657.0, b=1172.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22118 at (l=679.0, t=1076.0, r=953.0, b=1115.0)px
+    |        |  |  | Text = '[Coste recogida/kg]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22119 at (l=679.0, t=1115.0, r=714.0, b=1169.0)px
+    |        |  |    Text = '[—]'
+    |        |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22079 at (l=55.0, t=1227.0, r=617.0, b=1269.0)px, Tag: 'farm-overview-note'
+    |        |  | Text = '[1 de 1 fincas con campaña 2025/26]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22080 at (l=55.0, t=1291.0, r=550.0, b=1336.0)px
+    |        |  | Text = '[Gastos generales del periodo]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22081 at (l=55.0, t=1358.0, r=1025.0, b=1653.0)px, Tag: 'farm-overview-general'
+    |        |  | IsContainer = 'true'
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+    |        |  |  |-Node #22123 at (l=192.0, t=1391.0, r=269.0, b=1468.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22126 at (l=94.0, t=1474.0, r=366.0, b=1560.0)px
+    |        |  |  | Text = '[Fuera de campaña]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22127 at (l=94.0, t=1566.0, r=366.0, b=1620.0)px
+    |        |  |  | Text = '[—]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22128 at (l=383.0, t=1456.0, r=386.0, b=1555.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22130 at (l=501.0, t=1415.0, r=578.0, b=1492.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22133 at (l=403.0, t=1498.0, r=676.0, b=1537.0)px
+    |        |  |  | Text = '[Coste total]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22134 at (l=403.0, t=1543.0, r=676.0, b=1597.0)px
+    |        |  |  | Text = '[—]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22135 at (l=693.0, t=1456.0, r=696.0, b=1555.0)px
+    |        |  |  | Shape = 'RectangleShape'
+    |        |  |  |-Node #22137 at (l=811.0, t=1415.0, r=888.0, b=1492.0)px
+    |        |  |  | IsContainer = 'true'
+    |        |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+    |        |  |  |-Node #22140 at (l=713.0, t=1498.0, r=986.0, b=1537.0)px
+    |        |  |  | Text = '[Coste total/kg]'
+    |        |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |  |-Node #22141 at (l=713.0, t=1543.0, r=986.0, b=1597.0)px
+    |        |  |    Text = '[—]'
+    |        |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22083 at (l=55.0, t=1675.0, r=339.0, b=1807.0)px, Tag: 'farm-overview-by-farm'
+    |        |    Focused = 'false'
+    |        |    Role = 'Button'
+    |        |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+    |        |    Actions = [OnClick, RequestFocus]
+    |        |    MergeDescendants = 'true'
+    |        |     |-Node #22085 at (l=88.0, t=1719.0, r=306.0, b=1764.0)px
+    |        |       Text = '[Ver por finca]'
+    |        |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #22144 at (l=55.0, t=1840.0, r=1025.0, b=2019.0)px, Tag: 'farm-search'
+    |        | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+    |        | EditableText = ''
+    |        | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@22e9ade'
+    |        | Focused = 'false'
+    |        | ImeAction = 'Default'
+    |        | InputText = ''
+    |        | IsEditable = 'true'
+    |        | TextSelectionRange = 'TextRange(0, 0)'
+    |        | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+    |        | MergeDescendants = 'true'
+    |        |  |-Node #22148 at (l=55.0, t=1865.0, r=1025.0, b=2019.0)px
+    |        |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 16.0.dp), topEnd = CornerSize(size = 16.0.dp), bottomEnd = CornerSize(size = 16.0.dp), bottomStart = CornerSize(size = 16.0.dp))'
+    |        |  |-Node #22153 at (l=99.0, t=1910.0, r=370.0, b=1974.0)px
+    |        |  | Text = '[Buscar finca…]'
+    |        |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |  |-Node #22150 at (l=99.0, t=1916.0, r=981.0, b=1968.0)px
+    |        |    Shape = 'RectangleShape'
+    |        |-Node #22154 at (l=55.0, t=2052.0, r=1025.0, b=2184.0)px, Tag: 'add-farm'
+    |          Focused = 'false'
+    |          Role = 'Button'
+    |          Shape = 'RoundedCornerShape(topStart = CornerSize(size = 16.0.dp), topEnd = CornerSize(size = 16.0.dp), bottomEnd = CornerSize(size = 16.0.dp), bottomStart = CornerSize(size = 16.0.dp))'
+    |          Actions = [OnClick, RequestFocus]
+    |          MergeDescendants = 'true'
+    |           |-Node #22157 at (l=423.0, t=2096.0, r=657.0, b=2141.0)px
+    |             Text = '[+ Añadir finca]'
+    |             Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |-Node #21571 at (l=0.0, t=2103.0, r=1080.0, b=2268.0)px
+      IsContainer = 'true'
+      Shape = 'RectangleShape'
+       |-Node #21573 at (l=22.0, t=2114.0, r=240.0, b=2257.0)px, Tag: 'bottom-Inicio'
+       | Focused = 'false'
+       | Role = 'Tab'
+       | Selected = 'false'
+       | Actions = [OnClick, RequestFocus]
+       | MergeDescendants = 'true'
+       |  |-Node #21574 at (l=62.0, t=2128.0, r=201.0, b=2205.0)px
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 999.0.dp), topEnd = CornerSize(size = 999.0.dp), bottomEnd = CornerSize(size = 999.0.dp), bottomStart = CornerSize(size = 999.0.dp))'
+       |  |-Node #21577 at (l=92.0, t=2205.0, r=171.0, b=2244.0)px
+       |    Text = '[Inicio]'
+       |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node #21578 at (l=240.0, t=2114.0, r=458.0, b=2257.0)px, Tag: 'bottom-Mi Campo'
+       | Focused = 'false'
+       | Role = 'Tab'
+       | Selected = 'true'
+       | Actions = [OnClick, RequestFocus]
+       | MergeDescendants = 'true'
+       |  |-Node #21579 at (l=280.0, t=2128.0, r=419.0, b=2205.0)px
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 999.0.dp), topEnd = CornerSize(size = 999.0.dp), bottomEnd = CornerSize(size = 999.0.dp), bottomStart = CornerSize(size = 999.0.dp))'
+       |  |-Node #21582 at (l=273.0, t=2205.0, r=426.0, b=2244.0)px
+       |    Text = '[Mi Campo]'
+       |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node #21584 at (l=469.0, t=2114.0, r=612.0, b=2257.0)px, Tag: 'bottom-add-record'
+       | ContentDescription = '[Añadir registro]'
+       | Focused = 'false'
+       | IsContainer = 'true'
+       | Role = 'Button'
+       | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       | Actions = [OnClick, RequestFocus]
+       | MergeDescendants = 'true'
+       |-Node #21587 at (l=622.0, t=2114.0, r=840.0, b=2257.0)px, Tag: 'bottom-Cuaderno'
+       | Focused = 'false'
+       | Role = 'Tab'
+       | Selected = 'false'
+       | Actions = [OnClick, RequestFocus]
+       | MergeDescendants = 'true'
+       |  |-Node #21588 at (l=662.0, t=2128.0, r=801.0, b=2205.0)px
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 999.0.dp), topEnd = CornerSize(size = 999.0.dp), bottomEnd = CornerSize(size = 999.0.dp), bottomStart = CornerSize(size = 999.0.dp))'
+       |  |-Node #21591 at (l=660.0, t=2205.0, r=802.0, b=2244.0)px
+       |    Text = '[Cuaderno]'
+       |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node #21592 at (l=840.0, t=2114.0, r=1058.0, b=2257.0)px, Tag: 'bottom-Perfil'
+         Focused = 'false'
+         Role = 'Tab'
+         Selected = 'false'
+         Actions = [OnClick, RequestFocus]
+         MergeDescendants = 'true'
+          |-Node #21593 at (l=880.0, t=2128.0, r=1019.0, b=2205.0)px
+          | IsContainer = 'true'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 999.0.dp), topEnd = CornerSize(size = 999.0.dp), bottomEnd = CornerSize(size = 999.0.dp), bottomStart = CornerSize(size = 999.0.dp))'
+          |-Node #21596 at (l=911.0, t=2205.0, r=987.0, b=2244.0)px
+            Text = '[Perfil]'
+            Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Campaign detail screen:
+Printing with useUnmergedTree = 'true'
+There were 0 nodes found!
+Confirmation sheet title:
+Printing with useUnmergedTree = 'true'
+There were 0 nodes found!
+Confirmation button:
+Printing with useUnmergedTree = 'true'
+There were 0 nodes found!
+Lifecycle nodes present:
+  edit-campaign -> 0
+  activate-campaign -> 0
+  close-campaign -> 0
+  reopen-campaign -> 0
+  campaign-row -> 0
+
+	at com.isivoltpro.maginaolivo.AppNavigationTest.waitForNodeOrDump(AppNavigationTest.kt:1237)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.clickByText(AppNavigationTest.kt:1339)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.cuadernoJornalOpensTodaysDayOnceAndItSurvivesARestart(AppNavigationTest.kt:1022)
+	... 67 trimmed
+Caused by: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 15000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.isivoltpro.maginaolivo.AppNavigationTest.waitForNodeOrDump(AppNavigationTest.kt:1235)
+	... 70 more
+
+FAILURES!!!
+Tests run: 734,  Failures: 1
+
+

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -44,9 +46,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.time.LocalDate
 import java.util.UUID
 
@@ -77,21 +77,21 @@ internal fun JornadaEquipment(
         Text(
             if (readFailed) "No pudimos leer la maquinaria de este día." else "Cargando maquinaria…",
             style = MaterialTheme.typography.bodyMedium,
-            color = if (readFailed) MaterialTheme.colorScheme.error else MoTextSecondary,
+            color = if (readFailed) MaterialTheme.colorScheme.error else MoColors.current.secondaryText,
             modifier = Modifier.testTag(if (readFailed) "jornada-equipment-read-error" else "jornada-equipment-loading"),
         )
         return
     }
     val summary = EquipmentSummary.of(lines)
     if (summary.isEmpty) {
-        Text("Sin maquinaria anotada.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-no-equipment"))
+        Text("Sin maquinaria anotada.", style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText, modifier = Modifier.testTag("jornada-no-equipment"))
     } else {
-        Text(summary.label(), style = MaterialTheme.typography.bodyLarge, color = MoOliveDark, modifier = Modifier.testTag("jornada-equipment-summary"))
+        Text(summary.label(), style = MaterialTheme.typography.bodyLarge, color = MoColors.current.primaryText, modifier = Modifier.testTag("jornada-equipment-summary"))
         lines.forEach { line ->
             val total = line.appliedPrice?.let { runCatching { Math.multiplyExact(line.quantity.toLong(), it.unitPriceMinor) }.getOrNull() }
             val subtitle = if (total == null) "Coste sin confirmar" else
                 "${Money.format(line.appliedPrice.unitPriceMinor, line.appliedPrice.currency)} por uso · ${Money.format(total, line.appliedPrice.currency)} total"
-            MoCompactListItem(title = line.text(), subtitle = subtitle, icon = line.type.icon(), iconTint = com.isivoltpro.maginaolivo.ui.theme.MoEarthText, iconContainer = com.isivoltpro.maginaolivo.ui.theme.MoEarthTint, modifier = Modifier.testTag("jornada-equipment-line"))
+            MoCompactListItem(title = line.text(), subtitle = subtitle, icon = line.type.icon(), iconTint = MoColors.current.earthText, iconContainer = MoColors.current.earthTint, modifier = Modifier.testTag("jornada-equipment-line"))
         }
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -190,11 +190,11 @@ internal fun EquipmentSheet(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("equipment-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Uso de maquinaria del día", style = MaterialTheme.typography.headlineSmall, color = com.isivoltpro.maginaolivo.ui.theme.MoEarthText)
+        Text("Uso de maquinaria del día", style = MaterialTheme.typography.headlineSmall, color = MoColors.current.earthText)
         Text(
             "Indica cuántas se usaron. No hace falta registrar cada máquina.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
         EquipmentType.entries.filter { it != EquipmentType.OTHER }.forEach { type ->
             Stepper(type.title(), counts[type] ?: 0, "equipment-${type.name}") { value ->
@@ -228,7 +228,7 @@ internal fun EquipmentSheet(
             )
         }
         if (machines.isNotEmpty() || historicalMachines.isNotEmpty()) {
-            Text("Máquinas registradas (opcional, para su historial)", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+            Text("Máquinas registradas (opcional, para su historial)", style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 machines.forEach { machine ->
                     FilterChip(
@@ -258,7 +258,7 @@ internal fun EquipmentSheet(
         }
         pricingError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("equipment-price-error")) }
         if (selected.any { priceText(it).isBlank() }) Text("Sin precio confirmado: el coste de esas máquinas queda pendiente.",
-            style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+            style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText)
         MoPrimaryButton(
             "Guardar maquinaria",
             { onSave(lines) },
@@ -277,7 +277,7 @@ private fun EquipmentPriceField(name: String, quantity: Int, currency: String, t
     val minor = Money.parseMinor(text, currency)
     val total = minor?.let { runCatching { Math.multiplyExact(quantity.toLong(), it) }.getOrNull() }
     Text(if (total == null) "Total de esta línea: pendiente" else "Total de esta línea: ${Money.format(total, currency)}",
-        style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+        style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText,
         modifier = Modifier.testTag("$tag-total"))
 }
 

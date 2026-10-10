@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.width
@@ -30,9 +32,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -47,7 +47,7 @@ private val SHORT_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", 
 internal fun CampaignCharts(series: CampaignSeries) {
     MoSectionHeader("Gráficas")
     if (series.isEmpty) {
-        Text("Sin datos de recolección todavía.", color = MoTextSecondary, modifier = Modifier.testTag("chart-empty"))
+        Text("Sin datos de recolección todavía.", color = MoColors.current.secondaryText, modifier = Modifier.testTag("chart-empty"))
         return
     }
     val first = series.days.first().date
@@ -60,10 +60,10 @@ internal fun CampaignCharts(series: CampaignSeries) {
     } else {
         "Kilos no disponibles por un total histórico inconsistente"
     }
-    Text("Kilos pesados por día y acumulado", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    Text("Kilos pesados por día y acumulado", style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
     if (kgKnown) {
         val bar = MaterialTheme.colorScheme.primary
-        val line = MoOliveDark
+        val line = MoColors.current.primaryText
         Canvas(
             Modifier.fillMaxWidth().height(140.dp).testTag("chart-kg").semantics { contentDescription = summary },
         ) {
@@ -87,20 +87,20 @@ internal fun CampaignCharts(series: CampaignSeries) {
             drawPath(path, line, style = Stroke(width = 3.dp.toPx()))
         }
     } else {
-        Text("La gráfica de kilos se oculta para no dibujar un total incorrecto.", color = MoTextSecondary, modifier = Modifier.testTag("chart-kg-unavailable"))
+        Text("La gráfica de kilos se oculta para no dibujar un total incorrecto.", color = MoColors.current.secondaryText, modifier = Modifier.testTag("chart-kg-unavailable"))
     }
-    Text(summary, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("chart-kg-summary"))
+    Text(summary, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("chart-kg-summary"))
 
     val analysed = series.days.filter { it.fatYield != null }
-    Text("Rendimiento graso por día", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    Text("Rendimiento graso por día", style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
     if (analysed.isEmpty()) {
-        Text("Aún no hay análisis de rendimiento.", color = MoTextSecondary, modifier = Modifier.testTag("chart-yield-empty"))
+        Text("Aún no hay análisis de rendimiento.", color = MoColors.current.secondaryText, modifier = Modifier.testTag("chart-yield-empty"))
     } else {
         val low = analysed.minOf { it.fatYield!!.hundredths }
         val high = analysed.maxOf { it.fatYield!!.hundredths }
         val yieldSummary = "De ${Percent.format(low)} a ${Percent.format(high)}; " +
             "${analysed.size} de ${series.days.count { it.deliveryCount > 0 }} días con pesadas analizadas"
-        val dot = MoOliveDark
+        val dot = MoColors.current.primaryText
         Canvas(
             Modifier.fillMaxWidth().height(90.dp).testTag("chart-yield").semantics { contentDescription = yieldSummary },
         ) {
@@ -113,7 +113,7 @@ internal fun CampaignCharts(series: CampaignSeries) {
                 drawCircle(dot, radius = 5.dp.toPx(), center = Offset(cx, cy))
             }
         }
-        Text(yieldSummary, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("chart-yield-summary"))
+        Text(yieldSummary, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("chart-yield-summary"))
     }
 
     if (series.cooperatives.isNotEmpty()) {
@@ -129,13 +129,13 @@ internal fun CampaignCharts(series: CampaignSeries) {
                                     ?: " · cobertura no disponible"
                             } ?: " · sin análisis"),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoColors.current.secondaryText,
                     )
                 }
                 Text(
                     cooperative.summary.fatYield?.let { Percent.format(it.hundredths) } ?: "—",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                 )
             }
         }
@@ -154,7 +154,7 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>, onSelectCamp
         rows.reversed().forEach { row ->
             // #355: a campaign opens here, as from the history above.
             Column(Modifier.fillMaxWidth().clickable { onSelectCampaign(row.campaign.id) }.testTag("comparison-row")) {
-                Text(row.campaign.name, style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+                Text(row.campaign.name, style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
                 Text(
                     listOf(
                         row.deliveredGrams?.let { kg ->
@@ -170,7 +170,7 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>, onSelectCamp
                         },
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                     modifier = Modifier.testTag("comparison-line"),
                 )
                 val legacy = row.legacyUnweighedGrams
@@ -180,7 +180,7 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>, onSelectCamp
                         legacy?.let { "Además, ${Weight.format(it)} registrados sin pesada (histórico)" }
                             ?: "Kilos históricos sin pesada no disponibles",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoTextSecondary,
+                        color = MoColors.current.secondaryText,
                         modifier = Modifier.testTag("comparison-legacy-kilos"),
                     )
                 }
@@ -225,9 +225,9 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
     MoSectionHeader("Histórico de campañas")
     val points = history.points
     val accent = MaterialTheme.colorScheme.primary
-    val ink = MoOliveDark
+    val ink = MoColors.current.primaryText
 
-    Text("Kilos pesados por campaña", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    Text("Kilos pesados por campaña", style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
     val kilosLine = historyKilosLine(history)
     if (history.hasKilos) {
         Canvas(Modifier.fillMaxWidth().height(110.dp).testTag("history-kg").semantics { contentDescription = kilosLine }) {
@@ -242,13 +242,13 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
             }
         }
     }
-    Text(kilosLine, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-kg-summary"))
+    Text(kilosLine, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("history-kg-summary"))
     if (points.any { (it.legacyUnweighedGrams ?: 0L) > 0 }) {
         Text("Solo pesadas: los kilos registrados sin pesada (histórico) no están en las barras.",
-            style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-legacy-note"))
+            style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("history-legacy-note"))
     }
 
-    Text("Rendimiento graso medio", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    Text("Rendimiento graso medio", style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
     val yieldLine = historyYieldLine(history)
     if (history.hasYield) {
         val analysed = points.mapNotNull { it.yieldHundredths }
@@ -258,9 +258,9 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
             drawSeries(points.map { it.yieldHundredths?.toLong() }, low.toLong(), high.toLong(), ink)
         }
     }
-    Text(yieldLine, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-yield-summary"))
+    Text(yieldLine, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("history-yield-summary"))
 
-    Text("Coste de recogida por kilo", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    Text("Coste de recogida por kilo", style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
     val costLine = historyCostLine(history)
     if (history.hasCost) {
         val costs = points.mapNotNull { it.costPerKgMilli }
@@ -268,7 +268,7 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
             drawSeries(points.map { it.costPerKgMilli }, costs.min(), costs.max(), ink)
         }
     }
-    Text(costLine, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-cost-summary"))
+    Text(costLine, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("history-cost-summary"))
 
     // The campaigns under the charts, in the same order; each opens that campaign. Codex #383:
     // each is a 48 dp target; when they no longer fit under their columns the row scrolls.
@@ -286,7 +286,7 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
                     Text(
                         point.name,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (point.campaignId == selected) MoOliveDark else MoTextSecondary,
+                        color = if (point.campaignId == selected) MoColors.current.primaryText else MoColors.current.secondaryText,
                         maxLines = 2,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )

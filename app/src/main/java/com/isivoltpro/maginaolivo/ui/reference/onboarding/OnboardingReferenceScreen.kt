@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.ui.reference.onboarding
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,10 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.MaginaOlivoWordmark
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 
 private data class OnboardingPage(
     val title: String,
@@ -84,7 +85,7 @@ fun OnboardingReferenceScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MoCream)
+            .background(MoSurfaceTokens.appBackground)
             .testTag("onboarding-root")
             .padding(horizontal = MoSpacing.screen),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -104,7 +105,7 @@ fun OnboardingReferenceScreen(
                 Text(
                     text = "Saltar",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MoOlivePrimary,
+                    color = MoColors.current.primaryButton,
                 )
             }
         }
@@ -125,7 +126,7 @@ fun OnboardingReferenceScreen(
             text = page.body,
             modifier = Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.bodyLarge,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             textAlign = TextAlign.Center,
         )
 
@@ -185,9 +186,9 @@ private fun PageDots(
                     .clip(CircleShape)
                     .background(
                         if (index == selectedPage) {
-                            MoOlivePrimary
+                            MoColors.current.primaryButton
                         } else {
-                            MoOlivePrimary.copy(alpha = 0.18f)
+                            MoColors.current.primaryButton.copy(alpha = 0.18f)
                         },
                     )
                     .size(if (index == selectedPage) 10.dp else 8.dp),

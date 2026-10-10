@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,9 +33,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
 import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -104,7 +104,7 @@ internal fun PhytoView(notebook: FarmNotebook, actions: NotebookActions) {
             else -> "${records.size} tratamientos · $incomplete con datos por completar"
         },
         style = MaterialTheme.typography.bodyMedium,
-        color = MoTextSecondary,
+        color = MoColors.current.secondaryText,
         modifier = Modifier.testTag("notebook-phyto-summary"),
     )
     records.forEach { record -> PhytoRow(record) { actions.onActivity(record.activity.id) } }
@@ -158,14 +158,14 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
     Text(
         if (currencies.isNotEmpty()) "Total contabilizado: ${currencies.moneyLabel()}" else "Sin gastos contabilizados",
         style = MaterialTheme.typography.titleMedium,
-        color = MoOliveDark,
+        color = MoColors.current.primaryText,
         modifier = Modifier.testTag("notebook-expenses-total"),
     )
     if (draftCount > 0) {
         Text(
             if (draftCount == 1) "1 borrador sin contar" else "$draftCount borradores sin contar",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
     }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -208,7 +208,7 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
             Row(Modifier.fillMaxWidth().testTag("notebook-costs-category")) {
                 Text(category.label(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 val amount = runCatching { rows.fold(0L) { total, row -> Math.addExact(total, row.amountMinor) } }.getOrNull()
-                Text(amount?.let { Money.format(it, currency.currency) } ?: "No disponible", style = MaterialTheme.typography.bodyMedium, color = MoOliveDark)
+                Text(amount?.let { Money.format(it, currency.currency) } ?: "No disponible", style = MaterialTheme.typography.bodyMedium, color = MoColors.current.primaryText)
             }
         }
     }
@@ -245,11 +245,11 @@ internal fun FarmCostsView(notebook: FarmNotebook, campaign: com.isivoltpro.magi
     Text(
         if (currencies.isNotEmpty()) "Total contabilizado de la finca: ${currencies.moneyLabel()}" else "Sin gastos contabilizados",
         style = MaterialTheme.typography.titleMedium,
-        color = MoOliveDark,
+        color = MoColors.current.primaryText,
         modifier = Modifier.testTag("notebook-expenses-total"),
     )
     if (draftCount > 0) {
-        Text(if (draftCount == 1) "1 borrador sin contar" else "$draftCount borradores sin contar", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+        Text(if (draftCount == 1) "1 borrador sin contar" else "$draftCount borradores sin contar", style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText)
     }
     val recollection = RecollectionLedger.posted(notebook.recollectionExpenses)
     val general = RecollectionLedger.posted(notebook.generalExpenses)

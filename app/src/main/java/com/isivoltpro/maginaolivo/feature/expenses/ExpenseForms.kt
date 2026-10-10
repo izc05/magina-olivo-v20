@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,9 +42,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoSelectField
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
 
 /** One option of a [ChoiceSheet]. A null [key] is the explicit "none" choice. */
@@ -65,7 +65,7 @@ internal fun ChoiceSheet(
                 .testTag(testTag),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
             choices.forEach { choice ->
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -154,8 +154,8 @@ internal fun ExpenseEditor(
         Modifier.fillMaxWidth().then(scrolling).padding(horizontal = MoSpacing.screen),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
-        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
         // Codex #480 / #433: once the expense is tied to a work (locked or chosen), its Campaign — or
         // none, for general work — is context, not a choice.
         val workBound = activityLocked || form.activityId != null
@@ -171,7 +171,7 @@ internal fun ExpenseEditor(
                         else -> "Fuera de campaña · trabajo general de la finca"
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                     modifier = Modifier.testTag("expense-work-campaign"),
                 )
             }
@@ -180,12 +180,12 @@ internal fun ExpenseEditor(
             Text(
                 "Recogida · ${campaign?.choiceLabel() ?: "Campaña seleccionada"}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
                 modifier = Modifier.testTag("expense-campaign-context"),
             )
         } else if (recollection != null) {
             Column(Modifier.fillMaxWidth().selectableGroup().testTag("expense-kind")) {
-                Text("¿Dónde pertenece este gasto?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+                Text("¿Dónde pertenece este gasto?", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
                 ExpenseKindRow("Recogida · ${recollection.choiceLabel()}", campaignChoiceMade && form.campaignId == recollection.id, "expense-kind-recollection") {
                     form = form.copy(campaignId = recollection.id)
                     campaignChoiceMade = true
@@ -199,18 +199,18 @@ internal fun ExpenseEditor(
                 Text(
                     "Elige Recogida o Fuera de campaña antes de guardar.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                     modifier = Modifier.testTag("expense-kind-required"),
                 )
             }
         } else if (form.campaignId != null) {
-            Text("Gasto vinculado explícitamente a la campaña", color = MoTextSecondary)
+            Text("Gasto vinculado explícitamente a la campaña", color = MoColors.current.secondaryText)
         } else if (!campaignChoiceMade && !options.campaignsKnownFor(form.farmId)) {
             // #411: an empty list while the Farm's campaigns load is not «no running campaign».
             Text(
                 "Comprobando las campañas de la finca…",
                 style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
                 modifier = Modifier.testTag("expense-kind-loading"),
             )
         }
@@ -238,7 +238,7 @@ internal fun ExpenseEditor(
         if (!categoryChosen) {
             Text(
                 "Indica qué tipo de gasto es (producto, mano de obra, maquinaria…) antes de guardar.",
-                style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText,
                 modifier = Modifier.testTag("expense-category-required"),
             )
         }
@@ -276,7 +276,7 @@ internal fun ExpenseEditor(
             if (!canReplace) {
                 Text(
                     "Ya hay pagos anotados a personas de este día: este gasto se suma al cálculo y no lo sustituye.",
-                    style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                    style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText,
                     modifier = Modifier.testTag("expense-role-labour-paid"),
                 )
             }
@@ -286,7 +286,7 @@ internal fun ExpenseEditor(
         if (farmLocked) {
             // Codex #405: never a selector while locked, not even before the Farms have loaded.
             Text(farm?.name ?: "Cargando la finca…", style = MaterialTheme.typography.titleMedium,
-                color = if (farm != null) MoOliveDark else MoTextSecondary, modifier = Modifier.testTag("expense-farm-context"))
+                color = if (farm != null) MoColors.current.primaryText else MoColors.current.secondaryText, modifier = Modifier.testTag("expense-farm-context"))
         } else {
             MoSelectField("Finca", farm?.name ?: "Sin finca", { picker = "farm" }, Modifier.testTag("expense-farm"))
         }
@@ -312,20 +312,20 @@ internal fun ExpenseEditor(
             Text(
                 activity?.let { "Relacionado con · ${it.description} · ${it.activityDate}" } ?: "Cargando el trabajo…",
                 style = MaterialTheme.typography.titleMedium,
-                color = if (activity != null) MoOliveDark else MoTextSecondary,
+                color = if (activity != null) MoColors.current.primaryText else MoColors.current.secondaryText,
                 modifier = Modifier.testTag("expense-activity-context"),
             )
             val targets = activity?.targets.orEmpty()
             if (targets.size == 1) {
                 Text("Parcela · ${targets.single().parcelName}", style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary, modifier = Modifier.testTag("expense-parcel-context"))
+                    color = MoColors.current.secondaryText, modifier = Modifier.testTag("expense-parcel-context"))
             } else if (targets.size > 1) {
                 parcelField()
             }
         } else if (parcelInSight) {
             Text(
                 "Parcela · " + (options.parcelLabel(lockedParcelId, form.farmId) ?: "…"),
-                style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary,
+                style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText,
                 modifier = Modifier.testTag("expense-parcel-context"),
             )
         }
@@ -349,7 +349,7 @@ internal fun ExpenseEditor(
                 Text(
                     "Ahora: $now",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                     modifier = Modifier.testTag("expense-supplier-now"),
                 )
             }
@@ -381,7 +381,7 @@ internal fun ExpenseEditor(
             Text(
                 "Las líneas describen la compra; el importe que cuenta es el total del gasto.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
             errors.lines?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             form.lines.forEachIndexed { index, line ->

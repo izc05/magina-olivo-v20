@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -40,9 +42,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
 
 /**
@@ -71,7 +71,7 @@ internal fun JornadaCosts(
         Text(
             if (readFailed) "No pudimos leer los gastos de este día." else "Cargando gastos…",
             style = MaterialTheme.typography.bodyMedium,
-            color = if (readFailed) MaterialTheme.colorScheme.error else MoTextSecondary,
+            color = if (readFailed) MaterialTheme.colorScheme.error else MoColors.current.secondaryText,
             modifier = Modifier.testTag(if (readFailed) "jornada-costs-read-error" else "jornada-costs-loading"),
         )
         return
@@ -79,7 +79,7 @@ internal fun JornadaCosts(
     val ledger = RecollectionLedger.posted(expenses)
     val draftCount = expenses.count { it.status == ExpenseStatus.DRAFT }
     if (expenses.isEmpty()) {
-        Text("Sin gastos anotados.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-no-costs"))
+        Text("Sin gastos anotados.", style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText, modifier = Modifier.testTag("jornada-no-costs"))
     } else {
         Text(
             listOfNotNull(
@@ -87,7 +87,7 @@ internal fun JornadaCosts(
                 draftCount.takeIf { it > 0 }?.let { if (it == 1) "1 borrador sin contar" else "$it borradores sin contar" },
             ).joinToString(" · "),
             style = MaterialTheme.typography.bodyLarge,
-            color = MoOliveDark,
+            color = MoColors.current.primaryText,
             modifier = Modifier.testTag("jornada-cost-total"),
         )
         expenses.forEach { expense ->
@@ -110,7 +110,7 @@ internal fun JornadaCosts(
                     "Hay ${if (kind == DayCostKind.LABOUR) "jornales" else "maquinaria"} anotados a mano este día: " +
                         "el cálculo (${Money.format(expense.amountMinor, expense.currency)}) no suma. Solo cuenta uno de los dos.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                     modifier = Modifier.testTag("jornada-cost-collision"),
                 )
                 if (editable) {
@@ -134,7 +134,7 @@ internal fun JornadaCosts(
                 "ningún día de recolección. Puedes enlazarlo: o se añade a $what calculados aquí, o los sustituye. " +
                 "Si es otro gasto, déjalo aparte: sigue sumando en la campaña.",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             modifier = Modifier.testTag("jornada-unlinked-cost"),
         )
         if (editable) {
@@ -183,12 +183,12 @@ internal fun RatesSheet(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("rates-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Precios de recolección", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text("Precios de recolección", style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text(
             "De esta finca. Con ellos se calcula el coste de cada día y se apunta una sola vez en Gastos. " +
                 "Deja en blanco lo que no quieras calcular. Las campañas cerradas no cambian.",
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
         MoTextField(fullDay, { fullDay = it }, "Jornada completa (€)", supportingText = "La media jornada es la mitad", modifier = Modifier.fillMaxWidth().testTag("rates-full-day"))
         MoTextField(hourly, { hourly = it }, "Hora (€)", modifier = Modifier.fillMaxWidth().testTag("rates-hourly"))
@@ -263,7 +263,7 @@ internal fun CostSheet(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("cost-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Gasto del día", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text("Gasto del día", style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             JornadaExpenseKind.entries.forEach { option ->
                 FilterChip(kind == option, { kind = option; role = null }, { Text(option.label) }, Modifier.testTag("cost-kind-${option.name}"))
@@ -279,11 +279,11 @@ internal fun CostSheet(
         MoTextField(concept, { concept = it }, "Concepto (opcional)", modifier = Modifier.fillMaxWidth().testTag("cost-concept"))
         question?.let { asked ->
             val what = if (asked.calculated == DayCostKind.LABOUR) "jornales" else "maquinaria"
-            Text("¿Cómo cuenta este gasto?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+            Text("¿Cómo cuenta este gasto?", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
             Text(
                 "Este día ya tiene $what calculados.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 FilterChip(chosen == DayCostRole.ADDITIVE, { role = DayCostRole.ADDITIVE },
@@ -297,14 +297,14 @@ internal fun CostSheet(
                 Text(
                     "Este día tiene pagos por persona: el importe se añade al cálculo de jornales, que no se modifica.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                     modifier = Modifier.testTag("cost-role-labour-paid"),
                 )
             } else if (chosen == DayCostRole.REPLACEMENT && asked.calculated == DayCostKind.LABOUR) {
                 Text(
                     "El cálculo de jornales queda guardado sin contar. El importe cuenta en la campaña, sin repartir por persona.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                     modifier = Modifier.testTag("cost-role-replaces-labour"),
                 )
             }
@@ -318,7 +318,7 @@ internal fun CostSheet(
                 else -> "Se guarda en Gastos. Elige si se añade al cálculo o lo sustituye."
             },
             style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             modifier = Modifier.testTag("cost-sheet-ledger-note"),
         )
         currencyError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("day-expense-currency-error")) }

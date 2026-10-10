@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.background
@@ -56,12 +60,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
 
 @Composable
@@ -127,7 +127,7 @@ fun DocumentReviewScreen(
     var rawTextVisible by rememberSaveable { mutableStateOf(false) }
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold(Modifier.fillMaxSize().testTag("document-review-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("document-review-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
@@ -135,13 +135,13 @@ fun DocumentReviewScreen(
             val extraction = state.extraction
             Column(Modifier.padding(horizontal = MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                 Spacer(Modifier.height(MoSpacing.md))
-                Text("Revisar documento", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+                Text("Revisar documento", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
                 when {
                     state.isLoading -> CircularProgressIndicator()
                     extraction == null -> MoErrorState("Documento no disponible", state.error ?: "No está en este dispositivo.")
                     else -> {
                         Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm), verticalAlignment = Alignment.CenterVertically) {
-                            Text(extraction.documentType.label(), style = MaterialTheme.typography.titleMedium, color = MoTextSecondary)
+                            Text(extraction.documentType.label(), style = MaterialTheme.typography.titleMedium, color = MoColors.current.secondaryText)
                             MoStatusChip(
                                 if (state.isReading) OcrStatus.PENDING.label() else extraction.status.label(),
                                 tone = if (state.isReading) OcrStatus.PENDING.tone() else extraction.status.tone(),
@@ -152,7 +152,7 @@ fun DocumentReviewScreen(
                         if (state.isReading) {
                             Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm), verticalAlignment = Alignment.CenterVertically) {
                                 CircularProgressIndicator(Modifier.height(24.dp))
-                                Text("Leyendo el documento en este dispositivo…", color = MoTextSecondary)
+                                Text("Leyendo el documento en este dispositivo…", color = MoColors.current.secondaryText)
                             }
                         }
                         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("document-error")) }
@@ -205,7 +205,7 @@ fun DocumentReviewScreen(
                 )
             } else if (extraction?.status == OcrStatus.CONFIRMED) {
                 Column(Modifier.padding(horizontal = MoSpacing.screen)) {
-                    Text("Este documento ya está revisado.", color = MoTextSecondary)
+                    Text("Este documento ya está revisado.", color = MoColors.current.secondaryText)
                 }
             }
             Spacer(Modifier.height(MoSpacing.xl))
@@ -234,10 +234,10 @@ private fun DocumentPreview(state: DocumentReviewUiState) {
         attachment.kind == com.isivoltpro.maginaolivo.domain.attachment.AttachmentKind.PHOTO
     }
     Box(
-        Modifier.fillMaxWidth().height(220.dp).clip(MoShape.card).background(MoSurfaceSoft),
+        Modifier.fillMaxWidth().height(220.dp).clip(MoShape.card).background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        Text(attachment?.displayName ?: "Documento", color = MoTextSecondary)
+        Text(attachment?.displayName ?: "Documento", color = MoColors.current.secondaryText)
         if (model != null) {
             AsyncImage(
                 model = model,
@@ -274,16 +274,16 @@ fun OrganizationsScreen(
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     OnEachSave(state.saveCount) { editing = null }
 
-    Scaffold(Modifier.fillMaxSize().testTag("organizations-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("organizations-root"), containerColor = MoSurfaceTokens.appBackground, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            Text("Proveedores y organizaciones", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Proveedores y organizaciones", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             Text(
                 "Cooperativas, almazaras, proveedores y comunidades de regantes. Cada una se guarda una sola vez.",
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
             MoPrimaryButton("Añadir organización", { editing = NEW }, Modifier.fillMaxWidth().testTag("add-organization"))
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -319,17 +319,17 @@ fun OrganizationsScreen(
 @Composable
 private fun OrganizationRow(organization: Organization, onEdit: () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(MoShape.card).background(MoSurfaceSoft)
+        Modifier.fillMaxWidth().clip(MoShape.card).background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(MoSpacing.md).testTag("organization-row"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs),
     ) {
-        Text(organization.name, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+        Text(organization.name, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
         Text(
             organization.roles.sortedBy { it.ordinal }.joinToString(" · ") { it.label() },
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
-        organization.municipality?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary) }
+        organization.municipality?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText) }
         TextButton(onClick = onEdit) { Text("Editar") }
     }
 }

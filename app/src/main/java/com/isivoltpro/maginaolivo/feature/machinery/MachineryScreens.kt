@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.machinery
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.clickable
@@ -59,11 +61,9 @@ import com.isivoltpro.maginaolivo.ui.components.MoSelectField
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import java.util.UUID
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
@@ -98,7 +98,7 @@ fun MachineryScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.md))
-            Text("Mis máquinas", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Mis máquinas", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             Text(
                 "Tus máquinas, para anotarlas en los trabajos si quieres. Solo hace falta el nombre.",
                 style = MaterialTheme.typography.bodyLarge,
@@ -158,7 +158,7 @@ private fun MachineRow(machine: Machine, onClick: () -> Unit) {
         ) {
             MoIconBadge(MoIcons.Tractor)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-                Text(machine.name, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+                Text(machine.name, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
                 Text(
                     listOfNotNull(machine.category.label(), listOfNotNull(machine.make, machine.model).joinToString(" ").ifEmpty { null })
                         .joinToString(" · "),
@@ -167,7 +167,7 @@ private fun MachineRow(machine: Machine, onClick: () -> Unit) {
                 )
             }
             machine.currentHours?.let {
-                Text("${editableHours(it)} h", style = MaterialTheme.typography.titleMedium, color = MoInk)
+                Text("${editableHours(it)} h", style = MaterialTheme.typography.titleMedium, color = MoColors.current.bodyText)
             }
         }
     }
@@ -190,7 +190,7 @@ internal fun MachineEditor(
             .testTag("machine-editor"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         MoTextField(
             form.name, { form = form.copy(name = it) }, "Nombre",
             isError = errors.name != null, supportingText = errors.name,
@@ -277,7 +277,7 @@ fun MachineDetailScreen(
                 state.isLoading -> CircularProgressIndicator()
                 machine == null -> MoErrorState("Máquina no disponible", state.error ?: "No está guardada en este dispositivo.")
                 else -> {
-                    Text(machine.name, style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
+                    Text(machine.name, style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText)
                     if (machine.archived) MoStatusChip("Retirada", modifier = Modifier.testTag("machine-archived"))
                     DetailValue("Tipo", machine.category.label())
                     DetailValue("Marca y modelo", listOfNotNull(machine.make, machine.model).joinToString(" ").ifEmpty { null })

@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.register
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
@@ -66,7 +69,7 @@ fun RegisterActivityReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("register-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -81,12 +84,12 @@ fun RegisterActivityReferenceScreen(
             Text(
                 text = "Registrar trabajo",
                 style = MaterialTheme.typography.headlineLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Text(
                 text = "Añade solo los datos que correspondan al trabajo realizado.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
 
             Spacer(Modifier.height(MoSpacing.lg))
@@ -94,7 +97,7 @@ fun RegisterActivityReferenceScreen(
             Text(
                 text = "Tipo de trabajo",
                 style = MaterialTheme.typography.titleMedium,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Spacer(Modifier.height(MoSpacing.sm))
 
@@ -174,8 +177,8 @@ fun RegisterActivityReferenceScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MoShape.card,
-                colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-                border = BorderStroke(1.dp, MoOutline),
+                colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+                border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
             ) {
                 Column(
                     modifier = Modifier.padding(MoSpacing.md),
@@ -184,17 +187,17 @@ fun RegisterActivityReferenceScreen(
                     Text(
                         text = "Fotos y justificantes",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MoOliveDark,
+                        color = MoColors.current.primaryText,
                     )
                     Text(
                         text = "Adjunta imágenes del trabajo o documentos relacionados.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MoTextSecondary,
+                        color = MoColors.current.secondaryText,
                     )
                     Text(
                         text = "+ Añadir archivo",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MoOlivePrimary,
+                        color = MoColors.current.primaryButton,
                     )
                 }
             }
@@ -239,14 +242,14 @@ private fun ActivityTypeGrid(
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (active) {
-                                MoOlivePrimary.copy(alpha = 0.12f)
+                                MoColors.current.primaryButton.copy(alpha = 0.12f)
                             } else {
-                                MoWarmWhite
+                                MoSurfaceTokens.cardSurface
                             },
                         ),
                         border = BorderStroke(
                             1.dp,
-                            if (active) MoOlivePrimary else MoOutline,
+                            if (active) MoColors.current.primaryButton else MoSurfaceTokens.cardStroke,
                         ),
                     ) {
                         Column(
@@ -260,12 +263,12 @@ private fun ActivityTypeGrid(
                                 text = activitySymbol(type),
                                 modifier = Modifier.clearAndSetSemantics { },
                                 style = MaterialTheme.typography.titleLarge,
-                                color = MoOlivePrimary,
+                                color = MoColors.current.primaryButton,
                             )
                             Text(
                                 text = type.label,
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MoOliveDark,
+                                color = MoColors.current.primaryText,
                             )
                         }
                     }

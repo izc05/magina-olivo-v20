@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.farm
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,7 +48,7 @@ fun FarmDetailReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("farm-detail-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -82,12 +85,12 @@ fun FarmDetailReferenceScreen(
                         Text(
                             text = "La Solana",
                             style = MaterialTheme.typography.headlineLarge,
-                            color = MoOliveDark,
+                            color = MoColors.current.primaryText,
                         )
                         Text(
                             text = "Huelma, Jaén",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MoTextSecondary,
+                            color = MoColors.current.secondaryText,
                         )
                     }
                 }
@@ -167,12 +170,12 @@ fun FarmDetailReferenceScreen(
                         Text(
                             text = "Próximo trabajo",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MoTextSecondary,
+                            color = MoColors.current.secondaryText,
                         )
                         Text(
                             text = "Tratamiento · 24 sep",
                             style = MaterialTheme.typography.titleMedium,
-                            color = MoOliveDark,
+                            color = MoColors.current.primaryText,
                         )
                     }
                     Text(

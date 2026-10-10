@@ -7,6 +7,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ParcelMapFeatureTest {
+    @Test fun appearanceChangesTheOfflineCanvasWithoutRecoloringSourceTiles() {
+        for (base in MapBase.entries) {
+            val light = JsonParser.parseString(parcelStyle(base, cadastreLines = true)).asJsonObject
+            val dark = JsonParser.parseString(parcelStyle(base, cadastreLines = true, dark = true)).asJsonObject
+            assertEquals(light.getAsJsonObject("sources"), dark.getAsJsonObject("sources"))
+            val lightLayers = light.getAsJsonArray("layers").map { it.asJsonObject }
+            val darkLayers = dark.getAsJsonArray("layers").map { it.asJsonObject }
+            assertEquals("#171914", darkLayers.first().getAsJsonObject("paint")["background-color"].asString)
+            assertEquals(lightLayers.filter { it["type"].asString == "raster" }, darkLayers.filter { it["type"].asString == "raster" })
+            if (base == MapBase.NONE) {
+                assertFalse(dark.toString().contains("https://"))
+                assertTrue(dark.toString().contains("#B6D39E"))
+            }
+        }
+    }
+
     @Test fun savedPolygonBecomesSelectableFeatureWithoutChangingItsGeometry() {
         val geometry = """{"type":"Polygon","coordinates":[[[-3.0,37.0],[-2.9,37.0],[-2.9,37.1],[-3.0,37.0]]]}"""
 

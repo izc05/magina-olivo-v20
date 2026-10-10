@@ -1,0 +1,38 @@
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.isivoltpro.maginaolivo.AppearanceSettingsTest:
+INSTRUMENTATION_STATUS: test=backDuringADelayedRejectedWriteKeepsTheErrorReachable
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Assert failed: The component with Text + InputText + EditableText contains 'No se pudo guardar la apariencia. Inténtalo de nuevo.' (ignoreCase: false) is not displayed!
+	at androidx.compose.ui.test.AssertionsKt.assertIsDisplayed(Assertions.kt:34)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.backDuringADelayedRejectedWriteKeepsTheErrorReachable(AppearanceSettingsTest.kt:78)
+
+INSTRUMENTATION_STATUS: stream=
+Error in backDuringADelayedRejectedWriteKeepsTheErrorReachable(com.isivoltpro.maginaolivo.AppearanceSettingsTest):
+java.lang.AssertionError: Assert failed: The component with Text + InputText + EditableText contains 'No se pudo guardar la apariencia. Inténtalo de nuevo.' (ignoreCase: false) is not displayed!
+	at androidx.compose.ui.test.AssertionsKt.assertIsDisplayed(Assertions.kt:34)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.backDuringADelayedRejectedWriteKeepsTheErrorReachable(AppearanceSettingsTest.kt:78)
+
+INSTRUMENTATION_STATUS: test=backDuringADelayedRejectedWriteKeepsTheErrorReachable
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 3.684
+There was 1 failure:
+1) backDuringADelayedRejectedWriteKeepsTheErrorReachable(com.isivoltpro.maginaolivo.AppearanceSettingsTest)
+java.lang.AssertionError: Assert failed: The component with Text + InputText + EditableText contains 'No se pudo guardar la apariencia. Inténtalo de nuevo.' (ignoreCase: false) is not displayed!
+	at androidx.compose.ui.test.AssertionsKt.assertIsDisplayed(Assertions.kt:34)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.backDuringADelayedRejectedWriteKeepsTheErrorReachable(AppearanceSettingsTest.kt:78)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

@@ -14,8 +14,7 @@ fun AppRoot(
     onActivityOpened: () -> Unit = {},
 ) {
     val appearance by compositionRoot.appearanceStore.mode.collectAsStateWithLifecycle()
-    // #707 DARK-1/2: fixed light text remains until DARK-3; never ship unreadable night screens.
-    MaginaOlivoTheme(mode = productionAppearanceMode(appearance)) {
+    MaginaOlivoTheme(mode = appearance) {
         AppNavigation(
             compositionRoot = compositionRoot,
             openActivityId = openActivityId,

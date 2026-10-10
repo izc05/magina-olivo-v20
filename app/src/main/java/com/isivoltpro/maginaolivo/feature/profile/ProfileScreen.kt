@@ -35,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
+import com.isivoltpro.maginaolivo.app.AppearanceStore
 import com.isivoltpro.maginaolivo.data.reminder.ReminderNotifier
 import com.isivoltpro.maginaolivo.data.reminder.notificationSettingsIntent
 import com.isivoltpro.maginaolivo.data.reminder.notificationsAllowed
@@ -65,6 +66,7 @@ fun ProfileRoute(
     demoFarm: com.isivoltpro.maginaolivo.app.DemoFarmTools? = null,
     /** #671: nested CUE resource management, never a bottom-bar destination. */
     onAgronomicPeople: () -> Unit = {},
+    appearanceStore: AppearanceStore? = null,
 ) {
     val context = LocalContext.current
     val profileRepository = persistence?.profileRepository
@@ -91,6 +93,7 @@ fun ProfileRoute(
         developerGalleryEnabled = developerGalleryEnabled,
         onDeveloperGallery = onDeveloperGallery,
         onHelp = onHelp,
+        appearanceSettings = appearanceStore?.let { store -> { AppearanceSettings(store) } },
         myProfile = if (profileViewModel != null) {
             {
                 val state by profileViewModel.state.collectAsStateWithLifecycle()
@@ -141,6 +144,7 @@ fun ProfileScreen(
     devTools: (@Composable () -> Unit)? = null,
     /** #671: CUE resources live under Perfil, not in the root navigation. */
     onAgronomicPeople: () -> Unit = {},
+    appearanceSettings: (@Composable () -> Unit)? = null,
 ) {
     Column(
         Modifier
@@ -181,6 +185,7 @@ fun ProfileScreen(
             trailing = { Chevron() },
         )
         MoSectionHeader("Ajustes")
+        appearanceSettings?.invoke()
         MoCompactListItem(
             title = "Notificaciones",
             subtitle = "Avisos de los trabajos planificados",

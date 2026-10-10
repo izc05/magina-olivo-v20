@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,11 +23,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
-import com.isivoltpro.maginaolivo.ui.theme.MoSage
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -34,7 +34,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun NotebookDayMarker(date: LocalDate, today: LocalDate, modifier: Modifier = Modifier) {
     val isToday = date == today
-    val tint = if (isToday) MoOliveMid else MoTextSecondary
+    val tint = if (isToday) MoColors.current.actionText else MoColors.current.secondaryText
     Row(
         // One heading for TalkBack ("Hoy · domingo 27 sept"), not three loose pieces.
         modifier.fillMaxWidth().padding(top = MoSpacing.xs).semantics(mergeDescendants = true) { heading() }
@@ -42,14 +42,14 @@ internal fun NotebookDayMarker(date: LocalDate, today: LocalDate, modifier: Modi
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
-        Box(Modifier.size(8.dp).background(if (isToday) MoOliveMid else MoSage, CircleShape))
+        Box(Modifier.size(8.dp).background(if (isToday) MoColors.current.actionText else MaterialTheme.colorScheme.secondary, CircleShape))
         Text(
             dayMarkerLabel(date, today),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Medium,
             color = tint,
         )
-        Box(Modifier.weight(1f).height(1.dp).background(MoOutline))
+        Box(Modifier.weight(1f).height(1.dp).background(MoSurfaceTokens.cardStroke))
     }
 }
 

@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.harvest
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,7 +44,7 @@ fun HarvestReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("harvest-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -55,12 +58,12 @@ fun HarvestReferenceScreen(
             Text(
                 text = "Cosecha",
                 style = MaterialTheme.typography.headlineLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Text(
                 text = "Campaña 2026/27 · La Solana",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
 
             Spacer(Modifier.height(MoSpacing.md))
@@ -157,7 +160,7 @@ private fun HarvestDelivery(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.md),
@@ -168,11 +171,11 @@ private fun HarvestDelivery(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(date, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+                Text(date, style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
                 MoStatusChip(text = status, tone = tone)
             }
-            Text(kg, style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
-            Text(destination, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+            Text(kg, style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
+            Text(destination, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
         }
     }
 }
@@ -185,15 +188,15 @@ private fun HarvestParcel(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Row(
             modifier = Modifier.padding(MoSpacing.md),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(name, style = MaterialTheme.typography.bodyLarge, color = MoOliveDark)
-            Text(kg, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+            Text(name, style = MaterialTheme.typography.bodyLarge, color = MoColors.current.primaryText)
+            Text(kg, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
         }
     }
 }

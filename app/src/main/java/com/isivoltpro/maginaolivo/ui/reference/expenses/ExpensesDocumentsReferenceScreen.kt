@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.expenses
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,7 +44,7 @@ fun ExpensesDocumentsReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("expenses-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -55,12 +58,12 @@ fun ExpensesDocumentsReferenceScreen(
             Text(
                 text = "Gastos y documentos",
                 style = MaterialTheme.typography.headlineLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Text(
                 text = "Campaña 2026/27 · La Solana",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
 
             Spacer(Modifier.height(MoSpacing.md))
@@ -149,7 +152,7 @@ private fun ExpenseCategory(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Row(
             modifier = Modifier.padding(MoSpacing.md),
@@ -157,10 +160,10 @@ private fun ExpenseCategory(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text(label, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-                Text(share, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+                Text(label, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
+                Text(share, style = MaterialTheme.typography.labelMedium, color = MoColors.current.secondaryText)
             }
-            Text(value, style = MaterialTheme.typography.titleMedium, color = MoOlivePrimary)
+            Text(value, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryButton)
         }
     }
 }
@@ -174,7 +177,7 @@ private fun DocumentItem(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.md),
@@ -186,10 +189,10 @@ private fun DocumentItem(
                 verticalAlignment = Alignment.Top,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(name, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-                    Text(meta, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+                    Text(name, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
+                    Text(meta, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
                 }
-                Text("⋮", style = MaterialTheme.typography.titleMedium, color = MoTextSecondary)
+                Text("⋮", style = MaterialTheme.typography.titleMedium, color = MoColors.current.secondaryText)
             }
             MoSyncStatus(state = sync)
         }

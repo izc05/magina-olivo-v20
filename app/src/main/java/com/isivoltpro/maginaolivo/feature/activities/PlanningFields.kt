@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,7 +18,6 @@ import com.isivoltpro.maginaolivo.domain.agenda.Reminder
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderKind
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -51,7 +52,7 @@ internal fun PlanningFields(
         input.crew, { onChange(input.copy(crew = it)) }, "Cuadrilla, empresa o proveedor",
         modifier = Modifier.fillMaxWidth().testTag("planning-crew"),
     )
-    Text("Avisos en este teléfono", color = MoTextSecondary)
+    Text("Avisos en este teléfono", color = MoColors.current.secondaryText)
     ReminderChoice("El día anterior (a la hora elegida en Perfil · Avisos)", input.previousDay, "planning-reminder-previous-day") {
         onChange(input.copy(previousDay = it))
     }
@@ -85,7 +86,7 @@ internal fun PlanningSummary(planning: ActivityPlanning?, reminders: List<Remind
     reminders.forEach { reminder ->
         Text(
             reminderLabel(reminder),
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
             modifier = Modifier.testTag("activity-reminder"),
         )
     }

@@ -1,0 +1,86 @@
+
+com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest:
+Error in notebookActionLabelsHaveReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest):
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.0421912995596438 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.notebookActionLabelsHaveReadableContrast(DarkAgriculturalSurfacesTest.kt:75)
+
+Error in farmHeadingHasReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest):
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.264232419778409 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.farmHeadingHasReadableContrast(DarkAgriculturalSurfacesTest.kt:41)
+
+Error in farmEditorHasReadableContrastAndReachableSave(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest):
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.095257385018407 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.farmEditorHasReadableContrastAndReachableSave(DarkAgriculturalSurfacesTest.kt:51)
+
+Error in agendaHeadingHasReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest):
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.264232419778409 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.agendaHeadingHasReadableContrast(DarkAgriculturalSurfacesTest.kt:81)
+
+Error in parcelEditorDisclosureHasReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest):
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.264232419778409 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.parcelEditorDisclosureHasReadableContrast(DarkAgriculturalSurfacesTest.kt:87)
+
+Error in campaignHeadingHasReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest):
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.264232419778409 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.campaignHeadingHasReadableContrast(DarkAgriculturalSurfacesTest.kt:58)
+
+
+Time: 8.644
+There were 6 failures:
+1) notebookActionLabelsHaveReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest)
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.0421912995596438 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.notebookActionLabelsHaveReadableContrast(DarkAgriculturalSurfacesTest.kt:75)
+2) farmHeadingHasReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest)
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.264232419778409 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.farmHeadingHasReadableContrast(DarkAgriculturalSurfacesTest.kt:41)
+3) farmEditorHasReadableContrastAndReachableSave(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest)
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.095257385018407 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.farmEditorHasReadableContrastAndReachableSave(DarkAgriculturalSurfacesTest.kt:51)
+4) agendaHeadingHasReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest)
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.264232419778409 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.agendaHeadingHasReadableContrast(DarkAgriculturalSurfacesTest.kt:81)
+5) parcelEditorDisclosureHasReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest)
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.264232419778409 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.parcelEditorDisclosureHasReadableContrast(DarkAgriculturalSurfacesTest.kt:87)
+6) campaignHeadingHasReadableContrast(com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest)
+java.lang.AssertionError: Actual DARK agricultural text contrast 1.264232419778409 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.expectReadableText(DarkAgriculturalSurfacesTest.kt:112)
+	at com.isivoltpro.maginaolivo.DarkAgriculturalSurfacesTest.campaignHeadingHasReadableContrast(DarkAgriculturalSurfacesTest.kt:58)
+
+FAILURES!!!
+Tests run: 6,  Failures: 6

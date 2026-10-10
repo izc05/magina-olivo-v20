@@ -1,0 +1,67 @@
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkMapAttributionTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+com.isivoltpro.maginaolivo.DarkMapAttributionTest:
+INSTRUMENTATION_STATUS: test=lightAttributionRemainsReadableOverBrightImagery
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkMapAttributionTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=lightAttributionRemainsReadableOverBrightImagery
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkMapAttributionTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=darkAttributionRemainsReadableOverBrightImagery
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkMapAttributionTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=darkAttributionRemainsReadableOverBrightImagery
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkReferencePhotoTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+com.isivoltpro.maginaolivo.DarkReferencePhotoTest:
+INSTRUMENTATION_STATUS: test=referencePhotoAndItsShadeRemainUnchangedAcrossThemes
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkReferencePhotoTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=referencePhotoAndItsShadeRemainUnchangedAcrossThemes
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkReferenceChartTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+com.isivoltpro.maginaolivo.DarkReferenceChartTest:
+INSTRUMENTATION_STATUS: test=theCampaignReferenceChartKeepsItsLastBarVisible
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkReferenceChartTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=theCampaignReferenceChartKeepsItsLastBarVisible
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 8.454
+
+OK (4 tests)
+
+
+INSTRUMENTATION_CODE: -1

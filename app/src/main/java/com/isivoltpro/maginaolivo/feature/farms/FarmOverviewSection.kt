@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,7 +34,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import java.util.UUID
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
@@ -116,7 +117,7 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
     Column(Modifier.fillMaxWidth().testTag("farm-overview"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         // #359 follow-up: the period is always visible, so the kilos never read as «of all time».
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Resumen de la explotación", style = MaterialTheme.typography.titleMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
+            Text("Resumen de la explotación", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText, modifier = Modifier.weight(1f))
             Box {
                 if (overviews.size > 1) {
                     TextButton(onClick = { periodMenu = true }, modifier = Modifier.testTag("farm-overview-period")) {

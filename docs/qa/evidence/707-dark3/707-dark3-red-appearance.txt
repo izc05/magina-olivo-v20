@@ -1,0 +1,173 @@
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+com.isivoltpro.maginaolivo.AppearanceSettingsTest:
+INSTRUMENTATION_STATUS: test=cancellingTheSheetKeepsTheConfirmedPreference
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'profile-appearance')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.cancellingTheSheetKeepsTheConfirmedPreference(AppearanceSettingsTest.kt:39)
+
+INSTRUMENTATION_STATUS: stream=
+Error in cancellingTheSheetKeepsTheConfirmedPreference(com.isivoltpro.maginaolivo.AppearanceSettingsTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'profile-appearance')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.cancellingTheSheetKeepsTheConfirmedPreference(AppearanceSettingsTest.kt:39)
+
+INSTRUMENTATION_STATUS: test=cancellingTheSheetKeepsTheConfirmedPreference
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=productionUsesAnAlreadyConfirmedDarkModeOnItsFirstFrame
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Production Perfil background expected:<-15263468> but was:<-922401>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.expectBackground(AppearanceSettingsTest.kt:83)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.productionUsesAnAlreadyConfirmedDarkModeOnItsFirstFrame(AppearanceSettingsTest.kt:63)
+
+INSTRUMENTATION_STATUS: stream=
+Error in productionUsesAnAlreadyConfirmedDarkModeOnItsFirstFrame(com.isivoltpro.maginaolivo.AppearanceSettingsTest):
+java.lang.AssertionError: Production Perfil background expected:<-15263468> but was:<-922401>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.expectBackground(AppearanceSettingsTest.kt:83)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.productionUsesAnAlreadyConfirmedDarkModeOnItsFirstFrame(AppearanceSettingsTest.kt:63)
+
+INSTRUMENTATION_STATUS: test=productionUsesAnAlreadyConfirmedDarkModeOnItsFirstFrame
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=profileChangesAppearanceImmediatelyAndRestoresLight
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'profile-appearance')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.profileChangesAppearanceImmediatelyAndRestoresLight(AppearanceSettingsTest.kt:21)
+
+INSTRUMENTATION_STATUS: stream=
+Error in profileChangesAppearanceImmediatelyAndRestoresLight(com.isivoltpro.maginaolivo.AppearanceSettingsTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'profile-appearance')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.profileChangesAppearanceImmediatelyAndRestoresLight(AppearanceSettingsTest.kt:21)
+
+INSTRUMENTATION_STATUS: test=profileChangesAppearanceImmediatelyAndRestoresLight
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=rejectedWriteKeepsLightAndShowsAnActionableError
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.AppearanceSettingsTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'profile-appearance')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.rejectedWriteKeepsLightAndShowsAnActionableError(AppearanceSettingsTest.kt:52)
+
+INSTRUMENTATION_STATUS: stream=
+Error in rejectedWriteKeepsLightAndShowsAnActionableError(com.isivoltpro.maginaolivo.AppearanceSettingsTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'profile-appearance')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.rejectedWriteKeepsLightAndShowsAnActionableError(AppearanceSettingsTest.kt:52)
+
+INSTRUMENTATION_STATUS: test=rejectedWriteKeepsLightAndShowsAnActionableError
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 5.453
+There were 4 failures:
+1) cancellingTheSheetKeepsTheConfirmedPreference(com.isivoltpro.maginaolivo.AppearanceSettingsTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'profile-appearance')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.cancellingTheSheetKeepsTheConfirmedPreference(AppearanceSettingsTest.kt:39)
+2) productionUsesAnAlreadyConfirmedDarkModeOnItsFirstFrame(com.isivoltpro.maginaolivo.AppearanceSettingsTest)
+java.lang.AssertionError: Production Perfil background expected:<-15263468> but was:<-922401>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.expectBackground(AppearanceSettingsTest.kt:83)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.productionUsesAnAlreadyConfirmedDarkModeOnItsFirstFrame(AppearanceSettingsTest.kt:63)
+3) profileChangesAppearanceImmediatelyAndRestoresLight(com.isivoltpro.maginaolivo.AppearanceSettingsTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'profile-appearance')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.profileChangesAppearanceImmediatelyAndRestoresLight(AppearanceSettingsTest.kt:21)
+4) rejectedWriteKeepsLightAndShowsAnActionableError(com.isivoltpro.maginaolivo.AppearanceSettingsTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'profile-appearance')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.AppearanceSettingsTest.rejectedWriteKeepsLightAndShowsAnActionableError(AppearanceSettingsTest.kt:52)
+
+FAILURES!!!
+Tests run: 4,  Failures: 4
+
+
+INSTRUMENTATION_CODE: -1

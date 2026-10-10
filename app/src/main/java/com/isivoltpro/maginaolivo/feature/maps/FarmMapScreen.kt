@@ -1,6 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.maps
 
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
@@ -53,12 +56,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionCard
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoErrorText
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoSuccessText
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
@@ -175,7 +173,7 @@ fun FarmMapScreen(
     }
     val withBoundary = state.parcels.count { it.geometryGeoJson != null }
 
-    Box(Modifier.fillMaxSize().background(MoCream).testTag("farm-map-root")) {
+    Box(Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).testTag("farm-map-root")) {
         if (showMap) {
             ParcelMap(
                 parcels = mapped,
@@ -200,14 +198,14 @@ fun FarmMapScreen(
                 .onSizeChanged { topOverlayHeightPx = it.height }
                 .padding(8.dp),
             shape = MoShape.card,
-            color = MoWarmWhite.copy(alpha = 0.97f),
+            color = MoSurfaceTokens.cardSurface.copy(alpha = 0.97f),
             shadowElevation = 3.dp,
         ) {
             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     if (state.mode == FarmMapMode.LOCATE) "Ubicar «${state.locateParcel?.displayName.orEmpty()}»" else state.farm?.name ?: "Mapa de la finca",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                     maxLines = 1,
                 )
                 Text(
@@ -220,7 +218,7 @@ fun FarmMapScreen(
                         ).joinToString(" · ")
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MoTextSecondary,
+                    color = MoColors.current.secondaryText,
                     maxLines = 2,
                     modifier = Modifier.testTag("farm-map-hint"),
                 )
@@ -281,7 +279,7 @@ fun FarmMapScreen(
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            if (state.searching) Notice("Consultando Catastro…", MoTextSecondary, progress = true)
+            if (state.searching) Notice("Consultando Catastro…", MoColors.current.secondaryText, progress = true)
             state.locationProblem?.let { problem ->
                 LocationProblemNotice(
                     problem,
@@ -293,13 +291,13 @@ fun FarmMapScreen(
                 )
             }
             if (state.myLocation != null && state.locationProblem == null && state.mode == FarmMapMode.VIEW && state.selectedSavedId == null) {
-                Notice("El punto azul es tu ubicación.", MoTextSecondary, Modifier.testTag("farm-map-my-location-shown"))
+                Notice("El punto azul es tu ubicación.", MoColors.current.secondaryText, Modifier.testTag("farm-map-my-location-shown"))
             }
             if (state.mode != FarmMapMode.LOCATE && state.parcels.none { it.geometryGeoJson != null } && state.selected.isEmpty()) {
                 FarmMapGuide(Modifier.testTag("farm-map-guide"))
             }
-            state.error?.let { Notice(it, MoErrorText, Modifier.testTag("farm-map-error")) }
-            state.message?.let { Notice(it, MoSuccessText, Modifier.testTag("farm-map-message")) }
+            state.error?.let { Notice(it, MoColors.current.errorText, Modifier.testTag("farm-map-error")) }
+            state.message?.let { Notice(it, MoColors.current.successText, Modifier.testTag("farm-map-message")) }
             BottomPanel(state, onOpenParcel, onSearchByReference, onReview = { reviewSheet = true }, onLink = onLink)
         }
     }
@@ -332,9 +330,9 @@ fun FarmMapScreen(
 /** #361: «Mi ubicación» could not answer — say why and offer the one useful way out. */
 @Composable
 private fun LocationProblemNotice(problem: LocationProblem, onAction: () -> Unit, onDismiss: () -> Unit) {
-    Surface(Modifier.fillMaxWidth().testTag("farm-map-location-problem"), shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 2.dp) {
+    Surface(Modifier.fillMaxWidth().testTag("farm-map-location-problem"), shape = MoShape.card, color = MoSurfaceTokens.cardSurface.copy(alpha = 0.97f), shadowElevation = 2.dp) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(problem.message, color = MoErrorText, style = MaterialTheme.typography.bodyMedium)
+            Text(problem.message, color = MoColors.current.errorText, style = MaterialTheme.typography.bodyMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 TextButton(onClick = onAction, modifier = Modifier.testTag("farm-map-location-action")) { Text(problem.action) }
                 TextButton(onClick = onDismiss, modifier = Modifier.testTag("farm-map-location-dismiss")) { Text("Cancelar") }
@@ -346,11 +344,11 @@ private fun LocationProblemNotice(problem: LocationProblem, onAction: () -> Unit
 /** #361: what to do first, in four short steps, until the farm has a parcel on the map. */
 @Composable
 private fun FarmMapGuide(modifier: Modifier = Modifier) {
-    Surface(modifier.fillMaxWidth(), shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 2.dp) {
+    Surface(modifier.fillMaxWidth(), shape = MoShape.card, color = MoSurfaceTokens.cardSurface.copy(alpha = 0.97f), shadowElevation = 2.dp) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("Cómo añadir tus parcelas", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+            Text("Cómo añadir tus parcelas", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
             FARM_MAP_STEPS.forEachIndexed { index, step ->
-                Text("${index + 1}. $step", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                Text("${index + 1}. $step", style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText)
             }
         }
     }
@@ -365,7 +363,7 @@ internal val FARM_MAP_STEPS = listOf(
 
 @Composable
 private fun Notice(text: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier, progress: Boolean = false) {
-    Surface(modifier, shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 2.dp) {
+    Surface(modifier, shape = MoShape.card, color = MoSurfaceTokens.cardSurface.copy(alpha = 0.97f), shadowElevation = 2.dp) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (progress) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             Text(text, color = color, style = MaterialTheme.typography.bodyMedium)
@@ -390,7 +388,7 @@ private fun BottomPanel(
                     Text(
                         listOfNotNull("Seleccionada · Guardada", parcel.municipality?.takeIf { it.isNotBlank() }).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MoSuccessText,
+                        color = MoColors.current.successText,
                         modifier = Modifier.testTag("farm-map-parcel-status"),
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
@@ -401,14 +399,14 @@ private fun BottomPanel(
                 }
             }
         }
-        FarmMapMode.ADD -> Surface(shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 3.dp) {
+        FarmMapMode.ADD -> Surface(shape = MoShape.card, color = MoSurfaceTokens.cardSurface.copy(alpha = 0.97f), shadowElevation = 3.dp) {
             Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 // One short line per marked parcel instead of a list of every number under the map.
                 state.selectedCandidates.lastOrNull()?.let { last ->
                     Text(
                         selectionLine(last) + if (state.selected.size > 1) " · y ${state.selected.size - 1} más" else "",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MoOliveDark,
+                        color = MoColors.current.primaryText,
                         maxLines = 1,
                         modifier = Modifier.testTag("farm-map-selection"),
                     )
@@ -426,10 +424,10 @@ private fun BottomPanel(
                 MoTertiaryButton("Tengo la referencia catastral", onSearchByReference, Modifier.align(Alignment.CenterHorizontally))
             }
         }
-        FarmMapMode.LOCATE -> Surface(shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 3.dp) {
+        FarmMapMode.LOCATE -> Surface(shape = MoShape.card, color = MoSurfaceTokens.cardSurface.copy(alpha = 0.97f), shadowElevation = 3.dp) {
             val candidate = state.selectedCandidates.singleOrNull()
             Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                candidate?.let { Text(selectionLine(it), style = MaterialTheme.typography.bodyMedium, color = MoOliveDark, maxLines = 1) }
+                candidate?.let { Text(selectionLine(it), style = MaterialTheme.typography.bodyMedium, color = MoColors.current.primaryText, maxLines = 1) }
                 MoPrimaryButton(
                     text = when {
                         state.saving -> "Guardando…"
@@ -463,11 +461,11 @@ private fun PolygonParcelForm(
         Modifier.padding(horizontal = MoSpacing.screen).padding(bottom = MoSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Buscar por polígono y parcela", style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
+        Text("Buscar por polígono y parcela", style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
         Text(
             "Son los datos que aparecen en la PAC, la cooperativa o las escrituras.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
         MoTextField(provinceValue, { provinceValue = it }, "Provincia", Modifier.fillMaxWidth().testTag("polygon-province"))
         MoTextField(municipalityValue, { municipalityValue = it }, "Municipio", Modifier.fillMaxWidth().testTag("polygon-municipality"))
@@ -502,12 +500,12 @@ fun ImportReview(
         Text(
             if (candidates.size == 1) "Añadir 1 parcela a $farmName" else "Añadir ${candidates.size} parcelas a $farmName",
             style = MaterialTheme.typography.titleLarge,
-            color = MoOliveDark,
+            color = MoColors.current.primaryText,
         )
         Text(
             "Ponles el nombre con el que las conoces. El contorno y la superficie vienen de Catastro; la copia guardada no es un certificado catastral.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MoTextSecondary,
+            color = MoColors.current.secondaryText,
         )
         candidates.forEach { candidate ->
             MoTextField(

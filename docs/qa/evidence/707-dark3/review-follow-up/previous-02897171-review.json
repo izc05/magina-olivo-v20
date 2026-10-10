@@ -1,0 +1,15 @@
+{
+  "sha": "02897171439834274a96b6b772ad1728631b3e4e",
+  "base": "6bd2879d0efe133a2ff75b14f4683e186cbc2295",
+  "reviewer": "/root/dark3_review",
+  "verdict": "CONFORME",
+  "blockingFindings": [],
+  "verified": [
+    "semantic attribution backing, raster/camera unchanged",
+    "false/exception cache rollback under mutex; cancellation propagated",
+    "fixed reference photograph shade",
+    "Hidden veto while saving; real Back/rejection error and cancel reachable"
+  ],
+  "evidence": "538 JVM/lint/all APK PASS;27 directed UI PASS",
+  "ci": "Three checks for exact SHA pending; earlier SHA success not substituted"
+}

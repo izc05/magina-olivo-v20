@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.weather
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -44,7 +47,7 @@ fun WeatherMarketReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("weather-market-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -58,12 +61,12 @@ fun WeatherMarketReferenceScreen(
             Text(
                 text = "Tiempo y mercado",
                 style = MaterialTheme.typography.headlineLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Text(
                 text = "Información de apoyo para tus decisiones en campo.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
 
             Spacer(Modifier.height(MoSpacing.md))
@@ -110,7 +113,7 @@ fun WeatherMarketReferenceScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MoShape.card,
-                colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+                colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
             ) {
                 Column(
                     modifier = Modifier.padding(MoSpacing.md),
@@ -119,12 +122,12 @@ fun WeatherMarketReferenceScreen(
                     Text(
                         text = "Lluvia prevista",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MoOliveDark,
+                        color = MoColors.current.primaryText,
                     )
                     Text(
                         text = "Posible precipitación durante las próximas jornadas. Valora la planificación de trabajos.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MoTextSecondary,
+                        color = MoColors.current.secondaryText,
                     )
                 }
             }
@@ -143,25 +146,25 @@ private fun WeatherCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.cardLarge,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            Text("Huelma, Jaén", style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary)
+            Text("Huelma, Jaén", style = MaterialTheme.typography.bodyLarge, color = MoColors.current.secondaryText)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column {
-                    Text("☀ 18°C", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
-                    Text("Cielo despejado", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+                    Text("☀ 18°C", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
+                    Text("Cielo despejado", style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
                 }
                 Column {
-                    Text("Máx. 24°", style = MaterialTheme.typography.bodyLarge, color = MoOliveDark)
-                    Text("Mín. 12°", style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary)
+                    Text("Máx. 24°", style = MaterialTheme.typography.bodyLarge, color = MoColors.current.primaryText)
+                    Text("Mín. 12°", style = MaterialTheme.typography.bodyLarge, color = MoColors.current.secondaryText)
                 }
             }
             Row(
@@ -180,9 +183,9 @@ private fun WeatherCard() {
 @Composable
 private fun ForecastDay(day: String, temp: String, symbol: String) {
     Column {
-        Text(day, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
-        Text(symbol, style = MaterialTheme.typography.titleMedium, color = MoSoftGold)
-        Text(temp, style = MaterialTheme.typography.bodyMedium, color = MoOliveDark)
+        Text(day, style = MaterialTheme.typography.labelMedium, color = MoColors.current.secondaryText)
+        Text(symbol, style = MaterialTheme.typography.titleMedium, color = MoColors.current.goldAccent)
+        Text(temp, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.primaryText)
     }
 }
 
@@ -191,13 +194,13 @@ private fun RadarCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.cardLarge,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.md),
         ) {
-            Text("Radar de lluvia", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-            Text("Vista de referencia", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+            Text("Radar de lluvia", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
+            Text("Vista de referencia", style = MaterialTheme.typography.labelMedium, color = MoColors.current.secondaryText)
             Spacer(Modifier.height(MoSpacing.sm))
             Canvas(
                 modifier = Modifier
@@ -239,19 +242,19 @@ private fun OilTypeCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Row(
             modifier = Modifier.padding(MoSpacing.md),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column {
-                Text(type, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-                Text("Precio de referencia", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+                Text(type, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
+                Text("Precio de referencia", style = MaterialTheme.typography.labelMedium, color = MoColors.current.secondaryText)
             }
             Column {
-                Text(value, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-                Text("↑ $trend", style = MaterialTheme.typography.labelMedium, color = MoOlivePrimary)
+                Text(value, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
+                Text("↑ $trend", style = MaterialTheme.typography.labelMedium, color = MoColors.current.primaryButton)
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -27,7 +29,6 @@ import com.isivoltpro.maginaolivo.feature.activities.FarmActivitiesRoute
 import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsRoute
 import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsRoute
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import java.util.UUID
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
@@ -63,7 +64,7 @@ fun FarmSectionRoute(
             Text(
                 section.title,
                 style = MaterialTheme.typography.headlineLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
                 modifier = Modifier.semantics { heading() },
             )
             farm?.let { Text(it.name, style = MaterialTheme.typography.bodyLarge, color = MoSurfaceTokens.secondaryText) }

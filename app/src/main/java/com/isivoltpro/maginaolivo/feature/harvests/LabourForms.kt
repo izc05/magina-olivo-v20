@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import androidx.compose.material3.MaterialTheme
+
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -76,15 +80,15 @@ internal fun LabourSheet(
         else -> null
     }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("labour-sheet"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        Text("Registrar jornal", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
-        Text("Persona", style = MaterialTheme.typography.titleMedium, color = MoLabourText)
-        if (workers.isEmpty()) Text("Añade una persona para guardar su jornal.", color = MoTextSecondary)
+        Text("Registrar jornal", style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
+        Text("Persona", style = MaterialTheme.typography.titleMedium, color = MoColors.current.labourText)
+        if (workers.isEmpty()) Text("Añade una persona para guardar su jornal.", color = MoColors.current.secondaryText)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             workers.forEach { worker ->
                 FilterChip(selected == worker.id.toString(), { selected = worker.id.toString() }, { Text(workerLabel(worker, workers)) }, enabled = !isSaving && worker.id !in alreadyRecorded, modifier = Modifier.testTag("labour-worker"))
             }
         }
-        Text(if (workerId == null) "Elige una persona" else "1 seleccionada", color = MoTextSecondary, modifier = Modifier.testTag("labour-selected-count"))
+        Text(if (workerId == null) "Elige una persona" else "1 seleccionada", color = MoColors.current.secondaryText, modifier = Modifier.testTag("labour-selected-count"))
         MoTertiaryButton("+ Nueva persona", { newPerson = !newPerson }, enabled = !isSaving, modifier = Modifier.testTag("labour-new-person"))
         if (newPerson) {
             MoTextField(newName, { newName = it }, "Nombre y apellidos", enabled = !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-new-name"))
@@ -92,7 +96,7 @@ internal fun LabourSheet(
                 enabled = newName.isNotBlank() && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-add-worker"))
             if (askSameName && namesakes.isNotEmpty()) {
                 // #442: the app never decides that the same name is the same person.
-                Text("Ya existe una persona llamada ${newName.trim()}. ¿Es la misma?", color = MoLabourText,
+                Text("Ya existe una persona llamada ${newName.trim()}. ¿Es la misma?", color = MoColors.current.labourText,
                     modifier = Modifier.testTag("labour-same-name"))
                 MoSecondaryButton("Usar persona existente", {
                     namesakes.firstOrNull { it.id !in alreadyRecorded }?.let { selected = it.id.toString() }
@@ -114,11 +118,11 @@ internal fun LabourSheet(
             enabled = !isSaving, modifier = Modifier.testTag("labour-price-unknown"))
         if (priceUnknown) {
             Text("Se anota sin precio: no cuenta como 0 € y el coste del día queda incompleto hasta que lo confirmes.",
-                color = MoTextSecondary, modifier = Modifier.testTag("labour-price-unknown-note"))
+                color = MoColors.current.secondaryText, modifier = Modifier.testTag("labour-price-unknown-note"))
         } else {
             MoTextField(price, { price = it; touchedPrice = true }, rateLabel(unit, currency), enabled = !isSaving, isError = minor == null,
                 supportingText = if (minor == null) "Confirma un precio válido o marca «Precio aún sin saber»" else halfDayNote(unit), modifier = Modifier.fillMaxWidth().testTag("labour-rate"))
-            total?.let { Text("${if (unit == LabourUnit.HALF_DAY) "Coste de esta media jornada" else "Coste del jornal"}: ${Money.format(it, currency)}", color = MoLabourText, modifier = Modifier.testTag("labour-generated")) }
+            total?.let { Text("${if (unit == LabourUnit.HALF_DAY) "Coste de esta media jornada" else "Coste del jornal"}: ${Money.format(it, currency)}", color = MoColors.current.labourText, modifier = Modifier.testTag("labour-generated")) }
         }
         calculationError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-calculation-error")) }
         if (!priceUnknown) Text("Pago inicial (opcional)", style = MaterialTheme.typography.titleMedium)
@@ -153,7 +157,7 @@ internal fun LabourPriceSheet(entry: LabourEntry, date: LocalDate, currency: Str
     val minor = currency?.let { Money.parseMinor(price, it) }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
         Text("Confirmar jornal · ${entry.workerName ?: "Sin identificar"}", style = MaterialTheme.typography.titleLarge)
-        if (entry.appliedRate == null) Text("Precio sin confirmar. Introduce el precio acordado para este día.", color = MoWarningText)
+        if (entry.appliedRate == null) Text("Precio sin confirmar. Introduce el precio acordado para este día.", color = MoColors.current.warningText)
         if (currency == null) Text(currencyError ?: "Confirma la moneda histórica antes de guardar.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-currency-error"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             listOf(LabourUnit.FULL_DAY, LabourUnit.HALF_DAY, LabourUnit.HOURS).forEach { option ->
@@ -192,8 +196,8 @@ internal fun LabourPaymentSheet(name: String, balance: LabourSettlement, today: 
     }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen).testTag("labour-payment-sheet"), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
         Text("Registrar pago", style = MaterialTheme.typography.headlineSmall)
-        Text(name, style = MaterialTheme.typography.titleMedium, color = MoLabourText, modifier = Modifier.testTag("payment-person"))
-        Text("Pendiente actual: ${Money.format(balance.pendingMinor, balance.currency)}", color = MoWarningText, modifier = Modifier.testTag("payment-pending"))
+        Text(name, style = MaterialTheme.typography.titleMedium, color = MoColors.current.labourText, modifier = Modifier.testTag("payment-person"))
+        Text("Pendiente actual: ${Money.format(balance.pendingMinor, balance.currency)}", color = MoColors.current.warningText, modifier = Modifier.testTag("payment-pending"))
         MoTextField(amount, { amount = it }, "Importe a pagar (${balance.currency})", enabled = !isSaving, isError = amountError != null, supportingText = amountError, modifier = Modifier.fillMaxWidth().testTag("payment-amount"))
         MoSecondaryButton("Pagar todo (${Money.format(balance.pendingMinor, balance.currency)})", { amount = Money.editable(balance.pendingMinor, balance.currency) }, enabled = !isSaving && balance.pendingMinor > 0, modifier = Modifier.fillMaxWidth().testTag("payment-all"))
         MoTextField(date, { date = it }, "Fecha (dd/mm/aaaa)", enabled = !isSaving, isError = dateError != null, supportingText = dateError, modifier = Modifier.fillMaxWidth().testTag("payment-date"))

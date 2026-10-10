@@ -1,0 +1,7 @@
+Starting: Intent { cmp=com.isivoltpro.maginaolivo.dev/com.isivoltpro.maginaolivo.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: com.isivoltpro.maginaolivo.dev/com.isivoltpro.maginaolivo.MainActivity
+TotalTime: 2446
+WaitTime: 2450
+Complete

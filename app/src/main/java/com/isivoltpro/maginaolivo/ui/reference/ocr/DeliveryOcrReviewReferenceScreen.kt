@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.ocr
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -56,7 +59,7 @@ fun DeliveryOcrReviewReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("ocr-review-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -77,12 +80,12 @@ fun DeliveryOcrReviewReferenceScreen(
                     Text(
                         text = "Revisar entrega",
                         style = MaterialTheme.typography.headlineLarge,
-                        color = MoOliveDark,
+                        color = MoColors.current.primaryText,
                     )
                     Text(
                         text = "Comprueba los datos extraídos antes de confirmar.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MoTextSecondary,
+                        color = MoColors.current.secondaryText,
                     )
                 }
                 MoStatusChip(
@@ -100,12 +103,12 @@ fun DeliveryOcrReviewReferenceScreen(
             Text(
                 text = "Datos extraídos",
                 style = MaterialTheme.typography.titleLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Text(
                 text = "El OCR propone estos valores; ninguno se considera confirmado hasta tu revisión.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
 
             Spacer(Modifier.height(MoSpacing.md))
@@ -146,8 +149,8 @@ fun DeliveryOcrReviewReferenceScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MoShape.card,
-                colors = CardDefaults.cardColors(containerColor = MoSurfaceSoft),
-                border = BorderStroke(1.dp, MoOutline),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
             ) {
                 Column(
                     modifier = Modifier.padding(MoSpacing.md),
@@ -156,17 +159,17 @@ fun DeliveryOcrReviewReferenceScreen(
                     Text(
                         text = "Rendimiento",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MoOliveDark,
+                        color = MoColors.current.primaryText,
                     )
                     Text(
                         text = "Pendiente de análisis",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MoOlivePrimary,
+                        color = MoColors.current.primaryButton,
                     )
                     Text(
                         text = "La entrega puede confirmarse sin inventar un rendimiento.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MoTextSecondary,
+                        color = MoColors.current.secondaryText,
                     )
                 }
             }
@@ -198,8 +201,8 @@ private fun TicketPreview() {
             .heightIn(min = 210.dp)
             .testTag("ocr-ticket-preview"),
         shape = MoShape.cardLarge,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = BorderStroke(1.dp, MoOutline),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.lg),
@@ -208,12 +211,12 @@ private fun TicketPreview() {
             Text(
                 text = "ALBARÁN · IMAGEN DE MAQUETA",
                 style = MaterialTheme.typography.labelMedium,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
             )
             Text(
                 text = "Cooperativa de referencia",
                 style = MaterialTheme.typography.titleLarge,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Text("Nº A-18472", style = MaterialTheme.typography.bodyLarge)
             Text("18/11/2026", style = MaterialTheme.typography.bodyLarge)
@@ -221,7 +224,7 @@ private fun TicketPreview() {
                 text = "2.850 kg",
                 modifier = Modifier.testTag("ocr-ticket-amount"),
                 style = MaterialTheme.typography.headlineMedium,
-                color = MoOlivePrimary,
+                color = MoColors.current.primaryButton,
             )
         }
     }
@@ -232,8 +235,8 @@ private fun ConfidenceCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = BorderStroke(1.dp, MoOutline),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(
             modifier = Modifier.padding(MoSpacing.md),
@@ -242,7 +245,7 @@ private fun ConfidenceCard() {
             Text(
                 text = "Confianza OCR",
                 style = MaterialTheme.typography.titleMedium,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             ConfidenceRow("Destino", "Alta")
             ConfidenceRow("Fecha", "Alta")
@@ -261,7 +264,7 @@ private fun ConfidenceRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(field, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-        Text(confidence, style = MaterialTheme.typography.labelLarge, color = MoOliveDark)
+        Text(field, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
+        Text(confidence, style = MaterialTheme.typography.labelLarge, color = MoColors.current.primaryText)
     }
 }

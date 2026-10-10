@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import android.util.Log
 import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
@@ -77,7 +79,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoSelectField
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
@@ -93,7 +94,6 @@ import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 @Composable
@@ -179,7 +179,7 @@ fun HarvestsScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.sm))
-            Text("Recolección", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Recolección", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
             Text(
                 "Cada día de recolección reúne sus pesadas, jornales y gastos. Los kilos se obtienen de las pesadas.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -271,12 +271,12 @@ private fun CampaignHarvestCard(campaign: CampaignHarvest, days: Int) {
             Text(
                 listOfNotNull(campaign.farmName, campaign.campaignName).joinToString(" · ").ifEmpty { "Sin campaña" },
                 style = MaterialTheme.typography.titleMedium,
-                color = MoOliveDark,
+                color = MoColors.current.primaryText,
             )
             Text(
                 campaignHarvestHeadline(campaign.summary),
                 style = MaterialTheme.typography.titleLarge,
-                color = MoInk,
+                color = MoColors.current.bodyText,
                 modifier = Modifier.testTag("campaign-harvest-total"),
             )
             Text(
@@ -325,13 +325,13 @@ private fun HarvestRow(harvest: Harvest, line: String, onClick: () -> Unit) {
                 Text(
                     harvestRowTitle(harvest),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MoOliveDark,
+                    color = MoColors.current.primaryText,
                     modifier = Modifier.testTag("harvest-row-title"),
                 )
                 Text(
                     line,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (harvest.awaitingPesadas) MoSurfaceTokens.secondaryText else MoInk,
+                    color = if (harvest.awaitingPesadas) MoSurfaceTokens.secondaryText else MoColors.current.bodyText,
                     modifier = Modifier.testTag("harvest-row-line"),
                 )
                 MoStatusChip(harvest.allocationMode.label(), tone = harvest.allocationMode.tone())
@@ -376,7 +376,7 @@ internal fun HarvestEditor(
             .testTag("harvest-editor"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text("Se guardará primero en este dispositivo.", style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
 
         if (farmLocked) {
@@ -1007,7 +1007,7 @@ private fun JornadaPesadas(
                         color = MoSurfaceTokens.secondaryText,
                     )
                 }
-                Text(Weight.format(pesada.netGrams), style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+                Text(Weight.format(pesada.netGrams), style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
             }
         }
     }
@@ -1021,7 +1021,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
     Text(
         "Recolección del ${DATE_FORMAT.format(harvest.harvestDate)}",
         style = MaterialTheme.typography.headlineMedium,
-        color = MoOliveDark,
+        color = MoColors.current.primaryText,
     )
     Text(
         listOfNotNull(harvest.farmName, harvest.campaignName).joinToString(" · "),

@@ -6,10 +6,6 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AppearanceStoreTest {
-    @Test fun incompleteScreenMigrationCannotActivateDarkAppearanceInProduction() {
-        AppearanceMode.entries.forEach { assertEquals(AppearanceMode.LIGHT, productionAppearanceMode(it)) }
-    }
-
     @Test fun unknownOrAbsentValuesFollowSystem() {
         listOf(null, "", "night", "dark", "garbage").forEach {
             assertEquals(AppearanceMode.SYSTEM, AppearanceMode.fromStoredValue(it))
@@ -54,6 +50,38 @@ class AppearanceStoreTest {
         assertFalse(store.setMode(AppearanceMode.DARK))
         assertEquals(AppearanceMode.LIGHT, store.mode.value)
         assertEquals("LIGHT", storage.value)
+    }
+
+    @Test fun rejectedCachedWriteStaysRejectedAfterRecreation() = runTest {
+        var cached = "LIGHT"
+        val storage = object : AppearanceStorage {
+            override fun read(): String = cached
+            override fun write(value: String): Boolean {
+                // SharedPreferences commits to memory before its disk result is known.
+                cached = value
+                return false
+            }
+        }
+        val first = PersistentAppearanceStore(storage, Dispatchers.Unconfined)
+        assertFalse(first.setMode(AppearanceMode.DARK))
+        assertEquals(AppearanceMode.LIGHT, first.mode.value)
+        assertEquals(AppearanceMode.LIGHT, PersistentAppearanceStore(storage).mode.value)
+    }
+
+    @Test fun exceptionAfterCachingStaysRejectedAfterRecreation() = runTest {
+        var cached = "LIGHT"
+        val storage = object : AppearanceStorage {
+            override fun read(): String = cached
+            override fun write(value: String): Boolean {
+                cached = value
+                if (value == "DARK") error("disk write failed after updating memory")
+                return false // Even a rejected rollback has restored the in-memory value.
+            }
+        }
+        val first = PersistentAppearanceStore(storage, Dispatchers.Unconfined)
+        assertFalse(first.setMode(AppearanceMode.DARK))
+        assertEquals(AppearanceMode.LIGHT, first.mode.value)
+        assertEquals(AppearanceMode.LIGHT, PersistentAppearanceStore(storage).mode.value)
     }
 
     private class MemoryStorage(var value: String? = null, val accepted: Boolean = true) : AppearanceStorage {

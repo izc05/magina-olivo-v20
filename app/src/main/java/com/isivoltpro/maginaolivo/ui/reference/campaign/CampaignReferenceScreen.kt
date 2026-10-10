@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.ui.reference.campaign
 
+import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -55,7 +58,7 @@ fun CampaignReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("campaign-reference-root"),
-        containerColor = MoCream,
+        containerColor = MoSurfaceTokens.appBackground,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -76,12 +79,12 @@ fun CampaignReferenceScreen(
                     Text(
                         text = "Campaña",
                         style = MaterialTheme.typography.headlineLarge,
-                        color = MoOliveDark,
+                        color = MoColors.current.primaryText,
                     )
                     Text(
                         text = "2026/27 · La Solana",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MoTextSecondary,
+                        color = MoColors.current.secondaryText,
                     )
                 }
                 MoStatusChip(
@@ -179,33 +182,33 @@ private fun CampaignTabs() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MoWarmWhite, RoundedCornerShape(16.dp))
+            .background(MoSurfaceTokens.cardSurface, RoundedCornerShape(16.dp))
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Surface(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(12.dp),
-            color = MoOlivePrimary,
+            color = MoColors.current.primaryButton,
         ) {
             Text(
                 text = "Campaña actual",
                 modifier = Modifier.padding(vertical = 10.dp),
                 style = MaterialTheme.typography.labelLarge,
-                color = MoWarmWhite,
+                color = MoColors.current.onPrimaryButton,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
         Surface(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(12.dp),
-            color = MoWarmWhite,
+            color = MoSurfaceTokens.cardSurface,
         ) {
             Text(
                 text = "Histórico",
                 modifier = Modifier.padding(vertical = 10.dp),
                 style = MaterialTheme.typography.labelLarge,
-                color = MoTextSecondary,
+                color = MoColors.current.secondaryText,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
@@ -214,6 +217,9 @@ private fun CampaignTabs() {
 
 @Composable
 private fun CampaignBars(modifier: Modifier = Modifier) {
+    val axisColor = MoSurfaceTokens.cardStroke
+    val currentBar = MoColors.current.primaryButton
+    val historyBar = MoColors.current.goldAccent.copy(alpha = 0.72f)
     Canvas(modifier = modifier) {
         val values = listOf(0.55f, 0.72f, 0.61f, 0.88f)
         val labels = values.size
@@ -221,7 +227,7 @@ private fun CampaignBars(modifier: Modifier = Modifier) {
         val barWidth = (size.width - gap * (labels + 1)) / labels
 
         drawLine(
-            color = MoOutline,
+            color = axisColor,
             start = Offset(0f, size.height - 2f),
             end = Offset(size.width, size.height - 2f),
             strokeWidth = 2f,
@@ -231,7 +237,7 @@ private fun CampaignBars(modifier: Modifier = Modifier) {
             val left = gap + index * (barWidth + gap)
             val top = size.height * (1f - value)
             drawRoundRect(
-                color = if (index == values.lastIndex) MoOlivePrimary else MoSoftGold.copy(alpha = 0.72f),
+                color = if (index == values.lastIndex) currentBar else historyBar,
                 topLeft = Offset(left, top),
                 size = androidx.compose.ui.geometry.Size(barWidth, size.height - top - 4f),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f, 10f),
@@ -245,16 +251,16 @@ private fun CampaignDateRow(label: String, value: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Row(
             modifier = Modifier.padding(MoSpacing.md),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-            Text(value, style = MaterialTheme.typography.bodyLarge, color = MoOliveDark, fontWeight = FontWeight.SemiBold)
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
+            Text(value, style = MaterialTheme.typography.bodyLarge, color = MoColors.current.primaryText, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -264,7 +270,7 @@ private fun ActivitySummary(title: String, date: String, parcel: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
     ) {
         Row(
             modifier = Modifier.padding(MoSpacing.md),
@@ -272,10 +278,10 @@ private fun ActivitySummary(title: String, date: String, parcel: String) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-                Text(parcel, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
+                Text(parcel, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
             }
-            Text(date, style = MaterialTheme.typography.labelLarge, color = MoOlivePrimary)
+            Text(date, style = MaterialTheme.typography.labelLarge, color = MoColors.current.primaryButton)
         }
     }
 }
