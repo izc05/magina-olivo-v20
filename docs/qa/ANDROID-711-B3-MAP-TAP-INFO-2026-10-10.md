@@ -52,6 +52,23 @@ certificado, «Añadir a la finca» y «Cerrar» llaman a su acción, y sin parc
 Verificación local previa al push: Gradle 9.4.1 + JDK 17, `lintDevDebug testDevDebugUnitTest
 assembleDevDebug assembleDevDebugAndroidTest` BUILD SUCCESSFUL.
 
+### Emulador local (nuevo en esta sesión)
+
+Se ha creado un AVD propio, `MaginaOlivo_Claude_API35` (API 35, google_apis, x86_64), para ejecutar
+pruebas instrumentadas sin esperar a CI y sin tocar los AVD de QA anteriores. Resultados sobre el
+mismo código que se publica:
+
+- `DemoFarmSeederTest`: 2/2 PASS (incluye cargar dos veces, restablecer y retirar).
+- `HomeFeedsScreenTest`: 12/12 PASS (incluye la tarjeta de riego nueva).
+- `AppNavigationTest` + `B3MapViewportTest` + `B3FocusedPointViewportTest` + `FarmMapScreenTest`:
+  42/43 PASS. El único fallo, `coordinateFocusClearsPanelsAndViewportChangesPreserveLaterPanAndFrame`,
+  es «No compose hierarchies found in the app» en este AVD recién creado: el caso pasa en CI sobre
+  `main`, así que se registra como limitación del entorno local, no como regresión.
+- En CI, `gate3-emulator` falló una vez en `AppNavigationTest.centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation`
+  con `RootViewWithoutFocusException` en `pressBack` (10 s esperando el foco de ventana), mientras
+  `foundation` y `gate3-evidence` pasaban. Es el mismo tipo de inestabilidad de foco/SystemUI ya
+  documentado en B3; no toca ningún fichero de este cambio.
+
 ## Límites y siguiente paso (no inventados)
 
 - **La información del recinto SIGPAC no se consulta todavía.** El WMS de SIGPAC se usa para dibujar
