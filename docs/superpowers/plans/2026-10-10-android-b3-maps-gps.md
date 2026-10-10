@@ -50,12 +50,14 @@ MapLibre's installed13.6.1 API and official documentation expose `MapView.OnTile
 **Files:** ParcelMap.kt, FarmMapScreen.kt, map JVM tests; new focused contextual-permission and native GPS UI tests. CurrentLocation.kt only if an actual regression is reproduced. No Room/domain identity changes.
 **Interfaces:** Append `sigpacLines: Boolean=false` to map/style APIs without changing existing positional callers. Optional512px WMS source `AU.Sigpac:recinto`, EPSG:3857 `{bbox-epsg-3857}`, lies beneath authoritative saved parcels; include FEGA/MAPA attribution only when enabled. Farm layer menu toggles the reference explicitly and disables online overlays in NONE.
 
-- [ ] Add RED style/UI tests for explicit SIGPAC toggle, correct official source/credit, unchanged saved features and absence of all online overlays under NONE.
-- [ ] Add the optional reference raster and concise honest label. Keep Catastro lookup/import separate; no recinto attributes imported into saved parcel records.
-- [ ] Validate live native GetMap rendering or record a concrete provider blocker. Preserve raw request/UTC/hash/capabilities and native screenshot; GetCapabilities alone is insufficient.
-- [ ] On owned isolated QA, run real contextual permission denial and fresh simulated GPS. Assert no prompt until Mi ubicación, point/camera correspondence and useful denial/manual path. Existing quality policy covers stale/poor/coarse fixes; add only missing meaningful regressions. Never use physical-device permission changes.
-- [ ] Inspect actual map/header/panel/keyboard at360/390/430dp,font1.3 and framing controls. If a real failure appears, reproduce RED and make a minimal fix before proceeding.
-- [ ] Reproduce the observed denied-GPS panel/control overlap and search-row wrapping. Position native map controls within the measured usable viewport; suppress the introductory guide while concrete search/error assistance is active if needed. Keep the full search action description while its visible close label fits the row.
+- [x] Add RED style/UI tests for explicit SIGPAC toggle, correct official source/credit, unchanged saved features and absence of all online overlays under NONE.
+- [x] Add the optional reference raster and concise honest label. Keep Catastro lookup/import separate; no recinto attributes imported into saved parcel records.
+- [x] Validate live native GetMap rendering or record a concrete provider blocker. Preserve raw request/UTC/hash/capabilities and native screenshot; GetCapabilities alone is insufficient.
+- [x] On owned isolated QA, run real contextual permission denial and fresh simulated GPS. Assert no prompt until Mi ubicación, point/camera correspondence and useful denial/manual path. Existing quality policy covers stale/poor/coarse fixes; add only missing meaningful regressions. Never use physical-device permission changes.
+- [x] Inspect actual map/header/panel/keyboard at360/390/430dp,font1.3 and framing controls. If a real failure appears, reproduce RED and make a minimal fix before proceeding.
+- [x] Reproduce the observed denied-GPS panel/control overlap and search-row wrapping. Position native map controls within the measured usable viewport; suppress the introductory guide while concrete search/error assistance is active if needed. Keep the full search action description while its visible close label fits the row.
+
+Task2 verification:3 SIGPAC JVM GREEN; live native WMS1.3.0 reference; final15 native/viewport/reference executions and18 inspected PNG at360/390/430dp,font1.3. Additional actual keyboard bounds RED (Alejar1579px belowIMEtop1507px) fixed with root IME padding; three production MainActivity keyboard configurations/six inspected PNG GREEN, controls above keyboard or hidden when space is insufficient and restored on dismissal. A resize timing failure in the QA driver is retained separately; bounded current-width verification fixed the driver. Existing contextual GPS/quality preflight reused; CurrentLocation unchanged.
 
 ### Task 3: Review/integration and B4 handoff
 

@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
@@ -140,6 +141,8 @@ fun ParcelMap(
     myLocation: GeoPoint? = null,
     /** Native remote tile failures; saved geometry is independent of these sources. */
     onTileError: (String) -> Unit = {},
+    /** Optional official SIGPAC recintos, a reference only; never imported as owned parcels. */
+    sigpacLines: Boolean = false,
 ) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
@@ -162,6 +165,8 @@ fun ParcelMap(
     // Screen positions of the labels, refreshed when the camera stops (never while it moves).
     var labelSpots by remember { mutableStateOf<List<Pair<String, IntOffset>>>(emptyList()) }
     var cameraTick by remember { mutableStateOf(0) }
+    var mapHeightPx by remember { mutableStateOf(0) }
+    var controlsHeightPx by remember { mutableStateOf(0) }
     val view = remember {
         MapLibre.getInstance(context)
         MapView(context).apply { onCreate(Bundle()) }
@@ -207,9 +212,9 @@ fun ParcelMap(
         }
     }
     val showsMyLocation = myLocation != null
-    LaunchedEffect(map, effectiveBase, cadastreLines, overlayTiles, showsMyLocation, dark) {
+    LaunchedEffect(map, effectiveBase, cadastreLines, sigpacLines, overlayTiles, showsMyLocation, dark) {
         styleReady = false
-        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines, overlayTiles, showsMyLocation, dark))) { styleReady = true }
+        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines, overlayTiles, showsMyLocation, dark, sigpacLines))) { styleReady = true }
     }
     LaunchedEffect(map, styleReady, myLocation) {
         val point = myLocation ?: return@LaunchedEffect
@@ -293,14 +298,21 @@ fun ParcelMap(
             ).map { it.label to IntOffset(it.x, it.y) }
         }
     }
-    Box(modifier) {
+    Box(modifier.onSizeChanged { mapHeightPx = it.height }) {
         AndroidView(factory = { view }, modifier = Modifier.fillMaxSize().testTag("parcel-map-view"))
         labelSpots.forEach { (label, spot) ->
             ParcelNumber(label, Modifier.offset { IntOffset(spot.x - with(density) { 14.dp.roundToPx() }, spot.y - with(density) { 11.dp.roundToPx() }) })
         }
-        if (controls) {
+        val usableTop = cameraInsets.topPx.coerceAtMost(mapHeightPx)
+        val usableBottom = (mapHeightPx - cameraInsets.bottomPx).coerceAtLeast(usableTop)
+        // Measured panels protect touch controls as well as framing. Restore controls after
+        // the keyboard closes if it temporarily leaves no usable map area.
+        if (controls && (controlsHeightPx == 0 || usableBottom - usableTop >= controlsHeightPx)) {
             Column(
-                Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                Modifier.align(Alignment.TopEnd)
+                    .offset { IntOffset(0, usableTop + ((usableBottom - usableTop - controlsHeightPx) / 2).coerceAtLeast(0)) }
+                    .onSizeChanged { controlsHeightPx = it.height }
+                    .padding(end = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 MapButton("+", "Acercar") { map?.animateCamera(CameraUpdateFactory.zoomIn()) }
@@ -315,7 +327,8 @@ fun ParcelMap(
                 MapBase.AERIAL -> "© IGN · PNOA" + if (cadastreLines) " · © DG Catastro" else ""
                 MapBase.MAP -> "© IGN · Mapa base" + if (cadastreLines) " · © DG Catastro" else ""
                 MapBase.NONE -> "Límites guardados en el teléfono"
-            } + (overlayAttribution?.let { " · $it" } ?: ""),
+            } + (if (sigpacLines && effectiveBase != MapBase.NONE) " · SIGPAC · FEGA/MAPA" else "")
+                + (if (effectiveBase != MapBase.NONE && overlayTiles != null) overlayAttribution?.let { " · $it" } ?: "" else ""),
             modifier = Modifier.align(Alignment.BottomStart)
                 .padding(start = 4.dp, bottom = with(density) { cameraInsets.bottomPx.toDp() } + 4.dp)
                 .semantics { contentDescription = "Atribución del mapa" },
@@ -481,7 +494,7 @@ internal fun parcelStyle(imagery: Boolean): String = parcelStyle(if (imagery) Ma
  * to twice its size: roads, olive rows and boundaries looked blurred on the phone. Catastro's
  * WMS is asked for real 512 px images and stays at 512.
  */
-internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: String? = null, myLocation: Boolean = false, dark: Boolean = false): String {
+internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: String? = null, myLocation: Boolean = false, dark: Boolean = false, sigpacLines: Boolean = false): String {
     // Theme our own canvas only. Raster source pixels and raster paints stay unchanged.
     val background = if (dark) "#171914" else "#F3F1E6"
     val savedLine = if (dark && base == MapBase.NONE) "#B6D39E" else "#25371C"
@@ -497,15 +510,19 @@ internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: St
         if (cadastreLines && base != MapBase.NONE) {
             add(""""cadastre":{"type":"raster","tileSize":512,"tiles":["$CADASTRE_WMS"]}""")
         }
+        if (sigpacLines && base != MapBase.NONE) {
+            add(""""sigpac":{"type":"raster","tileSize":512,"tiles":["$SIGPAC_WMS"]}""")
+        }
         // Radar pictures are published up to a low zoom; MapLibre enlarges them beyond it. #360: a
         // 512 px picture is declared at 512, so it is drawn at its own resolution, not stretched.
-        overlayTiles?.let { add(""""overlay":{"type":"raster","tileSize":${overlayTileSize(it)},"maxzoom":$OVERLAY_MAX_ZOOM,"tiles":["$it"]}""") }
+        if (base != MapBase.NONE) overlayTiles?.let { add(""""overlay":{"type":"raster","tileSize":${overlayTileSize(it)},"maxzoom":$OVERLAY_MAX_ZOOM,"tiles":["$it"]}""") }
     }.joinToString(",")
     val layers = buildList {
         add("""{"id":"background","type":"background","paint":{"background-color":"$background"}}""")
         if (base != MapBase.NONE) add("""{"id":"base","type":"raster","source":"base"}""")
         if (cadastreLines && base != MapBase.NONE) add("""{"id":"cadastre","type":"raster","source":"cadastre","minzoom":15}""")
-        if (overlayTiles != null) add("""{"id":"overlay","type":"raster","source":"overlay","paint":{"raster-opacity":0.7}}""")
+        if (sigpacLines && base != MapBase.NONE) add("""{"id":"sigpac","type":"raster","source":"sigpac","minzoom":15}""")
+        if (overlayTiles != null && base != MapBase.NONE) add("""{"id":"overlay","type":"raster","source":"overlay","paint":{"raster-opacity":0.7}}""")
         add("""{"id":"parcels-fill","type":"fill","source":"saved-parcels","paint":{"fill-color":["case",["get","selected"],"#CDA449",["==",["get","kind"],"CANDIDATE"],"#F4EAD0","#567342"],"fill-opacity":["case",["get","selected"],0.55,["==",["get","kind"],"CANDIDATE"],0.30,0.38]}}""")
         add("""{"id":"parcels-line","type":"line","source":"saved-parcels","paint":{"line-color":["case",["==",["get","kind"],"CANDIDATE"],"$candidateLine","$savedLine"],"line-width":["case",["get","selected"],4,["==",["get","kind"],"CANDIDATE"],2,3]}}""")
         // #361: «Mi ubicación» — a blue dot with a soft halo, above everything else.
@@ -533,3 +550,4 @@ private const val MAX_LABELS = 60
 private const val PNOA = "https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
 private const val IGN_BASE = "https://www.ign.es/wmts/ign-base?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNBaseTodo&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
 private const val CADASTRE_WMS = "https://ovc.catastro.meh.es/cartografia/INSPIRE/spadgcwms.aspx?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=CP.CadastralParcel&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=512&HEIGHT=512"
+private const val SIGPAC_WMS = "https://sigpac-hubcloud.es/wms/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=AU.Sigpac:recinto&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=512&HEIGHT=512"

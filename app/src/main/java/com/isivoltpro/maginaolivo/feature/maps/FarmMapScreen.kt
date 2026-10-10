@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -42,6 +43,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -160,8 +163,9 @@ fun FarmMapScreen(
     // The light IGN map by default: the aerial photo is heavier on the phone and is one tap away.
     var base by rememberSaveable { mutableStateOf(MapBase.MAP) }
     var cadastreLines by rememberSaveable { mutableStateOf(false) }
+    var sigpacLines by rememberSaveable { mutableStateOf(false) }
     var tileError by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(base, cadastreLines) { tileError = null }
+    LaunchedEffect(base, cadastreLines, sigpacLines) { tileError = null }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var layerMenu by remember { mutableStateOf(false) }
     var polygonSheet by rememberSaveable { mutableStateOf(false) }
@@ -175,13 +179,14 @@ fun FarmMapScreen(
     }
     val withBoundary = state.parcels.count { it.geometryGeoJson != null }
 
-    Box(Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).testTag("farm-map-root")) {
+    Box(Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).imePadding().testTag("farm-map-root")) {
         if (showMap) {
             ParcelMap(
                 parcels = mapped,
                 modifier = Modifier.fillMaxSize(),
                 base = base,
                 cadastreLines = cadastreLines,
+                sigpacLines = sigpacLines,
                 selectedId = state.selectedSavedId?.toString(),
                 selectedIds = state.selected,
                 onSelected = onTapParcel,
@@ -194,7 +199,7 @@ fun FarmMapScreen(
                 myLocation = state.myLocation,
                 onTileError = { source ->
                     // Ignore late errors from layers the farmer has deliberately turned off.
-                    if (base != MapBase.NONE && (source == "base" || source == "cadastre" && cadastreLines)) {
+                    if (base != MapBase.NONE && (source == "base" || source == "cadastre" && cadastreLines || source == "sigpac" && sigpacLines)) {
                         tileError = source
                     }
                 },
@@ -244,15 +249,20 @@ fun FarmMapScreen(
                     FarmMapMode.LOCATE -> Unit
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { searchOpen = !searchOpen }, modifier = Modifier.testTag("farm-map-search-toggle")) {
-                        Text(if (searchOpen) "Cerrar búsqueda" else "Buscar")
+                    TextButton(onClick = { searchOpen = !searchOpen }, modifier = Modifier.testTag("farm-map-search-toggle")
+                        .semantics { contentDescription = if (searchOpen) "Cerrar búsqueda" else "Abrir búsqueda" }) {
+                        Text(if (searchOpen) "Cerrar" else "Buscar")
                     }
                     TextButton(onClick = onMyLocation, modifier = Modifier.testTag("farm-map-my-location")) { Text("Mi ubicación") }
                     Box {
-                        TextButton(onClick = { layerMenu = true }, modifier = Modifier.testTag("farm-map-layer")) { Text(base.label) }
+                        TextButton(onClick = { layerMenu = true }, modifier = Modifier.testTag("farm-map-layer")
+                            .semantics { contentDescription = base.label }) {
+                            Text(if (base == MapBase.NONE) "Parcelas" else base.label)
+                        }
                         DropdownMenu(expanded = layerMenu, onDismissRequest = { layerMenu = false }) {
                             MapBase.entries.forEach { option ->
                                 DropdownMenuItem(
+                                    modifier = Modifier.testTag("farm-map-base-${option.name}"),
                                     text = { Text(if (option == base) "✓ ${option.label}" else option.label) },
                                     onClick = { base = option; layerMenu = false },
                                 )
@@ -261,6 +271,12 @@ fun FarmMapScreen(
                                 text = { Text(if (cadastreLines) "Ocultar linderos de Catastro" else "Ver linderos de Catastro") },
                                 onClick = { cadastreLines = !cadastreLines; layerMenu = false },
                                 enabled = base != MapBase.NONE,
+                            )
+                            DropdownMenuItem(
+                                text = { Text(if (sigpacLines) "Ocultar recintos SIGPAC (referencia)" else "Ver recintos SIGPAC (referencia)") },
+                                onClick = { sigpacLines = !sigpacLines; layerMenu = false },
+                                enabled = base != MapBase.NONE,
+                                modifier = Modifier.testTag("farm-map-sigpac"),
                             )
                         }
                     }
@@ -291,6 +307,7 @@ fun FarmMapScreen(
             tileError?.let { source ->
                 MapTileProblemNotice(
                     when {
+                        source == "sigpac" -> "Algunos recintos SIGPAC no se han podido cargar."
                         source == "cadastre" -> "Algunos límites de Catastro no se han podido cargar."
                         base == MapBase.AERIAL -> "Parte de la foto aérea no se ha podido cargar."
                         else -> "Parte del mapa no se ha podido cargar."
@@ -311,7 +328,8 @@ fun FarmMapScreen(
             if (state.myLocation != null && state.locationProblem == null && state.mode == FarmMapMode.VIEW && state.selectedSavedId == null) {
                 Notice("El punto azul es tu ubicación.", MoColors.current.secondaryText, Modifier.testTag("farm-map-my-location-shown"))
             }
-            if (state.mode != FarmMapMode.LOCATE && state.parcels.none { it.geometryGeoJson != null } && state.selected.isEmpty()) {
+            if (state.mode != FarmMapMode.LOCATE && state.parcels.none { it.geometryGeoJson != null } && state.selected.isEmpty()
+                && !searchOpen && state.locationProblem == null && tileError == null) {
                 FarmMapGuide(Modifier.testTag("farm-map-guide"))
             }
             state.error?.let { Notice(it, MoColors.current.errorText, Modifier.testTag("farm-map-error")) }
