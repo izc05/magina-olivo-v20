@@ -201,15 +201,103 @@ class FarmMapViewModelTest {
         assertEquals(37.636, viewModel.state.value.focus!!.point.latitude, 1e-9)
     }
 
+    /**
+     * #711 B3 (owner's order): viewing the map, a tap reads the official parcel under the finger
+     * and offers it; the farmer no longer has to switch to «Añadir de Catastro» first to see it.
+     */
+    @Test
+    fun aTapWhileViewingReadsTheParcelUnderTheFingerAndOffersToAddIt() = runTest(dispatcher) {
+        val parcels = FakeParcels()
+        val client = FakeClient(
+            listOf(square("23044A00400021", -3.48, 37.63), square("23044A00400022", -3.46, 37.63)),
+            places = mapOf("23044A00400022" to RegistryLocation("Huelma", "Jaén")),
+        )
+        val viewModel = FarmMapViewModel(farmId, FakeFarms(), parcels, client)
+        advanceUntilIdle()
+
+        viewModel.tapMap(37.635, -3.455) // inside the second parcel, not the first one returned
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals("23044A00400022", state.inspected?.reference)
+        assertEquals(12_000.0, state.inspected?.areaM2!!, 0.5)
+        assertEquals("Huelma", state.inspectedPlace?.municipality)
+        assertEquals(FarmMapMode.VIEW, state.mode)      // reading never switches the screen
+        assertTrue(state.selected.isEmpty())            // nor marks anything for saving
+        assertTrue(parcels.created.isEmpty())
+
+        viewModel.addInspected()
+        assertEquals(FarmMapMode.ADD, viewModel.state.value.mode)
+        assertEquals(setOf("23044A00400022"), viewModel.state.value.selected)
+        assertNull(viewModel.state.value.inspected)
+
+        viewModel.importSelected(emptyMap())
+        advanceUntilIdle()
+        assertEquals(listOf("23044A00400022"), parcels.created.map { it.cadastralReference })
+    }
+
+    /** A parcel of this farm opens its own card: the saved record wins over the official copy. */
+    @Test
+    fun aTapOnAParcelAlreadyInTheFarmOpensItInsteadOfOfferingItAgain() = runTest(dispatcher) {
+        val saved = parcel(UUID.randomUUID(), reference = "23044A00400021")
+        val viewModel = FarmMapViewModel(
+            farmId, FakeFarms(), FakeParcels(existing = saved),
+            FakeClient(listOf(square("23044A00400021", -3.48, 37.63))),
+        )
+        advanceUntilIdle()
+
+        viewModel.tapMap(37.635, -3.475)
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.inspected)
+        assertEquals(saved.id, viewModel.state.value.selectedSavedId)
+    }
+
+    /** One saved in another farm is named, never offered a second time. */
+    @Test
+    fun aTapOnAParcelSavedInAnotherFarmSaysSoAndOffersNothing() = runTest(dispatcher) {
+        val viewModel = FarmMapViewModel(
+            farmId, FakeFarms(), FakeParcels(takenReference = "23044A00400021"),
+            FakeClient(listOf(square("23044A00400021", -3.48, 37.63))),
+        )
+        advanceUntilIdle()
+
+        viewModel.tapMap(37.635, -3.475)
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.inspected)
+        assertTrue(viewModel.state.value.message!!.contains("otra finca"))
+        assertEquals(setOf("23044A00400021"), viewModel.state.value.taken)
+        viewModel.addInspected()
+        assertEquals(FarmMapMode.VIEW, viewModel.state.value.mode)
+    }
+
+    /** A closed square of about 0,01° of side, so a coordinate is unambiguously inside or outside. */
+    private fun square(reference: String, west: Double, south: Double) = CadastralCandidate(
+        reference = reference,
+        areaM2 = 12_000.0,
+        polygons = listOf(
+            listOf(
+                listOf(
+                    west to south,
+                    west + 0.01 to south,
+                    west + 0.01 to south + 0.01,
+                    west to south + 0.01,
+                    west to south,
+                ),
+            ),
+        ),
+    )
+
     private fun candidate(reference: String) = CadastralCandidate(
         reference = reference,
         areaM2 = 12_000.0,
         polygons = listOf(listOf(listOf(-3.48 to 37.63, -3.47 to 37.63, -3.47 to 37.64, -3.48 to 37.63))),
     )
 
-    private fun parcel(id: UUID) = Parcel(
+    private fun parcel(id: UUID, reference: String? = null) = Parcel(
         id = id, workspaceId = workspace, farmId = farmId, displayName = "La del camino",
-        cadastralReference = null, cadastralPolygon = null, cadastralParcel = null, municipality = null,
+        cadastralReference = reference, cadastralPolygon = null, cadastralParcel = null, municipality = null,
         province = null, source = ParcelSource.MANUAL, geometryGeoJson = null, cadastralAreaM2 = null,
         managedAreaM2 = 9_000.0, notes = null, archivedAt = null, version = 1,
     )
