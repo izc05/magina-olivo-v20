@@ -48,6 +48,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import kotlin.math.roundToInt
 import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
@@ -159,13 +160,15 @@ fun ParcelMap(
     val effectiveBase = base ?: if (imagery) MapBase.AERIAL else MapBase.NONE
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
-    var styleReady by remember { mutableStateOf(false) }
+    var loadedStyle by remember { mutableStateOf<Style?>(null) }
     // Frame the farmer's own parcels when they change, not on every selection tap.
     var framedKey by remember { mutableStateOf<MapFrameKey?>(null) }
     // Screen positions of the labels, refreshed when the camera stops (never while it moves).
     var labelSpots by remember { mutableStateOf<List<Pair<String, IntOffset>>>(emptyList()) }
     var cameraTick by remember { mutableStateOf(0) }
     var mapHeightPx by remember { mutableStateOf(0) }
+    var mapWidthPx by remember { mutableStateOf(0) }
+    var appliedFocusToken by remember(map) { mutableStateOf<Long?>(null) }
     var controlsHeightPx by remember { mutableStateOf(0) }
     val view = remember {
         MapLibre.getInstance(context)
@@ -213,19 +216,20 @@ fun ParcelMap(
     }
     val showsMyLocation = myLocation != null
     LaunchedEffect(map, effectiveBase, cadastreLines, sigpacLines, overlayTiles, showsMyLocation, dark) {
-        styleReady = false
-        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines, overlayTiles, showsMyLocation, dark, sigpacLines))) { styleReady = true }
+        loadedStyle = null
+        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines, overlayTiles, showsMyLocation, dark, sigpacLines))) { loadedStyle = it }
     }
-    LaunchedEffect(map, styleReady, myLocation) {
+    LaunchedEffect(loadedStyle, myLocation) {
+        val style = loadedStyle ?: return@LaunchedEffect
         val point = myLocation ?: return@LaunchedEffect
-        if (!styleReady) return@LaunchedEffect
-        map?.style?.getSourceAs<GeoJsonSource>("my-location")?.setGeoJson(myLocationFeature(point))
+        style.getSourceAs<GeoJsonSource>("my-location")?.setGeoJson(myLocationFeature(point))
     }
     val selection = remember(selectedId, selectedIds) { selectedIds + listOfNotNull(selectedId) }
     val data = remember(parcels, selection) { mapFeatureCollection(parcels, selection) }
-    DisposableEffect(map, styleReady, data, parcels.map { it.id to it.geometry }, framePadding, snapshot != null) {
+    DisposableEffect(map, loadedStyle, data, parcels.map { it.id to it.geometry }, framePadding, snapshot != null) {
         val current = map
-        if (!styleReady || current == null) return@DisposableEffect onDispose {}
+        val style = loadedStyle
+        if (style == null || current == null) return@DisposableEffect onDispose {}
 
         var delivered = false
         var listener: MapView.OnDidFinishRenderingMapListener? = null
@@ -242,7 +246,7 @@ fun ParcelMap(
             }
             view.addOnDidFinishRenderingMapListener(listener)
         }
-        current.style?.getSourceAs<GeoJsonSource>("saved-parcels")?.setGeoJson(data)
+        style.getSourceAs<GeoJsonSource>("saved-parcels")?.setGeoJson(data)
         val saved = parcels.filter { it.kind == MapParcelKind.SAVED }
         val savedKey = MapFrameKey(saved.map { it.id to it.geometry }, framePadding)
         if (framedKey != savedKey && focus == null) {
@@ -254,9 +258,22 @@ fun ParcelMap(
 
         onDispose { listener?.let(view::removeOnDidFinishRenderingMapListener) }
     }
-    LaunchedEffect(map, focus) {
+    LaunchedEffect(map, focus, framePadding, mapWidthPx, mapHeightPx) {
         val current = map ?: return@LaunchedEffect
-        focus?.let { current.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.point.latitude, it.point.longitude), it.zoom)) }
+        val requested = focus ?: return@LaunchedEffect
+        if (mapWidthPx <= framePadding.leftPx + framePadding.rightPx ||
+            mapHeightPx <= framePadding.topPx + framePadding.bottomPx) return@LaunchedEffect
+        // Insets change with search/IME/panels. Apply them absolutely without replaying an
+        // already consumed focus over a later user pan, zoom or explicit parcel framing.
+        val camera = CameraPosition.Builder(current.cameraPosition).padding(
+            framePadding.leftPx.toDouble(), framePadding.topPx.toDouble(),
+            framePadding.rightPx.toDouble(), framePadding.bottomPx.toDouble(),
+        )
+        if (appliedFocusToken != requested.token) {
+            camera.target(LatLng(requested.point.latitude, requested.point.longitude)).zoom(requested.zoom)
+        }
+        current.moveCamera(CameraUpdateFactory.newCameraPosition(camera.build()))
+        appliedFocusToken = requested.token
     }
     val labelled = remember(parcels) { parcels.mapNotNull { p -> p.label?.let { label -> labelPoint(p.geometry)?.let { Triple(p.id, label, it) } } } }
     LaunchedEffect(
@@ -298,7 +315,7 @@ fun ParcelMap(
             ).map { it.label to IntOffset(it.x, it.y) }
         }
     }
-    Box(modifier.onSizeChanged { mapHeightPx = it.height }) {
+    Box(modifier.onSizeChanged { mapWidthPx = it.width; mapHeightPx = it.height }) {
         AndroidView(factory = { view }, modifier = Modifier.fillMaxSize().testTag("parcel-map-view"))
         labelSpots.forEach { (label, spot) ->
             ParcelNumber(label, Modifier.offset { IntOffset(spot.x - with(density) { 14.dp.roundToPx() }, spot.y - with(density) { 11.dp.roundToPx() }) })

@@ -67,7 +67,8 @@ import java.util.UUID
 /**
  * Phase 18 — the farm's parcels on a map, and the place to add them: tap several Catastro
  * parcels and incorporate them in one go, or give a hand-made parcel its location.
- * Boundaries are drawn from the phone's copy; aerial imagery needs a connection.
+ * Boundaries are drawn from the phone's copy; aerial imagery and the official reference
+ * boundaries need a connection, and their absence never hides the saved parcels.
  */
 @Composable
 fun FarmMapRoute(
@@ -160,10 +161,13 @@ fun FarmMapScreen(
     onDismissLocationProblem: () -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    // The light IGN map by default: the aerial photo is heavier on the phone and is one tap away.
-    var base by rememberSaveable { mutableStateOf(MapBase.MAP) }
-    var cadastreLines by rememberSaveable { mutableStateOf(false) }
-    var sigpacLines by rememberSaveable { mutableStateOf(false) }
+    // #711 B3 (owner's order): the map opens on the PNOA photo with the official boundaries
+    // already drawn, so the parcels are there to be seen instead of hunted for one by one. Each
+    // layer stays one tap away in the layer menu, and a failing source only shows its notice:
+    // the saved boundaries are local and never depend on these remote sources.
+    var base by rememberSaveable { mutableStateOf(MapBase.AERIAL) }
+    var cadastreLines by rememberSaveable { mutableStateOf(true) }
+    var sigpacLines by rememberSaveable { mutableStateOf(true) }
     var tileError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(base, cadastreLines, sigpacLines) { tileError = null }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
