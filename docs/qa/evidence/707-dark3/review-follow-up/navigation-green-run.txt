@@ -1,0 +1,8 @@
+Performing Streamed Install
+Success
+PASS navigation/day-reuse/recreation 360dp/font1.3
+PASS navigation/day-reuse/recreation 393dp/font1.3
+PASS navigation/day-reuse/recreation 430dp/font1.3
+{"action": "backup", "label": "719-nav-green-fixture-20261010", "files": 190, "bytes": 74201600, "sha256": "49804c6c5809e5472e98e648f186d8992fe6d074476f01ff1b9e75ea3ba34c7b"}
+{"action": "restore", "label": "719-nav-before-reproduction-20261010", "restoredFiles": 190, "differences": [], "backupSha256": "a5294449df8bd448b0ee9e54eece2e3367ebcf2bb7ea77dee61abb2f0820cc39"}
+PASS 3 navigation executions; original 190 QA files restored by hash

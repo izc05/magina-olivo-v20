@@ -1330,10 +1330,17 @@ class AppNavigationTest {
     private fun clickByText(text: String) {
         runCatching {
             composeRule.waitUntil(UI_TIMEOUT_MS) {
-                composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() || runCatching {
-                    composeRule.onNodeWithTag("farm-list").performScrollToNode(hasText(text))
-                    true
-                }.getOrDefault(false)
+                // A row can be briefly prefetched, then leave composition when the
+                // asynchronous seasonal summary grows. Seek a visible row before
+                // entering the text-only wait; mere transient existence is not enough.
+                if (composeRule.onAllNodesWithTag("farm-list").fetchSemanticsNodes().isNotEmpty()) {
+                    runCatching {
+                        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasText(text))
+                        clickableNodeWithText(text).assertIsDisplayed()
+                    }.isSuccess
+                } else {
+                    composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+                }
             }
         }
         waitForNodeOrDump("clickable node \"$text\"") { composeRule.onAllNodesWithText(text) }
