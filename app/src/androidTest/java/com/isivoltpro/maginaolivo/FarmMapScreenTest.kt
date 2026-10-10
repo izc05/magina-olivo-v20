@@ -135,7 +135,10 @@ class FarmMapScreenTest {
         hasTextUnder("farm-map-official-card", "Huelma · Jaén")
         // It is said plainly that this is not one of the farmer's parcels, and not a certificate.
         composeRule.onNodeWithTag("farm-map-official-status").assertTextContains("no está en tu olivar", substring = true)
-        hasTextUnder("farm-map-official-card", "no un certificado catastral.")
+        hasTextUnder(
+            "farm-map-official-card",
+            "Datos de Catastro. El contorno guardado es una referencia, no un certificado catastral.",
+        )
         composeRule.onNodeWithTag("farm-map-official-add").performClick()
         composeRule.onNodeWithTag("farm-map-official-close").performClick()
         composeRule.runOnIdle {
