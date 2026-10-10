@@ -347,11 +347,24 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
 
     private suspend fun worker(name: String): UUID = p.labourRepository.addWorker(name).or("worker $name")
 
-    private suspend fun machine(name: String, category: MachineCategory, serial: String, hours: Double?): UUID =
-        p.machineRepository.create(
-            MachineDraft(name = name, category = category, make = "Demo", model = "Demo",
-                registrationOrSerial = serial, currentHours = hours, notes = DEMO_NOTE),
-        ).or("machine $name")
+    /**
+     * The demo's machine, created once and reused afterwards. A machine name is unique in the
+     * whole olivar and retiring it does not free the name, so restoring and updating the retired
+     * one is what keeps «Restablecer» working instead of failing on a duplicate.
+     */
+    private suspend fun machine(name: String, category: MachineCategory, serial: String, hours: Double?): UUID {
+        val draft = MachineDraft(
+            name = name, category = category, make = "Demo", model = "Demo",
+            registrationOrSerial = serial, currentHours = hours, notes = DEMO_NOTE,
+        )
+        p.machineRepository.observeArchived().first().firstOrNull { it.name == name }?.let { retired ->
+            p.machineRepository.restore(retired.id).or("restore machine $name")
+            p.machineRepository.update(retired.id, draft).or("update machine $name")
+            return retired.id
+        }
+        p.machineRepository.observeActive().first().firstOrNull { it.name == name }?.let { return it.id }
+        return p.machineRepository.create(draft).or("machine $name")
+    }
 
     /** Planned work: an hour, a crew and its reminders. Saved as planned, never as done. */
     private suspend fun planned(

@@ -136,7 +136,10 @@ class DemoFarmSeederTest {
         val machines = persistence.machineRepository.observeActive().first().filter { it.name.endsWith("(DEMO)") }
         assertEquals(3, machines.size)
         val tractor = machines.single { it.category == MachineCategory.TRACTOR }
-        assertEquals(2, persistence.machineRepository.observeUses(tractor.id).first().size)
+        // Its uses name the works that used it. A reset reuses the machine, so the history may be
+        // longer than this seed's two entries; what must hold is that these two are in it.
+        val uses = persistence.machineRepository.observeUses(tractor.id).first().map { it.description }
+        assertTrue(uses.containsAll(listOf("Labores de suelo (DEMO)", "Abonado (DEMO)")))
 
         assertTrue(tools.reset() is AppResult.Success)
         val fresh = demoFarms(workspace).single()
