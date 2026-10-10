@@ -275,6 +275,7 @@ private fun DemoFarmSection(tools: com.isivoltpro.maginaolivo.app.DemoFarmTools)
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var confirmReset by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf(false) }
     val run: (suspend () -> com.isivoltpro.maginaolivo.core.common.AppResult<String>) -> Unit = { action ->
         busy = true
         scope.launch {
@@ -291,6 +292,13 @@ private fun DemoFarmSection(tools: com.isivoltpro.maginaolivo.app.DemoFarmTools)
         MoTertiaryButton("Cancelar", { confirmReset = false }, modifier = Modifier.fillMaxWidth())
     } else {
         MoTertiaryButton("Restablecer Finca Demo", { confirmReset = true }, modifier = Modifier.fillMaxWidth().testTag("profile-demo-reset"), enabled = !busy)
+    }
+    if (confirmRemove) {
+        Text("Se retirará y archivará la Finca Demo. Tus fincas y datos reales no se tocan.", style = MaterialTheme.typography.bodySmall)
+        MoDestructiveButton("Retirar ahora", { confirmRemove = false; run(tools::remove) }, modifier = Modifier.fillMaxWidth().testTag("profile-demo-remove-confirm"), enabled = !busy)
+        MoTertiaryButton("Cancelar", { confirmRemove = false }, modifier = Modifier.fillMaxWidth())
+    } else {
+        MoTertiaryButton("Retirar datos de demostración", { confirmRemove = true }, modifier = Modifier.fillMaxWidth().testTag("profile-demo-remove"), enabled = !busy)
     }
     if (busy) Text("Trabajando…", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("profile-demo-busy"))
     status?.let { Text(it, modifier = Modifier.testTag("profile-demo-status")) }

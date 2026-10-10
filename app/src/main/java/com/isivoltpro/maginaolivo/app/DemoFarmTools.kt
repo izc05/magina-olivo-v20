@@ -12,4 +12,10 @@ interface DemoFarmTools {
 
     /** Retires the current demo (closed and archived) and creates a fresh one. */
     suspend fun reset(): AppResult<String>
+
+    /**
+     * #696 — «Eliminar datos de demostración»: retires the demo and creates nothing. Only the
+     * demo's own Farm is touched; real Farms, Pesadas, costs and photos stay as they are.
+     */
+    suspend fun remove(): AppResult<String>
 }

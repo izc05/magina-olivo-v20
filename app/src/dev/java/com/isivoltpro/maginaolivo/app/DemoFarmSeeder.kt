@@ -22,8 +22,10 @@ import com.isivoltpro.maginaolivo.domain.labour.LabourPayment
 import com.isivoltpro.maginaolivo.domain.labour.LabourRateBasis
 import com.isivoltpro.maginaolivo.domain.labour.LabourRateSnapshot
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
+import com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem
 import com.isivoltpro.maginaolivo.domain.parcel.NewParcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelAgronomy
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.first
@@ -47,25 +49,56 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
 
     override suspend fun reset(): AppResult<String> = seeding {
         val workspace = p.workspaceRepository.ensureLocalWorkspace().or("workspace")
-        p.farmRepository.observeActive(workspace).first().filter { it.name == DEMO_FARM }.forEach { farm ->
-            // A running demo campaign is closed first, so no Cuaderno context keeps pointing at it.
+        retire(workspace)
+        seed(workspace)
+        "Finca Demo restablecida: la anterior queda archivada y se ha creado de nuevo."
+    }
+
+    /**
+     * #696 - «Eliminar datos de demostracion»: retires every demo Farm of the workspace and
+     * creates nothing. It only ever touches Farms named [DEMO_FARM], so real Farms, their
+     * Parcels, Pesadas, costs and photos are left exactly as they were.
+     */
+    override suspend fun remove(): AppResult<String> = seeding {
+        val workspace = p.workspaceRepository.ensureLocalWorkspace().or("workspace")
+        when (val retired = retire(workspace)) {
+            0 -> "No hay Finca Demo cargada. No se ha tocado ninguna finca."
+            1 -> "Finca Demo retirada y archivada. Tus fincas y datos reales siguen intactos."
+            else -> "Retiradas $retired Fincas Demo. Tus fincas y datos reales siguen intactos."
+        }
+    }
+
+    /**
+     * Closes the demo's running campaign - so no Cuaderno context keeps pointing at it - renames
+     * it and archives it. There is no physical delete: no repository offers a cascade deletion of
+     * a Farm's aggregates, and this slice does not invent one (GAP in `docs/DEMO-FARM-SCENARIO.md`).
+     */
+    private suspend fun retire(workspace: UUID): Int {
+        val demos = p.farmRepository.observeActive(workspace).first().filter { it.name == DEMO_FARM }
+        demos.forEach { farm ->
             p.campaignRepository.observeForFarm(farm.id).first().filter { it.status.isRunning }.forEach { campaign ->
                 p.campaignRepository.close(campaign.id, maxOf(campaign.startDate, LAST_DAY)).or("close")
             }
             p.farmRepository.update(farm.id, FarmChanges(name = "$DEMO_FARM (retirada)", municipality = farm.municipality, province = farm.province, notes = DEMO_NOTE)).or("rename")
             p.farmRepository.archive(farm.id).or("archive")
         }
-        seed(workspace)
-        "Finca Demo restablecida: la anterior queda archivada y se ha creado de nuevo."
+        return demos.size
     }
 
     private suspend fun seed(workspace: UUID) {
         val farm = p.farmRepository.create(
             NewFarm(workspace, DEMO_FARM, description = "DEMO", municipality = "Bedmar", province = "Jaén", notes = DEMO_NOTE),
         ).or("farm")
-        val llanos = parcel(farm, "Los Llanos", 12_500.0, 120)
-        val loma = parcel(farm, "La Loma", 9_500.0, 90)
-        val barranco = parcel(farm, "El Barranco", 10_000.0, 110)
+        // #696: each Parcel with its own grove data, watering and municipality (Bedmar and Garciez).
+        val llanos = parcel(
+            farm, "Los Llanos", 12_500.0, 120, "Picual", "Bedmar", "DEMO-LLANOS-001",
+            IrrigationSystem.DRIP, "Sector 1", setOf(DayOfWeek.TUESDAY, DayOfWeek.FRIDAY),
+        )
+        val loma = parcel(farm, "La Loma", 9_500.0, 90, "Picual", "Bedmar", "DEMO-LOMA-002", IrrigationSystem.DRYLAND, null)
+        val barranco = parcel(
+            farm, "El Barranco", 10_000.0, 110, "Hojiblanca", "Garcíez", "DEMO-BARRANCO-003",
+            IrrigationSystem.DRIP, "Sector 2", setOf(DayOfWeek.WEDNESDAY),
+        )
         val all = setOf(llanos, loma, barranco)
 
         // Work through the year, before and between the campaigns. No money: costs live in the ledger.
@@ -119,10 +152,13 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
             Triple(LocalDate.of(2026, 9, 20), "Riego / energía (DEMO)", ExpenseCategory.IRRIGATION) to 7_500L,
         ).forEach { (what, minor) -> expense(farm, null, what.first, what.second, what.third, minor) }
 
-        // 2026/27 — active: 3 Pesadas, 5.700 kg, 3 days, 10 jornadas.
+        // 2026/27 — active: 4 Pesadas (two the same day), 6.680 kg, 3 days, 10 jornadas + 1 media + 5 h.
         val now = campaign(farm, "Campaña de recogida 2026/27", LocalDate.of(2026, 9, 28), all)
         pesada(farm, LocalDate.of(2026, 9, 28), 1_850_000, 2_080, "DEMO-001", setOf(llanos))
         pesada(farm, LocalDate.of(2026, 10, 1), 2_120_000, 2_160, "DEMO-002", setOf(loma, llanos))
+        // #696: two Pesadas on the same day, each with its own vale and origin suelo/arbol. Both join
+        // the same automatic Jornada, so the day's kilos stay the exact sum of its Pesadas.
+        pesada(farm, LocalDate.of(2026, 10, 1), 980_000, 1_910, "DEMO-004", setOf(barranco), PesadaOrigin.GROUND)
         pesada(farm, LocalDate.of(2026, 10, 3), 1_730_000, 1_990, "DEMO-003", setOf(barranco))
         val crews = mapOf(
             LocalDate.of(2026, 9, 28) to listOf(ana, miguel, jose),
@@ -133,18 +169,44 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
             crew(day, date, crews.getValue(date), 6_500)
             equipment(day, date, tractor = 8_500, shaker = 6_000, trailer = 3_500)
         }
+        // #696: whole days, a half day and hours in the same campaign, each priced on its own basis.
+        val dayOf = days(now).associate { (day, date) -> date to day }
+        crew(dayOf.getValue(LocalDate.of(2026, 9, 28)), LocalDate.of(2026, 9, 28), listOf(maria), 1_000,
+            LabourUnit.HOURS, minutes = 300, basis = LabourRateBasis.HOUR)
+        crew(dayOf.getValue(LocalDate.of(2026, 10, 3)), LocalDate.of(2026, 10, 3), listOf(jose), 6_500, LabourUnit.HALF_DAY)
         expense(farm, now, LocalDate.of(2026, 9, 29), "Gasóleo recogida (DEMO)", ExpenseCategory.FUEL, 14_000)
         expense(farm, now, LocalDate.of(2026, 9, 30), "Aceite y mantenimiento pequeño (DEMO)", ExpenseCategory.REPAIR, 3_500)
         expense(farm, now, LocalDate.of(2026, 10, 2), "Transporte a la cooperativa (DEMO)", ExpenseCategory.TRANSPORT, 7_500)
-        pay(ana, now, LAST_DAY, 19_500)   // paid in full
-        pay(miguel, now, LAST_DAY, 10_000) // partial
-        pay(maria, now, LAST_DAY, 13_000) // paid in full; José stays pending
+        pay(ana, now, LAST_DAY, 19_500)   // 195,00 EUR generated, paid in full
+        pay(miguel, now, LAST_DAY, 10_000) // 195,00 EUR generated, 100,00 EUR paid: partial
+        // 180,00 EUR generated (5 h + 2 jornadas), settled in two payments; José keeps 162,50 EUR pending.
+        pay(maria, now, LAST_DAY, 13_000)
+        pay(maria, now, LAST_DAY, 5_000)
     }
 
-    private suspend fun parcel(farm: UUID, name: String, areaM2: Double, trees: Int): UUID =
+    private suspend fun parcel(
+        farm: UUID,
+        name: String,
+        areaM2: Double,
+        trees: Int,
+        variety: String,
+        municipality: String,
+        reference: String,
+        irrigation: IrrigationSystem,
+        sector: String?,
+        irrigationDays: Set<DayOfWeek> = emptySet(),
+    ): UUID =
         p.parcelRepository.create(
-            NewParcel(farmId = farm, displayName = name, municipality = "Bedmar", province = "Jaén",
-                managedAreaM2 = areaM2, notes = DEMO_NOTE, agronomy = ParcelAgronomy(oliveTreeCount = trees)),
+            NewParcel(farmId = farm, displayName = name, municipality = municipality, province = "Jaén",
+                // A MANUAL parcel with an unmistakably fictitious identifier: it is not a Catastro
+                // reference, it does not look like one and nothing here claims CUE compliance.
+                cadastralReference = reference,
+                managedAreaM2 = areaM2, notes = DEMO_NOTE,
+                agronomy = ParcelAgronomy(
+                    oliveTreeCount = trees, variety = variety, irrigationSystem = irrigation,
+                    irrigationNetwork = sector?.let { "Red Demo" }, irrigationSector = sector,
+                    irrigationDays = irrigationDays,
+                )),
         ).or("parcel $name")
 
     private suspend fun worker(name: String): UUID = p.labourRepository.addWorker(name).or("worker $name")
@@ -155,13 +217,21 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
         return id
     }
 
-    private suspend fun pesada(farm: UUID, date: LocalDate, grams: Long, fatHundredths: Int, ticket: String, parcels: Set<UUID>) {
+    private suspend fun pesada(
+        farm: UUID,
+        date: LocalDate,
+        grams: Long,
+        fatHundredths: Int,
+        ticket: String,
+        parcels: Set<UUID>,
+        origin: PesadaOrigin = PesadaOrigin.TREE,
+    ) {
         // A mixed Pesada keeps its split unknown: no per-parcel kilos are invented.
         val id = p.deliveryRepository.create(
             DeliveryDraft(farmId = farm, deliveryDate = date, destinationOrganizationId = null,
                 destinationName = "Organización Demo", netGrams = grams,
                 shares = parcels.map { DeliveryShareInput(it, null) }, ticketNumber = ticket,
-                notes = DEMO_NOTE, origin = PesadaOrigin.TREE),
+                notes = DEMO_NOTE, origin = origin),
         ).or("pesada $ticket")
         p.deliveryRepository.recordYield(id, YieldDraft(date, fatHundredths, null, DEMO_NOTE)).or("yield $ticket")
     }
@@ -170,10 +240,19 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
     private suspend fun days(campaign: UUID): List<Pair<UUID, LocalDate>> =
         p.harvestRepository.observeForCampaign(campaign).first().sortedBy { it.harvestDate }.map { it.id to it.harvestDate }
 
-    private suspend fun crew(day: UUID, date: LocalDate, people: List<UUID>, rateMinor: Long) {
+    private suspend fun crew(
+        day: UUID,
+        date: LocalDate,
+        people: List<UUID>,
+        rateMinor: Long,
+        unit: LabourUnit = LabourUnit.FULL_DAY,
+        minutes: Int? = null,
+        basis: LabourRateBasis = LabourRateBasis.DAY,
+    ) {
         p.labourRepository.recordCrew(
-            CrewDraft(day, people, LabourUnit.FULL_DAY, appliedRate = LabourRateSnapshot(rateMinor, "EUR", date, LabourRateBasis.DAY)),
-        ).or("crew $date")
+            CrewDraft(day, people, unit, minutes = minutes,
+                appliedRate = LabourRateSnapshot(rateMinor, "EUR", date, basis)),
+        ).or("crew $date $unit")
     }
 
     private suspend fun equipment(day: UUID, date: LocalDate, tractor: Long, shaker: Long, trailer: Long) {
