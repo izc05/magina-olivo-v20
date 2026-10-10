@@ -397,12 +397,112 @@ object DatabaseMigrations {
         }
     }
 
+    /** #700/#720: Catálogo territorial de municipios, comunidades de regantes, avisos comunitarios y plan personal. */
+    val MIGRATION_25_26 = object : Migration(25, 26) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `territorial_municipalities` (
+                    `slug` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `province` TEXT NOT NULL,
+                    `ine_code` TEXT,
+                    `aemet_code` TEXT NOT NULL,
+                    `comarca` TEXT NOT NULL,
+                    `official_url` TEXT,
+                    `electronic_seat_url` TEXT,
+                    `center_latitude` REAL,
+                    `center_longitude` REAL,
+                    `source_url` TEXT NOT NULL,
+                    `last_checked_at_ms` INTEGER NOT NULL,
+                    `active` INTEGER NOT NULL,
+                    PRIMARY KEY(`slug`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_territorial_municipalities_ine_code` ON `territorial_municipalities` (`ine_code`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_territorial_municipalities_aemet_code` ON `territorial_municipalities` (`aemet_code`)")
+
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `irrigation_communities` (
+                    `id` TEXT NOT NULL,
+                    `official_name` TEXT NOT NULL,
+                    `short_name` TEXT,
+                    `entity_type` TEXT NOT NULL,
+                    `primary_municipality_slug` TEXT NOT NULL,
+                    `address` TEXT,
+                    `phone` TEXT,
+                    `email` TEXT,
+                    `website_url` TEXT,
+                    `electronic_seat_url` TEXT,
+                    `verification_status` TEXT NOT NULL,
+                    `source_bulletin_ref` TEXT,
+                    `last_checked_at_ms` INTEGER NOT NULL,
+                    `active` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`primary_municipality_slug`) REFERENCES `territorial_municipalities`(`slug`) ON UPDATE NO ACTION ON DELETE NO ACTION
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_irrigation_communities_primary_municipality_slug` ON `irrigation_communities` (`primary_municipality_slug`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_irrigation_communities_verification_status` ON `irrigation_communities` (`verification_status`)")
+
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `community_water_notices` (
+                    `id` TEXT NOT NULL,
+                    `community_id` TEXT NOT NULL,
+                    `sector_code` TEXT,
+                    `notice_type` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `body` TEXT NOT NULL,
+                    `starts_at_epoch_ms` INTEGER NOT NULL,
+                    `ends_at_epoch_ms` INTEGER NOT NULL,
+                    `source_type` TEXT NOT NULL,
+                    `source_url` TEXT,
+                    `status` TEXT NOT NULL,
+                    `published_at_epoch_ms` INTEGER NOT NULL,
+                    `expires_at_epoch_ms` INTEGER,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`community_id`) REFERENCES `irrigation_communities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_community_water_notices_community_id_starts_at_epoch_ms` ON `community_water_notices` (`community_id`, `starts_at_epoch_ms`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_community_water_notices_status` ON `community_water_notices` (`status`)")
+
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `personal_irrigation_plans` (
+                    `id` TEXT NOT NULL,
+                    `workspace_id` TEXT NOT NULL,
+                    `plot_id` TEXT NOT NULL,
+                    `sector_code` TEXT,
+                    `scheduled_at_epoch_ms` INTEGER NOT NULL,
+                    `duration_minutes` INTEGER NOT NULL,
+                    `linked_notice_id` TEXT,
+                    `status` TEXT NOT NULL,
+                    `reminder_minutes_before` INTEGER NOT NULL,
+                    `created_at_epoch_ms` INTEGER NOT NULL,
+                    `updated_at_epoch_ms` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_personal_irrigation_plans_workspace_id_scheduled_at_epoch_ms` ON `personal_irrigation_plans` (`workspace_id`, `scheduled_at_epoch_ms`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_personal_irrigation_plans_plot_id` ON `personal_irrigation_plans` (`plot_id`)")
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
             MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
             MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
+            MIGRATION_25_26,
         )
 
     private val schemaVersion11Statements =
