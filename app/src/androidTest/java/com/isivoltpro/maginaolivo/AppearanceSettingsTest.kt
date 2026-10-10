@@ -16,6 +16,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.core.view.WindowCompat
 import com.isivoltpro.maginaolivo.app.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CompletableDeferred
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import android.graphics.Bitmap
 import java.io.File
@@ -58,6 +60,25 @@ class AppearanceSettingsTest {
         compose.onNodeWithTag("appearance-sheet").assertDoesNotExist()
         assertEquals(AppearanceMode.LIGHT, store.mode.value)
         expectSummary("Claro")
+    }
+
+    @Test fun backDuringADelayedRejectedWriteKeepsTheErrorReachable() {
+        val result = CompletableDeferred<Boolean>()
+        val store = object : AppearanceStore {
+            override val mode = MutableStateFlow(AppearanceMode.LIGHT)
+            override suspend fun setMode(mode: AppearanceMode): Boolean = result.await()
+        }
+        showProfile(store)
+        compose.onNodeWithTag("profile-appearance").performScrollTo().performClick()
+        compose.onNodeWithTag("appearance-option-DARK").performClick()
+        compose.onNodeWithText("Guardando…").assertIsDisplayed()
+        pressBack()
+        compose.waitForIdle()
+        compose.runOnIdle { result.complete(false) }
+        compose.onNodeWithText("No se pudo guardar la apariencia. Inténtalo de nuevo.").assertIsDisplayed()
+        compose.onNodeWithTag("appearance-cancel").performScrollTo().performClick()
+        compose.onNodeWithTag("bottom-Mi Campo").performClick().assertIsSelected()
+        assertEquals(AppearanceMode.LIGHT, store.mode.value)
     }
 
     @Test fun rejectedWriteKeepsLightAndShowsAnActionableError() {

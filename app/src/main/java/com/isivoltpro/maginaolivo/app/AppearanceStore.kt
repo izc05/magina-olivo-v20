@@ -47,16 +47,25 @@ internal class PersistentAppearanceStore(
 
     override suspend fun setMode(mode: AppearanceMode): Boolean = mutex.withLock {
         withContext(io) {
-            val saved = try {
-                storage.write(mode.name)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                false
+            val saved = writeSafely(mode.name)
+            if (saved) {
+                state.value = mode
+            } else {
+                // SharedPreferences changes its cache before reporting a disk failure.
+                // Restore the confirmed value best effort, so a recreated store cannot
+                // bootstrap the rejected selection from that cache. Never publish it.
+                writeSafely(state.value.name)
             }
-            if (saved) state.value = mode
             saved
         }
+    }
+
+    private fun writeSafely(value: String): Boolean = try {
+        storage.write(value)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        false
     }
 }
 

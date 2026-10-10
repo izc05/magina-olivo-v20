@@ -1,0 +1,14 @@
+Performing Streamed Install
+Success
+Performing Streamed Install
+Success
+4 native captures saved to artifacts\696-e2e\707-dark3-review-final-ui\appearance-360dp-font130-threebutton-captures
+PASS appearance-360dp-font130-threebutton (7 tests)
+4 native captures saved to artifacts\696-e2e\707-dark3-review-final-ui\appearance-390dp-font130-gestural-captures
+PASS appearance-390dp-font130-gestural (7 tests)
+4 native captures saved to artifacts\696-e2e\707-dark3-review-final-ui\appearance-430dp-font130-threebutton-captures
+PASS appearance-430dp-font130-threebutton (7 tests)
+PASS attribution/photo/chart (4 tests)
+PASS offline map LIGHT
+PASS offline map DARK
+PASS 27 final review UI executions

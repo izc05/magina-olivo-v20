@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.reference.home
 
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 import androidx.compose.foundation.Image
@@ -166,7 +167,7 @@ private fun TerritoryHero() {
         colors = CardDefaults.cardColors(containerColor = MoSage.copy(alpha = 0.40f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().testTag("home-reference-territory-hero")) {
             Image(
                 painter = painterResource(R.drawable.onboarding_welcome_olive_grove),
                 contentDescription = null,
@@ -175,7 +176,7 @@ private fun TerritoryHero() {
             )
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(colors = listOf(Color.Transparent, MoColors.current.primaryText.copy(alpha = 0.78f))),
+                    Brush.verticalGradient(colors = listOf(Color.Transparent, MoOliveDark.copy(alpha = 0.78f))),
                 ),
             )
 

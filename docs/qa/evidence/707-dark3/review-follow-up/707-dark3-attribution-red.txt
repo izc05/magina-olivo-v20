@@ -1,0 +1,41 @@
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkMapAttributionTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.isivoltpro.maginaolivo.DarkMapAttributionTest:
+INSTRUMENTATION_STATUS: test=darkAttributionRemainsReadableOverBrightImagery
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkMapAttributionTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Map attribution over bright imagery contrast 1.1909841199265736 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkMapAttributionTest.darkAttributionRemainsReadableOverBrightImagery(DarkMapAttributionTest.kt:41)
+
+INSTRUMENTATION_STATUS: stream=
+Error in darkAttributionRemainsReadableOverBrightImagery(com.isivoltpro.maginaolivo.DarkMapAttributionTest):
+java.lang.AssertionError: Map attribution over bright imagery contrast 1.1909841199265736 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkMapAttributionTest.darkAttributionRemainsReadableOverBrightImagery(DarkMapAttributionTest.kt:41)
+
+INSTRUMENTATION_STATUS: test=darkAttributionRemainsReadableOverBrightImagery
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 1.854
+There was 1 failure:
+1) darkAttributionRemainsReadableOverBrightImagery(com.isivoltpro.maginaolivo.DarkMapAttributionTest)
+java.lang.AssertionError: Map attribution over bright imagery contrast 1.1909841199265736 must be >=4.5:1
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkMapAttributionTest.darkAttributionRemainsReadableOverBrightImagery(DarkMapAttributionTest.kt:41)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

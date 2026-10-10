@@ -1,0 +1,41 @@
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkReferencePhotoTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.isivoltpro.maginaolivo.DarkReferencePhotoTest:
+INSTRUMENTATION_STATUS: test=referencePhotoAndItsShadeRemainUnchangedAcrossThemes
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.DarkReferencePhotoTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Photo shade must stay fixed, preserving source colors and white-label contrast
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkReferencePhotoTest.referencePhotoAndItsShadeRemainUnchangedAcrossThemes(DarkReferencePhotoTest.kt:33)
+
+INSTRUMENTATION_STATUS: stream=
+Error in referencePhotoAndItsShadeRemainUnchangedAcrossThemes(com.isivoltpro.maginaolivo.DarkReferencePhotoTest):
+java.lang.AssertionError: Photo shade must stay fixed, preserving source colors and white-label contrast
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkReferencePhotoTest.referencePhotoAndItsShadeRemainUnchangedAcrossThemes(DarkReferencePhotoTest.kt:33)
+
+INSTRUMENTATION_STATUS: test=referencePhotoAndItsShadeRemainUnchangedAcrossThemes
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 2.631
+There was 1 failure:
+1) referencePhotoAndItsShadeRemainUnchangedAcrossThemes(com.isivoltpro.maginaolivo.DarkReferencePhotoTest)
+java.lang.AssertionError: Photo shade must stay fixed, preserving source colors and white-label contrast
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.isivoltpro.maginaolivo.DarkReferencePhotoTest.referencePhotoAndItsShadeRemainUnchangedAcrossThemes(DarkReferencePhotoTest.kt:33)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

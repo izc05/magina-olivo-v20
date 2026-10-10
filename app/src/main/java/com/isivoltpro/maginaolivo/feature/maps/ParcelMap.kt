@@ -297,18 +297,27 @@ fun ParcelMap(
                 }
             }
         }
-        Text(
+        MapAttribution(
             when (effectiveBase) {
                 MapBase.AERIAL -> "© IGN · PNOA" + if (cadastreLines) " · © DG Catastro" else ""
                 MapBase.MAP -> "© IGN · Mapa base" + if (cadastreLines) " · © DG Catastro" else ""
                 MapBase.NONE -> "Límites guardados en el teléfono"
             } + (overlayAttribution?.let { " · $it" } ?: ""),
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-            color = MoColors.current.bodyText,
             modifier = Modifier.align(Alignment.BottomStart)
                 .padding(start = 4.dp, bottom = with(density) { cameraInsets.bottomPx.toDp() } + 4.dp)
                 .semantics { contentDescription = "Atribución del mapa" },
         )
+    }
+}
+
+@Composable
+internal fun MapAttribution(label: String, modifier: Modifier = Modifier) {
+    // Raster imagery keeps its source colors; attribution needs its own readable backdrop.
+    Surface(modifier = modifier, color = MoSurfaceTokens.cardSurface,
+        shape = RoundedCornerShape(4.dp)) {
+        Text(label, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            color = MoColors.current.bodyText)
     }
 }
 

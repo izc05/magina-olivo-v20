@@ -52,6 +52,38 @@ class AppearanceStoreTest {
         assertEquals("LIGHT", storage.value)
     }
 
+    @Test fun rejectedCachedWriteStaysRejectedAfterRecreation() = runTest {
+        var cached = "LIGHT"
+        val storage = object : AppearanceStorage {
+            override fun read(): String = cached
+            override fun write(value: String): Boolean {
+                // SharedPreferences commits to memory before its disk result is known.
+                cached = value
+                return false
+            }
+        }
+        val first = PersistentAppearanceStore(storage, Dispatchers.Unconfined)
+        assertFalse(first.setMode(AppearanceMode.DARK))
+        assertEquals(AppearanceMode.LIGHT, first.mode.value)
+        assertEquals(AppearanceMode.LIGHT, PersistentAppearanceStore(storage).mode.value)
+    }
+
+    @Test fun exceptionAfterCachingStaysRejectedAfterRecreation() = runTest {
+        var cached = "LIGHT"
+        val storage = object : AppearanceStorage {
+            override fun read(): String = cached
+            override fun write(value: String): Boolean {
+                cached = value
+                if (value == "DARK") error("disk write failed after updating memory")
+                return false // Even a rejected rollback has restored the in-memory value.
+            }
+        }
+        val first = PersistentAppearanceStore(storage, Dispatchers.Unconfined)
+        assertFalse(first.setMode(AppearanceMode.DARK))
+        assertEquals(AppearanceMode.LIGHT, first.mode.value)
+        assertEquals(AppearanceMode.LIGHT, PersistentAppearanceStore(storage).mode.value)
+    }
+
     private class MemoryStorage(var value: String? = null, val accepted: Boolean = true) : AppearanceStorage {
         override fun read(): String? = value
         override fun write(value: String): Boolean {
