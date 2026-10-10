@@ -195,15 +195,13 @@ class HomeFeedsScreenTest {
                 HomeScreen(state, LocalTime.of(10, 0), {}, {}, {}, {}, feedNow = now, weatherMotion = false)
             }
         }
+        // The row is a container: its title and its place live in child nodes.
         composeRule.onAllNodesWithTag("home-irrigation-turn")[0].performScrollTo()
-            .assertTextContains("Los Llanos · Hoy", substring = true)
-        composeRule.onNode(
-            hasTestTag("home-irrigation-turn") and hasAnyDescendant(hasText("Sector 1 · Red del Barranco")),
-            useUnmergedTree = true,
-        ).assertExists()
+        rowWith("Los Llanos · Hoy")
+        rowWith("Sector 1 · Red del Barranco")
         // Without sector or network the row still says which day it is, never an invented place.
-        composeRule.onAllNodesWithTag("home-irrigation-turn")[1]
-            .assertTextContains("El Barranco · Mañana", substring = true)
+        rowWith("El Barranco · Mañana")
+        rowWith("Tus días de riego de esta parcela")
         composeRule.onNodeWithTag("home-irrigation-note").performScrollTo()
             .assertTextContains("No es un turno oficial de comunidad", substring = true)
 
@@ -211,6 +209,14 @@ class HomeFeedsScreenTest {
         state = UiPolishFixtures.home.copy(today = day, irrigationTurns = emptyList())
         composeRule.onNodeWithTag("home-irrigation-turn").assertDoesNotExist()
         composeRule.onNodeWithTag("home-irrigation-note").assertDoesNotExist()
+    }
+
+    /** A watering row names the thing asked for in one of its child nodes. */
+    private fun rowWith(text: String) {
+        composeRule.onNode(
+            hasTestTag("home-irrigation-turn") and hasAnyDescendant(hasText(text)),
+            useUnmergedTree = true,
+        ).assertExists()
     }
 
     private fun show(state: HomeUiState, onWeatherWeek: () -> Unit = {}) {

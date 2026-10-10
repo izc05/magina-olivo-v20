@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.app
 
 import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
@@ -93,6 +94,11 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
             p.campaignRepository.observeForFarm(farm.id).first().filter { it.status.isRunning }.forEach { campaign ->
                 p.campaignRepository.close(campaign.id, maxOf(campaign.startDate, LAST_DAY)).or("close")
             }
+            // #427: archiving is not a cascade, and planned work blocks it. The demo's own planned
+            // work is cancelled, because it was never going to happen; no real Farm is touched here.
+            p.activityRepository.observeForFarm(farm.id).first()
+                .filter { it.status == ActivityStatus.PLANNED }
+                .forEach { p.activityRepository.cancel(it.id).or("cancel ${it.description}") }
             p.farmRepository.update(
                 farm.id,
                 // The mark travels with the rename: dropping `description` here would make the

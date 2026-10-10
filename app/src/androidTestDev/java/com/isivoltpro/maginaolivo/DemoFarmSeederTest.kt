@@ -141,7 +141,8 @@ class DemoFarmSeederTest {
         val uses = persistence.machineRepository.observeUses(tractor.id).first().map { it.description }
         assertTrue(uses.containsAll(listOf("Labores de suelo (DEMO)", "Abonado (DEMO)")))
 
-        assertTrue(tools.reset() is AppResult.Success)
+        val reset = tools.reset()
+        assertTrue("reset: $reset", reset is AppResult.Success)
         val fresh = demoFarms(workspace).single()
         assertTrue(fresh.id != demo.id)
         // The retired one keeps the mark, so a later removal still recognises it as a demo.
@@ -169,7 +170,8 @@ class DemoFarmSeederTest {
 
         assertTrue(tools.load() is AppResult.Success)
         assertEquals(1, demoFarms(workspace).size)   // the real Farm sharing the name is not one
-        assertTrue(tools.remove() is AppResult.Success)
+        val removed = tools.remove()
+        assertTrue("remove: $removed", removed is AppResult.Success)
 
         // The demo machines leave the pickers by their own mark; a real machine is never touched.
         val machinesLeft = persistence.machineRepository.observeActive().first()
