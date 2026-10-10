@@ -160,6 +160,8 @@ fun FarmMapScreen(
     // The light IGN map by default: the aerial photo is heavier on the phone and is one tap away.
     var base by rememberSaveable { mutableStateOf(MapBase.MAP) }
     var cadastreLines by rememberSaveable { mutableStateOf(false) }
+    var tileError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(base, cadastreLines) { tileError = null }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var layerMenu by remember { mutableStateOf(false) }
     var polygonSheet by rememberSaveable { mutableStateOf(false) }
@@ -190,6 +192,12 @@ fun FarmMapScreen(
                     bottomPx = bottomOverlayHeightPx,
                 ),
                 myLocation = state.myLocation,
+                onTileError = { source ->
+                    // Ignore late errors from layers the farmer has deliberately turned off.
+                    if (base != MapBase.NONE && (source == "base" || source == "cadastre" && cadastreLines)) {
+                        tileError = source
+                    }
+                },
             )
         }
         // Everything floats over the map, so the map takes the whole screen.
@@ -280,6 +288,16 @@ fun FarmMapScreen(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (state.searching) Notice("Consultando Catastro…", MoColors.current.secondaryText, progress = true)
+            tileError?.let { source ->
+                MapTileProblemNotice(
+                    when {
+                        source == "cadastre" -> "Algunos límites de Catastro no se han podido cargar."
+                        base == MapBase.AERIAL -> "Parte de la foto aérea no se ha podido cargar."
+                        else -> "Parte del mapa no se ha podido cargar."
+                    },
+                    onOffline = { tileError = null; base = MapBase.NONE },
+                )
+            }
             state.locationProblem?.let { problem ->
                 LocationProblemNotice(
                     problem,
@@ -323,6 +341,22 @@ fun FarmMapScreen(
                 saving = state.saving,
                 onConfirm = { names -> reviewSheet = false; onImport(names) },
             )
+        }
+    }
+}
+
+/** #711 B3: a remote raster failure must not prevent use of the local parcels. */
+@Composable
+private fun MapTileProblemNotice(message: String, onOffline: () -> Unit) {
+    Surface(
+        Modifier.fillMaxWidth().testTag("farm-map-tile-error"),
+        shape = MoShape.card, color = MoSurfaceTokens.cardSurface.copy(alpha = 0.97f), shadowElevation = 2.dp,
+    ) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(message, color = MoColors.current.errorText, style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onOffline, modifier = Modifier.testTag("farm-map-offline-fallback")) {
+                Text("Solo parcelas")
+            }
         }
     }
 }

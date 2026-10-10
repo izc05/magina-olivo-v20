@@ -54,6 +54,7 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.android.tile.TileOperation
 
 /** Saved parcels are the farmer's own; candidates are Catastro answers not yet incorporated. */
 enum class MapParcelKind { SAVED, CANDIDATE }
@@ -137,6 +138,8 @@ fun ParcelMap(
     cameraInsets: MapCameraInsets = MapCameraInsets(),
     /** #361: where «Mi ubicación» found the phone, drawn as a blue dot; never tracked or stored. */
     myLocation: GeoPoint? = null,
+    /** Native remote tile failures; saved geometry is independent of these sources. */
+    onTileError: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
@@ -144,6 +147,7 @@ fun ParcelMap(
     val tap by rememberUpdatedState(onTap)
     val ready by rememberUpdatedState(onReady)
     val snapshot by rememberUpdatedState(onMapSnapshot)
+    val tileError by rememberUpdatedState(onTileError)
     val density = LocalDensity.current
     val frameMarginPx = with(density) { MAP_FRAME_MARGIN.roundToPx() }
     val labelHorizontalSpacingPx = with(density) { LABEL_HORIZONTAL_SPACING.roundToPx() }
@@ -163,6 +167,13 @@ fun ParcelMap(
         MapView(context).apply { onCreate(Bundle()) }
     }
     DisposableEffect(view, owner) {
+        var active = true
+        val tileListener = MapView.OnTileActionListener { operation, _, _, _, _, _, source ->
+            if (operation == TileOperation.Error) {
+                view.post { if (active) tileError(source) }
+            }
+        }
+        view.addOnTileActionListener(tileListener)
         var started = false
         var resumed = false
         fun synchronize() {
@@ -187,6 +198,8 @@ fun ParcelMap(
             loaded.addOnCameraIdleListener { cameraTick++ }
         }
         onDispose {
+            active = false
+            view.removeOnTileActionListener(tileListener)
             owner.lifecycle.removeObserver(observer)
             if (resumed) view.onPause()
             if (started) view.onStop()
