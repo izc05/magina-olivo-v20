@@ -20,7 +20,6 @@ a43b19810b9e72b980a9b1df5a588414652854de0acd62031e564ed395ce1c75  707-dark3-gall
 278428164f428fc4a1dd6d2ca47ef600c4cd4371643d83ac499ff90c33d301d8  707-dark3-gallery-system-dark-captures/ui-13-weather-week-scrolled-fixture-390dp-font130.png
 91e50cbb83be3a064f7d37aef2b3324361c95d41d206ec87916009c99b0a0096  707-dark3-gallery-system-dark.txt
 bfa8d10ea73ec119914713e7b760f3df04f312bde6da872a05cc7a89b0110098  707-dark3-green-reference-chart.txt
-bb7c6da86dac6047b1e4a682d5e5e0a29ab3365856fe25cba7197e5a0fa4e029  707-dark3-matrix-final-run.txt
 d62153c00bce4a4639c26e884a1aa7d1d0d12f01568605327e19269509629dfc  707-dark3-matrix-final/360dp-font130-threebutton-dark-captures/agenda-dark-360dp-font130.png
 6a328852343e2af22dc37aa8b572965c50f512ed2ee2adec5df00dc9965580f9  707-dark3-matrix-final/360dp-font130-threebutton-dark-captures/campaign-dark-360dp-font130.png
 ba579e16af58536702657d722dc6eebb3052c95ab28279447c55dd763fd86655  707-dark3-matrix-final/360dp-font130-threebutton-dark-captures/contact.jpg
@@ -117,6 +116,7 @@ a5c1fba6fb5ce4f629cb94a96a27f233976ecf19aff94cb0cdbebd0935b7faf2  707-dark3-matr
 cf932d3e025fa21e8acda168aa9ee3c6eac8251d28afd3a6425e98cbf426f8cd  707-dark3-matrix-final/appearance-430dp-font130-threebutton-captures/appearance-write-error-430dp-font130.png
 e2fec2227ccb309895b500c97403903cc6b4e502e66cd0689f52f152c71f19ca  707-dark3-matrix-final/appearance-430dp-font130-threebutton-captures/contact.jpg
 65d389cbe079352d73234fcc004c7ce027089715fb3180e9acf13fb170ecda69  707-dark3-matrix-final/appearance-430dp-font130-threebutton.txt
+bb7c6da86dac6047b1e4a682d5e5e0a29ab3365856fe25cba7197e5a0fa4e029  707-dark3-matrix-final-run.txt
 abab4ad76e766a17516dbabd76c9bdfe4d96a06d9144280041bb42360852fe49  707-dark3-navigation-system-no.txt
 58c40e3c75cd097bda41a9721db4f6e2b566bca9231132f7c400b97e78e3ae4d  707-dark3-navigation-system-yes.txt
 4bfd24ae86ea1f72cab8db2197484977a0f14f7e6127155c1ec649517d0c194b  707-dark3-photo-identity-diagnostic.txt
@@ -128,6 +128,13 @@ abab4ad76e766a17516dbabd76c9bdfe4d96a06d9144280041bb42360852fe49  707-dark3-navi
 134e503d6cf5ea796a2d373142b16b2604e67820ff862720a567ee1dbba3c497  707-dark3-red-reference-chart-confirmed.txt
 23b127237c8028485268a73932c5cf74736a792a74f3092cdb6b6a078e7ef2e0  707-dark3-reopen-explicit-dark.txt
 f1cc5b554ab8c1a0259c5001f3213496eb5725a0134dffdacbaaa9f838553e4b  707-dark3-threebutton-system-dark-settled.png
+1c018c60ab6ec9639ca53850de8f9286c0a0f309ee962088e8db40186ec83820  final-integration/emulator-pass.txt
+99f7d96ef189621da53d948ba3cd5ad07b7411b5888e982dafdded78cfc07ba6  final-integration/evidence-pass.txt
+e0bfb1debbbabfd89d8349522893deef0cd64889b70c548b02ee6c2d44d6d36a  final-integration/exact-sha-gates.json
+3dbf2d9f32015e0c39350aff1f8e1120e34ed9488d877c42f5904bfdb29abb6a  final-integration/foundation-pass.txt
+0ae3d4ffb3cbba8f0ba96bd2293b807973b29ae7585ac5fa910734fa67188ec1  final-integration/independent-review.json
+c1674d4680575b3bea202da1c8e203adb0fdf593d498dd34d84756db9fd3b20d  final-integration/merge-metadata.json
+14d1388bfdc1ebc9775ab775bb12e89946c7d0ec7f8443237dbaf433ed0dd4f5  final-integration/pre-integration-integrity.json
 96e53dcad7138a6ba79553a0628aa58de9eb0d0ffd15792db6cc846b426df0af  review-follow-up/707-dark3-attribution-green.txt
 58605f354808c90774f80b62bfbe07dd1891f9bb1495f86a081be8c57576614d  review-follow-up/707-dark3-attribution-red.txt
 4492a7edfb40ee9961b1ed165a19065bd529b35aa32a796d98a2da4924b58522  review-follow-up/707-dark3-cached-write-red.xml
@@ -136,7 +143,6 @@ a83b920750e74506454b68469a64bea625dff652e3ccb2e52916e80ff7778566  review-follow-
 711fc923a57b54f20bc2f45c17d9002e774f105905d3510ac4a5dc195c23571f  review-follow-up/707-dark3-reference-photo-red.txt
 6899e49d43116ff5f9923a038ab00e06b5667183edb43192635cea6ce41b54e6  review-follow-up/707-dark3-review-final-foundation.txt
 89d45935fff0a0be895cbaa054185d0c8779664e889c1cd8891de71858a3f540  review-follow-up/719-first-independent-review.json
-b4442f7a54c6db71fa2c17ced1d6bff0e6a99a0dc2f98895003448b683f0d3c2  review-follow-up/final-ui-run.txt
 979431051ee5381bf21a188209c3e08447d0015c8af1f056957ac05bff66a000  review-follow-up/final-ui/appearance-360dp-font130-threebutton-captures/appearance-choices-360dp-font130.png
 c3925e562d714fa91755673b6b37784153f1c22a3ea1257bbcbb90598c4d853d  review-follow-up/final-ui/appearance-360dp-font130-threebutton-captures/appearance-dark-profile-360dp-font130.png
 63ea86ed568c49b1bdf91f1422a6e4efa2ca0a89e8fa48ad19dd6c3e4a6cdaf8  review-follow-up/final-ui/appearance-360dp-font130-threebutton-captures/appearance-light-profile-360dp-font130.png
@@ -158,11 +164,12 @@ e5c9669e6ca7324dd862d822d4d419ed29aa6cce3dd6b34a3bac5a605f29f3d6  review-follow-
 f380876b25796123ba5570727dc2dc3b2fd3ac077b9d8fa23175954f0caf5496  review-follow-up/final-ui/attribution-photo-chart.txt
 bed7569d07d7e9268e0efbb7052f01cbebe3aae07bc7a3e54ed1a1be67d09705  review-follow-up/final-ui/offline-map-DARK.txt
 561ad9b863664a13adc8bfe6cc3b205af0c8565b20554e15c3822f663c333b33  review-follow-up/final-ui/offline-map-LIGHT.txt
+b4442f7a54c6db71fa2c17ced1d6bff0e6a99a0dc2f98895003448b683f0d3c2  review-follow-up/final-ui-run.txt
 e28cd73d5807b08299af8940126180533d1cf8e2217594c395c9b9d203138c7c  review-follow-up/navigation-ci-red.txt
-d2c4112a283946831dbe7fc04b0bfb5624dcd45f3b424f9e82871eb3f2ebd259  review-follow-up/navigation-green-run.txt
 f952b6508925dc12153a6cd763a6f6de40b82fc72bb01111862f6e1b77222179  review-follow-up/navigation-green/navigation-360dp-font130.txt
 7730c4bdc3cebf05d883fdb6a144ee43fe6f1e11cc57905934c12c23300e2685  review-follow-up/navigation-green/navigation-393dp-font130.txt
 225b40ad8821dc752e11a2d62008f2f064c4683be298e72b61be114a90459e9e  review-follow-up/navigation-green/navigation-430dp-font130.txt
+d2c4112a283946831dbe7fc04b0bfb5624dcd45f3b424f9e82871eb3f2ebd259  review-follow-up/navigation-green-run.txt
 fde8633b02a3d1aba3dc02e7fff9b4a57f8d7f6335df0dc1e5ff7565ffd61d06  review-follow-up/navigation-qa-restoration.json
 60b9600a0dfeb50ac206580edbd185cbd70b82b05816c8a59bc573c1ba3cb7f9  review-follow-up/navigation-test-build.txt
 a29821b32818039c51a10553da0d6ce11e9e7b50e9b4161acd18d2dae14a704b  review-follow-up/previous-02897171-review.json

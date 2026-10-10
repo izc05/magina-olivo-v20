@@ -1,0 +1,13 @@
+{
+  "sha": "200fe01158be97345c14e3da006a5480d1953cb8",
+  "base": "6bd2879d0efe133a2ff75b14f4683e186cbc2295",
+  "reviewer": "/root/dark3_review",
+  "verdict": "CONFORME",
+  "blockingFindings": [],
+  "verified": [
+    "Visible farm row required before navigation click; timeout and business assertions retained",
+    "CI RED preserved; targeted Jornal/recreate/day-reuse GREEN at360/393/430dp font1.3",
+    "Production identical to independently approved02897171"
+  ],
+  "ci": "Exact-SHA final checks running; prior results retained separately"
+}

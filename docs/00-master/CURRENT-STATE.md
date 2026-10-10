@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-10-09
+**Last reviewed:** 2026-10-10
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -31,9 +31,15 @@ review and foundation / gate3-emulator / gate3-evidence SUCCESS on its final SHA
   Recovery preserved all saved work. Local foundation PASS:536JVM;63 directed UI; explicit
   LIGHT/DARK matrix36executions/54PNG at360/390/430dp,font1.3;two Profile repeats and cold launch PASS.
   See [DARK-2 evidence](../qa/ANDROID-707-DARK2-2026-10-09.md).
-- Current productive slice: #707 DARK-3, branch `codex/707-dark3-screens` from integrated main.
-  Device appearance preference and semantic tokens first; DARK-2 components then DARK-3 full
-  screens/Perfil selector in separate sequential PRs. Maps/GPS B3, weather B4, candidate B5 follow.
+- B2 #707 DARK-3: #719 merged as `0a528d5fe1ea6b48e1d7c3acd3f03d4d6b6aa196`;
+  reviewed HEAD `200fe01158be97345c14e3da006a5480d1953cb8`, independent CONFORME and three checks SUCCESS.
+  Both final CI pipelines:734 UI /196 offline /4×14 screenshot cases PASS. Local538JVM,
+  27 corrected directed UI cases and three navigation regression configurations PASS;
+  earlier LIGHT/DARK/photo/gallery evidence retained.168 evidence files verified by hash.
+  See [DARK-3 evidence](../qa/ANDROID-707-DARK3-2026-10-09.md).
+- Current productive slice: #711 B3 maps/GPS, branch `codex/711-b3-maps-gps` from integrated DARK-3 main.
+  Optional official SIGPAC reference, honest native raster failures and contextual GPS/viewport QA.
+  Weather B4 and the integrated green-main candidate APK B5 follow. No final APK claim yet.
 - Expense classification follows the later #411 owner decision: generic Cuaderno asks explicitly;
   creation from a concrete Campaign keeps its Farm/Campaign context. The 3 October preselection
   description below is historical and superseded. #522 relation cleanup in general editors remains.

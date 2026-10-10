@@ -1,0 +1,882 @@
+2026-10-10T01:47:29.8435881Z Current runner version: '2.337.0'
+2026-10-10T01:47:29.8462006Z ##[group]Runner Image Provisioner
+2026-10-10T01:47:29.8462952Z Hosted Compute Agent
+2026-10-10T01:47:29.8463567Z Version: 20261002.596
+2026-10-10T01:47:29.8464199Z Commit: c3d12f3313a95f25162a1503be624f3b0617f8c0
+2026-10-10T01:47:29.8464991Z Build Date: 2026-10-02T22:28:27Z
+2026-10-10T01:47:29.8465721Z Worker ID: {e211eea9-6b5f-4cef-9fbb-a8229009d137}
+2026-10-10T01:47:29.8466649Z Region: canadaeast
+2026-10-10T01:47:29.8467325Z Cloud: Azure
+2026-10-10T01:47:29.8467866Z ##[endgroup]
+2026-10-10T01:47:29.8469983Z ##[group]Operating System
+2026-10-10T01:47:29.8470670Z Ubuntu
+2026-10-10T01:47:29.8471176Z 24.04.5
+2026-10-10T01:47:29.8471758Z LTS
+2026-10-10T01:47:29.8472315Z ##[endgroup]
+2026-10-10T01:47:29.8472945Z ##[group]Runner Image
+2026-10-10T01:47:29.8473553Z Image: ubuntu-24.04
+2026-10-10T01:47:29.8474094Z Version: 20261004.327.1
+2026-10-10T01:47:29.8475418Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261004.327/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-10T01:47:29.8477329Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261004.327
+2026-10-10T01:47:29.8478308Z ##[endgroup]
+2026-10-10T01:47:29.8479491Z ##[group]GITHUB_TOKEN Permissions
+2026-10-10T01:47:29.8481659Z Contents: write
+2026-10-10T01:47:29.8482342Z Metadata: read
+2026-10-10T01:47:29.8482967Z ##[endgroup]
+2026-10-10T01:47:29.8485440Z Secret source: Actions
+2026-10-10T01:47:29.8486958Z Cache mode: write
+2026-10-10T01:47:29.8487915Z Prepare workflow directory
+2026-10-10T01:47:29.8833495Z Prepare all required actions
+2026-10-10T01:47:29.8883286Z Getting action download info
+2026-10-10T01:47:30.1559224Z Download action repository 'actions/checkout@v6' (SHA:d23441a48e516b6c34aea4fa41551a30e30af803)
+2026-10-10T01:47:30.2579543Z Download action repository 'actions/setup-java@v6' (SHA:de7274f081f381c8f8158605e0321c36c376e2e6)
+2026-10-10T01:47:30.8899105Z Download action repository 'gradle/actions@v6' (SHA:3f5f9adaf7d9fecd50b5935e54106014257a94e6)
+2026-10-10T01:47:32.0412915Z Download action repository 'actions/upload-artifact@v6' (SHA:b7c566a772e6b6bfb58ed0dc250532a479d7789f)
+2026-10-10T01:47:32.2946699Z Complete job name: foundation
+2026-10-10T01:47:32.3787260Z ##[group]Run actions/checkout@v6
+2026-10-10T01:47:32.3788051Z with:
+2026-10-10T01:47:32.3788341Z   repository: izc05/magina-olivo-v20
+2026-10-10T01:47:32.3791047Z   token: ***
+2026-10-10T01:47:32.3791313Z   ssh-strict: true
+2026-10-10T01:47:32.3791579Z   ssh-user: git
+2026-10-10T01:47:32.3791846Z   persist-credentials: true
+2026-10-10T01:47:32.3792145Z   clean: true
+2026-10-10T01:47:32.3792419Z   sparse-checkout-cone-mode: true
+2026-10-10T01:47:32.3792741Z   fetch-depth: 1
+2026-10-10T01:47:32.3793001Z   fetch-tags: false
+2026-10-10T01:47:32.3793269Z   show-progress: true
+2026-10-10T01:47:32.3793556Z   lfs: false
+2026-10-10T01:47:32.3793800Z   submodules: false
+2026-10-10T01:47:32.3794075Z   set-safe-directory: true
+2026-10-10T01:47:32.3794380Z   allow-unsafe-pr-checkout: false
+2026-10-10T01:47:32.3794923Z ##[endgroup]
+2026-10-10T01:47:32.4847688Z Syncing repository: izc05/magina-olivo-v20
+2026-10-10T01:47:32.4849698Z ##[group]Getting Git version info
+2026-10-10T01:47:32.4850612Z Working directory is '/home/runner/work/magina-olivo-v20/magina-olivo-v20'
+2026-10-10T01:47:32.4851802Z [command]/usr/bin/git version
+2026-10-10T01:47:32.4913127Z git version 2.55.0
+2026-10-10T01:47:32.4946788Z ##[endgroup]
+2026-10-10T01:47:32.4953580Z Temporarily overriding HOME='/home/runner/work/_temp/a7cf9201-85dc-4516-8dfa-9690427aa3d9' before making global git config changes
+2026-10-10T01:47:32.4955052Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-10T01:47:32.4961124Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/magina-olivo-v20/magina-olivo-v20
+2026-10-10T01:47:32.5026866Z Deleting the contents of '/home/runner/work/magina-olivo-v20/magina-olivo-v20'
+2026-10-10T01:47:32.5028453Z ##[group]Determining repository object format
+2026-10-10T01:47:32.5034689Z ##[endgroup]
+2026-10-10T01:47:32.5036314Z ##[group]Initializing the repository
+2026-10-10T01:47:32.5037662Z [command]/usr/bin/git init /home/runner/work/magina-olivo-v20/magina-olivo-v20
+2026-10-10T01:47:32.5135248Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-10T01:47:32.5136668Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-10T01:47:32.5138045Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-10T01:47:32.5138827Z hint: call:
+2026-10-10T01:47:32.5139238Z hint:
+2026-10-10T01:47:32.5139722Z hint: 	git config --global init.defaultBranch <name>
+2026-10-10T01:47:32.5140334Z hint:
+2026-10-10T01:47:32.5140983Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-10T01:47:32.5141636Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-10T01:47:32.5142487Z hint:
+2026-10-10T01:47:32.5142944Z hint: 	git branch -m <name>
+2026-10-10T01:47:32.5143326Z hint:
+2026-10-10T01:47:32.5143718Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-10T01:47:32.5145028Z Initialized empty Git repository in /home/runner/work/magina-olivo-v20/magina-olivo-v20/.git/
+2026-10-10T01:47:32.5150676Z [command]/usr/bin/git remote add origin https://github.com/izc05/magina-olivo-v20
+2026-10-10T01:47:32.5201386Z ##[endgroup]
+2026-10-10T01:47:32.5202240Z ##[group]Disabling automatic garbage collection
+2026-10-10T01:47:32.5205208Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-10T01:47:32.5237390Z ##[endgroup]
+2026-10-10T01:47:32.5238410Z ##[group]Setting up auth
+2026-10-10T01:47:32.5239090Z Removing SSH command configuration
+2026-10-10T01:47:32.5245724Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-10T01:47:32.5281105Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-10T01:47:32.5643088Z Removing HTTP extra header
+2026-10-10T01:47:32.5652191Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-10T01:47:32.5694343Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-10T01:47:32.5938511Z Removing includeIf entries pointing to credentials config files
+2026-10-10T01:47:32.5946311Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-10T01:47:32.5983184Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-10T01:47:32.6212663Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-10T01:47:32.6258104Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/magina-olivo-v20/magina-olivo-v20/.git.path /home/runner/work/_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:47:32.6292769Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/magina-olivo-v20/magina-olivo-v20/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:47:32.6330672Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:47:32.6371598Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:47:32.6402288Z ##[endgroup]
+2026-10-10T01:47:32.6403061Z ##[group]Fetching the repository
+2026-10-10T01:47:32.6410893Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +dfb46f83c6d34db4ce9b89996dcf18e2581c9d57:refs/remotes/pull/719/merge
+2026-10-10T01:47:35.2785329Z From https://github.com/izc05/magina-olivo-v20
+2026-10-10T01:47:35.2786255Z  * [new ref]         dfb46f83c6d34db4ce9b89996dcf18e2581c9d57 -> pull/719/merge
+2026-10-10T01:47:35.2793694Z ##[endgroup]
+2026-10-10T01:47:35.2794441Z ##[group]Determining the checkout info
+2026-10-10T01:47:35.2795331Z ##[endgroup]
+2026-10-10T01:47:35.2801479Z [command]/usr/bin/git sparse-checkout disable
+2026-10-10T01:47:35.2855878Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-10T01:47:35.2888406Z ##[group]Checking out the ref
+2026-10-10T01:47:35.2916521Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/719/merge
+2026-10-10T01:47:35.7244592Z Note: switching to 'refs/remotes/pull/719/merge'.
+2026-10-10T01:47:35.7245074Z
+2026-10-10T01:47:35.7245423Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-10T01:47:35.7246619Z changes and commit them, and you can discard any commits you make in this
+2026-10-10T01:47:35.7247488Z state without impacting any branches by switching back to a branch.
+2026-10-10T01:47:35.7248049Z
+2026-10-10T01:47:35.7248430Z If you want to create a new branch to retain commits you create, you may
+2026-10-10T01:47:35.7249237Z do so (now or later) by using -c with the switch command. Example:
+2026-10-10T01:47:35.7249700Z
+2026-10-10T01:47:35.7249872Z   git switch -c <new-branch-name>
+2026-10-10T01:47:35.7250157Z
+2026-10-10T01:47:35.7250343Z Or undo this operation with:
+2026-10-10T01:47:35.7250638Z
+2026-10-10T01:47:35.7250813Z   git switch -
+2026-10-10T01:47:35.7251063Z
+2026-10-10T01:47:35.7251480Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-10T01:47:35.7252113Z
+2026-10-10T01:47:35.7252766Z HEAD is now at dfb46f8 Merge 200fe01158be97345c14e3da006a5480d1953cb8 into 6bd2879d0efe133a2ff75b14f4683e186cbc2295
+2026-10-10T01:47:35.7279303Z ##[endgroup]
+2026-10-10T01:47:35.7325276Z [command]/usr/bin/git log -1 --format=%H
+2026-10-10T01:47:35.7352937Z dfb46f83c6d34db4ce9b89996dcf18e2581c9d57
+2026-10-10T01:47:35.7691553Z ##[group]Run actions/setup-java@v6
+2026-10-10T01:47:35.7691908Z with:
+2026-10-10T01:47:35.7692145Z   distribution: temurin
+2026-10-10T01:47:35.7692398Z   java-version: 17
+2026-10-10T01:47:35.7692638Z   java-package: jdk
+2026-10-10T01:47:35.7692874Z   check-latest: false
+2026-10-10T01:47:35.7693127Z   force-download: false
+2026-10-10T01:47:35.7693402Z   set-default: true
+2026-10-10T01:47:35.7693638Z   server-id: github
+2026-10-10T01:47:35.7693904Z   mvn-repositories-include-central: true
+2026-10-10T01:47:35.7694278Z   mvn-repositories-prioritize-central: true
+2026-10-10T01:47:35.7694624Z   overwrite-settings: true
+2026-10-10T01:47:35.7694906Z   cache-read-only: false
+2026-10-10T01:47:35.7695179Z   job-status: success
+2026-10-10T01:47:35.7698223Z   token: ***
+2026-10-10T01:47:35.7698506Z   show-download-progress: false
+2026-10-10T01:47:35.7698806Z   problem-matcher: true
+2026-10-10T01:47:35.7699054Z ##[endgroup]
+2026-10-10T01:47:35.8412309Z ##[group]Installed distributions
+2026-10-10T01:47:35.8567489Z Resolved Java 17.0.20+1 from tool-cache
+2026-10-10T01:47:35.8567863Z Setting Java 17.0.20+1 as the default
+2026-10-10T01:47:35.8575585Z
+2026-10-10T01:47:35.8575804Z Java configuration:
+2026-10-10T01:47:35.8576630Z   Distribution: temurin
+2026-10-10T01:47:35.8577093Z   Version: 17.0.20+1
+2026-10-10T01:47:35.8577672Z   Path: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:47:35.8578136Z
+2026-10-10T01:47:35.8578658Z ##[endgroup]
+2026-10-10T01:47:35.8607609Z Creating settings.xml with server-id: github
+2026-10-10T01:47:35.8608185Z Creating toolchains.xml for JDK version 17 from temurin
+2026-10-10T01:47:35.8608831Z Writing to /home/runner/.m2/settings.xml
+2026-10-10T01:47:35.8618102Z Writing to /home/runner/.m2/toolchains.xml
+2026-10-10T01:47:35.8625467Z Configured MAVEN_ARGS to include -ntp to suppress Maven transfer progress logs. Set 'show-download-progress: true' to keep the download progress output.
+2026-10-10T01:47:35.8963102Z ##[group]Run gradle/actions/setup-gradle@v6
+2026-10-10T01:47:35.8963457Z with:
+2026-10-10T01:47:35.8963671Z   gradle-version: 9.4.1
+2026-10-10T01:47:35.8963923Z   cache-provider: basic
+2026-10-10T01:47:35.8964157Z   cache-disabled: false
+2026-10-10T01:47:35.8964376Z   cache-read-only: true
+2026-10-10T01:47:35.8964598Z   cache-write-only: false
+2026-10-10T01:47:35.8964851Z   cache-overwrite-existing: false
+2026-10-10T01:47:35.8965122Z   cache-cleanup: on-success
+2026-10-10T01:47:35.8965425Z   gradle-home-cache-includes: caches
+notifications
+
+2026-10-10T01:47:35.8965764Z   add-job-summary: always
+2026-10-10T01:47:35.8966241Z   add-job-summary-as-pr-comment: never
+2026-10-10T01:47:35.8966539Z   dependency-graph: disabled
+2026-10-10T01:47:35.8966848Z   dependency-graph-report-dir: dependency-graph-reports
+2026-10-10T01:47:35.8967233Z   dependency-graph-continue-on-failure: true
+2026-10-10T01:47:35.8967568Z   build-scan-publish: false
+2026-10-10T01:47:35.8967873Z   validate-wrappers: true
+2026-10-10T01:47:35.8968131Z   allow-snapshot-wrappers: false
+2026-10-10T01:47:35.8968416Z   gradle-home-cache-strict-match: false
+2026-10-10T01:47:35.8968707Z   workflow-job-context: null
+2026-10-10T01:47:35.8971231Z   github-token: ***
+2026-10-10T01:47:35.8971460Z env:
+2026-10-10T01:47:35.8971773Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:47:35.8972280Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:47:35.8972688Z   MAVEN_ARGS: -ntp
+2026-10-10T01:47:35.8972903Z ##[endgroup]
+2026-10-10T01:47:36.3380957Z Merged default JDK locations into /home/runner/.m2/toolchains.xml
+2026-10-10T01:47:36.3386492Z Basic Caching: This build uses the basic open-source caching provider. For faster builds and advanced features, consider switching to the Enhanced Caching provider. See https://github.com/gradle/actions/blob/main/DISTRIBUTION.md for details.
+2026-10-10T01:47:36.7396875Z Cache hit for: setup-java-Linux-x64-gradle-3795f6964bf85206ce224e9381a96d2fdab6eaac359994989dfc8e2294a3d9c3
+2026-10-10T01:47:37.8881462Z Received 100663296 of 802611813 (12.5%), 95.7 MBs/sec
+2026-10-10T01:47:38.8828580Z Received 130023424 of 802611813 (16.2%), 61.9 MBs/sec
+2026-10-10T01:47:39.8830904Z Received 130023424 of 802611813 (16.2%), 41.3 MBs/sec
+2026-10-10T01:47:40.8866499Z Received 230686720 of 802611813 (28.7%), 54.9 MBs/sec
+2026-10-10T01:47:41.8830633Z Received 264241152 of 802611813 (32.9%), 50.4 MBs/sec
+2026-10-10T01:47:42.8838081Z Received 264241152 of 802611813 (32.9%), 42.0 MBs/sec
+2026-10-10T01:47:43.8844905Z Received 268435456 of 802611813 (33.4%), 36.5 MBs/sec
+2026-10-10T01:47:44.8845542Z Received 398458880 of 802611813 (49.6%), 47.5 MBs/sec
+2026-10-10T01:47:45.8844375Z Received 398458880 of 802611813 (49.6%), 42.2 MBs/sec
+2026-10-10T01:47:46.8843160Z Received 398458880 of 802611813 (49.6%), 38.0 MBs/sec
+2026-10-10T01:47:47.8877775Z Received 473956352 of 802611813 (59.1%), 41.1 MBs/sec
+2026-10-10T01:47:48.8840930Z Received 532676608 of 802611813 (66.4%), 42.3 MBs/sec
+2026-10-10T01:47:49.8841640Z Received 532676608 of 802611813 (66.4%), 39.1 MBs/sec
+2026-10-10T01:47:50.8842846Z Received 532676608 of 802611813 (66.4%), 36.3 MBs/sec
+2026-10-10T01:47:51.8858626Z Received 557842432 of 802611813 (69.5%), 35.5 MBs/sec
+2026-10-10T01:47:52.8871160Z Received 666894336 of 802611813 (83.1%), 39.7 MBs/sec
+2026-10-10T01:47:53.8873807Z Received 666894336 of 802611813 (83.1%), 37.4 MBs/sec
+2026-10-10T01:47:54.8878090Z Received 666894336 of 802611813 (83.1%), 35.3 MBs/sec
+2026-10-10T01:47:55.8883692Z Received 666894336 of 802611813 (83.1%), 33.5 MBs/sec
+2026-10-10T01:47:56.8917030Z Received 742391808 of 802611813 (92.5%), 35.4 MBs/sec
+2026-10-10T01:47:57.8912704Z Received 798417509 of 802611813 (99.5%), 36.2 MBs/sec
+2026-10-10T01:47:58.8926531Z Received 798417509 of 802611813 (99.5%), 34.6 MBs/sec
+2026-10-10T01:47:59.8916756Z Received 798417509 of 802611813 (99.5%), 33.1 MBs/sec
+2026-10-10T01:48:00.0458423Z Received 802611813 of 802611813 (100.0%), 33.0 MBs/sec
+2026-10-10T01:48:00.0459442Z Cache Size: ~765 MB (802611813 B)
+2026-10-10T01:48:00.0593429Z [command]/usr/bin/tar -xf /home/runner/work/_temp/b3efa866-415c-49f4-b945-108ba8b32dc2/cache.tzst -P -C /home/runner/work/magina-olivo-v20/magina-olivo-v20 --use-compress-program unzstd
+2026-10-10T01:48:03.4063888Z Cache restored successfully
+2026-10-10T01:48:03.4402892Z Basic caching restored from cache key: setup-java-Linux-x64-gradle-3795f6964bf85206ce224e9381a96d2fdab6eaac359994989dfc8e2294a3d9c3
+2026-10-10T01:48:03.4642169Z ##[group]All Gradle Wrapper jars are valid
+2026-10-10T01:48:03.4644505Z
+2026-10-10T01:48:03.4645386Z ##[endgroup]
+2026-10-10T01:48:03.5378027Z ##[group]Provision Gradle 9.4.1
+2026-10-10T01:48:06.2065757Z Cache hit for: gradle-9.4.1
+2026-10-10T01:48:07.3392570Z Received 96468992 of 137779930 (70.0%), 91.9 MBs/sec
+2026-10-10T01:48:08.3390240Z Received 130023424 of 137779930 (94.4%), 62.0 MBs/sec
+2026-10-10T01:48:09.3390456Z Received 134217728 of 137779930 (97.4%), 42.7 MBs/sec
+2026-10-10T01:48:10.3403147Z Received 134217728 of 137779930 (97.4%), 32.0 MBs/sec
+2026-10-10T01:48:11.2809888Z Received 137779930 of 137779930 (100.0%), 26.6 MBs/sec
+2026-10-10T01:48:11.2810758Z Cache Size: ~131 MB (137779930 B)
+2026-10-10T01:48:11.2847000Z [command]/usr/bin/tar -xf /home/runner/work/_temp/05b04d2f-211c-4dd3-85ee-a5964f7b8aa2/cache.tzst -P -C /home/runner/work/magina-olivo-v20/magina-olivo-v20 --use-compress-program unzstd
+2026-10-10T01:48:11.4677891Z Cache restored successfully
+2026-10-10T01:48:11.4739832Z Restored Gradle distribution gradle-9.4.1 from cache to /home/runner/work/_temp/.gradle-actions/gradle-installations/downloads/gradle-9.4.1-bin.zip
+2026-10-10T01:48:11.4756518Z [command]/usr/bin/unzip -o -q /home/runner/work/_temp/.gradle-actions/gradle-installations/downloads/gradle-9.4.1-bin.zip
+2026-10-10T01:48:12.4633427Z Extracted Gradle 9.4.1 to /home/runner/work/_temp/.gradle-actions/gradle-installations/installs/gradle-9.4.1
+2026-10-10T01:48:12.4635576Z Provisioned Gradle executable /home/runner/work/_temp/.gradle-actions/gradle-installations/installs/gradle-9.4.1/bin/gradle
+2026-10-10T01:48:12.4637567Z ##[endgroup]
+2026-10-10T01:48:12.4807156Z ##[group]Run echo "ANDROID_HOME=$ANDROID_HOME"
+2026-10-10T01:48:12.4807614Z [36;1mecho "ANDROID_HOME=$ANDROID_HOME"[0m
+2026-10-10T01:48:12.4807948Z [36;1mls -1 "$ANDROID_HOME/platforms"[0m
+2026-10-10T01:48:12.4808279Z [36;1mls -1 "$ANDROID_HOME/build-tools"[0m
+2026-10-10T01:48:12.4808661Z [36;1mtest -f "$ANDROID_HOME/platforms/android-37.0/android.jar"[0m
+2026-10-10T01:48:12.4809074Z [36;1mtest -d "$ANDROID_HOME/build-tools/37.0.0"[0m
+2026-10-10T01:48:12.5052565Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-10T01:48:12.5052932Z env:
+2026-10-10T01:48:12.5053263Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:48:12.5053789Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:48:12.5054223Z   MAVEN_ARGS: -ntp
+2026-10-10T01:48:12.5054486Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-10T01:48:12.5054812Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-10T01:48:12.5055159Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-10T01:48:12.5055618Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-10T01:48:12.5056331Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-10T01:48:12.5056666Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-10T01:48:12.5056947Z ##[endgroup]
+2026-10-10T01:48:12.5164652Z ANDROID_HOME=/usr/local/lib/android/sdk
+2026-10-10T01:48:12.5190777Z android-34
+2026-10-10T01:48:12.5191186Z android-34-ext10
+2026-10-10T01:48:12.5191571Z android-34-ext11
+2026-10-10T01:48:12.5191952Z android-34-ext12
+2026-10-10T01:48:12.5192317Z android-34-ext8
+2026-10-10T01:48:12.5192673Z android-35
+2026-10-10T01:48:12.5193020Z android-35-ext14
+2026-10-10T01:48:12.5193697Z android-35-ext15
+2026-10-10T01:48:12.5194053Z android-36
+2026-10-10T01:48:12.5194386Z android-36-ext18
+2026-10-10T01:48:12.5194755Z android-36-ext19
+2026-10-10T01:48:12.5195035Z android-36.1
+2026-10-10T01:48:12.5195248Z android-37.0
+2026-10-10T01:48:12.5195457Z android-37.1
+2026-10-10T01:48:12.5195655Z android-37.2
+2026-10-10T01:48:12.5196089Z android-37.2-beta1
+2026-10-10T01:48:12.5196342Z android-37.2-beta2
+2026-10-10T01:48:12.5196561Z android-37.2-beta3
+2026-10-10T01:48:12.5205448Z 34.0.0
+2026-10-10T01:48:12.5205771Z 35.0.0
+2026-10-10T01:48:12.5206093Z 35.0.1
+2026-10-10T01:48:12.5206581Z 36.0.0
+2026-10-10T01:48:12.5206775Z 36.1.0
+2026-10-10T01:48:12.5206957Z 37.0.0
+2026-10-10T01:48:12.5247929Z ##[group]Run gradle --version
+2026-10-10T01:48:12.5248269Z [36;1mgradle --version[0m
+2026-10-10T01:48:12.5305665Z shell: /usr/bin/bash -e {0}
+2026-10-10T01:48:12.5306174Z env:
+2026-10-10T01:48:12.5306522Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:48:12.5307061Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:48:12.5307480Z   MAVEN_ARGS: -ntp
+2026-10-10T01:48:12.5307754Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-10T01:48:12.5308078Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-10T01:48:12.5308386Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-10T01:48:12.5308842Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-10T01:48:12.5309345Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-10T01:48:12.5309677Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-10T01:48:12.5309962Z ##[endgroup]
+2026-10-10T01:48:13.0630641Z
+2026-10-10T01:48:13.0632086Z Welcome to Gradle 9.4.1!
+2026-10-10T01:48:13.0632623Z
+2026-10-10T01:48:13.0637333Z Here are the highlights of this release:
+2026-10-10T01:48:13.0638043Z  - Java 26 support
+2026-10-10T01:48:13.0666852Z  - Non-class-based JVM tests
+2026-10-10T01:48:13.0676479Z  - Enhanced console progress bar
+2026-10-10T01:48:13.0677149Z
+2026-10-10T01:48:13.0677853Z For more details see https://docs.gradle.org/9.4.1/release-notes.html
+2026-10-10T01:48:13.0678349Z
+2026-10-10T01:48:13.0678601Z
+2026-10-10T01:48:13.0679693Z ------------------------------------------------------------
+2026-10-10T01:48:13.0680183Z Gradle 9.4.1
+2026-10-10T01:48:13.0680584Z ------------------------------------------------------------
+2026-10-10T01:48:13.0680959Z
+2026-10-10T01:48:13.0681186Z Build time:    2026-03-19 08:46:28 UTC
+2026-10-10T01:48:13.0681880Z Revision:      2d6327017519d23b96af35865dc997fcb544fb40
+2026-10-10T01:48:13.0682274Z
+2026-10-10T01:48:13.0682491Z Kotlin:        2.3.0
+2026-10-10T01:48:13.0682859Z Groovy:        4.0.29
+2026-10-10T01:48:13.0683301Z Ant:           Apache Ant(TM) version 1.10.15 compiled on August 25 2024
+2026-10-10T01:48:13.0683841Z Launcher JVM:  17.0.20.1 (Eclipse Adoptium 17.0.20.1+1)
+2026-10-10T01:48:13.0684484Z Daemon JVM:    /usr/lib/jvm/temurin-17-jdk-amd64 (no Daemon JVM specified, using current Java home)
+2026-10-10T01:48:13.0685121Z OS:            Linux 6.17.0-1022-azure amd64
+2026-10-10T01:48:13.0685450Z
+2026-10-10T01:48:13.0785753Z ##[group]Run set -o pipefail
+2026-10-10T01:48:13.0786553Z [36;1mset -o pipefail[0m
+2026-10-10T01:48:13.0787347Z [36;1mgradle --no-daemon lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest 2>&1 | tee build-output.log[0m
+2026-10-10T01:48:13.0852408Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-10T01:48:13.0852774Z env:
+2026-10-10T01:48:13.0853098Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:48:13.0853793Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:48:13.0854192Z   MAVEN_ARGS: -ntp
+2026-10-10T01:48:13.0854467Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-10T01:48:13.0854795Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-10T01:48:13.0855101Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-10T01:48:13.0855782Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-10T01:48:13.0856573Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-10T01:48:13.0857071Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-10T01:48:13.0858642Z   SUPABASE_ANON_KEY: ***
+2026-10-10T01:48:13.0858898Z ##[endgroup]
+2026-10-10T01:48:13.8239343Z To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+2026-10-10T01:48:15.0237206Z Daemon will be stopped at the end of the build
+2026-10-10T01:48:25.9247243Z > Task :app:preBuild UP-TO-DATE
+2026-10-10T01:48:25.9257007Z > Task :app:preDevDebugBuild UP-TO-DATE
+2026-10-10T01:48:26.1253814Z > Task :app:generateDevDebugBuildConfig
+2026-10-10T01:48:26.1267217Z > Task :app:generateDevDebugResValues FROM-CACHE
+2026-10-10T01:48:26.1268093Z > Task :app:generateDevDebugResources
+2026-10-10T01:48:26.3246151Z > Task :app:packageDevDebugResources
+2026-10-10T01:48:27.0236879Z > Task :app:processDevDebugNavigationResources
+2026-10-10T01:48:27.5237351Z > Task :app:javaPreCompileDevDebug FROM-CACHE
+2026-10-10T01:48:27.6258545Z > Task :app:parseDevDebugLocalResources
+2026-10-10T01:48:27.7239031Z > Task :app:checkDevDebugAarMetadata
+2026-10-10T01:48:27.7256724Z > Task :app:mapDevDebugSourceSetPaths
+2026-10-10T01:48:27.7272055Z > Task :app:compileDevDebugNavigationResources FROM-CACHE
+2026-10-10T01:48:27.7296647Z > Task :app:generateDevDebugRFile
+2026-10-10T01:48:30.6234686Z > Task :app:mergeDevDebugResources
+2026-10-10T01:48:30.6250324Z > Task :app:createDevDebugCompatibleScreenManifests
+2026-10-10T01:48:30.6297535Z > Task :app:extractDeepLinksDevDebug FROM-CACHE
+2026-10-10T01:48:31.1236775Z > Task :app:processDevDebugMainManifest
+2026-10-10T01:48:31.3234156Z > Task :app:processDevDebugManifest
+2026-10-10T01:48:31.3256871Z > Task :app:preDevDebugAndroidTestBuild SKIPPED
+2026-10-10T01:48:31.5239317Z > Task :app:processDevDebugAndroidTestManifest
+2026-10-10T01:48:31.5264688Z > Task :app:processDevDebugManifestForPackage
+2026-10-10T01:48:31.8253053Z > Task :app:generateDevDebugAndroidTestBuildConfig
+2026-10-10T01:48:31.8294165Z > Task :app:generateDevDebugAndroidTestResValues FROM-CACHE
+2026-10-10T01:48:31.8318237Z > Task :app:generateDevDebugAndroidTestResources FROM-CACHE
+2026-10-10T01:48:31.9264592Z > Task :app:packageDevDebugAndroidTestResources FROM-CACHE
+2026-10-10T01:48:31.9265663Z > Task :app:processDevDebugAndroidTestNavigationResources FROM-CACHE
+2026-10-10T01:48:31.9266910Z > Task :app:parseDevDebugAndroidTestLocalResources FROM-CACHE
+2026-10-10T01:48:31.9267871Z > Task :app:generateDevDebugAndroidTestRFile FROM-CACHE
+2026-10-10T01:48:31.9296862Z > Task :app:javaPreCompileDevDebugAndroidTest FROM-CACHE
+2026-10-10T01:48:31.9315822Z > Task :app:preDevDebugUnitTestBuild UP-TO-DATE
+2026-10-10T01:48:31.9326730Z > Task :app:javaPreCompileDevDebugUnitTest FROM-CACHE
+2026-10-10T01:48:31.9386677Z > Task :app:preProductionDebugBuild UP-TO-DATE
+2026-10-10T01:48:31.9387886Z > Task :app:generateProductionDebugBuildConfig
+2026-10-10T01:48:31.9416768Z > Task :app:generateProductionDebugResValues FROM-CACHE
+2026-10-10T01:48:31.9446780Z > Task :app:generateProductionDebugResources FROM-CACHE
+2026-10-10T01:48:32.0247230Z > Task :app:packageProductionDebugResources
+2026-10-10T01:48:32.1270240Z > Task :app:processProductionDebugNavigationResources
+2026-10-10T01:48:32.2241724Z > Task :app:javaPreCompileProductionDebug FROM-CACHE
+2026-10-10T01:48:32.2242534Z > Task :app:preStagingDebugBuild UP-TO-DATE
+2026-10-10T01:48:32.2267768Z > Task :app:generateStagingDebugBuildConfig
+2026-10-10T01:48:32.2326534Z > Task :app:generateStagingDebugResValues FROM-CACHE
+2026-10-10T01:48:32.2356572Z > Task :app:generateStagingDebugResources FROM-CACHE
+2026-10-10T01:48:32.2357271Z > Task :app:parseProductionDebugLocalResources
+2026-10-10T01:48:32.3246732Z > Task :app:packageStagingDebugResources
+2026-10-10T01:48:32.3296655Z > Task :app:generateProductionDebugRFile FROM-CACHE
+2026-10-10T01:48:32.7257320Z > Task :app:processStagingDebugNavigationResources
+2026-10-10T01:48:32.7276583Z > Task :app:processDevDebugResources
+2026-10-10T01:48:32.8231031Z > Task :app:javaPreCompileStagingDebug FROM-CACHE
+2026-10-10T01:48:32.8327184Z > Task :app:parseStagingDebugLocalResources
+2026-10-10T01:48:32.8346602Z > Task :app:extractProguardFiles
+2026-10-10T01:48:32.8406617Z > Task :app:generateStagingDebugRFile FROM-CACHE
+2026-10-10T01:48:33.1226685Z > Task :app:mergeDevDebugNativeDebugMetadata NO-SOURCE
+2026-10-10T01:48:33.2267272Z > Task :app:copyDevDebugChangelogAsset
+2026-10-10T01:48:33.2346933Z > Task :app:generateDevDebugAssets UP-TO-DATE
+2026-10-10T01:48:33.4247152Z > Task :app:mergeDevDebugAssets
+2026-10-10T01:48:33.7245139Z > Task :app:compressDevDebugAssets
+2026-10-10T01:48:33.7271269Z > Task :app:generateDevDebugGlobalSynthetics FROM-CACHE
+2026-10-10T01:48:34.3237054Z > Task :app:checkDevDebugDuplicateClasses
+2026-10-10T01:48:34.3268282Z > Task :app:desugarDevDebugFileDependencies FROM-CACHE
+2026-10-10T01:48:35.8243941Z > Task :app:mergeExtDexDevDebug FROM-CACHE
+2026-10-10T01:48:35.8265682Z > Task :app:mergeLibDexDevDebug FROM-CACHE
+2026-10-10T01:48:35.8326711Z > Task :app:mergeDevDebugJniLibFolders
+2026-10-10T01:48:36.6231735Z > Task :app:mergeDevDebugNativeLibs
+2026-10-10T01:48:37.0226875Z
+2026-10-10T01:48:37.0246989Z > Task :app:stripDevDebugDebugSymbols
+2026-10-10T01:48:37.0273361Z Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libmaplibre.so, libmlkit_google_ocr_pipeline.so. Run with --info option to learn more.
+2026-10-10T01:48:38.7276505Z
+2026-10-10T01:48:38.7306867Z > Task :app:validateSigningDevDebug
+2026-10-10T01:48:38.7307500Z > Task :app:writeDevDebugAppMetadata
+2026-10-10T01:48:38.8277203Z > Task :app:writeDevDebugSigningConfigVersions
+2026-10-10T01:48:38.8356827Z > Task :app:mergeStagingDebugNativeDebugMetadata NO-SOURCE
+2026-10-10T01:48:38.8416786Z > Task :app:copyStagingDebugChangelogAsset
+2026-10-10T01:48:38.8476905Z > Task :app:generateStagingDebugAssets UP-TO-DATE
+2026-10-10T01:48:38.8506598Z > Task :app:mergeStagingDebugAssets
+2026-10-10T01:48:38.9232908Z > Task :app:compressStagingDebugAssets FROM-CACHE
+2026-10-10T01:48:38.9286864Z > Task :app:generateStagingDebugGlobalSynthetics FROM-CACHE
+2026-10-10T01:48:39.0273571Z > Task :app:checkStagingDebugDuplicateClasses
+2026-10-10T01:48:39.0286731Z > Task :app:desugarStagingDebugFileDependencies FROM-CACHE
+2026-10-10T01:48:39.6275853Z > Task :app:mergeExtDexStagingDebug FROM-CACHE
+2026-10-10T01:48:39.7277076Z > Task :app:mergeLibDexStagingDebug FROM-CACHE
+2026-10-10T01:48:39.7336716Z > Task :app:checkStagingDebugAarMetadata
+2026-10-10T01:48:39.7366656Z > Task :app:mapStagingDebugSourceSetPaths
+2026-10-10T01:48:39.7396743Z > Task :app:compileStagingDebugNavigationResources FROM-CACHE
+2026-10-10T01:48:42.7267341Z > Task :app:mergeStagingDebugResources
+2026-10-10T01:48:42.7295217Z > Task :app:createStagingDebugCompatibleScreenManifests
+2026-10-10T01:48:42.8230438Z > Task :app:extractDeepLinksStagingDebug FROM-CACHE
+2026-10-10T01:48:42.9252378Z > Task :app:processStagingDebugMainManifest
+2026-10-10T01:48:43.0253000Z > Task :app:processStagingDebugManifest
+2026-10-10T01:48:43.0276871Z > Task :app:processStagingDebugManifestForPackage
+2026-10-10T01:48:43.8228311Z > Task :app:processStagingDebugResources
+2026-10-10T01:48:43.8259354Z > Task :app:mergeStagingDebugJniLibFolders
+2026-10-10T01:48:44.2247294Z > Task :app:mergeStagingDebugNativeLibs
+2026-10-10T01:48:44.6246369Z
+2026-10-10T01:48:44.6276738Z > Task :app:stripStagingDebugDebugSymbols
+2026-10-10T01:48:44.6307330Z Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libmaplibre.so, libmlkit_google_ocr_pipeline.so. Run with --info option to learn more.
+2026-10-10T01:48:44.6336307Z
+2026-10-10T01:48:44.6366451Z > Task :app:validateSigningStagingDebug
+2026-10-10T01:48:44.6396380Z > Task :app:writeStagingDebugAppMetadata
+2026-10-10T01:48:44.6426440Z > Task :app:writeStagingDebugSigningConfigVersions
+2026-10-10T01:48:44.6456688Z > Task :app:mergeProductionDebugNativeDebugMetadata NO-SOURCE
+2026-10-10T01:48:44.6478447Z > Task :app:copyProductionDebugChangelogAsset
+2026-10-10T01:48:44.6481175Z > Task :app:generateProductionDebugAssets UP-TO-DATE
+2026-10-10T01:48:44.7227960Z > Task :app:mergeProductionDebugAssets
+2026-10-10T01:48:44.8252652Z > Task :app:compressProductionDebugAssets FROM-CACHE
+2026-10-10T01:48:44.8253945Z > Task :app:generateProductionDebugGlobalSynthetics FROM-CACHE
+2026-10-10T01:48:44.9277618Z > Task :app:checkProductionDebugDuplicateClasses
+2026-10-10T01:48:44.9296953Z > Task :app:desugarProductionDebugFileDependencies FROM-CACHE
+2026-10-10T01:48:45.6307532Z > Task :app:mergeExtDexProductionDebug FROM-CACHE
+2026-10-10T01:48:45.6337174Z > Task :app:mergeLibDexProductionDebug FROM-CACHE
+2026-10-10T01:48:45.6386925Z > Task :app:checkProductionDebugAarMetadata
+2026-10-10T01:48:45.7257220Z > Task :app:mapProductionDebugSourceSetPaths
+2026-10-10T01:48:45.7287039Z > Task :app:compileProductionDebugNavigationResources FROM-CACHE
+2026-10-10T01:48:48.2249638Z > Task :app:mergeProductionDebugResources
+2026-10-10T01:48:48.2251004Z > Task :app:createProductionDebugCompatibleScreenManifests
+2026-10-10T01:48:48.2276661Z > Task :app:extractDeepLinksProductionDebug FROM-CACHE
+2026-10-10T01:48:48.4275613Z > Task :app:processProductionDebugMainManifest
+2026-10-10T01:48:48.4347071Z > Task :app:processProductionDebugManifest
+2026-10-10T01:48:48.4437310Z > Task :app:processProductionDebugManifestForPackage
+2026-10-10T01:48:49.4267252Z > Task :app:processProductionDebugResources
+2026-10-10T01:48:49.4295105Z > Task :app:mergeProductionDebugJniLibFolders
+2026-10-10T01:48:49.9247119Z > Task :app:mergeProductionDebugNativeLibs
+2026-10-10T01:48:50.3236516Z
+2026-10-10T01:48:50.3246880Z > Task :app:stripProductionDebugDebugSymbols
+2026-10-10T01:48:50.3307643Z Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libmaplibre.so, libmlkit_google_ocr_pipeline.so. Run with --info option to learn more.
+2026-10-10T01:48:50.3344306Z
+2026-10-10T01:48:50.3417267Z > Task :app:validateSigningProductionDebug
+2026-10-10T01:48:50.3447224Z > Task :app:writeProductionDebugAppMetadata
+2026-10-10T01:48:50.4296552Z > Task :app:writeProductionDebugSigningConfigVersions
+2026-10-10T01:48:50.4347089Z > Task :app:copyRoomSchemasToAndroidTestAssetsDevDebugAndroidTest
+2026-10-10T01:48:50.4348998Z > Task :app:generateDevDebugAndroidTestAssets UP-TO-DATE
+2026-10-10T01:48:50.5267152Z > Task :app:mergeDevDebugAndroidTestAssets
+2026-10-10T01:48:50.6237488Z > Task :app:compressDevDebugAndroidTestAssets
+2026-10-10T01:48:50.6257602Z > Task :app:generateDevDebugAndroidTestGlobalSynthetics FROM-CACHE
+2026-10-10T01:48:50.7247353Z > Task :app:checkDevDebugAndroidTestDuplicateClasses
+2026-10-10T01:48:50.7250520Z > Task :app:desugarDevDebugAndroidTestFileDependencies FROM-CACHE
+2026-10-10T01:48:50.9268908Z > Task :app:mergeExtDexDevDebugAndroidTest FROM-CACHE
+2026-10-10T01:48:50.9328919Z > Task :app:mergeLibDexDevDebugAndroidTest FROM-CACHE
+2026-10-10T01:48:51.0237784Z > Task :app:checkDevDebugAndroidTestAarMetadata
+2026-10-10T01:48:51.0276861Z > Task :app:mapDevDebugAndroidTestSourceSetPaths
+2026-10-10T01:48:51.0327209Z > Task :app:compileDevDebugAndroidTestNavigationResources FROM-CACHE
+2026-10-10T01:48:51.3227558Z > Task :app:mergeDevDebugAndroidTestResources FROM-CACHE
+2026-10-10T01:48:51.3264039Z > Task :app:processDevDebugAndroidTestResources FROM-CACHE
+2026-10-10T01:48:51.4249931Z > Task :app:mergeDevDebugAndroidTestJniLibFolders
+2026-10-10T01:48:51.4287044Z > Task :app:mergeDevDebugAndroidTestNativeLibs NO-SOURCE
+2026-10-10T01:48:51.4346848Z > Task :app:stripDevDebugAndroidTestDebugSymbols NO-SOURCE
+2026-10-10T01:48:51.4367098Z > Task :app:validateSigningDevDebugAndroidTest
+2026-10-10T01:48:51.5259026Z > Task :app:writeDevDebugAndroidTestSigningConfigVersions
+2026-10-10T01:48:59.1227588Z > Task :app:kspDevDebugKotlin
+2026-10-10T01:49:02.3231905Z > Task :app:kspProductionDebugKotlin
+2026-10-10T01:49:02.8247040Z > Task :app:kspStagingDebugKotlin
+2026-10-10T01:49:45.4247267Z > Task :app:compileDevDebugKotlin
+2026-10-10T01:49:46.3237058Z > Task :app:compileProductionDebugKotlin
+2026-10-10T01:49:46.5246889Z > Task :app:compileStagingDebugKotlin
+2026-10-10T01:51:55.9256632Z
+2026-10-10T01:51:55.9290652Z > Task :app:compileDevDebugKotlin
+2026-10-10T01:51:55.9330483Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/data/repository/ExpenseLedgerWriter.kt:211:48 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ExpenseEntity'.
+2026-10-10T01:51:55.9357676Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/domain/analytics/CampaignAnalytics.kt:125:101 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:55.9398817Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/domain/analytics/CampaignAnalytics.kt:126:55 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:55.9428186Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:895:80 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:55.9457727Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:895:239 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:55.9485390Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:900:31 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:55.9497798Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:902:40 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:55.9544665Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/home/OilMarketCard.kt:178:63 Unnecessary safe call on a non-null receiver of type 'ConnectivityManager'.
+2026-10-10T01:51:55.9578206Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/CurrentLocation.kt:114:22 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+2026-10-10T01:51:55.9617679Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/MapSearch.kt:46:72 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Double'.
+2026-10-10T01:51:55.9646728Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/MapSearch.kt:46:85 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Double'.
+2026-10-10T01:51:55.9649587Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/ParcelLabelPoint.kt:135:89 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Pair<Double, Point2>'.
+2026-10-10T01:51:55.9677871Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/notebook/NotebookCharts.kt:58:43 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:55.9707829Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/notebook/NotebookCharts.kt:71:43 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:55.9712437Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/parcels/ParcelScreens.kt:509:5 'fun TabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryTabRow and SecondaryTabRow.
+2026-10-10T01:51:55.9716230Z
+2026-10-10T01:51:55.9716477Z > Task :app:compileProductionDebugKotlin
+2026-10-10T01:51:55.9718419Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/data/repository/ExpenseLedgerWriter.kt:211:48 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ExpenseEntity'.
+2026-10-10T01:51:55.9721596Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/domain/analytics/CampaignAnalytics.kt:125:101 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:55.9724626Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/domain/analytics/CampaignAnalytics.kt:126:55 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:55.9727813Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:895:80 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:55.9730861Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:895:239 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:55.9733862Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:900:31 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:55.9738683Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:902:40 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:55.9741431Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/home/OilMarketCard.kt:178:63 Unnecessary safe call on a non-null receiver of type 'ConnectivityManager'.
+2026-10-10T01:51:55.9744483Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/CurrentLocation.kt:114:22 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+2026-10-10T01:51:55.9747720Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/MapSearch.kt:46:72 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Double'.
+2026-10-10T01:51:55.9750551Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/MapSearch.kt:46:85 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Double'.
+2026-10-10T01:51:55.9753239Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/ParcelLabelPoint.kt:135:89 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Pair<Double, Point2>'.
+2026-10-10T01:51:55.9756259Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/notebook/NotebookCharts.kt:58:43 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:55.9758959Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/notebook/NotebookCharts.kt:71:43 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:55.9763194Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/parcels/ParcelScreens.kt:509:5 'fun TabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryTabRow and SecondaryTabRow.
+2026-10-10T01:51:56.0238754Z
+2026-10-10T01:51:56.0256895Z > Task :app:compileStagingDebugKotlin
+2026-10-10T01:51:56.0317790Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/data/repository/ExpenseLedgerWriter.kt:211:48 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ExpenseEntity'.
+2026-10-10T01:51:56.0320933Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/domain/analytics/CampaignAnalytics.kt:125:101 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:56.0323830Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/domain/analytics/CampaignAnalytics.kt:126:55 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:56.0326908Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:895:80 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:56.0329844Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:895:239 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:56.0332740Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:900:31 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:56.0335615Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestScreens.kt:902:40 Unnecessary safe call on a non-null receiver of type 'LabourCurrencyContext'.
+2026-10-10T01:51:56.0338684Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/home/OilMarketCard.kt:178:63 Unnecessary safe call on a non-null receiver of type 'ConnectivityManager'.
+2026-10-10T01:51:56.0341938Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/CurrentLocation.kt:114:22 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+2026-10-10T01:51:56.0387912Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/MapSearch.kt:46:72 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Double'.
+2026-10-10T01:51:56.0441687Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/MapSearch.kt:46:85 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Double'.
+2026-10-10T01:51:56.0487834Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/maps/ParcelLabelPoint.kt:135:89 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Pair<Double, Point2>'.
+2026-10-10T01:51:56.0577571Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/notebook/NotebookCharts.kt:58:43 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:56.0587699Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/notebook/NotebookCharts.kt:71:43 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+2026-10-10T01:51:56.0665561Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/main/java/com/isivoltpro/maginaolivo/feature/parcels/ParcelScreens.kt:509:5 'fun TabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryTabRow and SecondaryTabRow.
+2026-10-10T01:52:03.5228646Z
+2026-10-10T01:52:03.5248540Z > Task :app:compileStagingDebugJavaWithJavac
+2026-10-10T01:52:03.8235189Z > Task :app:compileDevDebugJavaWithJavac
+2026-10-10T01:52:04.1231469Z > Task :app:bundleDevDebugClassesToCompileJar
+2026-10-10T01:52:04.2225493Z > Task :app:compileProductionDebugJavaWithJavac
+2026-10-10T01:52:04.8247327Z > Task :app:kspDevDebugAndroidTestKotlin
+2026-10-10T01:52:05.8268634Z > Task :app:kspDevDebugUnitTestKotlin
+2026-10-10T01:52:07.2228320Z > Task :app:generateDevDebugAndroidTestLintModel
+2026-10-10T01:52:07.5227099Z > Task :app:generateDevDebugLintReportModel
+2026-10-10T01:52:07.7237094Z > Task :app:generateDevDebugUnitTestLintModel
+2026-10-10T01:52:28.3269024Z > Task :app:compileDevDebugUnitTestKotlin
+2026-10-10T01:52:28.3357262Z > Task :app:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+2026-10-10T01:52:34.8237253Z > Task :app:compileDevDebugAndroidTestKotlin
+2026-10-10T01:52:37.7247174Z > Task :app:lintAnalyzeDevDebug
+2026-10-10T01:52:38.0262684Z > Task :app:lintAnalyzeDevDebugAndroidTest
+2026-10-10T01:52:56.1276736Z
+2026-10-10T01:52:56.1397048Z > Task :app:compileDevDebugAndroidTestKotlin
+2026-10-10T01:52:56.1460872Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/ActivityEditorCompactTest.kt:34:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.1530799Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/ActivityEditorPresetTest.kt:17:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.1620985Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/ActivityRelatedExpenseTest.kt:22:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.1691383Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/AppNavigationTest.kt:48:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.1760771Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/AppearanceContractTest.kt:31:29 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.1841089Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/AppearanceSettingsTest.kt:32:29 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.1917987Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/ArchivedMachineSheetTest.kt:23:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.1960462Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/AttachmentsSectionTest.kt:33:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2040999Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/CadastreImportScreenTest.kt:22:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2130623Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/CampaignAddLabourTest.kt:26:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2188778Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/CampaignChartsScreenTest.kt:36:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2270501Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/CampaignScreensTest.kt:31:29 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2340879Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/CostCompletenessCardsTest.kt:19:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2391832Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/DarkAgriculturalSurfacesTest.kt:39:29 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2445148Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/DarkComponentsContractTest.kt:28:29 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2540522Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/DarkMapAttributionTest.kt:22:29 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2600560Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/DarkOfflineMapTest.kt:21:29 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2680213Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/DarkReferenceChartTest.kt:18:29 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2739559Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/DarkReferencePhotoTest.kt:20:29 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2770522Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/DarkSurfacesScreenshotTest.kt:40:29 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2805877Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt:43:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.2828143Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt:138:90 Unnecessary non-null assertion (!!) on a non-null receiver of type 'List<EquipmentDraftLine>'.
+2026-10-10T01:52:56.2895633Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt:231:34 Unnecessary non-null assertion (!!) on a non-null receiver of type 'List<EquipmentDraftLine>'.
+2026-10-10T01:52:56.2968019Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt:232:37 Unnecessary non-null assertion (!!) on a non-null receiver of type 'List<EquipmentDraftLine>'.
+2026-10-10T01:52:56.3028062Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt:233:38 Unnecessary non-null assertion (!!) on a non-null receiver of type 'List<EquipmentDraftLine>'.
+2026-10-10T01:52:56.3120146Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/ExpenseDayRoleEditorTest.kt:26:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3200909Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/ExpensesCurrencyTest.kt:24:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3219750Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/FarmMapScreenTest.kt:28:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3251742Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/FarmOverviewScreenTest.kt:29:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3371145Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/FarmScreensTest.kt:36:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3411209Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/FormDetailsDisclosureTest.kt:21:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3450469Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/Gate3EvidenceScreenshotTest.kt:26:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3468060Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/GlobalQuickActionsTest.kt:48:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3503448Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/HarvestsNoOpenDayTest.kt:24:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3551117Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/HomeFeedsScreenTest.kt:30:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3590961Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/HomeOilMarketScreenTest.kt:25:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3650063Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/JornadaCostScreenTest.kt:35:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3690849Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/JornadaScreenTest.kt:29:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3718321Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/JornalFocusScreenTest.kt:20:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3750651Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourByWorkerScreenTest.kt:28:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3780572Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourDeviceCheckTest.kt:20:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3851027Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:26:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.3884932Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:98:101 Unnecessary non-null assertion (!!) on a non-null receiver of type 'CrewDraft'.
+2026-10-10T01:52:56.3927824Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:98:139 Unnecessary non-null assertion (!!) on a non-null receiver of type 'CrewDraft'.
+2026-10-10T01:52:56.3978464Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:98:189 Unnecessary non-null assertion (!!) on a non-null receiver of type 'CrewDraft'.
+2026-10-10T01:52:56.4017807Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:116:38 Unnecessary non-null assertion (!!) on a non-null receiver of type 'CrewDraft'.
+2026-10-10T01:52:56.4067742Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:117:52 Unnecessary non-null assertion (!!) on a non-null receiver of type 'CrewDraft'.
+2026-10-10T01:52:56.4087832Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:118:38 Unnecessary non-null assertion (!!) on a non-null receiver of type 'CrewDraft'.
+2026-10-10T01:52:56.4153959Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:135:29 Unnecessary non-null assertion (!!) on a non-null receiver of type 'CrewDraft'.
+2026-10-10T01:52:56.4198154Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:136:29 Unnecessary non-null assertion (!!) on a non-null receiver of type 'CrewDraft'.
+2026-10-10T01:52:56.4238242Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:244:36 Unnecessary non-null assertion (!!) on a non-null receiver of type 'LabourChange'.
+2026-10-10T01:52:56.4308249Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:245:53 Unnecessary non-null assertion (!!) on a non-null receiver of type 'LabourChange'.
+2026-10-10T01:52:56.4317951Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:246:38 Unnecessary non-null assertion (!!) on a non-null receiver of type 'LabourChange'.
+2026-10-10T01:52:56.4398239Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:247:86 Unnecessary non-null assertion (!!) on a non-null receiver of type 'LabourChange'.
+2026-10-10T01:52:56.4419101Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:247:110 Unnecessary non-null assertion (!!) on a non-null receiver of type 'LabourChange'.
+2026-10-10T01:52:56.4487756Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:247:141 Unnecessary non-null assertion (!!) on a non-null receiver of type 'LabourChange'.
+2026-10-10T01:52:56.4492811Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:261:38 Unnecessary non-null assertion (!!) on a non-null receiver of type 'LabourChange'.
+2026-10-10T01:52:56.4548222Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:319:45 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Bitmap'.
+2026-10-10T01:52:56.4587796Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourPaymentsUiTest.kt:320:19 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Bitmap'.
+2026-10-10T01:52:56.4615643Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourScreenTest.kt:27:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4625050Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/MainActivitySmokeTest.kt:20:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4634018Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/ManualPesadaUiTest.kt:32:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4743181Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/MoStatStripAccessibilityTest.kt:28:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4752050Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/MyProfileScreenTest.kt:36:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4761173Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/NotebookChronologyTest.kt:22:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4807707Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/NotebookHomeScreenTest.kt:43:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4816927Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/OilMarketScreenTest.kt:33:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4825199Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/OnEachSaveTest.kt:15:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4862939Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/ParcelScreensTest.kt:30:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4871138Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/PesadaContextTest.kt:25:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4879468Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/PesadaSearchScreenTest.kt:28:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4933103Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/Phase18OfflineMapTest.kt:88:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4941964Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/Phase3CampaignRegisterReferenceTest.kt:17:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4960344Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/Phase3ComponentCatalogueTest.kt:15:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4990618Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/Phase3HarvestExpensesWeatherReferenceTest.kt:17:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.4999519Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/Phase3MapReferenceTest.kt:14:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5008161Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/Phase3OlivarReferenceTest.kt:16:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5044240Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/Phase3ParcelOcrReferenceTest.kt:19:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5052827Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/PhytosanitaryResourceUiTest.kt:33:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5071882Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/RadarScreenTest.kt:26:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5091909Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/RecoleccionTwoFarmsTest.kt:28:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5109789Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/RecollectionChoiceUiTest.kt:42:26 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5127582Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/RecollectionSummaryScreenTest.kt:50:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5153174Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/WeatherMoodLayerTest.kt:16:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5161709Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/WeatherWeekScreenTest.kt:28:33 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+2026-10-10T01:52:56.5168064Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/data/local/DeliveryContractTest.kt:290:43 Unnecessary non-null assertion (!!) on a non-null receiver of type 'YieldAnalysis'.
+2026-10-10T01:52:56.5171160Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/data/local/DeliveryContractTest.kt:299:94 Unnecessary non-null assertion (!!) on a non-null receiver of type 'YieldAnalysis'.
+2026-10-10T01:52:56.5174434Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/data/local/DeliveryContractTest.kt:415:59 Unnecessary non-null assertion (!!) on a non-null receiver of type 'DeliveryTicketProposal'.
+2026-10-10T01:52:56.5210722Z w: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/src/androidTest/java/com/isivoltpro/maginaolivo/data/local/LabourPaymentContractTest.kt:295:59 Unnecessary non-null assertion (!!) on a non-null receiver of type 'LabourRateSnapshot'.
+2026-10-10T01:52:58.3225159Z
+2026-10-10T01:52:58.3237025Z > Task :app:compileDevDebugAndroidTestJavaWithJavac
+2026-10-10T01:52:58.3266614Z > Task :app:copyRoomSchemas NO-SOURCE
+2026-10-10T01:52:58.3296561Z > Task :app:lintAnalyzeDevDebugUnitTest
+2026-10-10T01:52:58.6226360Z > Task :app:bundleDevDebugClassesToRuntimeJar
+2026-10-10T01:52:58.7277043Z > Task :app:processDevDebugJavaRes
+2026-10-10T01:52:58.7286611Z > Task :app:processDevDebugUnitTestJavaRes
+2026-10-10T01:53:06.5227067Z > Task :app:testDevDebugUnitTest
+2026-10-10T01:53:09.7257399Z > Task :app:mergeDevDebugJavaResource
+2026-10-10T01:53:39.7247125Z > Task :app:dexBuilderDevDebug
+2026-10-10T01:54:54.2237102Z > Task :app:mergeProjectDexDevDebug
+2026-10-10T01:55:01.3237133Z > Task :app:dexBuilderStagingDebug
+2026-10-10T01:55:03.1230966Z > Task :app:processStagingDebugJavaRes
+2026-10-10T01:55:04.9228697Z > Task :app:packageDevDebug
+2026-10-10T01:55:04.9250662Z > Task :app:createDevDebugApkListingFileRedirect
+2026-10-10T01:55:04.9272555Z > Task :app:assembleDevDebug
+2026-10-10T01:55:05.0227576Z > Task :app:processProductionDebugJavaRes
+2026-10-10T01:55:05.6227123Z > Task :app:mergeProjectDexStagingDebug
+2026-10-10T01:55:06.9225812Z > Task :app:mergeStagingDebugJavaResource
+2026-10-10T01:55:06.9266616Z > Task :app:mergeProductionDebugJavaResource
+2026-10-10T01:55:27.5226965Z > Task :app:dexBuilderProductionDebug
+2026-10-10T01:55:27.6237190Z > Task :app:processDevDebugAndroidTestJavaRes
+2026-10-10T01:55:29.2233918Z > Task :app:mergeDevDebugAndroidTestJavaResource
+2026-10-10T01:55:30.5227009Z > Task :app:mergeProjectDexProductionDebug
+2026-10-10T01:55:35.2225126Z > Task :app:dexBuilderDevDebugAndroidTest
+2026-10-10T01:55:35.7306903Z > Task :app:packageStagingDebug
+2026-10-10T01:55:35.7336793Z > Task :app:createStagingDebugApkListingFileRedirect
+2026-10-10T01:55:35.7416630Z > Task :app:assembleStagingDebug
+2026-10-10T01:55:36.6226755Z > Task :app:mergeProjectDexDevDebugAndroidTest
+2026-10-10T01:55:36.8307017Z > Task :app:packageProductionDebug
+2026-10-10T01:55:36.8336664Z > Task :app:createProductionDebugApkListingFileRedirect
+2026-10-10T01:55:36.8367056Z > Task :app:assembleProductionDebug
+2026-10-10T01:55:36.9259424Z > Task :app:packageDevDebugAndroidTest
+2026-10-10T01:55:36.9276641Z > Task :app:createDevDebugAndroidTestApkListingFileRedirect
+2026-10-10T01:55:36.9293987Z > Task :app:assembleDevDebugAndroidTest
+2026-10-10T01:57:18.2246635Z
+2026-10-10T01:57:18.2306812Z > Task :app:lintReportDevDebug
+2026-10-10T01:57:18.2307933Z Wrote HTML report to file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/app/build/reports/lint-results-devDebug.html
+2026-10-10T01:57:18.2366163Z
+2026-10-10T01:57:18.2366690Z > Task :app:lintDevDebug
+2026-10-10T01:57:18.2427139Z gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_3-1791596896952.json
+2026-10-10T01:57:18.2456268Z
+2026-10-10T01:57:18.2472682Z [Incubating] Problems report is available at: file:///home/runner/work/magina-olivo-v20/magina-olivo-v20/build/reports/problems/problems-report.html
+2026-10-10T01:57:18.2496175Z
+2026-10-10T01:57:18.3253867Z BUILD SUCCESSFUL in 9m 5s
+2026-10-10T01:57:18.3277033Z 173 actionable tasks: 128 executed, 45 from cache
+2026-10-10T01:57:18.3293319Z Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.4.1/userguide/configuration_cache_enabling.html
+2026-10-10T01:57:19.0889099Z ##[group]Run {
+2026-10-10T01:57:19.0889808Z [36;1m{[0m
+2026-10-10T01:57:19.0890531Z [36;1m  echo "## Exported Room schema (latest version)"[0m
+2026-10-10T01:57:19.0922703Z [36;1m  latest=$(find app/schemas -name '*.json' | sort -V | tail -1)[0m
+2026-10-10T01:57:19.0923418Z [36;1m  echo "File: \`$latest\`"[0m
+2026-10-10T01:57:19.0923859Z [36;1m  echo '```json'[0m
+2026-10-10T01:57:19.0924277Z [36;1m  cat "$latest"[0m
+2026-10-10T01:57:19.0924656Z [36;1m  echo '```'[0m
+2026-10-10T01:57:19.0925045Z [36;1m} >> "$GITHUB_STEP_SUMMARY"[0m
+2026-10-10T01:57:19.1020616Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-10T01:57:19.1021207Z env:
+2026-10-10T01:57:19.1021751Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:57:19.1022667Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:57:19.1023375Z   MAVEN_ARGS: -ntp
+2026-10-10T01:57:19.1023873Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-10T01:57:19.1024430Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-10T01:57:19.1024956Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-10T01:57:19.1025763Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-10T01:57:19.1026846Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-10T01:57:19.1027418Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-10T01:57:19.1027899Z ##[endgroup]
+2026-10-10T01:57:19.2551192Z ##[group]Run if [ -z "$(git status --porcelain app/schemas)" ]; then
+2026-10-10T01:57:19.2552036Z [36;1mif [ -z "$(git status --porcelain app/schemas)" ]; then[0m
+2026-10-10T01:57:19.2552811Z [36;1m  echo "The exported schema already matches the committed one"[0m
+2026-10-10T01:57:19.2553474Z [36;1m  exit 0[0m
+2026-10-10T01:57:19.2553825Z [36;1mfi[0m
+2026-10-10T01:57:19.2554217Z [36;1mstaging="$(mktemp -d)"[0m
+2026-10-10T01:57:19.2554721Z [36;1mcp -R app/schemas/. "$staging/"[0m
+2026-10-10T01:57:19.2555294Z [36;1mgit config user.name "github-actions[bot]"[0m
+2026-10-10T01:57:19.2556348Z [36;1mgit config user.email "41898282+github-actions[bot]@users.noreply.github.com"[0m
+2026-10-10T01:57:19.2557188Z [36;1mgit fetch --depth=1 origin "$HEAD_REF"[0m
+2026-10-10T01:57:19.2558010Z [36;1m# The push and pull_request runs of one commit race to publish the same new schema:[0m
+2026-10-10T01:57:19.2559277Z [36;1m# drop the local export (kept in $staging) so the branch that already carries it checks out.[0m
+2026-10-10T01:57:19.2560159Z [36;1mgit checkout -- app/schemas[0m
+2026-10-10T01:57:19.2560678Z [36;1mgit clean -fdq app/schemas[0m
+2026-10-10T01:57:19.2561246Z [36;1mgit checkout -B schema-export FETCH_HEAD[0m
+2026-10-10T01:57:19.2561826Z [36;1mmkdir -p app/schemas[0m
+2026-10-10T01:57:19.2562306Z [36;1mcp -R "$staging/." app/schemas/[0m
+2026-10-10T01:57:19.2562819Z [36;1mgit add app/schemas[0m
+2026-10-10T01:57:19.2563308Z [36;1mif git diff --cached --quiet; then[0m
+2026-10-10T01:57:19.2563860Z [36;1m  echo "Nothing new to publish"[0m
+2026-10-10T01:57:19.2564359Z [36;1m  exit 0[0m
+2026-10-10T01:57:19.2564709Z [36;1mfi[0m
+2026-10-10T01:57:19.2565364Z [36;1mgit commit -m "chore(android): publish the Room schema exported by the compiler"[0m
+2026-10-10T01:57:19.2566378Z [36;1mgit push origin HEAD:"$HEAD_REF"[0m
+2026-10-10T01:57:19.2652370Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-10T01:57:19.2653199Z env:
+2026-10-10T01:57:19.2653743Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:57:19.2654733Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:57:19.2655454Z   MAVEN_ARGS: -ntp
+2026-10-10T01:57:19.2656120Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-10T01:57:19.2656710Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-10T01:57:19.2657268Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-10T01:57:19.2658104Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-10T01:57:19.2658999Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-10T01:57:19.2659601Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-10T01:57:19.2660113Z   HEAD_REF: codex/707-dark3-screens
+2026-10-10T01:57:19.2660578Z ##[endgroup]
+2026-10-10T01:57:19.6766933Z The exported schema already matches the committed one
+2026-10-10T01:57:19.6829204Z ##[group]Run actions/upload-artifact@v6
+2026-10-10T01:57:19.6829543Z with:
+2026-10-10T01:57:19.6829764Z   name: magina-olivo-dev-debug
+2026-10-10T01:57:19.6830093Z   path: app/build/outputs/apk/dev/debug/app-dev-debug.apk
+2026-10-10T01:57:19.6830456Z   if-no-files-found: error
+2026-10-10T01:57:19.6830702Z   retention-days: 14
+2026-10-10T01:57:19.6830929Z   compression-level: 6
+2026-10-10T01:57:19.6831148Z   overwrite: false
+2026-10-10T01:57:19.6831374Z   include-hidden-files: false
+2026-10-10T01:57:19.6831614Z env:
+2026-10-10T01:57:19.6831912Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:57:19.6832419Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-10T01:57:19.6832807Z   MAVEN_ARGS: -ntp
+2026-10-10T01:57:19.6833063Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-10T01:57:19.6833376Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-10T01:57:19.6833707Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-10T01:57:19.6834158Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-10T01:57:19.6834649Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-10T01:57:19.6834982Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-10T01:57:19.6835252Z ##[endgroup]
+2026-10-10T01:57:19.8721242Z With the provided path, there will be 1 file uploaded
+2026-10-10T01:57:19.8777141Z Artifact name is valid!
+2026-10-10T01:57:19.8806439Z Root directory input is valid!
+2026-10-10T01:57:20.1307430Z Beginning upload of artifact content to blob storage
+2026-10-10T01:57:20.9020101Z Uploaded bytes 8388608
+2026-10-10T01:57:21.2812434Z Uploaded bytes 16777216
+2026-10-10T01:57:21.5042205Z Uploaded bytes 25165824
+2026-10-10T01:57:21.9668443Z Uploaded bytes 33554432
+2026-10-10T01:57:22.5756782Z Uploaded bytes 41943040
+2026-10-10T01:57:23.2123647Z Uploaded bytes 50331648
+2026-10-10T01:57:23.4771068Z Uploaded bytes 55602704
+2026-10-10T01:57:23.5215994Z Finished uploading artifact content to blob storage!
+2026-10-10T01:57:23.5220114Z SHA256 digest of uploaded artifact zip is 55463e2a09e50393906f987c2d298472929e10b8ba86aa47657464676760f727
+2026-10-10T01:57:23.5222652Z Finalizing artifact upload
+2026-10-10T01:57:23.8060603Z Artifact magina-olivo-dev-debug.zip successfully finalized. Artifact ID 11656280092
+2026-10-10T01:57:23.8062026Z Artifact magina-olivo-dev-debug has been successfully uploaded! Final size is 55602704 bytes. Artifact ID is 11656280092
+2026-10-10T01:57:23.8069478Z Artifact download URL: https://github.com/izc05/magina-olivo-v20/actions/runs/38014527089/artifacts/11656280092
+2026-10-10T01:57:23.8312024Z Post job cleanup.
+2026-10-10T01:57:24.0990353Z In post-action step
+2026-10-10T01:57:24.1000271Z Basic Caching: This build uses the basic open-source caching provider. For faster builds and advanced features, consider switching to the Enhanced Caching provider. See https://github.com/gradle/actions/blob/main/DISTRIBUTION.md for details.
+2026-10-10T01:57:24.1006515Z ##[group]Generating Job Summary
+2026-10-10T01:57:24.1013009Z
+2026-10-10T01:57:24.1013391Z
+2026-10-10T01:57:24.1013570Z <table>
+2026-10-10T01:57:24.1013939Z     <tr>
+2026-10-10T01:57:24.1014192Z         <th>Gradle Root Project</th>
+2026-10-10T01:57:24.1014518Z         <th>Requested Tasks</th>
+2026-10-10T01:57:24.1014809Z         <th>Gradle Version</th>
+2026-10-10T01:57:24.1015088Z         <th>Build Outcome</th>
+2026-10-10T01:57:24.1015613Z         <th>Build&nbsp;Scan®</th>
+2026-10-10T01:57:24.1016057Z     </tr>
+2026-10-10T01:57:24.1016275Z     <tr>
+2026-10-10T01:57:24.1016496Z         <td>MaginaOlivo</td>
+2026-10-10T01:57:24.1018291Z         <td><div title='lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest'>lintDevDebug testDevDebugUnitTest assembleDevDebug assemble…</div></td>
+2026-10-10T01:57:24.1019445Z         <td align='center'>9.4.1 :information_source:</td>
+2026-10-10T01:57:24.1019851Z         <td align='center'>:white_check_mark:</td>
+2026-10-10T01:57:24.1020737Z         <td><a href="https://scans.gradle.com" rel="nofollow" target="_blank"><img src="https://img.shields.io/badge/Not%20published-lightgrey" alt="Build Scan not published" /></a></td>
+2026-10-10T01:57:24.1021580Z     </tr>
+2026-10-10T01:57:24.1021787Z </table>
+2026-10-10T01:57:24.1021908Z
+2026-10-10T01:57:24.1022812Z <p>:information_source: Gradle version is out of date — consider upgrading. See <a href="https://docs.gradle.org/current/userguide/feature_lifecycle.html#eol_support">Gradle release lifecycle</a></p>
+2026-10-10T01:57:24.1023646Z
+2026-10-10T01:57:24.1023748Z ============================
+2026-10-10T01:57:24.1024148Z <h4>Gradle State Caching - 🛡️ Basic (read-only)</h4>
+2026-10-10T01:57:24.1024408Z
+2026-10-10T01:57:24.1025609Z **[Basic Caching](https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#basic-caching)** uses the basic open-source caching provider. For faster builds and advanced features, consider the **[Enhanced Caching](https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#enhanced-caching)** provider.
+2026-10-10T01:57:24.1027066Z
+2026-10-10T01:57:24.1027156Z <details>
+2026-10-10T01:57:24.1027501Z <summary>Entries: 1 restored, 0 saved - Expand for more details</summary>
+2026-10-10T01:57:24.1028010Z
+2026-10-10T01:57:24.1029596Z [Cache was read-only](https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#using-the-cache-read-only) — by default, the action only writes to the cache for jobs running on the default branch.
+2026-10-10T01:57:24.1030931Z
+2026-10-10T01:57:24.1031087Z <pre>
+2026-10-10T01:57:24.1031470Z Entry: Gradle User Home
+2026-10-10T01:57:24.1032483Z     Requested Key : setup-java-Linux-x64-gradle-3795f6964bf85206ce224e9381a96d2fdab6eaac359994989dfc8e2294a3d9c3
+2026-10-10T01:57:24.1034019Z     Restored  Key : setup-java-Linux-x64-gradle-3795f6964bf85206ce224e9381a96d2fdab6eaac359994989dfc8e2294a3d9c3
+2026-10-10T01:57:24.1035149Z               Size:
+2026-10-10T01:57:24.1035631Z               Time:
+2026-10-10T01:57:24.1036362Z               (Entry restored: exact match found)
+2026-10-10T01:57:24.1036996Z     Saved     Key :
+2026-10-10T01:57:24.1037468Z               Size:
+2026-10-10T01:57:24.1037938Z               Time:
+2026-10-10T01:57:24.1038432Z               (Entry not saved: cache is read-only)
+2026-10-10T01:57:24.1038987Z </pre>
+2026-10-10T01:57:24.1039330Z </details>
+2026-10-10T01:57:24.1039525Z
+2026-10-10T01:57:24.1040009Z ##[endgroup]
+2026-10-10T01:57:24.1064986Z ##[notice]Gradle 9.4.1 is out of date: consider updating to the latest Gradle version. See https://docs.gradle.org/current/userguide/feature_lifecycle.html#eol_support
+2026-10-10T01:57:24.1074690Z Completed post-action step
+2026-10-10T01:57:24.1320464Z Post job cleanup.
+2026-10-10T01:57:24.2193966Z Post job cleanup.
+2026-10-10T01:57:24.3136858Z [command]/usr/bin/git version
+2026-10-10T01:57:24.3196753Z git version 2.55.0
+2026-10-10T01:57:24.3242782Z Temporarily overriding HOME='/home/runner/work/_temp/ce20ccb5-507a-4abb-b9c9-8b0962b199e9' before making global git config changes
+2026-10-10T01:57:24.3244360Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-10T01:57:24.3250502Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/magina-olivo-v20/magina-olivo-v20
+2026-10-10T01:57:24.3291247Z Removing SSH command configuration
+2026-10-10T01:57:24.3300669Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-10T01:57:24.3352359Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-10T01:57:24.3687506Z Removing HTTP extra header
+2026-10-10T01:57:24.3693602Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-10T01:57:24.3731797Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-10T01:57:24.4000144Z Removing includeIf entries pointing to credentials config files
+2026-10-10T01:57:24.4009364Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-10T01:57:24.4043681Z includeif.gitdir:/home/runner/work/magina-olivo-v20/magina-olivo-v20/.git.path
+2026-10-10T01:57:24.4045108Z includeif.gitdir:/home/runner/work/magina-olivo-v20/magina-olivo-v20/.git/worktrees/*.path
+2026-10-10T01:57:24.4046428Z includeif.gitdir:/github/workspace/.git.path
+2026-10-10T01:57:24.4047207Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-10T01:57:24.4055648Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/magina-olivo-v20/magina-olivo-v20/.git.path
+2026-10-10T01:57:24.4090441Z /home/runner/work/_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:57:24.4108203Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/magina-olivo-v20/magina-olivo-v20/.git.path /home/runner/work/_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:57:24.4151061Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/magina-olivo-v20/magina-olivo-v20/.git/worktrees/*.path
+2026-10-10T01:57:24.4179023Z /home/runner/work/_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:57:24.4190576Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/magina-olivo-v20/magina-olivo-v20/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:57:24.4233854Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-10T01:57:24.4262403Z /github/runner_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:57:24.4271971Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:57:24.4310069Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-10T01:57:24.4335827Z /github/runner_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:57:24.4346359Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config
+2026-10-10T01:57:24.4387516Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-10T01:57:24.4608757Z Removing credentials config '/home/runner/work/_temp/git-credentials-6bf26d54-e8b6-4620-8665-34892111e96d.config'
+2026-10-10T01:57:24.4752183Z Cleaning up orphan processes

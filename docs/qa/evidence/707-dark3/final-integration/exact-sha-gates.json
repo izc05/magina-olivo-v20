@@ -1,0 +1,28 @@
+{
+  "sha": "200fe01158be97345c14e3da006a5480d1953cb8",
+  "review": "CONFORME",
+  "checkedAtUtc": "2026-10-10T02:14:14.2630716Z",
+  "gates": [
+    {
+      "name": "foundation",
+      "run": 38014527089,
+      "job": 114101753741,
+      "conclusion": "success",
+      "url": "https://github.com/izc05/magina-olivo-v20/actions/runs/38014527089/job/114101753741"
+    },
+    {
+      "name": "gate3-emulator",
+      "run": 38014527089,
+      "job": 114101753871,
+      "conclusion": "success",
+      "url": "https://github.com/izc05/magina-olivo-v20/actions/runs/38014527089/job/114101753871"
+    },
+    {
+      "name": "gate3-evidence",
+      "run": 38014527139,
+      "job": 114101753751,
+      "conclusion": "success",
+      "url": "https://github.com/izc05/magina-olivo-v20/actions/runs/38014527139/job/114101753751"
+    }
+  ]
+}

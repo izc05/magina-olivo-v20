@@ -50,5 +50,5 @@
 
 - [x] Run lintDevDebug/testDevDebugUnitTest/assembleDevDebug/assembleStagingDebug/assembleProductionDebug/assembleDevDebugAndroidTest with bounded local heap/workers. Expected: all PASS.
 - [x] Run representative agricultural/appearance/navigation UI in LIGHT/DARK; capture 360/390/430dp/font1.3, modal/keyboard, + and bell, offline and map controls, gestures/three buttons. Verify source photos/tiles remain unfiltered. Expected: readable, reachable controls; no residual light surfaces outside source imagery/artwork.
-- [ ] Record actual counts, hashes, limitations; commit and open one PR for DARK-3. Obtain exact-final-SHA independent review and all three remote checks. Expected: no blocking findings and three SUCCESS on the same HEAD.
-- [ ] Merge only after those results. Verify metadata, update continuity evidence, then continue B3 maps/GPS. No physical Gate PASS claim.
+- [x] Record actual counts, hashes, limitations; commit and open one PR for DARK-3. Obtain exact-final-SHA independent review and all three remote checks. Expected: no blocking findings and three SUCCESS on the same HEAD. FinalHEAD200fe011 CONFORME; runs38014527089/38014527139 SUCCESS.
+- [x] Merge only after those results. Verify metadata, update continuity evidence, then continue B3 maps/GPS. No physical Gate PASS claim. PR719 merged0a528d5f; reviewed and integrated trees identical.
