@@ -104,25 +104,33 @@ class DemoFarmSeederTest {
         assertTrue(tools.reset() is AppResult.Success)
         val fresh = demoFarms(workspace).single()
         assertTrue(fresh.id != demo.id)
+        // The retired one keeps the mark, so a later removal still recognises it as a demo.
+        val retired = persistence.farmRepository.observeArchived(workspace).first().single { it.id == demo.id }
+        assertTrue(DemoFarmSeeder.isDemo(retired))
     }
 
     /** #696: «Eliminar datos de demostración» retires only the demo; real data is untouched. */
     @Test fun removeRetiresOnlyTheDemoAndKeepsRealData() = runBlocking {
         val workspace = workspace()
+        // Named exactly like the demo and with the same note, but with no mark: it is a real Farm.
         val realFarm = (persistence.farmRepository.create(
-            NewFarm(workspace, "Finca Real QA ${UUID.randomUUID()}", municipality = "Jaén", province = "Jaén"),
+            NewFarm(
+                workspace, DemoFarmSeeder.DEMO_FARM, description = "la m\u00eda de verdad",
+                municipality = "Ja\u00e9n", province = "Ja\u00e9n", notes = DemoFarmSeeder.DEMO_NOTE,
+            ),
         ) as AppResult.Success).value
         persistence.parcelRepository.create(
             NewParcel(farmId = realFarm, displayName = "Parcela real QA", managedAreaM2 = 5_000.0),
         ).let { assertTrue(it is AppResult.Success) }
 
         assertTrue(tools.load() is AppResult.Success)
-        assertEquals(1, demoFarms(workspace).size)
+        assertEquals(1, demoFarms(workspace).size)   // the real Farm sharing the name is not one
         assertTrue(tools.remove() is AppResult.Success)
 
         assertEquals(emptyList<Farm>(), demoFarms(workspace))
         val real = persistence.farmRepository.observeActive(workspace).first().single { it.id == realFarm }
-        assertNull(real.archivedAt)
+        assertNull(real.archivedAt)                  // same name as the demo, untouched
+        assertEquals(DemoFarmSeeder.DEMO_FARM, real.name)
         assertEquals(1L, real.parcelCount)
         // Calling it again with no demo loaded is safe and still changes nothing.
         assertTrue(tools.remove() is AppResult.Success)
@@ -145,6 +153,7 @@ class DemoFarmSeederTest {
     private suspend fun workspace(): UUID =
         (persistence.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
 
+    /** #696: the demo is recognised by the mark the seeder wrote, never by its name. */
     private suspend fun demoFarms(workspace: UUID): List<Farm> =
-        persistence.farmRepository.observeActive(workspace).first().filter { it.name == DemoFarmSeeder.DEMO_FARM }
+        persistence.farmRepository.observeActive(workspace).first().filter(DemoFarmSeeder::isDemo)
 }

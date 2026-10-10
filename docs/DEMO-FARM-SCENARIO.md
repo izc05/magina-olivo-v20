@@ -64,12 +64,20 @@ La Loma) y una **reparación de valla** (02-10-2026, El Barranco), sin campaña:
 general y no en el ledger, los totales ni el coste/kg de la campaña.
 
 ## Acciones y seguridad
-- **Cargar Finca Demo** es idempotente: cargar dos veces no duplica nada (se reconoce por el nombre
-  `Finca Demo Mágina`).
+La demo se reconoce por una **marca propia** que el seed escribe en la finca (campo `description`:
+`DEMO · finca de demostración (no es real)`), **nunca por el nombre**. Así:
+- el agricultor puede renombrar la demo y seguirá reconociéndose;
+- una finca real **jamás** se confunde con la demo, aunque se llame igual: el test
+  `DemoFarmSeederTest.removeRetiresOnlyTheDemoAndKeepsRealData` crea una finca real llamada
+  exactamente `Finca Demo Mágina`, con la misma nota, y comprueba que sobrevive intacta;
+- al retirar, la marca viaja con el renombrado, así que la finca archivada sigue identificada.
+
+Las demos de versiones anteriores llevaban `description = "DEMO"`; ese valor solo se acepta junto
+con la nota DEMO, para poder retirarlas también.
+
+- **Cargar Finca Demo** es idempotente: cargar dos veces no duplica nada.
 - **Restablecer** retira la demo actual y la crea de nuevo.
-- **Retirar datos de demostración** (#696) retira la demo y **no crea nada**. Solo toca fincas llamadas
-  `Finca Demo Mágina`; las fincas reales, sus parcelas, pesadas, costes y fotos quedan intactas
-  (verificado en `DemoFarmSeederTest.removeRetiresOnlyTheDemoAndKeepsRealData`).
+- **Retirar datos de demostración** (#696) retira la demo y **no crea nada**.
 
 ## Límites conocidos (GAP, no inventados)
 - **Retirar/Restablecer cierran la campaña en curso y archivan la finca** («Finca Demo Mágina (retirada)»
@@ -79,4 +87,6 @@ general y no en el ledger, los totales ni el coste/kg de la campaña.
 - **Sin documentos ni fotos de demostración**: los adjuntos necesitan ficheros reales en el dispositivo;
   no se simulan. Queda como GAP de este escenario.
 - Sin geometría ni referencia catastral real: el mapa de las parcelas demo queda sin recinto.
+- Si el agricultor **borra a mano** la descripción de la finca demo, pierde la marca: dejará de
+  reconocerse y habrá que archivarla a mano. Se prefiere ese riesgo al contrario: tocar datos reales.
 - Datos de un *build* DEV: si algún día se sincroniza, solo con el backend DEV.

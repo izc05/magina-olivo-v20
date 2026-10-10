@@ -15,6 +15,7 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentPriceSnapshot
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
+import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmChanges
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
 import com.isivoltpro.maginaolivo.domain.labour.CrewDraft
@@ -39,7 +40,7 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
 
     override suspend fun load(): AppResult<String> = seeding {
         val workspace = p.workspaceRepository.ensureLocalWorkspace().or("workspace")
-        if (p.farmRepository.observeActive(workspace).first().any { it.name == DEMO_FARM }) {
+        if (demoFarms(workspace).isNotEmpty()) {
             "La Finca Demo ya está cargada. No se ha duplicado nada."
         } else {
             seed(workspace)
@@ -74,20 +75,37 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
      * a Farm's aggregates, and this slice does not invent one (GAP in `docs/DEMO-FARM-SCENARIO.md`).
      */
     private suspend fun retire(workspace: UUID): Int {
-        val demos = p.farmRepository.observeActive(workspace).first().filter { it.name == DEMO_FARM }
+        val demos = demoFarms(workspace)
         demos.forEach { farm ->
             p.campaignRepository.observeForFarm(farm.id).first().filter { it.status.isRunning }.forEach { campaign ->
                 p.campaignRepository.close(campaign.id, maxOf(campaign.startDate, LAST_DAY)).or("close")
             }
-            p.farmRepository.update(farm.id, FarmChanges(name = "$DEMO_FARM (retirada)", municipality = farm.municipality, province = farm.province, notes = DEMO_NOTE)).or("rename")
+            p.farmRepository.update(
+                farm.id,
+                // The mark travels with the rename: dropping `description` here would make the
+                // retired demo indistinguishable from a real Farm on the next load or removal.
+                FarmChanges(
+                    name = "${farm.name.removeSuffix(RETIRED)}$RETIRED", description = DEMO_MARK,
+                    municipality = farm.municipality, province = farm.province, notes = DEMO_NOTE,
+                ),
+            ).or("rename")
             p.farmRepository.archive(farm.id).or("archive")
         }
         return demos.size
     }
 
+    /**
+     * #696 — a Farm is the demo because of the mark this seeder wrote in it, never because of its
+     * name: the farmer may rename the demo, and a real Farm may happen to be called anything at
+     * all. Demos seeded before the mark existed carried `description = "DEMO"` together with the
+     * demo note, and that pair is still recognised so they can be retired too.
+     */
+    private suspend fun demoFarms(workspace: UUID): List<Farm> =
+        p.farmRepository.observeActive(workspace).first().filter { isDemo(it) }
+
     private suspend fun seed(workspace: UUID) {
         val farm = p.farmRepository.create(
-            NewFarm(workspace, DEMO_FARM, description = "DEMO", municipality = "Bedmar", province = "Jaén", notes = DEMO_NOTE),
+            NewFarm(workspace, DEMO_FARM, description = DEMO_MARK, municipality = "Bedmar", province = "Jaén", notes = DEMO_NOTE),
         ).or("farm")
         // #696: each Parcel with its own grove data, watering and municipality (Bedmar and Garciez).
         val llanos = parcel(
@@ -292,6 +310,20 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
 
     companion object {
         const val DEMO_FARM = "Finca Demo Mágina"
+
+        /** The durable mark of a seeded demo Farm; `description` is what carries it. */
+        const val DEMO_MARK = "DEMO \u00b7 finca de demostraci\u00f3n (no es real)"
+
+        private const val RETIRED = " (retirada)"
+
+        private const val LEGACY_MARK = "DEMO"
+
+        /**
+         * True only for a Farm this seeder created. A real Farm is never matched: the mark is a
+         * token no one types by hand, and the legacy pair also requires the demo note.
+         */
+        fun isDemo(farm: Farm): Boolean = farm.description == DEMO_MARK ||
+            (farm.description == LEGACY_MARK && farm.notes == DEMO_NOTE)
         const val DEMO_NOTE = "DEMO · datos ficticios de prueba (solo DEV). No es una recomendación agronómica."
         /** The last recogida day of the 2026/27 demo; Pesadas after «today» are never written. */
         val LAST_DAY: LocalDate = LocalDate.of(2026, 10, 3)
