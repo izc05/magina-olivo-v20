@@ -68,7 +68,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
 import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
-import com.isivoltpro.maginaolivo.feature.reports.shareCampaignReport
+import com.isivoltpro.maginaolivo.feature.reports.shareReport
 import com.isivoltpro.maginaolivo.feature.reports.writeCampaignReport
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
@@ -298,7 +298,7 @@ fun CampaignDetailRoute(
                     }
                     reportStatus = written.fold(
                         onSuccess = { file ->
-                            shareCampaignReport(context, file)
+                            shareReport(context, file)
                                 .fold({ "Informe listo: ${file.name}" }, { "El informe está guardado, pero no hay con qué abrirlo." })
                         },
                         onFailure = { "No hemos podido crear el informe en este teléfono." },

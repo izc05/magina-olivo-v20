@@ -1,4 +1,4 @@
-# Fase 25 — Informe PDF de campaña (primer *slice*)
+# Fase 25 — Informes PDF de campaña y de temporada
 
 Estado: implementado y verificado en rama; sin prueba física del propietario.
 Base: `main` `b810f274`. Rama: `feat/android-campaign-pdf`.
@@ -64,13 +64,44 @@ JVM (`CampaignReportTest`, 4 casos):
 Instrumentada (`CampaignReportPdfTest`, 2 casos): el fichero existe, empieza por `%PDF`, se llama
 como debe, tiene una página A4 de 595×842 puntos, y un informe largo **se parte en varias páginas**.
 
-Verificación local: Gradle 9.4.1 + JDK 17, `lintDevDebug` y los dos casos instrumentados en el AVD
-`MaginaOlivo_Claude_API35` → BUILD SUCCESSFUL, 2/2 PASS; `CampaignReportTest` 4/4 PASS.
+JVM (`SeasonReportTest`, 3 casos): el documento dice lo mismo que el resumen de la explotación
+(kilos, rendimiento, recogida, general, total y los dos coste/kg), el orden y el porcentaje por
+finca, el periodo real de la temporada; una temporada sin campañas y los costes sin confirmar.
+
+Instrumentada (`ReportPdfTest`, 2 casos): el fichero existe, empieza por `%PDF`, se llama como debe,
+tiene una página A4 de 595×842 puntos, y un informe largo **se parte en varias páginas**.
+
+Verificación local: Gradle 9.4.1 + JDK 17 → `lintDevDebug`, `testDevDebugUnitTest` y
+`assembleDevDebugAndroidTest` SUCCESSFUL; en el AVD `MaginaOlivo_Claude_API35`, `ReportPdfTest`
+2/2 PASS.
+
+## Segundo informe: la temporada de la explotación
+
+`SeasonReport` se construye desde el **mismo `FarmOverview`** que ya pinta «Resumen de la
+explotación» en Mi Campo, así que tampoco calcula nada propio:
+
+1. **Producción de la temporada**: kilos, pesadas, rendimiento y cuántas fincas tuvieron campaña.
+2. **Costes de la temporada**: coste de recogida y su coste/kg, **gastos generales aparte**, coste
+   total y coste total/kg. Una moneda por línea; nada se convierte.
+3. **Por finca**: kilos, su porcentaje del total, rendimiento y coste/kg, mayor primero; una finca
+   archivada se marca como historia.
+4. **Periodo**: del 1 de septiembre al 31 de agosto, con las fechas reales de la temporada.
+
+El test JVM compara el informe **contra los formateadores de la pantalla** (`overviewKilos`,
+`overviewYield`, `overviewCost`, `overviewCostPerKg`, `overviewTotalCostPerKg`) sobre el mismo
+`FarmOverview`: si alguna vez el documento y la pantalla divergen, falla. Una temporada sin campañas
+sale con guiones y sus avisos, nunca con ceros, y los **costes sin confirmar** (#449) viajan al
+documento con su «(incompleto)».
+
+Se dispara con «Informe PDF de la temporada», junto a «Ver por finca»; el PDF lo escribe el mismo
+`ReportPdf` y sale por el selector del sistema.
+
+El renderizador se ha generalizado a `ReportDocument` (título, subtítulo, periodo, avisos y
+secciones), así que el informe de parcela que venga después no toca el dibujo.
 
 ## Límites y siguiente paso (no inventados)
 
-- **Solo informe de campaña.** Finca y parcela quedan para el siguiente *slice*, con el mismo patrón:
-  modelo puro desde `FarmOverview` y los agregados de parcela.
+- **Falta el informe de parcela**, con el mismo patrón.
 - **Sin mapa ni gráficas en el PDF**: el contrato de Fase 25 los menciona «where available»; dibujar
   el recinto y las series es otro *slice* y necesita su propia evidencia.
 - **No hay previsualización dentro de la app**: se delega en el visor de PDF del teléfono a través

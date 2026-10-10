@@ -36,6 +36,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import java.util.UUID
+import kotlinx.coroutines.launch
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /** #359: weighed kilos, «—» when nothing was weighed (never «0 kg»). */
@@ -114,6 +115,11 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
     var byFarm by rememberSaveable { mutableStateOf(false) }
     val overview = overviews.firstOrNull { it.season == seasonName } ?: overviews.first()
     var periodMenu by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var reportStatus by remember { mutableStateOf<String?>(null) }
+    // A new season is a different document: never keep the previous one's message.
+    androidx.compose.runtime.LaunchedEffect(seasonName) { reportStatus = null }
     Column(Modifier.fillMaxWidth().testTag("farm-overview"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         // #359 follow-up: the period is always visible, so the kilos never read as «of all time».
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -156,6 +162,32 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
         if (overview.farms.isNotEmpty()) {
             MoTertiaryButton(if (byFarm) "Ocultar por finca" else "Ver por finca", { byFarm = !byFarm }, Modifier.testTag("farm-overview-by-farm"))
         }
+        // Phase 25: the same figures, as a PDF written on this phone and shared from here.
+        MoTertiaryButton(
+            reportStatus ?: "Informe PDF de la temporada",
+            {
+                reportStatus = "Preparando el informe…"
+                scope.launch {
+                    val written = runCatching {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            com.isivoltpro.maginaolivo.feature.reports.writeReport(
+                                context,
+                                com.isivoltpro.maginaolivo.domain.report.SeasonReport
+                                    .of(overview, java.time.LocalDate.now()).document(),
+                            )
+                        }
+                    }
+                    reportStatus = written.fold(
+                        onSuccess = { file ->
+                            com.isivoltpro.maginaolivo.feature.reports.shareReport(context, file)
+                                .fold({ "Informe listo: ${file.name}" }, { "Guardado, pero no hay con qué abrirlo." })
+                        },
+                        onFailure = { "No hemos podido crear el informe en este teléfono." },
+                    )
+                }
+            },
+            Modifier.testTag("farm-overview-report-pdf"),
+        )
         if (byFarm) {
             overview.farms.forEach { farm ->
                 MoCompactListItem(

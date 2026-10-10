@@ -4,6 +4,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import com.isivoltpro.maginaolivo.domain.report.CampaignReport
+import com.isivoltpro.maginaolivo.domain.report.ReportDocument
 import com.isivoltpro.maginaolivo.domain.report.ReportSection
 import java.io.File
 import java.io.FileOutputStream
@@ -11,7 +12,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Phase 25 — writes a [CampaignReport] as a PDF with the platform's own writer, on the phone and
+ * Phase 25 — writes a [ReportDocument] as a PDF with the platform's own writer, on the phone and
  * with no connection. It only draws what the report already says: it never recomputes a figure,
  * so the document and the screen cannot disagree.
  *
@@ -19,7 +20,7 @@ import java.util.Locale
  * full — because the farmer sends this to a cooperative or an accountant, who needs it legible,
  * not decorated.
  */
-object CampaignReportPdf {
+object ReportPdf {
     /** A4 in PostScript points, the unit [PdfDocument] draws in. */
     const val PAGE_WIDTH = 595
     const val PAGE_HEIGHT = 842
@@ -30,7 +31,7 @@ object CampaignReportPdf {
     private val GENERATED: DateTimeFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy", SPANISH)
 
     /** Writes the document to [target] and returns it. The file is replaced if it existed. */
-    fun write(report: CampaignReport, target: File): File {
+    fun write(report: ReportDocument, target: File): File {
         val document = PdfDocument()
         try {
             val renderer = Renderer(document, report)
@@ -46,8 +47,8 @@ object CampaignReportPdf {
         return target
     }
 
-    /** "informe-campana-2026-27-10-10-2026.pdf" — a name the farmer can find again. */
-    fun fileName(report: CampaignReport): String {
+    /** "informe-campana-de-recogida-2026-27-10-10-2026.pdf" — a name the farmer finds again. */
+    fun fileName(report: ReportDocument): String {
         val slug = (report.title + "-" + report.generatedOn.format(GENERATED))
             .lowercase(SPANISH)
             .replace(ACCENTS) { match -> ACCENT_MAP[match.value] ?: match.value }
@@ -61,7 +62,7 @@ object CampaignReportPdf {
         "á" to "a", "é" to "e", "í" to "i", "ó" to "o", "ú" to "u", "ü" to "u", "ñ" to "n", "ç" to "c",
     )
 
-    private class Renderer(private val document: PdfDocument, private val report: CampaignReport) {
+    private class Renderer(private val document: PdfDocument, private val report: ReportDocument) {
         private val title = paint(17f, bold = true)
         private val heading = paint(12.5f, bold = true)
         private val body = paint(10.5f)
@@ -72,8 +73,8 @@ object CampaignReportPdf {
 
         fun header() {
             draw(report.title, title, 22f)
-            draw(listOfNotNull(report.farmName, report.place).joinToString(" · "), body, 15f)
-            draw("Campaña: ${report.period}", body, 15f)
+            draw(report.subtitle.orEmpty(), body, 15f)
+            draw(report.period, body, 15f)
             draw("Generado el ${report.generatedOn.format(GENERATED)}", quiet, 20f)
         }
 
@@ -184,13 +185,12 @@ internal fun writeCampaignReport(
     expenses: List<com.isivoltpro.maginaolivo.domain.expense.Expense>,
     today: java.time.LocalDate = java.time.LocalDate.now(),
 ): File {
-    val report = CampaignReport.of(campaign, farm, deliveries, harvests, expenses, today)
-    val folder = File(context.filesDir, REPORTS_DIRECTORY)
-    return CampaignReportPdf.write(report, File(folder, CampaignReportPdf.fileName(report)))
+    val report = CampaignReport.of(campaign, farm, deliveries, harvests, expenses, today).document()
+    return writeReport(context, report)
 }
 
 /** Offers the written report to whatever the phone can send or open a PDF with. */
-internal fun shareCampaignReport(context: android.content.Context, file: File): Result<Unit> = runCatching {
+internal fun shareReport(context: android.content.Context, file: File): Result<Unit> = runCatching {
     val uri = androidx.core.content.FileProvider.getUriForFile(
         context,
         "${context.packageName}.$PROVIDER_SUFFIX",
@@ -205,6 +205,15 @@ internal fun shareCampaignReport(context: android.content.Context, file: File): 
         android.content.Intent.createChooser(send, "Compartir informe")
             .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION),
     )
+}
+
+/** Writes any report into the app's own `reports/` folder and returns the file. */
+internal fun writeReport(
+    context: android.content.Context,
+    report: com.isivoltpro.maginaolivo.domain.report.ReportDocument,
+): File {
+    val folder = File(context.filesDir, REPORTS_DIRECTORY)
+    return ReportPdf.write(report, File(folder, ReportPdf.fileName(report)))
 }
 
 internal const val REPORTS_DIRECTORY = "reports"

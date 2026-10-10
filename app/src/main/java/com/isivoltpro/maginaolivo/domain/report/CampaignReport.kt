@@ -18,12 +18,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** One figure of the report: what it is and what it says. */
-data class ReportLine(val label: String, val value: String)
-
-/** A block of the report; [note] is said under it, in the farmer's words. */
-data class ReportSection(val title: String, val lines: List<ReportLine>, val note: String? = null)
-
 /**
  * Phase 25 — a campaign's report as plain data, with no Android in it.
  *
@@ -41,14 +35,17 @@ data class CampaignReport(
     val generatedOn: LocalDate,
     val sections: List<ReportSection>,
     val warnings: List<String> = emptyList(),
-    /** Said at the foot of every page: what this document is, and what it is not. */
-    val footer: String = FOOTER,
-) {
-    companion object {
-        const val FOOTER =
-            "Documento generado por Mágina Olivo desde los datos de este teléfono. " +
-                "No es un certificado ni un documento oficial."
+) : Printable {
+    override fun document() = ReportDocument(
+        title = title,
+        subtitle = listOfNotNull(farmName, place).joinToString(" · "),
+        period = "Campaña: $period",
+        generatedOn = generatedOn,
+        sections = sections,
+        warnings = warnings,
+    )
 
+    companion object {
         private val SPANISH: Locale = Locale.forLanguageTag("es-ES")
         private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy", SPANISH)
 
