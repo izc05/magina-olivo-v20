@@ -77,6 +77,7 @@ fun HomeRoute(
                     weatherFeed = persistence.weatherFeed,
                     oilMarketFeed = persistence.oilMarketFeed,
                     profile = persistence.profileRepository,
+                    parcels = persistence.parcelRepository,
                 )
             }
         },
@@ -210,6 +211,25 @@ fun HomeScreen(
                         icon = entry.type.icon(),
                         onClick = { onActivitySelected(entry.activityId) },
                         modifier = Modifier.testTag("home-upcoming"),
+                    )
+                }
+                // #720 R2: the farmer's own weekly watering days. Shown only when some Parcel has
+                // them; nothing is guessed, and a plan is never a watering already done.
+                if (state.irrigationTurns.isNotEmpty()) {
+                    MoSectionHeader("Próximo riego")
+                    state.irrigationTurns.forEach { turn ->
+                        MoCompactListItem(
+                            title = "${turn.parcelName} · ${dayLabel(turn.date, state.today)}",
+                            subtitle = turn.where ?: "Tus días de riego de esta parcela",
+                            icon = MoIcons.Drop,
+                            modifier = Modifier.testTag("home-irrigation-turn"),
+                        )
+                    }
+                    Text(
+                        "Tu plan semanal de riego. No es un turno oficial de comunidad ni un riego registrado.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoSurfaceTokens.secondaryText,
+                        modifier = Modifier.testTag("home-irrigation-note"),
                     )
                 }
             }

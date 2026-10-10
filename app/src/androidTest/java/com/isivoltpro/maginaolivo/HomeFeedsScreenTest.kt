@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -167,6 +168,49 @@ class HomeFeedsScreenTest {
         show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Value(rain, "AEMET", now.minusSeconds(5 * 3600), stale = true)))
         composeRule.onNodeWithTag("home-weather-mood-rain-static").assertDoesNotExist()
         composeRule.onNodeWithTag("home-weather-mood-rain-animated").assertDoesNotExist()
+    }
+
+    /**
+     * #720 R2: the weekly watering plan shows each Parcel's next day and says plainly what it is
+     * not — a community turn or a watering already recorded. With no days, nothing is shown.
+     */
+    @Test fun theWateringPlanNamesItsNextDaysAndIsNeverPresentedAsAnOfficialTurn() {
+        val day = LocalDate.of(2026, 11, 26)
+        var state by androidx.compose.runtime.mutableStateOf(
+            UiPolishFixtures.home.copy(
+                today = day,
+                irrigationTurns = listOf(
+                    com.isivoltpro.maginaolivo.domain.irrigation.IrrigationTurn(
+                        parcelId = java.util.UUID.randomUUID(), parcelName = "Los Llanos", date = day,
+                        sector = "Sector 1", network = "Red del Barranco",
+                    ),
+                    com.isivoltpro.maginaolivo.domain.irrigation.IrrigationTurn(
+                        parcelId = java.util.UUID.randomUUID(), parcelName = "El Barranco", date = day.plusDays(1),
+                    ),
+                ),
+            ),
+        )
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                HomeScreen(state, LocalTime.of(10, 0), {}, {}, {}, {}, feedNow = now, weatherMotion = false)
+            }
+        }
+        composeRule.onAllNodesWithTag("home-irrigation-turn")[0].performScrollTo()
+            .assertTextContains("Los Llanos · Hoy", substring = true)
+        composeRule.onNode(
+            hasTestTag("home-irrigation-turn") and hasAnyDescendant(hasText("Sector 1 · Red del Barranco")),
+            useUnmergedTree = true,
+        ).assertExists()
+        // Without sector or network the row still says which day it is, never an invented place.
+        composeRule.onAllNodesWithTag("home-irrigation-turn")[1]
+            .assertTextContains("El Barranco · Mañana", substring = true)
+        composeRule.onNodeWithTag("home-irrigation-note").performScrollTo()
+            .assertTextContains("No es un turno oficial de comunidad", substring = true)
+
+        // No irrigation days: no card at all, and no empty state pretending there is a plan.
+        state = UiPolishFixtures.home.copy(today = day, irrigationTurns = emptyList())
+        composeRule.onNodeWithTag("home-irrigation-turn").assertDoesNotExist()
+        composeRule.onNodeWithTag("home-irrigation-note").assertDoesNotExist()
     }
 
     private fun show(state: HomeUiState, onWeatherWeek: () -> Unit = {}) {

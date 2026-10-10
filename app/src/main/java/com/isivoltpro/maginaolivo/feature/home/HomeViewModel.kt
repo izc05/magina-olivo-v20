@@ -13,8 +13,11 @@ import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
+import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationTurn
+import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationTurns
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.market.OilMarketFeed
+import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.market.OilMarketSeries
 import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
 import com.isivoltpro.maginaolivo.domain.profile.ProfileSettings
@@ -75,6 +78,11 @@ data class HomeUiState(
     val oilMarket: FeedState<OilMarketSeries> = FeedState.NotConfigured,
     /** Phase 21A: the preferred cooperative chosen in Perfil; null when none. */
     val cooperativeName: String? = null,
+    /**
+     * #720 R2: the farmer's own next watering days, from each Parcel's irrigation days. A plan,
+     * never a community turn and never a watering already done.
+     */
+    val irrigationTurns: List<IrrigationTurn> = emptyList(),
     /** #620: local agricultural data could not be read reliably; never present this as empty. */
     val localReadError: String? = null,
 ) {
@@ -114,6 +122,8 @@ class HomeViewModel(
     private val oilMarketFeed: OilMarketFeed? = null,
     /** Phase 21A: «Mi perfil»; null where no profile exists (tests, previews). */
     profile: ProfileRepository? = null,
+    /** #720 R2: the Parcels whose irrigation days make the watering plan; null in tests/previews. */
+    private val parcels: ParcelRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
@@ -220,6 +230,7 @@ class HomeViewModel(
                         weather = mutableState.value.weather,
                         oilMarket = mutableState.value.oilMarket,
                         cooperativeName = mutableState.value.cooperativeName,
+                        irrigationTurns = mutableState.value.irrigationTurns,
                         localReadError = null,
                     )
                 }
@@ -229,6 +240,22 @@ class HomeViewModel(
             // Cache first; a refresh runs in the background and never holds Inicio up.
             viewModelScope.launch { feed.refreshIfStale() }
             viewModelScope.launch { feed.observe().collect { value -> mutableState.value = mutableState.value.copy(oilMarket = value) } }
+        }
+        // #720 R2: the watering plan follows the active Farms' Parcels. It is local data, so it
+        // never holds Inicio up and a read failure simply leaves the card out.
+        parcels?.let { repository ->
+            viewModelScope.launch {
+                state.map { ui -> ui.farms.map { it.id } }.distinctUntilChanged()
+                    .flatMapLatest { ids ->
+                        if (ids.isEmpty()) flowOf(emptyList())
+                        else combine(ids.map { repository.observeActive(it) }) { lists -> lists.toList().flatten() }
+                    }
+                    .catch { emit(emptyList()) }
+                    .collect { list ->
+                        val today = mutableState.value.today ?: clock.today(zone())
+                        mutableState.value = mutableState.value.copy(irrigationTurns = IrrigationTurns.of(list, today))
+                    }
+            }
         }
         viewModelScope.launch {
             profileSettings.collect { settings ->
