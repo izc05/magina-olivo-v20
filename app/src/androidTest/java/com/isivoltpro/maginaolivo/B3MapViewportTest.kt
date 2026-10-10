@@ -51,13 +51,21 @@ class B3MapViewportTest {
         compose.onNodeWithTag("farm-map-coordinates").assertDoesNotExist()
     }
 
+    /**
+     * #711 (owner's order): the recinto reference is drawn from the moment the map opens, with its
+     * FEGA/MAPA credit in sight, and it remains the farmer's to turn off. What it never becomes is
+     * a silent layer: in «Solo parcelas» no remote raster is requested and the credit disappears.
+     */
     @Test fun sigpacIsAnExplicitReferenceAndDisabledInLocalOnlyMode() {
         show(FarmMapState())
+        compose.onNodeWithText("FEGA/MAPA", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("farm-map-layer").performClick()
+        compose.onNodeWithText("Ocultar recintos SIGPAC (referencia)").assertIsDisplayed().performClick()
+        compose.onNodeWithText("FEGA/MAPA", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("farm-map-layer").performClick()
         compose.onNodeWithText("Ver recintos SIGPAC (referencia)").assertIsDisplayed().performClick()
         compose.onNodeWithText("FEGA/MAPA", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("farm-map-layer").performClick()
-        compose.onNodeWithText("Ocultar recintos SIGPAC (referencia)").assertIsDisplayed()
         compose.onNodeWithTag("farm-map-base-NONE").performClick()
         compose.waitForIdle()
         val location = compose.onNodeWithTag("farm-map-my-location").fetchSemanticsNode().boundsInRoot
