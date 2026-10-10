@@ -56,12 +56,54 @@ nunca dentro del coste de recogida. El gasóleo general (02-10-2026) cae **dentr
 3 pesadas (1.600 + 1.900 + 1.600 = **5.100 kg**; 19,50 / 20,40 / 19,60 %), 3 días, jornales 3 × 3 × 60 € = 540 €,
 maquinaria 3 × 170 € = 510 €, transporte 70 €; todo pagado. Separada de 2026/27 en Histórico y gráficas.
 
-## Trabajos
-Tratamiento de otoño (20-09-2025), poda, labores de suelo, abonado, tratamiento de primavera, mantenimiento,
-observación y cuatro riegos (15-06, 10-07, 22-07, 18-08-2026) en distintas parcelas; sin importe (el dinero
-está solo en el libro de gastos). Durante la campaña activa hay además un **tratamiento general** (30-09-2026,
-La Loma) y una **reparación de valla** (02-10-2026, El Barranco), sin campaña: deben verse en el Cuaderno
-general y no en el ledger, los totales ni el coste/kg de la campaña.
+## Trabajos del año, con su detalle agronómico
+Cada trabajo lleva **el detalle tipado que le corresponde** (#696), así que los bloques de tratamiento,
+abonado, poda, suelo, riego, mantenimiento e incidencia tienen datos reales que mostrar. Ningún detalle es
+un importe: el dinero sigue estando solo en el libro de gastos.
+
+| Fecha | Trabajo | Parcelas | Detalle | Maquinaria |
+|---|---|---|---|---|
+| 20-09-2025 | Tratamiento de otoño | todas | Caldo bordelés Demo · 15 l · 0,3 l/100 l · repilo | Atomizador 3 h |
+| 10-02-2026 | Poda | Los Llanos | Poda de producción · 3 personas · 18 h · triturado | — |
+| 12-03-2026 | Labores de suelo | La Loma | Laboreo superficial · cultivador | Tractor 4.200→4.205 h |
+| 25-03-2026 | Abonado | todas | NPK 20-10-10 Demo · 640 kg · 2 kg/olivo · al suelo | Tractor 6 h |
+| 20-04-2026 | Tratamiento de primavera | todas | Fungicida Demo F · 8 l · 0,05 l/100 l · repilo | Atomizador 3,5 h |
+| 08-05-2026 | Mantenimiento de goteros | El Barranco | Revisión · red de goteo Sector 2 | — |
+| 15-06-2026 | Riego | Los Llanos | 180 min · 320 m³ · Sector 1 · 0,12 €/m³ → 38,40 € | — |
+| 01-07-2026 | Observación del cuajado | La Loma | *(sin detalle: el contrato no le da campos)* | — |
+| 10-07-2026 | Riego | Los Llanos | 240 min · 430 m³ · Sector 1 · 15 €/h × 4 h → 60 € | — |
+| 22-07-2026 | Riego | El Barranco | 150 min · 260 m³ · Sector 2 · 25 €/riego → 25 € | — |
+| 18-08-2026 | Riego | Los Llanos | 180 min · 280 m³ · Sector 1 · 0,12 €/m³ → 33,60 € | — |
+| 25-08-2026 | Rotura de tubería | El Barranco | Incidencia · riego · **alta** · resuelta · tramo de 6 m | — |
+| 30-09-2026 | Tratamiento general | La Loma | Insecticida Demo M · 5 l · mosca del olivo | — |
+| 02-10-2026 | Reparación de valla | El Barranco | Reparación · valla perimetral | — |
+
+**La Loma es de secano**: nunca se riega. Los riegos solo caen en las dos parcelas de goteo.
+
+El **precio del riego es una foto histórica de la tarifa** de ese registro (D2): el estimado es exactamente
+precio unitario × cantidad, se lee en el propio riego y **no entra en ningún total económico**.
+
+El tratamiento general (30-09-2026) y la reparación de valla (02-10-2026) caen **dentro de las fechas** de la
+campaña activa pero no pertenecen a ella: deben verse en el Cuaderno general y no en el ledger, los totales ni
+el coste/kg de la campaña (QA de #417).
+
+## Trabajo planificado y avisos
+Dos trabajos **planificados** por delante de hoy (fechas relativas al día en que se carga la demo), para
+probar Calendario, planificación y avisos:
+
+| Cuándo | Trabajo | Hora | Previsión | Avisos |
+|---|---|---|---|---|
+| hoy + 4 días | Tratamiento de otoño previsto (todas) | 08:00 | 3 h · 2 personas · Cuadrilla Demo | día antes + mismo día |
+| hoy + 11 días | Riego previsto (Los Llanos) | 06:30 | 4 h · 1 persona | día antes |
+
+Trabajo planificado **no es un registro de algo hecho**: no lleva coste ni pesada, y al completarse es la
+misma actividad la que se cierra, nunca un segundo registro.
+
+## Maquinaria
+Tres máquinas de demostración, identificadas por su nota DEMO: **Tractor 90 CV (DEMO)** (4.200 h),
+**Atomizador 1.000 l (DEMO)** y **Vibradora (DEMO)** (980 h). Las usan los trabajos de la tabla anterior, así
+que cada máquina muestra su historial de usos. La maquinaria de la recogida (tractor, vibradora y remolque por
+jornada) es la del libro de gastos y se cuenta aparte.
 
 ## Acciones y seguridad
 La demo se reconoce por una **marca propia** que el seed escribe en la finca (campo `description`:
@@ -78,12 +120,18 @@ con la nota DEMO, para poder retirarlas también.
 - **Cargar Finca Demo** es idempotente: cargar dos veces no duplica nada.
 - **Restablecer** retira la demo actual y la crea de nuevo.
 - **Retirar datos de demostración** (#696) retira la demo y **no crea nada**.
+- **Retirar y Restablecer** archivan además las **máquinas de demostración** (se reconocen por su nota),
+  así que salen de los selectores; cualquier máquina real queda intacta y el test lo comprueba.
 
 ## Límites conocidos (GAP, no inventados)
 - **Retirar/Restablecer cierran la campaña en curso y archivan la finca** («Finca Demo Mágina (retirada)»
   en *Fincas archivadas*): **no hay borrado físico**, porque ningún repositorio ofrece borrado en cascada
   de una finca y sus agregados. Implementarlo es un *slice* propio, con su migración y sus pruebas.
 - Las pesadas se fechan hasta el 03-10-2026: la carga falla en un dispositivo con fecha anterior.
+- Las **personas (jornaleros) de la demo no se retiran**: el repositorio de mano de obra no ofrece archivar
+  ni borrar un trabajador. Quedan en los selectores con su «(DEMO)» en el nombre.
+- El trabajo planificado usa la **fecha del dispositivo** (`LocalDate.now()`), no el calendario del
+  *workspace*: es dato de prueba en DEV, no un hecho agrícola.
 - **Sin documentos ni fotos de demostración**: los adjuntos necesitan ficheros reales en el dispositivo;
   no se simulan. Queda como GAP de este escenario.
 - Sin geometría ni referencia catastral real: el mapa de las parcelas demo queda sin recinto.

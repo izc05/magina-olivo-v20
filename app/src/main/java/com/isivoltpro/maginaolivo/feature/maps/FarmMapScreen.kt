@@ -116,6 +116,8 @@ fun FarmMapRoute(
         onTapParcel = viewModel::tapParcel,
         onImport = viewModel::importSelected,
         onLink = viewModel::linkSelected,
+        onAddInspected = viewModel::addInspected,
+        onDismissInspected = viewModel::dismissInspected,
         onOpenParcel = onOpenParcel,
         onLocationProblemAction = { problem ->
             viewModel.dismissLocationProblem()
@@ -159,6 +161,8 @@ fun FarmMapScreen(
     showMap: Boolean = true,
     onLocationProblemAction: (LocationProblem) -> Unit = {},
     onDismissLocationProblem: () -> Unit = {},
+    onAddInspected: () -> Unit = {},
+    onDismissInspected: () -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     // #711 B3 (owner's order): the map opens on the PNOA photo with the official boundaries
@@ -176,10 +180,16 @@ fun FarmMapScreen(
     var reviewSheet by rememberSaveable { mutableStateOf(false) }
     var topOverlayHeightPx by remember { mutableStateOf(0) }
     var bottomOverlayHeightPx by remember { mutableStateOf(0) }
-    val mapped = remember(state.parcels, state.candidates, state.taken) {
+    val mapped = remember(state.parcels, state.candidates, state.taken, state.inspected) {
         state.parcels.mapNotNull { p -> p.geometryGeoJson?.let { MapParcel(p.id.toString(), p.displayName, it) } } +
             state.candidates.filter { it.reference !in state.taken }
-                .map { MapParcel(it.reference, it.reference, it.geometryGeoJson, MapParcelKind.CANDIDATE, parcelNumber(it.reference)) }
+                .map { MapParcel(it.reference, it.reference, it.geometryGeoJson, MapParcelKind.CANDIDATE, parcelNumber(it.reference)) } +
+            // #711 B3: the parcel just read keeps its own outline drawn while its card is open.
+            listOfNotNull(
+                state.inspected
+                    ?.takeIf { read -> state.candidates.none { it.reference == read.reference } }
+                    ?.let { MapParcel(it.reference, it.reference, it.geometryGeoJson, MapParcelKind.CANDIDATE, parcelNumber(it.reference)) },
+            )
     }
     val withBoundary = state.parcels.count { it.geometryGeoJson != null }
 
@@ -192,7 +202,7 @@ fun FarmMapScreen(
                 cadastreLines = cadastreLines,
                 sigpacLines = sigpacLines,
                 selectedId = state.selectedSavedId?.toString(),
-                selectedIds = state.selected,
+                selectedIds = state.selected + setOfNotNull(state.inspected?.reference),
                 onSelected = onTapParcel,
                 onTap = { latitude, longitude -> onTapMap(latitude, longitude) },
                 focus = state.focus,
@@ -232,6 +242,7 @@ fun FarmMapScreen(
                         FarmMapMode.VIEW -> listOfNotNull(
                             "$withBoundary con límites",
                             (state.parcels.size - withBoundary).takeIf { it > 0 }?.let { "$it sin ubicar" },
+                            "Toca una parcela para ver sus datos",
                         ).joinToString(" · ")
                     },
                     style = MaterialTheme.typography.bodySmall,
@@ -338,7 +349,10 @@ fun FarmMapScreen(
             }
             state.error?.let { Notice(it, MoColors.current.errorText, Modifier.testTag("farm-map-error")) }
             state.message?.let { Notice(it, MoColors.current.successText, Modifier.testTag("farm-map-message")) }
-            BottomPanel(state, onOpenParcel, onSearchByReference, onReview = { reviewSheet = true }, onLink = onLink)
+            BottomPanel(
+                state, onOpenParcel, onSearchByReference, onReview = { reviewSheet = true }, onLink = onLink,
+                onAddInspected = onAddInspected, onDismissInspected = onDismissInspected,
+            )
         }
     }
 
@@ -434,11 +448,16 @@ private fun BottomPanel(
     onSearchByReference: () -> Unit,
     onReview: () -> Unit,
     onLink: () -> Unit,
+    onAddInspected: () -> Unit = {},
+    onDismissInspected: () -> Unit = {},
 ) {
     when (state.mode) {
         FarmMapMode.VIEW -> {
             val parcel = state.parcels.firstOrNull { it.id == state.selectedSavedId }
-            if (parcel != null) {
+            val read = state.inspected
+            if (read != null) {
+                OfficialParcelCard(read, state.inspectedPlace, onAdd = onAddInspected, onDismiss = onDismissInspected)
+            } else if (parcel != null) {
                 MoSectionCard(title = parcel.displayName, icon = MoIcons.Parcels, modifier = Modifier.testTag("farm-map-parcel-card")) {
                     // #361: say it is the selected, saved parcel, and where it is.
                     Text(
@@ -496,6 +515,48 @@ private fun BottomPanel(
                 )
             }
         }
+    }
+}
+
+/**
+ * #711 B3 (owner's order): what Catastro says about the parcel the farmer just touched —
+ * reference, polygon and parcel, surface and place — and the one action that follows. The copy
+ * the app would keep is a reference boundary, never a cadastral certificate, and that is said.
+ */
+@Composable
+private fun OfficialParcelCard(
+    candidate: CadastralCandidate,
+    place: com.isivoltpro.maginaolivo.domain.registry.RegistryLocation?,
+    onAdd: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    MoSectionCard(
+        title = defaultParcelName(candidate.reference),
+        icon = MoIcons.Parcels,
+        modifier = Modifier.testTag("farm-map-official-card"),
+    ) {
+        Text(
+            "Parcela de Catastro · no está en tu olivar",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoColors.current.secondaryText,
+            modifier = Modifier.testTag("farm-map-official-status"),
+        )
+        MoLabeledValue("Referencia catastral", candidate.reference, Modifier.fillMaxWidth())
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+            MoLabeledValue("Superficie catastral", candidate.areaM2?.let(::hectares), Modifier.weight(1f))
+            MoLabeledValue(
+                "Municipio",
+                place?.let { listOfNotNull(it.municipality, it.province).joinToString(" · ") },
+                Modifier.weight(1f),
+            )
+        }
+        Text(
+            "Datos de Catastro. El contorno guardado es una referencia, no un certificado catastral.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoColors.current.secondaryText,
+        )
+        MoPrimaryButton("Añadir a la finca", onAdd, Modifier.fillMaxWidth().testTag("farm-map-official-add"))
+        MoTertiaryButton("Cerrar", onDismiss, Modifier.align(Alignment.CenterHorizontally).testTag("farm-map-official-close"))
     }
 }
 

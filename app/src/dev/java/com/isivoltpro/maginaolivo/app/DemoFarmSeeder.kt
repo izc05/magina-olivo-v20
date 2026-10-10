@@ -2,9 +2,18 @@ package com.isivoltpro.maginaolivo.app
 
 import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.isRunning
+import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
+import com.isivoltpro.maginaolivo.domain.activity.IncidentSeverity
+import com.isivoltpro.maginaolivo.domain.activity.IncidentState
+import com.isivoltpro.maginaolivo.domain.activity.IrrigationPrice
+import com.isivoltpro.maginaolivo.domain.activity.IrrigationPricingBasis
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
+import com.isivoltpro.maginaolivo.domain.agenda.ActivityPlanning
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderKind
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderRequest
 import com.isivoltpro.maginaolivo.domain.campaign.NewCampaign
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
@@ -23,11 +32,16 @@ import com.isivoltpro.maginaolivo.domain.labour.LabourPayment
 import com.isivoltpro.maginaolivo.domain.labour.LabourRateBasis
 import com.isivoltpro.maginaolivo.domain.labour.LabourRateSnapshot
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
+import com.isivoltpro.maginaolivo.domain.machinery.MachineCategory
+import com.isivoltpro.maginaolivo.domain.machinery.MachineDraft
+import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
 import com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem
 import com.isivoltpro.maginaolivo.domain.parcel.NewParcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelAgronomy
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 import kotlinx.coroutines.flow.first
 
@@ -80,6 +94,11 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
             p.campaignRepository.observeForFarm(farm.id).first().filter { it.status.isRunning }.forEach { campaign ->
                 p.campaignRepository.close(campaign.id, maxOf(campaign.startDate, LAST_DAY)).or("close")
             }
+            // #427: archiving is not a cascade, and planned work blocks it. The demo's own planned
+            // work is cancelled, because it was never going to happen; no real Farm is touched here.
+            p.activityRepository.observeForFarm(farm.id).first()
+                .filter { it.status == ActivityStatus.PLANNED }
+                .forEach { p.activityRepository.cancel(it.id).or("cancel ${it.description}") }
             p.farmRepository.update(
                 farm.id,
                 // The mark travels with the rename: dropping `description` here would make the
@@ -90,6 +109,13 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
                 ),
             ).or("rename")
             p.farmRepository.archive(farm.id).or("archive")
+        }
+        if (demos.isNotEmpty()) {
+            // Machines are of the whole olivar, not of one Farm: the demo's own are retired by their
+            // mark, so they leave the pickers while every real machine is left untouched.
+            p.machineRepository.observeActive().first().filter { it.notes == DEMO_NOTE }.forEach {
+                p.machineRepository.archive(it.id).or("archive machine")
+            }
         }
         return demos.size
     }
@@ -119,28 +145,126 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
         )
         val all = setOf(llanos, loma, barranco)
 
-        // Work through the year, before and between the campaigns. No money: costs live in the ledger.
+        // #696 (owner's order): the machines the demo works use, so Maquinaria is not empty and the
+        // works that used them show it. They carry the demo note, which is how they are retired.
+        val tractor = machine("Tractor 90 CV (DEMO)", MachineCategory.TRACTOR, "DEMO-TR-01", 4_200.0)
+        val atomizer = machine("Atomizador 1.000 l (DEMO)", MachineCategory.ATOMIZER, "DEMO-AT-01", null)
+        machine("Vibradora (DEMO)", MachineCategory.HARVEST, "DEMO-VB-01", 980.0)
+
+        // Work through the year, before and between the campaigns, each with its typed agronomic
+        // detail so the treatment, fertilisation, pruning, soil, irrigation, maintenance and
+        // incident blocks all have something real to read. No money here: costs live in the ledger,
+        // and an irrigation price is only the historical tariff snapshot of its own record (D2).
         listOf(
-            Triple(ActivityType.PHYTOSANITARY, LocalDate.of(2025, 9, 20), "Tratamiento de otoño (DEMO)") to all,
-            Triple(ActivityType.PRUNING, LocalDate.of(2026, 2, 10), "Poda (DEMO)") to setOf(llanos),
-            Triple(ActivityType.SOIL_WORK, LocalDate.of(2026, 3, 12), "Labores de suelo (DEMO)") to setOf(loma),
-            Triple(ActivityType.FERTILIZATION, LocalDate.of(2026, 3, 25), "Abonado (DEMO)") to all,
-            Triple(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 4, 20), "Tratamiento fitosanitario primavera (DEMO)") to all,
-            Triple(ActivityType.MAINTENANCE, LocalDate.of(2026, 5, 8), "Mantenimiento de goteros (DEMO)") to setOf(barranco),
-            Triple(ActivityType.IRRIGATION, LocalDate.of(2026, 6, 15), "Riego (DEMO)") to setOf(llanos),
-            Triple(ActivityType.OBSERVATION, LocalDate.of(2026, 7, 1), "Observación del cuajado (DEMO)") to setOf(loma),
-            Triple(ActivityType.IRRIGATION, LocalDate.of(2026, 7, 10), "Riego (DEMO)") to setOf(llanos),
-            Triple(ActivityType.IRRIGATION, LocalDate.of(2026, 7, 22), "Riego (DEMO)") to setOf(loma),
-            Triple(ActivityType.IRRIGATION, LocalDate.of(2026, 8, 18), "Riego (DEMO)") to setOf(barranco),
+            Work(
+                ActivityType.PHYTOSANITARY, LocalDate.of(2025, 9, 20), "Tratamiento de otoño (DEMO)", all,
+                ActivityDetail.Phytosanitary(
+                    productName = "Caldo bordelés Demo", activeSubstance = "sulfato de cobre (DEMO)",
+                    totalQuantity = 15.0, unit = "l", doseValue = 0.3, doseUnit = "l/100 l",
+                    reason = "Repilo (DEMO)", equipmentText = "Atomizador 1.000 l (DEMO)",
+                    treatmentObservations = "Sin viento, al atardecer (DEMO)",
+                ),
+                machines = listOf(MachineUseInput(atomizer, usageHours = 3.0)),
+            ),
+            Work(
+                ActivityType.PRUNING, LocalDate.of(2026, 2, 10), "Poda (DEMO)", setOf(llanos),
+                ActivityDetail.Pruning(
+                    pruningType = "Poda de producción (DEMO)", workerCount = 3, hours = 18.0,
+                    residueManagement = "Triturado en la calle (DEMO)",
+                ),
+            ),
+            Work(
+                ActivityType.SOIL_WORK, LocalDate.of(2026, 3, 12), "Labores de suelo (DEMO)", setOf(loma),
+                ActivityDetail.SoilWork(workType = "Laboreo superficial (DEMO)", method = "Cultivador (DEMO)"),
+                machines = listOf(MachineUseInput(tractor, startHours = 4_200.0, endHours = 4_205.0)),
+            ),
+            Work(
+                ActivityType.FERTILIZATION, LocalDate.of(2026, 3, 25), "Abonado (DEMO)", all,
+                ActivityDetail.Fertilization(
+                    productName = "NPK 20-10-10 Demo", totalQuantity = 640.0, unit = "kg",
+                    doseValue = 2.0, doseUnit = "kg/olivo", applicationMethod = "Al suelo, antes de lluvia (DEMO)",
+                ),
+                machines = listOf(MachineUseInput(tractor, usageHours = 6.0)),
+            ),
+            Work(
+                ActivityType.PHYTOSANITARY, LocalDate.of(2026, 4, 20), "Tratamiento fitosanitario primavera (DEMO)", all,
+                ActivityDetail.Phytosanitary(
+                    productName = "Fungicida Demo F", activeSubstance = "difenoconazol (DEMO)",
+                    totalQuantity = 8.0, unit = "l", doseValue = 0.05, doseUnit = "l/100 l",
+                    reason = "Prevención de repilo (DEMO)", equipmentText = "Atomizador 1.000 l (DEMO)",
+                ),
+                machines = listOf(MachineUseInput(atomizer, usageHours = 3.5)),
+            ),
+            Work(
+                ActivityType.MAINTENANCE, LocalDate.of(2026, 5, 8), "Mantenimiento de goteros (DEMO)", setOf(barranco),
+                ActivityDetail.Maintenance(maintenanceType = "Revisión (DEMO)", assetText = "Red de goteo, Sector 2 (DEMO)"),
+            ),
+            Work(
+                ActivityType.IRRIGATION, LocalDate.of(2026, 6, 15), "Riego (DEMO)", setOf(llanos),
+                irrigation(180, 320.0, "Sector 1", LocalDate.of(2026, 6, 15), IrrigationPricingBasis.PER_M3, 12, 320.0),
+            ),
+            // The contract gives OBSERVATION no structured fields: its header says everything.
+            Work(ActivityType.OBSERVATION, LocalDate.of(2026, 7, 1), "Observación del cuajado (DEMO)", setOf(loma)),
+            Work(
+                ActivityType.IRRIGATION, LocalDate.of(2026, 7, 10), "Riego (DEMO)", setOf(llanos),
+                irrigation(240, 430.0, "Sector 1", LocalDate.of(2026, 7, 10), IrrigationPricingBasis.PER_HOUR, 1_500, 4.0),
+            ),
+            // La Loma is dryland: only the two drip parcels are ever watered in the demo.
+            Work(
+                ActivityType.IRRIGATION, LocalDate.of(2026, 7, 22), "Riego (DEMO)", setOf(barranco),
+                irrigation(150, 260.0, "Sector 2", LocalDate.of(2026, 7, 22), IrrigationPricingBasis.PER_EVENT, 2_500, 1.0),
+            ),
+            Work(
+                ActivityType.IRRIGATION, LocalDate.of(2026, 8, 18), "Riego (DEMO)", setOf(llanos),
+                irrigation(180, 280.0, "Sector 1", LocalDate.of(2026, 8, 18), IrrigationPricingBasis.PER_M3, 12, 280.0),
+            ),
+            Work(
+                ActivityType.INCIDENT, LocalDate.of(2026, 8, 25), "Rotura en la tubería principal (DEMO)", setOf(barranco),
+                ActivityDetail.Incident(
+                    category = "Riego (DEMO)", severity = IncidentSeverity.HIGH, state = IncidentState.RESOLVED,
+                    actionTaken = "Sustituido un tramo de 6 m (DEMO)", resolvedAt = INCIDENT_CLOSED,
+                ),
+            ),
             // Owner on #413 (#417 QA): general work inside the 2026/27 dates; it never belongs to the campaign.
-            Triple(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 9, 30), "Tratamiento general, no de recogida (DEMO)") to setOf(loma),
-            Triple(ActivityType.MAINTENANCE, LocalDate.of(2026, 10, 2), "Reparación de valla (DEMO)") to setOf(barranco),
-        ).forEach { (what, parcels) ->
+            Work(
+                ActivityType.PHYTOSANITARY, LocalDate.of(2026, 9, 30), "Tratamiento general, no de recogida (DEMO)", setOf(loma),
+                ActivityDetail.Phytosanitary(
+                    productName = "Insecticida Demo M", activeSubstance = "lambda cihalotrina (DEMO)",
+                    totalQuantity = 5.0, unit = "l", doseValue = 0.1, doseUnit = "l/100 l",
+                    reason = "Mosca del olivo (DEMO)", equipmentText = "Atomizador 1.000 l (DEMO)",
+                ),
+            ),
+            Work(
+                ActivityType.MAINTENANCE, LocalDate.of(2026, 10, 2), "Reparación de valla (DEMO)", setOf(barranco),
+                ActivityDetail.Maintenance(maintenanceType = "Reparación (DEMO)", assetText = "Valla perimetral (DEMO)"),
+            ),
+        ).forEach { work ->
             p.activityRepository.create(
-                NewActivity(farmId = farm, type = what.first, activityDate = what.second, description = what.third,
-                    parcelIds = parcels, notes = DEMO_NOTE, completeImmediately = true),
-            ).or("activity ${what.third}")
+                NewActivity(farmId = farm, type = work.type, activityDate = work.date, description = work.description,
+                    parcelIds = work.parcels, notes = DEMO_NOTE, completeImmediately = true,
+                    detail = work.detail, machines = work.machines),
+            ).or("activity ${work.description}")
         }
+
+        // #696 (owner's order): planned work ahead of today, with its hour, crew and local
+        // reminders, so Calendario, planificación and avisos have something to show. Planned work
+        // is not a record of anything done: it carries no cost and no Pesada.
+        val soon = LocalDate.now()
+        planned(
+            farm, ActivityType.PHYTOSANITARY, soon.plusDays(4), "Tratamiento de otoño previsto (DEMO)", all,
+            ActivityDetail.Phytosanitary(
+                productName = "Caldo bordelés Demo", reason = "Repilo (DEMO)",
+                doseValue = 0.3, doseUnit = "l/100 l", equipmentText = "Atomizador 1.000 l (DEMO)",
+            ),
+            ActivityPlanning(LocalTime.of(8, 0), expectedDurationMinutes = 180, expectedPeopleCount = 2, crewText = "Cuadrilla Demo"),
+            listOf(ReminderRequest(ReminderKind.PREVIOUS_DAY), ReminderRequest(ReminderKind.SAME_DAY)),
+        )
+        planned(
+            farm, ActivityType.IRRIGATION, soon.plusDays(11), "Riego previsto (DEMO)", setOf(llanos),
+            ActivityDetail.Irrigation(durationMinutes = 240, sectorText = "Sector 1", systemText = "Goteo"),
+            ActivityPlanning(LocalTime.of(6, 30), expectedDurationMinutes = 240, expectedPeopleCount = 1),
+            listOf(ReminderRequest(ReminderKind.PREVIOUS_DAY)),
+        )
 
         val ana = worker("Ana García (DEMO)")
         val miguel = worker("Miguel Torres (DEMO)")
@@ -229,6 +353,66 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
 
     private suspend fun worker(name: String): UUID = p.labourRepository.addWorker(name).or("worker $name")
 
+    /**
+     * The demo's machine, created once and reused afterwards. A machine name is unique in the
+     * whole olivar and retiring it does not free the name, so restoring and updating the retired
+     * one is what keeps «Restablecer» working instead of failing on a duplicate.
+     */
+    private suspend fun machine(name: String, category: MachineCategory, serial: String, hours: Double?): UUID {
+        val draft = MachineDraft(
+            name = name, category = category, make = "Demo", model = "Demo",
+            registrationOrSerial = serial, currentHours = hours, notes = DEMO_NOTE,
+        )
+        p.machineRepository.observeArchived().first().firstOrNull { it.name == name }?.let { retired ->
+            p.machineRepository.restore(retired.id).or("restore machine $name")
+            p.machineRepository.update(retired.id, draft).or("update machine $name")
+            return retired.id
+        }
+        p.machineRepository.observeActive().first().firstOrNull { it.name == name }?.let { return it.id }
+        return p.machineRepository.create(draft).or("machine $name")
+    }
+
+    /** Planned work: an hour, a crew and its reminders. Saved as planned, never as done. */
+    private suspend fun planned(
+        farm: UUID,
+        type: ActivityType,
+        date: LocalDate,
+        description: String,
+        parcels: Set<UUID>,
+        detail: ActivityDetail?,
+        planning: ActivityPlanning,
+        reminders: List<ReminderRequest>,
+    ) {
+        p.activityRepository.create(
+            NewActivity(farmId = farm, type = type, activityDate = date, description = description,
+                parcelIds = parcels, notes = DEMO_NOTE, completeImmediately = false, detail = detail,
+                planning = planning, reminders = reminders),
+        ).or("planned $description")
+    }
+
+    /**
+     * An irrigation with its historical tariff snapshot. The estimate is exactly unit price times
+     * quantity: it is the farmer's own reading of that record, never a figure any report adds up.
+     */
+    private fun irrigation(
+        minutes: Int,
+        volumeM3: Double,
+        sector: String,
+        priceDate: LocalDate,
+        basis: IrrigationPricingBasis,
+        unitPriceMinor: Long,
+        quantity: Double,
+    ) = ActivityDetail.Irrigation(
+        durationMinutes = minutes,
+        volumeM3 = volumeM3,
+        sectorText = sector,
+        systemText = "Goteo",
+        price = IrrigationPrice(
+            basis = basis, priceDate = priceDate, unitPriceMinor = unitPriceMinor, quantity = quantity,
+            estimatedAmountMinor = Math.round(unitPriceMinor * quantity), currency = "EUR", notes = DEMO_NOTE,
+        ),
+    )
+
     private suspend fun campaign(farm: UUID, name: String, start: LocalDate, parcels: Set<UUID>): UUID {
         val id = p.campaignRepository.create(NewCampaign(farm, name, start, parcels, DEMO_NOTE)).or("campaign $name")
         p.campaignRepository.activate(id).or("activate $name")
@@ -292,6 +476,16 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
         p.labourRepository.recordPayment(LabourPayment(UUID.randomUUID(), worker, campaign, date, minor, "EUR", "DEMO")).or("payment")
     }
 
+    /** One piece of work of the demo year: its header, its Parcels, its typed detail and machines. */
+    private data class Work(
+        val type: ActivityType,
+        val date: LocalDate,
+        val description: String,
+        val parcels: Set<UUID>,
+        val detail: ActivityDetail? = null,
+        val machines: List<MachineUseInput> = emptyList(),
+    )
+
     private class SeedFailure(val step: String, val error: AppError) : Exception(step)
 
     private fun <T> AppResult<T>.or(step: String): T = when (this) {
@@ -327,5 +521,7 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
         const val DEMO_NOTE = "DEMO · datos ficticios de prueba (solo DEV). No es una recomendación agronómica."
         /** The last recogida day of the 2026/27 demo; Pesadas after «today» are never written. */
         val LAST_DAY: LocalDate = LocalDate.of(2026, 10, 3)
+        /** When the demo's irrigation incident was closed. */
+        val INCIDENT_CLOSED: Instant = Instant.parse("2026-08-25T18:00:00Z")
     }
 }

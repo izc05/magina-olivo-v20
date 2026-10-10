@@ -11,6 +11,7 @@ import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
 import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
+import com.isivoltpro.maginaolivo.domain.registry.RegistryLocation
 import com.isivoltpro.maginaolivo.feature.catastro.CadastralCandidate
 import com.isivoltpro.maginaolivo.feature.catastro.CadastreClient
 import com.isivoltpro.maginaolivo.feature.catastro.CadastreError
@@ -54,6 +55,14 @@ data class FarmMapState(
     val myLocation: GeoPoint? = null,
     /** #361: why «Mi ubicación» could not answer, so the screen offers the right way out. */
     val locationProblem: LocationProblem? = null,
+    /**
+     * #711 B3 (owner's order): the official parcel the farmer just touched on the photo, so its
+     * reference and surface can be read — and added — without switching the screen to ADD first.
+     * Null while nothing is being consulted; a parcel already saved selects itself instead.
+     */
+    val inspected: CadastralCandidate? = null,
+    /** Municipality/province Catastro gives for [inspected]; null while unknown or unavailable. */
+    val inspectedPlace: RegistryLocation? = null,
 ) {
     val selectedCandidates: List<CadastralCandidate> get() = candidates.filter { it.reference in selected }
 }
@@ -86,7 +95,8 @@ class FarmMapViewModel(
         searchJob?.cancel()
         mutableState.update {
             it.copy(mode = mode, candidates = emptyList(), selected = emptySet(), selectedSavedId = null,
-                searching = false, error = null, message = null, importCompleted = false)
+                searching = false, error = null, message = null, importCompleted = false,
+                inspected = null, inspectedPlace = null)
         }
     }
 
@@ -128,10 +138,89 @@ class FarmMapViewModel(
 
     fun tapMap(latitude: Double, longitude: Double) {
         if (mutableState.value.mode == FarmMapMode.VIEW) {
-            mutableState.update { it.copy(selectedSavedId = null) }
+            inspect(latitude, longitude)
             return
         }
         findNear(latitude, longitude)
+    }
+
+    /**
+     * #711 B3 (owner's order): viewing the map, a tap asks Catastro which parcel is there, so the
+     * farmer reads its reference and surface and can add it in one step. A parcel already in this
+     * farm selects itself instead, and one saved in another farm says so: nothing is offered twice.
+     */
+    private fun inspect(latitude: Double, longitude: Double) {
+        searchJob?.cancel()
+        mutableState.update {
+            it.copy(searching = true, error = null, message = null, inspected = null, inspectedPlace = null, selectedSavedId = null)
+        }
+        searchJob = viewModelScope.launch {
+            try {
+                val found = client.findNear(latitude, longitude)
+                // The parcel under the finger, not merely the first one the service returned.
+                val candidate = found.firstOrNull { it.covers(longitude, latitude) } ?: found.firstOrNull()
+                if (candidate == null) {
+                    mutableState.update { it.copy(searching = false, error = "Catastro no devolvió parcelas en ese punto.") }
+                    return@launch
+                }
+                val own = mutableState.value.parcels.firstOrNull { it.cadastralReference == candidate.reference }
+                val workspace = mutableState.value.farm?.workspaceId
+                val elsewhere = own == null && workspace != null &&
+                    parcels.findActiveByCadastralReference(workspace, candidate.reference) != null
+                mutableState.update {
+                    it.copy(
+                        searching = false,
+                        inspected = candidate.takeIf { own == null && !elsewhere },
+                        selectedSavedId = own?.id,
+                        taken = if (elsewhere) it.taken + candidate.reference else it.taken,
+                        message = when {
+                            elsewhere -> "La parcela ${candidate.reference} ya está en otra finca de tu olivar."
+                            else -> null
+                        },
+                    )
+                }
+                if (own == null && !elsewhere) fillPlace(candidate)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: CadastreException) {
+                mutableState.update { it.copy(searching = false, error = error.farmerMessage()) }
+            } catch (error: Exception) {
+                mutableState.update {
+                    it.copy(searching = false, error = "No hemos podido consultar Catastro ahora. Tus parcelas guardadas siguen disponibles.")
+                }
+            }
+        }
+    }
+
+    /** Catastro's place for the parcel being read; it never blocks or fails the card. */
+    private suspend fun fillPlace(candidate: CadastralCandidate) {
+        val place = locate(candidate.reference) ?: return
+        mutableState.update {
+            if (it.inspected?.reference == candidate.reference) it.copy(inspectedPlace = place) else it
+        }
+    }
+
+    fun dismissInspected() = mutableState.update { it.copy(inspected = null, inspectedPlace = null) }
+
+    /**
+     * The official parcel just read becomes the one marked for adding, so the farmer confirms it
+     * with the same review sheet as any other. Nothing is saved here.
+     */
+    fun addInspected() {
+        val current = mutableState.value
+        val candidate = current.inspected ?: return
+        if (current.mode == FarmMapMode.LOCATE || candidate.reference in current.taken) return
+        mutableState.update {
+            it.copy(
+                mode = FarmMapMode.ADD,
+                candidates = (it.candidates + candidate).distinctBy { found -> found.reference },
+                selected = it.selected + candidate.reference,
+                inspected = null,
+                inspectedPlace = null,
+                error = null,
+                message = null,
+            )
+        }
     }
 
     fun searchPolygonParcel(province: String, municipality: String, polygon: String, parcel: String) {
@@ -145,10 +234,15 @@ class FarmMapViewModel(
         val candidate = current.candidates.firstOrNull { it.reference == id }
         when {
             candidate == null -> mutableState.update {
-                it.copy(selectedSavedId = runCatching { UUID.fromString(id) }.getOrNull())
+                it.copy(selectedSavedId = runCatching { UUID.fromString(id) }.getOrNull(), inspected = null, inspectedPlace = null)
             }
             candidate.reference in current.taken -> mutableState.update {
                 it.copy(message = "La parcela ${candidate.reference} ya está en tu olivar.")
+            }
+            // Viewing, touching a parcel reads it; marking parcels is what ADD is for.
+            current.mode == FarmMapMode.VIEW -> {
+                mutableState.update { it.copy(inspected = candidate, inspectedPlace = null, selectedSavedId = null) }
+                viewModelScope.launch { fillPlace(candidate) }
             }
             current.mode == FarmMapMode.LOCATE -> mutableState.update {
                 it.copy(selected = if (candidate.reference in it.selected) emptySet() else setOf(candidate.reference))
@@ -321,6 +415,26 @@ private fun ruralPart(reference: String, from: Int, to: Int): String? =
     if (RURAL.matches(reference)) reference.substring(from, to) else null
 
 private val RURAL = Regex("\\d{5}[A-Z]\\d{8}")
+
+/**
+ * Whether the touched coordinate falls inside this parcel: ray casting over each polygon's
+ * exterior ring. Holes are not subtracted, so a tap inside the parcel always counts as inside.
+ */
+internal fun CadastralCandidate.covers(longitude: Double, latitude: Double): Boolean =
+    polygons.any { rings -> rings.firstOrNull()?.let { ring -> ringCovers(ring, longitude, latitude) } == true }
+
+private fun ringCovers(ring: List<Pair<Double, Double>>, x: Double, y: Double): Boolean {
+    if (ring.size < 3) return false
+    var inside = false
+    var previous = ring.size - 1
+    for (current in ring.indices) {
+        val (xi, yi) = ring[current]
+        val (xj, yj) = ring[previous]
+        if ((yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside
+        previous = current
+    }
+    return inside
+}
 
 internal fun CadastralCandidate.centroid(): GeoPoint? {
     val ring = polygons.firstOrNull()?.firstOrNull()?.takeIf { it.isNotEmpty() } ?: return null

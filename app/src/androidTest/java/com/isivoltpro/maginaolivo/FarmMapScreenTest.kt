@@ -112,6 +112,45 @@ class FarmMapScreenTest {
         composeRule.onNodeWithText("Ocultar recintos SIGPAC (referencia)").assertExists()
     }
 
+    /**
+     * #711 B3 (owner's order): touching a parcel while viewing shows what Catastro says about it
+     * — reference, surface and place — and the one action that follows is adding it to the farm.
+     */
+    @Test fun touchingAnOfficialParcelShowsItsDataAndOffersToAddIt() {
+        var added = 0
+        var dismissed = 0
+        val state = androidx.compose.runtime.mutableStateOf(
+            FarmMapState(
+                mode = FarmMapMode.VIEW,
+                inspected = candidate("23044A00400022"),
+                inspectedPlace = com.isivoltpro.maginaolivo.domain.registry.RegistryLocation("Huelma", "Jaén"),
+            ),
+        )
+        composeRule.setContent {
+            MaginaOlivoTheme { screen(state.value, onAddInspected = { added++ }, onDismissInspected = { dismissed++ }) }
+        }
+        composeRule.onNodeWithTag("farm-map-official-card").assertExists()
+        hasTextUnder("farm-map-official-card", "23044A00400022")
+        hasTextUnder("farm-map-official-card", "1,2 ha")
+        hasTextUnder("farm-map-official-card", "Huelma · Jaén")
+        // It is said plainly that this is not one of the farmer's parcels, and not a certificate.
+        composeRule.onNodeWithTag("farm-map-official-status").assertTextContains("no está en tu olivar", substring = true)
+        hasTextUnder(
+            "farm-map-official-card",
+            "Datos de Catastro. El contorno guardado es una referencia, no un certificado catastral.",
+        )
+        composeRule.onNodeWithTag("farm-map-official-add").performClick()
+        composeRule.onNodeWithTag("farm-map-official-close").performClick()
+        composeRule.runOnIdle {
+            assertEquals(1, added)
+            assertEquals(1, dismissed)
+        }
+
+        // Nothing read, nothing selected: the card goes away and no stale data is left on screen.
+        state.value = FarmMapState(mode = FarmMapMode.VIEW)
+        composeRule.onNodeWithTag("farm-map-official-card").assertDoesNotExist()
+    }
+
     /** The notices are plain containers: their text lives in child nodes. */
     private fun hasTextUnder(tag: String, text: String) {
         composeRule.onNode(
@@ -126,10 +165,13 @@ class FarmMapScreenTest {
         onLink: () -> Unit = {},
         onMode: (FarmMapMode) -> Unit = {},
         onLocationAction: (LocationProblem) -> Unit = {},
+        onAddInspected: () -> Unit = {},
+        onDismissInspected: () -> Unit = {},
     ) = FarmMapScreen(
         state = state, onMode = onMode, onSearchCoordinates = {}, onMyLocation = {}, onSearchPolygonParcel = { _, _, _, _ -> },
         onSearchByReference = {}, onTapMap = { _, _ -> }, onTapParcel = {}, onImport = {}, onLink = onLink,
         onOpenParcel = {}, showMap = false, onLocationProblemAction = onLocationAction,
+        onAddInspected = onAddInspected, onDismissInspected = onDismissInspected,
     )
 
     private fun mutableStateOfLocate(parcel: Parcel) =
