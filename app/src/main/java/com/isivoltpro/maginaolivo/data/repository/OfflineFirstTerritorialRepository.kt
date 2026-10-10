@@ -183,7 +183,7 @@ class OfflineFirstTerritorialRepository(
                 territorialDao.insertPersonalPlan(entity)
                 AppResult.Success(Unit)
             } catch (e: Exception) {
-                AppResult.Failure(AppError.Unknown("Error al guardar plan de riego personal: ${e.message}"))
+                AppResult.Failure(AppError.Storage("save_personal_plan", e))
             }
         }
 
@@ -193,7 +193,7 @@ class OfflineFirstTerritorialRepository(
                 territorialDao.deletePersonalPlan(id, workspaceId)
                 AppResult.Success(Unit)
             } catch (e: Exception) {
-                AppResult.Failure(AppError.Unknown("Error al eliminar plan de riego: ${e.message}"))
+                AppResult.Failure(AppError.Storage("delete_personal_plan", e))
             }
         }
 
