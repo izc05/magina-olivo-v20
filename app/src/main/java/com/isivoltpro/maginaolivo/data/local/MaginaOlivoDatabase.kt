@@ -67,11 +67,16 @@ import com.isivoltpro.maginaolivo.data.local.entity.UserProfileEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WeatherCacheEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.entity.AgronomicCredentialEntity
+import com.isivoltpro.maginaolivo.data.local.dao.TerritorialDao
 import com.isivoltpro.maginaolivo.data.local.entity.AgronomicPersonEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryEquipmentInspectionEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryEquipmentProfileEntity
+import com.isivoltpro.maginaolivo.data.local.entity.TerritorialMunicipalityEntity
+import com.isivoltpro.maginaolivo.data.local.entity.IrrigationCommunityEntity
+import com.isivoltpro.maginaolivo.data.local.entity.CommunityWaterNoticeEntity
+import com.isivoltpro.maginaolivo.data.local.entity.PersonalIrrigationPlanEntity
 
-private const val DATABASE_VERSION = 25
+private const val DATABASE_VERSION = 26
 
 @Database(
     entities = [
@@ -121,6 +126,10 @@ private const val DATABASE_VERSION = 25
         AgronomicCredentialEntity::class,
         PhytosanitaryEquipmentProfileEntity::class,
         PhytosanitaryEquipmentInspectionEntity::class,
+        TerritorialMunicipalityEntity::class,
+        IrrigationCommunityEntity::class,
+        CommunityWaterNoticeEntity::class,
+        PersonalIrrigationPlanEntity::class,
     ],
     version = DATABASE_VERSION,
     exportSchema = true,
@@ -168,6 +177,8 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun weatherCacheDao(): WeatherCacheDao
 
     abstract fun phytosanitaryResourceDao(): PhytosanitaryResourceDao
+
+    abstract fun territorialDao(): TerritorialDao
 
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"

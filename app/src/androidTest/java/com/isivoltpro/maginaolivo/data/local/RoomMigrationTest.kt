@@ -33,7 +33,73 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(25, MaginaOlivoDatabase.VERSION)
+        assertEquals(26, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration25To26PreservesFarmsParcelsCampaignsDeliveriesLabourExpensesAndDocuments() {
+        migrationHelper.createDatabase(TEST_DATABASE, 25).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos','Olivos centenarios','Bedmar y Garcíez','Jaén','ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO parcels (id, workspace_id, display_name, cadastral_reference, managed_area_m2, source, status, created_at, updated_at, version, sync_status) VALUES ('p','w','Parcela El Cerrón','23902A001000010000AB',15000.0,'MANUAL','ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','PREPARATION',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, created_at, updated_at, version, sync_status) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO harvests (id, workspace_id, campaign_id, farm_id, harvest_date, weight_grams, created_at, updated_at, version, sync_status) VALUES ('h','w','c','f','2025-11-20',3500000,1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO harvest_labour (id, workspace_id, harvest_id, quantity, unit, created_at, updated_at, version, sync_status) VALUES ('l','w','h',4,'DAY',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO expenses (id, workspace_id, campaign_id, farm_id, expense_date, concept, category, amount_minor, currency, status, origin, created_at, updated_at, version, sync_status) VALUES ('e','w','c','f','2025-11-20','Gasóleo tractor','FUEL',8500,'EUR','POSTED','MANUAL',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO documents (id, workspace_id, owner_type, owner_id, type, mime_type, display_name, local_uri, upload_status, created_at, updated_at, version, sync_status) VALUES ('doc','w','FARM','f','PHOTO','image/jpeg','Foto Olivar','file:///photos/olivar.jpg','UPLOADED',1000,1000,1,'LOCAL_ONLY')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 26, true, DatabaseMigrations.MIGRATION_25_26).use { database ->
+            database.query("SELECT name, municipality FROM farms WHERE id='f'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Finca Los Olivos", cursor.getString(0))
+                assertEquals("Bedmar y Garcíez", cursor.getString(1))
+            }
+            database.query("SELECT display_name, cadastral_reference, managed_area_m2 FROM parcels WHERE id='p'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Parcela El Cerrón", cursor.getString(0))
+                assertEquals("23902A001000010000AB", cursor.getString(1))
+                assertEquals(15000.0, cursor.getDouble(2), 0.0)
+            }
+            database.query("SELECT name, status FROM campaigns WHERE id='c'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("2025/2026", cursor.getString(0))
+                assertEquals("PREPARATION", cursor.getString(1))
+            }
+            database.query("SELECT destination_name, net_grams, ticket_number FROM deliveries WHERE id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("S.C.A. Bedmarense", cursor.getString(0))
+                assertEquals(3500000L, cursor.getLong(1))
+                assertEquals("T-101", cursor.getString(2))
+            }
+            database.query("SELECT quantity, unit FROM harvest_labour WHERE id='l'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(4, cursor.getInt(0))
+                assertEquals("DAY", cursor.getString(1))
+            }
+            database.query("SELECT concept, amount_minor FROM expenses WHERE id='e'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Gasóleo tractor", cursor.getString(0))
+                assertEquals(8500L, cursor.getLong(1))
+            }
+            database.query("SELECT display_name, mime_type, local_uri FROM documents WHERE id='doc'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Foto Olivar", cursor.getString(0))
+                assertEquals("image/jpeg", cursor.getString(1))
+                assertEquals("file:///photos/olivar.jpg", cursor.getString(2))
+            }
+            listOf(
+                "territorial_municipalities",
+                "irrigation_communities",
+                "community_water_notices",
+                "personal_irrigation_plans",
+            ).forEach { table ->
+                database.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+        }
     }
 
     @Test
@@ -64,13 +130,13 @@ class RoomMigrationTest {
     }
 
     @Test
-    fun everySupportedVersionUpgradesTo25KeepingItsWorkspace() {
+    fun everySupportedVersionUpgradesTo26KeepingItsWorkspace() {
         for (version in 1 until MaginaOlivoDatabase.VERSION) {
             context.deleteDatabase(TEST_DATABASE)
             migrationHelper.createDatabase(TEST_DATABASE, version).use { database ->
                 database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Historical farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,7,'PENDING')")
             }
-            migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 25, true, *DatabaseMigrations.all).use { database ->
+            migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 26, true, *DatabaseMigrations.all).use { database ->
                 database.query("SELECT name, version, sync_status FROM workspaces WHERE id='w'").use { cursor ->
                     assertTrue("Missing workspace upgrading v$version", cursor.moveToFirst())
                     assertEquals("Historical farm", cursor.getString(0))
