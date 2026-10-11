@@ -16,23 +16,29 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
@@ -53,6 +59,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.delay
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 /**
@@ -154,89 +161,202 @@ internal fun Note(text: String, tag: String) {
 }
 
 /**
- * AOVE.net's free widget (https://aove.net/insertar-widget-precio-aceite-oliva/), loaded as the
- * publisher serves it: no cache (never an old page passed off as today's), no file or app bridge,
- * links open in the browser. Offline, or if it fails, it says so and shows nothing else.
+ * #271 — «Pulso diario»: AOVE.net's free widget
+ * (https://aove.net/insertar-widget-precio-aceite-oliva/), loaded as the publisher serves it: no
+ * cache (never an old page passed off as today's), no file or app bridge, links open in the
+ * browser.
+ *
+ * It is a **non-blocking** block: the official weekly prices of the Junta are already on screen
+ * above it, read from this phone's cache. While the widget loads, the block is a small strip that
+ * says so; if it fails, is empty or takes too long, the strip is replaced by one line with
+ * «Reintentar» and «Ver en AOVE.net». It never reserves a tall empty area — the defect this fixes.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 internal fun AoveNetPulse() {
     val context = LocalContext.current
-    var failed by remember { mutableStateOf(!isOnline(context)) }
-    // The widget's own height, read from the page once it has drawn (no script bridge needed), so
-    // the three prices are never cut off; bounded so a broken page cannot take over Inicio.
-    var contentHeightDp by remember { mutableStateOf(PULSE_INITIAL_HEIGHT_DP) }
+    // Recreating the WebView from scratch is what «Reintentar» does, so a half-loaded page is
+    // never retried in place.
+    var attempt by remember { mutableStateOf(0) }
+    var online by remember { mutableStateOf(isOnline(context)) }
+    var failed by remember { mutableStateOf(false) }
+    var measured by remember { mutableStateOf<Int?>(null) }
+    var elapsedMs by remember { mutableStateOf(0L) }
+
     // When a connection comes (back), the widget is tried again instead of staying "sin conexión".
     DisposableEffect(context) {
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                failed = false
+                online = true
+            }
+
+            override fun onLost(network: Network) {
+                online = isOnline(context)
             }
         }
         val registered = runCatching { connectivity?.registerDefaultNetworkCallback(callback) }.isSuccess && connectivity != null
         onDispose { if (registered) runCatching { connectivity?.unregisterNetworkCallback(callback) } }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs), modifier = Modifier.testTag("home-market-pulse")) {
-        if (failed) {
-            Note("Pulso diario no disponible sin conexión.", "home-market-pulse-offline")
-        } else {
-            AndroidView(
-                modifier = Modifier.fillMaxWidth().height(contentHeightDp.dp).testTag("home-market-pulse-web"),
-                factory = { viewContext ->
-                    WebView(viewContext).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.cacheMode = WebSettings.LOAD_NO_CACHE
-                        settings.allowFileAccess = false
-                        settings.allowContentAccess = false
-                        webViewClient = object : WebViewClient() {
-                            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                                openInBrowser(viewContext, request.url)
-                                return true
-                            }
 
-                            override fun onPageFinished(view: WebView, url: String?) {
-                                // The widget fills its prices in after load, sometimes slowly on a rural
-                                // connection: measure until the height holds still, within a time limit.
-                                var elapsed = 0L
-                                var last = -1
-                                var steady = 0
-                                val measure = object : Runnable {
-                                    override fun run() {
-                                        val measured = view.contentHeight // CSS px, i.e. dp at the default zoom
-                                        if (measured > 0) {
-                                            contentHeightDp = measured.coerceIn(PULSE_MIN_HEIGHT_DP, PULSE_MAX_HEIGHT_DP)
-                                        }
-                                        steady = if (measured > 0 && measured == last) steady + 1 else 0
-                                        last = measured
-                                        elapsed += PULSE_MEASURE_EVERY_MS
-                                        if (steady < PULSE_STEADY_READINGS && elapsed < PULSE_MEASURE_FOR_MS) {
-                                            view.postDelayed(this, PULSE_MEASURE_EVERY_MS)
+    // Waiting has an end: past the limit the block gives up instead of holding the space open.
+    LaunchedEffect(attempt, online) {
+        elapsedMs = 0L
+        measured = null
+        failed = false
+        while (elapsedMs < MarketPulse.TIMEOUT_MS && measured == null && !failed) {
+            delay(PULSE_TICK_MS)
+            elapsedMs += PULSE_TICK_MS
+        }
+    }
+
+    val outcome = MarketPulse.outcome(online, failed, measured, elapsedMs)
+    PulseBlock(
+        outcome = outcome,
+        heightDp = MarketPulse.blockHeightDp(outcome, measured),
+        onRetry = {
+            online = isOnline(context)
+            attempt += 1
+        },
+        onOpenSource = { openInBrowser(context, Uri.parse(AOVE_NET_DETAIL)) },
+        web = if (outcome == PulseOutcome.UNAVAILABLE) {
+            null
+        } else {
+            { modifier ->
+                // A new attempt builds a new WebView; without this key Compose would reuse the
+                // failed one and «Reintentar» would do nothing.
+                key(attempt) {
+                AndroidView(
+                    modifier = modifier.testTag("home-market-pulse-web"),
+                    factory = { viewContext ->
+                        WebView(viewContext).apply {
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            settings.cacheMode = WebSettings.LOAD_NO_CACHE
+                            settings.allowFileAccess = false
+                            settings.allowContentAccess = false
+                            webViewClient = object : WebViewClient() {
+                                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                                    openInBrowser(viewContext, request.url)
+                                    return true
+                                }
+
+                                override fun onPageFinished(view: WebView, url: String?) {
+                                    // The widget fills its prices in after load, sometimes slowly on a
+                                    // rural connection: measure until the height holds still, within
+                                    // the same time limit the block itself waits.
+                                    var waited = 0L
+                                    var last = -1
+                                    var steady = 0
+                                    val measure = object : Runnable {
+                                        override fun run() {
+                                            val height = view.contentHeight // CSS px = dp at default zoom
+                                            steady = if (height > 0 && height == last) steady + 1 else 0
+                                            last = height
+                                            if (steady >= PULSE_STEADY_READINGS) {
+                                                // Only a measurement big enough to be the three prices
+                                                // becomes height; anything else is an empty page.
+                                                if (MarketPulse.contentHeightDp(height) != null) measured = height else failed = true
+                                                return
+                                            }
+                                            waited += PULSE_MEASURE_EVERY_MS
+                                            if (waited < MarketPulse.TIMEOUT_MS) view.postDelayed(this, PULSE_MEASURE_EVERY_MS)
                                         }
                                     }
+                                    view.postDelayed(measure, PULSE_MEASURE_EVERY_MS)
                                 }
-                                view.postDelayed(measure, PULSE_MEASURE_EVERY_MS)
-                            }
 
-                            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                                if (request.isForMainFrame) failed = true
+                                override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                                    if (request.isForMainFrame) failed = true
+                                }
+
+                                // An HTTP error page loads "successfully": without this, a 404 or a
+                                // 403 from the publisher looked like content and kept its space.
+                                override fun onReceivedHttpError(
+                                    view: WebView,
+                                    request: WebResourceRequest,
+                                    errorResponse: android.webkit.WebResourceResponse,
+                                ) {
+                                    if (request.isForMainFrame) failed = true
+                                }
+
+                                /** A dead render process leaves a blank view; it must not take the app with it. */
+                                override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                                    failed = true
+                                    (view.parent as? android.view.ViewGroup)?.removeView(view)
+                                    view.destroy()
+                                    return true
+                                }
                             }
+                            loadUrl(AOVE_NET_WIDGET)
                         }
-                        loadUrl(AOVE_NET_WIDGET)
+                    },
+                )
+                }
+            }
+        },
+    )
+}
+
+/**
+ * The three states of the pulse block, with no WebView in them so they can be driven in a test.
+ * [web] is the widget itself; it is null when there is nothing to show, and then the block keeps
+ * no height at all.
+ */
+@Composable
+internal fun PulseBlock(
+    outcome: PulseOutcome,
+    heightDp: Int,
+    onRetry: () -> Unit,
+    onOpenSource: () -> Unit,
+    web: (@Composable (Modifier) -> Unit)?,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs), modifier = Modifier.testTag("home-market-pulse")) {
+        when (outcome) {
+            PulseOutcome.UNAVAILABLE -> {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                    Text(
+                        "Precio diario no disponible.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoSurfaceTokens.secondaryText,
+                        modifier = Modifier.testTag("home-market-pulse-unavailable"),
+                    )
+                    TextButton(onClick = onRetry, modifier = Modifier.testTag("home-market-pulse-retry")) { Text("Reintentar") }
+                    TextButton(onClick = onOpenSource, modifier = Modifier.testTag("home-market-pulse-detail")) { Text("Ver en AOVE.net") }
+                }
+            }
+            else -> {
+                Box(Modifier.fillMaxWidth().height(heightDp.dp)) {
+                    // The widget keeps a real size while it loads — a WebView with no height never
+                    // paints — and is simply not visible until it has drawn its prices.
+                    web?.invoke(Modifier.matchParentSize().alpha(if (outcome == PulseOutcome.SHOWN) 1f else 0f))
+                    if (outcome == PulseOutcome.LOADING) {
+                        Row(
+                            Modifier.align(Alignment.Center),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                        ) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Text(
+                                "Buscando el precio diario…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MoSurfaceTokens.secondaryText,
+                                modifier = Modifier.testTag("home-market-pulse-loading"),
+                            )
+                        }
                     }
-                },
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "Fuente: AOVE.net · referencia orientativa diaria, no es una cotización oficial",
-                style = MaterialTheme.typography.labelSmall,
-                color = MoSurfaceTokens.secondaryText,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = { openInBrowser(context, Uri.parse(AOVE_NET_DETAIL)) }, modifier = Modifier.testTag("home-market-pulse-detail")) {
-                Text("Ver detalle")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Fuente: AOVE.net · referencia orientativa diaria, no es una cotización oficial",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MoSurfaceTokens.secondaryText,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onOpenSource, modifier = Modifier.testTag("home-market-pulse-detail")) {
+                        Text("Ver detalle")
+                    }
+                }
             }
         }
     }
@@ -256,12 +376,9 @@ private fun openInBrowser(context: Context, uri: Uri) {
     }
 }
 
-private const val PULSE_INITIAL_HEIGHT_DP = 320
-private const val PULSE_MIN_HEIGHT_DP = 160
-private const val PULSE_MAX_HEIGHT_DP = 560
-private const val PULSE_MEASURE_EVERY_MS = 500L
-private const val PULSE_STEADY_READINGS = 4 // two seconds without change
-private const val PULSE_MEASURE_FOR_MS = 20_000L
+private const val PULSE_MEASURE_EVERY_MS = 400L
+private const val PULSE_STEADY_READINGS = 3 // the height held still for more than a second
+private const val PULSE_TICK_MS = 400L
 private const val AOVE_NET_WIDGET = "https://aove.net/widget/precio-aceite-oliva-hoy/"
 private const val AOVE_NET_DETAIL = "https://aove.net/"
 private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-ES"))

@@ -63,10 +63,14 @@ fun OilMarketRoute(persistence: LocalPersistence) {
 }
 
 /**
- * Phase 20D-3 — «Mercado del aceite»: AOVE.net's daily pulse (publisher-hosted, online only) and
- * the official Junta weeks: this week's change per category and the last 12 weeks drawn as one
- * line per category. A week the source did not publish is a gap in the line, never a guess, and
- * the chart always comes with the same numbers in words, the source and when it was fetched.
+ * Phase 20D-3 — «Mercado del aceite», in the order the owner asked for (#271):
+ *
+ * 1. the **official weekly prices of the Junta** first, from this phone's cache, with their week,
+ *    source and when they were fetched, so the screen is useful the instant it opens;
+ * 2. the **12 weeks** drawn as one line per category — a week the source did not publish is a gap
+ *    in the line, never a guess — always available, whatever the daily pulse does;
+ * 3. below them, the **daily pulse** of AOVE.net in a compact, non-blocking block, labelled as an
+ *    indicative daily reference and never mixed with the official weekly figures.
  */
 @Composable
 fun OilMarketScreen(
@@ -85,11 +89,9 @@ fun OilMarketScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Text("Mercado del aceite", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
-            pulse?.let {
-                MoSectionHeader("Pulso diario")
-                it()
-            }
-            MoSectionHeader("Tendencia oficial semanal")
+            // The official weekly prices lead: they are local and immediate, and they stay on screen
+            // whatever the daily pulse does.
+            MoSectionHeader("Precios oficiales semanales")
             when (official) {
                 is FeedState.Value -> {
                     OfficialTrend(official)
@@ -106,6 +108,16 @@ fun OilMarketScreen(
                 FeedState.NotConfigured -> Note("Sin fuente configurada.", "oil-market-not-configured")
                 FeedState.NoLocation, FeedState.Unavailable ->
                     Note("Aún sin datos oficiales. Se actualizará cuando haya conexión.", "oil-market-unavailable")
+            }
+            pulse?.let {
+                MoSectionHeader("Pulso diario (orientativo)")
+                Text(
+                    "Referencia diaria del mercado en origen. No sustituye a los precios oficiales semanales de arriba.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoColors.current.secondaryText,
+                    modifier = Modifier.testTag("oil-market-pulse-caption"),
+                )
+                it()
             }
             Spacer(Modifier.height(MoSpacing.lg))
         }
