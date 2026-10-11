@@ -155,3 +155,43 @@ A crea finca F y asigna a B con QR temporal. B acepta con Auth verificada. B reg
 ### Estado del arranque
 - **COMENZADO:** inventario contrastado, definición funcional y plan operativo PR #738 + issues #735/#726/#737/#739.
 - **PENDIENTE:** aceptación de dueño de archivos por agentes, G0 de seguridad/CR formal, primeras PRs productivas, pruebas E2E; no afirmar app sincronizada.
+
+
+## 11. Change Request formal — conciliación con `CHANGE-CONTROL.md` (G0)
+
+### Motivation
+La baseline RC1.2 de workspace local individual no soporta las necesidades explícitas del propietario (cuentas distintas, una finca canónica, acuerdos de cosecha, contratos privados, trabajadores autorizados). Esta nueva función tiene prioridad de producto sobre el CMS territorial, sin eliminar ese futuro módulo.
+
+### Proposed change
+Extender la arquitectura Android offline-first con Supabase Auth y membership/grants por finca y capacidad; invitación QR/link verificada; permisos diferentes para propietario, explotador y prestador; sincronización idempotente de la misma finca/Pesadas a cuentas autorizadas; contratos documentales privados, reparto por campaña sin falsear liquidaciones; web privada y Admin plataforma separado.
+
+### Affected baseline sections
+- `RC1.2-PRODUCT-LOCK.md`: propiedad individual/no colaboración en 1.0; necesidad de registrar revisión explícita para compartir fincas.
+- `RC1-BASELINE.md`, `SINGLE-TRACK-EXECUTION.md` y `AGENTS.md`: fase/gates, ownership de trabajo, alcance permitido y no duplicación.
+- `DATA-MODEL` Farm/Workspace/Campaign/Delivery/Expense/Document: identidad, autorización, relaciones históricas y ledger único.
+- `CURRENT-STATE.md`, `ROADMAP-RC1.2.md`, docs #325/#322/#330/#335, arquitectura híbrida #730 y gate G0 #731.
+Referencias definitivas de apartados/líneas deben verificarse por SHA durante revisión de esta CR; no modificar locks en PR docs sin revisión de owners.
+
+### Affected phases
+Añadir gates **G0–G6** del apartado 10 y conectar con Fase 22 (backend) y Fase 23 (Sync), #725 Perfil y #731 Admin. La ampliación de pueblos/cooperativas/publicidad pasa a después del piloto de cuentas compartidas, sin cancelar investigación.
+
+### Data impact
+Esquema remoto Auth/RLS + grants/invitaciones/relaciones/acuerdos/adjuntos; mapping desde Room v25 y la futura migración v26 de #721. Preservar UUIDs y campañas, copias/restauración, importación idempotente, acceso por cuenta, data minimization; no reinterpretar finca registrada como propiedad legal. Puntos de rollback y migraciones seguras antes de tocar producción.
+
+### Offline/sync impact
+Room sigue siendo fuente local de trabajo. Outbox/WorkManager + push/pull/delta/version/tombstones, reintentos y políticas de conflicto; acceso compartido solo tras invitación aceptada online. Supabase sirve verdad remota de permisos y difusión. Cache local por cuenta segregada, controles de expiración y revocación; no prometer revocación retroactiva de datos que otro ya descargó.
+
+### UX impact
+No cambiar barra principal. Finca > Compartir, Personas y acuerdos, Contrato, Invitaciones y estados de sincronización. Cuenta mínima con Auth y registro obligatorio normal (decisión de 10/10); datos agrícolas antiguos conservados mediante vínculo consentido, no pedir reentrada. Adaptar 360dp, modo oscuro y accesibilidad; sin botones que simulen sync.
+
+### Risks
+Acceso cruzado a datos agrícolas privados; contratos/identidad/NIF sensibles; confianza falsa por autodeclaración; gestión de transferencias y vencimientos de concesiones; fugas por Storage/signed URLs; schema viejo incompatible y pérdida Gate21; doble conteo de kilos/gastos; sobrecarga de agentes/migraciones concurrentes; Auth sin protección de cuenta. Mitigaciones: G0, pruebas negativas RLS, Storage privado y 4 cuentas, backup/migración validada, PR chicas, owner único, QA de dos dispositivos/offline.
+
+### Alternatives considered
+Sin colaboración (requerimiento no satisfecho); enviar PDF/Excel/WhatsApp manualmente y duplicar fincas (datos contradictorios); usuarios compartiendo login (inseguro); grant automático al marcar propietario (escalada de privilegios); modelo canónico con invitaciones y permisos verificados (elegido).
+
+### Decision
+**PRODUCTO: APPROVED IN PRINCIPLE** por propietario el 11/10/2026. **CR TÉCNICA: PENDING G0 REVIEW** de data, RLS, continuidad local, ruta Admin y plan de migración. **PRODUCTION DEPLOYMENT: NOT AUTHORIZED**, debe aprobarse al pasar G0/seguridad y entregarse pruebas por SHA. No fusionar PR docs #738 por automatismo; revisión expresa de contradicciones con locks históricos. No editar config Auth/SQL de Supabase vivo por una autorización general de «empezar».
+
+### New baseline version
+**TBD tras revisión G0.** No declarar RC1.3 ni actualizar `AGENTS.md` hasta resolver cambios y aceptación de la revisión. La denominación interna `CR-COLLAB-01` no sustituye la numeración RC1.x vigente.
