@@ -85,3 +85,14 @@ Afecta alcance RC1.2 «solo owner», colaboración post-RC1.2, flujo Cuenta obli
 
 **APPROVED IN PRINCIPLE (product), NOT APPROVED FOR PRODUCTION DEPLOYMENT.**
 Pendiente: contrato de identidad + migración Room + permisos RLS + amenaza/evidencia + ownership + validación cambio baseline. Preparar G0 con pruebas y después PRs pequeñas; nadie modifica main directamente.
+
+
+## 9. CR-COLLAB-01 — Invitación por QR, WhatsApp y enlace (#739)
+
+La vía preferente de onboarding de finca compartida será **Finca > Compartir finca**, sin reintroducir parcelas ni crear varias copias. La finca puede crearla propietario o explotador con control de acceso legítimo: seleccionar «Soy propietario» no otorga permisos. El emisor decide el **alcance específico de la invitación** (ver Pesadas; registrar Pesadas; registrar trabajos; proponer gastos; permisos extra para contratos), muestra QR presencial o comparte enlace por WhatsApp/correo; el destinatario registrado entra con su cuenta o la crea y retoma el flujo, lee permisos, acepta y —si el enlace era abierto— el emisor confirma la identidad. Solo entonces servidor emite un grant RLS verificado para la finca canónica.
+
+Seguridad: QR temporal de **un uso**, no QR permanente pegado en la finca; token opaco aleatorio, almacena hash (no secretos), expiración recomendada inicial 10-15 min presencial / hasta 7 días para link remoto bajo aprobación de emisor, revocable; rate limits y defensa contra screenshot/reenvío; nunca incluir NIF, fotos, geometrías, credenciales o contratos en QR. QR no autoriza operaciones offline: se reclama con conexión y Auth; una vez concedido el acceso, el trabajo offline se sincroniza con política de revocación documentada. Android App Links verificados y web HTTPS fallback, enlace con token de invitación diferente de tokens de sesión OAuth; código manual como alternativa. Sin permiso explícito de contratos, el nuevo invitado no ve PDFs de arrendamiento.
+
+Prueba piloto: Antonio crea El Barranco y da QR a Manuel como operador, Manuel acepta con su propia cuenta, ambos ven misma finca, Manuel registra una Pesada offline y Antonio la ve una vez al sincronizar. Caso inverso: explotador crea finca e invita al propietario, sin atribuir propiedad legal automática. Caso tercero: recolector solo ve sus capacidades, ningún gasto/contrato ajeno. Casos negativos obligatorios: QR caducado/reusado/revocado, otra cuenta reclama, screenshot reenviado, carreras concurrentes, invitado sin Auth, fuga de Storage y revocación. Registro existente en otra cuenta con Catastro coincidente nunca dispara merge automático.
+
+Issue canónica de UX y contrato: https://github.com/izc05/magina-olivo-v20/issues/739. **No implementar al margen de #726 Auth/RLS, #735 colaboración y G0 #731; esta PR sigue siendo exclusivamente documental.**
