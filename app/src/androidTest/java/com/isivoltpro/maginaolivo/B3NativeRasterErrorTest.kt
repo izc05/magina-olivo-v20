@@ -37,18 +37,32 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.storage.FileSource
 import org.maplibre.android.tile.TileOperation
 
+private const val IGN_WMTS = "https://www.ign.es/wmts/"
+
 /** Native failure, native saved feature and explicit fallback; no Room/user records are changed. */
 class B3NativeRasterErrorTest {
     @get:Rule val compose = createComposeRule()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private var observedView: MapView? = null
+    private val baseTileRequested = java.util.concurrent.atomic.AtomicBoolean(false)
     private var observer: MapView.OnTileActionListener? = null
 
+    /**
+     * #741 — the base layer is whichever IGN WMTS the screen opened on, and since #711 B3 that is
+     * the PNOA photo (`pnoa-ma`), not the street map (`ign-base`). Forcing only `ign-base` to fail
+     * left the real base tiles loading normally, so no `TileOperation.Error` ever arrived and the
+     * wait below timed out: the test had stopped exercising the failure it is named after.
+     *
+     * Every IGN WMTS request is sent to a closed local TLS port instead, so the base layer fails
+     * natively whichever one the screen chose, while Catastro and SIGPAC (other hosts) are left
+     * alone — this test asserts about `source == "base"` only.
+     */
     @Before fun failOnlyIgnRequests() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             MapLibre.getInstance(context)
             FileSource.getInstance(context).setResourceTransform { _, url ->
-                if (url.startsWith("https://www.ign.es/wmts/ign-base?")) {
+                if (url.startsWith(IGN_WMTS)) {
+                    baseTileRequested.set(true)
                     // Closed local TLS port produces a real native connection failure, independent of IGN.
                     "https://127.0.0.1:1/b3-unavailable/${url.hashCode()}"
                 } else url
@@ -57,6 +71,7 @@ class B3NativeRasterErrorTest {
     }
 
     @After fun restoreNativeProcessState() {
+        baseTileRequested.set(false)
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             observer?.let { observedView?.removeOnTileActionListener(it) }
         }
@@ -104,7 +119,17 @@ class B3NativeRasterErrorTest {
                 }
             }
         })
-        compose.waitUntil(15_000) { nativeError.get() == "base" }
+        // A timeout here used to read as a slow emulator; it is said plainly when the cause is that
+        // the screen never asked for a remote base tile, so the drift above cannot return silently.
+        try {
+            compose.waitUntil(15_000) { nativeError.get() == "base" }
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            assertTrue(
+                "The map never requested an IGN base tile: this test is no longer forcing the layer the screen uses",
+                baseTileRequested.get(),
+            )
+            throw timeout
+        }
         // Baseline RED must be this assertion, after actual TileOperation.Error was observed.
         compose.onNodeWithTag("farm-map-tile-error").assertIsDisplayed()
         assertSavedGeometry(nativeMap, parcel.id.toString())
