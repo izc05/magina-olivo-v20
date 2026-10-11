@@ -28,13 +28,32 @@ internal data class KiloBreakdown(
 ) {
     companion object {
         fun of(deliveredGrams: Long?, attributedPerParcel: List<Long>): KiloBreakdown {
-            val attributed = attributedPerParcel.takeIf { it.isNotEmpty() }?.sumOf { it }
-            val mixed = if (deliveredGrams != null && attributed != null && deliveredGrams >= attributed) {
-                deliveredGrams - attributed
+            val delivered = deliveredGrams?.takeIf { it >= 0 }
+            val attributed = attributedPerParcel.takeIf { it.isNotEmpty() }?.let(::checkedSum)
+            val mixed = if (delivered != null && attributed != null && delivered >= attributed) {
+                delivered - attributed
             } else {
                 null
             }
-            return KiloBreakdown(deliveredGrams, attributed, mixed)
+            return KiloBreakdown(delivered, attributed, mixed)
+        }
+
+        /**
+         * #497 — the same rule the aggregates follow: a negative figure or a sum that would not fit
+         * in a Long is unknown, never a wrapped-around number. Imported or corrupt records reach
+         * this screen too, and a silent overflow here would print a kilo figure that is a lie.
+         */
+        private fun checkedSum(values: List<Long>): Long? {
+            var total = 0L
+            for (value in values) {
+                if (value < 0) return null
+                total = try {
+                    Math.addExact(total, value)
+                } catch (_: ArithmeticException) {
+                    return null
+                }
+            }
+            return total
         }
     }
 }

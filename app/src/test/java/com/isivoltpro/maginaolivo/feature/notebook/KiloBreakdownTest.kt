@@ -33,6 +33,27 @@ class KiloBreakdownTest {
         assertNull(kiloBreakdownLine(KiloBreakdown.of(demoDelivered, emptyList())))
     }
 
+    @Test fun aSumThatWouldNotFitInALongIsUnknownRatherThanWrappedAround() {
+        // #497: two parcels whose kilos overflow Long. Adding them would wrap to a negative
+        // number and the screen would print a kilo figure that is a lie.
+        val overflowing = listOf(Long.MAX_VALUE - 10, 1_000L)
+        val breakdown = KiloBreakdown.of(Long.MAX_VALUE, overflowing)
+        assertNull(breakdown.attributedGrams)
+        assertNull(breakdown.mixedGrams)
+        assertNull(kiloBreakdownLine(breakdown))
+        // Right at the edge it still answers, because that sum does fit.
+        val exact = KiloBreakdown.of(Long.MAX_VALUE, listOf(Long.MAX_VALUE - 10, 10L))
+        assertEquals(Long.MAX_VALUE, exact.attributedGrams)
+        assertEquals(0L, exact.mixedGrams)
+    }
+
+    @Test fun aNegativeFigureIsUnknown() {
+        // Corrupt or imported records can carry one; it must not become a kilo on screen.
+        assertNull(KiloBreakdown.of(demoDelivered, listOf(-1L, 2_000_000L)).attributedGrams)
+        assertNull(KiloBreakdown.of(-5L, demoParcels).deliveredGrams)
+        assertNull(kiloBreakdownLine(KiloBreakdown.of(-5L, demoParcels)))
+    }
+
     @Test fun attributedKilosAreNeverAllowedToExceedTheCampaign() {
         // Corrupt or imported data (#497) must not produce a negative "mixed" figure.
         val breakdown = KiloBreakdown.of(1_000_000L, listOf(900_000L, 900_000L))
