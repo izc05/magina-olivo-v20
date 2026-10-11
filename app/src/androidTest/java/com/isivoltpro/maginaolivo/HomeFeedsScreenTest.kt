@@ -42,7 +42,7 @@ class HomeFeedsScreenTest {
         composeRule.onNodeWithTag("home-quick-pesadas").assertDoesNotExist()
         composeRule.onNodeWithTag("home-no-farms").assertDoesNotExist()
         composeRule.onNodeWithTag("home-market").performScrollTo()
-        composeRule.onNode(hasTestTag("home-market") and hasAnyDescendant(hasText("Sin fuente configurada."))).assertExists()
+        composeRule.onNode(hasTestTag("home-market") and hasAnyDescendant(hasText("Sin precios oficiales guardados todavía."))).assertExists()
         composeRule.onNodeWithTag("home-cooperative").performScrollTo().assertIsDisplayed()
     }
 

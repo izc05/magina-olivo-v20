@@ -71,8 +71,13 @@ class OilMarketScreenTest {
             .assertTextContains("AOVE de 3,42 €/kg a 3,68 €/kg", substring = true)
             .assertTextContains("Virgen de 3,16 €/kg a 3,31 €/kg", substring = true)
             .assertTextContains("Lampante de 3,00 €/kg a 3,19 €/kg", substring = true)
-        composeRule.onNodeWithText("Semana 31").assertExists()
-        composeRule.onNodeWithText("Semana 38").assertExists()
+        // #355: each end of the axis now carries its date too («Semana 31 · 27 jul»). The source
+        // line below also names the latest week, so the separator keeps these two unambiguous.
+        composeRule.onNodeWithText("Semana 31 · ", substring = true).assertExists()
+        composeRule.onNodeWithText("Semana 38 · ", substring = true).assertExists()
+        // Both ends of the price scale are on screen, with their unit.
+        composeRule.onNodeWithText("mín. 3,00 €/kg").assertExists()
+        composeRule.onNodeWithText("máx. 3,68 €/kg").assertExists()
         composeRule.onNodeWithTag("oil-market-source").performScrollTo()
             .assertTextContains("Observatorio de Precios y Mercados - Junta de Andalucía", substring = true)
             .assertTextContains("consultado 28 ", substring = true).assertTextContains(", 07:30", substring = true)

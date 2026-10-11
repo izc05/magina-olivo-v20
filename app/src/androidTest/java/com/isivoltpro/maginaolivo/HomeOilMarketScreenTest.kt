@@ -72,6 +72,6 @@ class HomeOilMarketScreenTest {
             }
         }
         composeRule.onNodeWithTag("home-market-official-stale").assertIsDisplayed()
-        composeRule.onNodeWithTag("home-market-official-not-configured").assertTextContains("Sin fuente configurada.")
+        composeRule.onNodeWithTag("home-market-official-not-configured").assertTextContains("Sin precios oficiales guardados todavía.")
     }
 }
