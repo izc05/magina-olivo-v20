@@ -96,3 +96,62 @@ Seguridad: QR temporal de **un uso**, no QR permanente pegado en la finca; token
 Prueba piloto: Antonio crea El Barranco y da QR a Manuel como operador, Manuel acepta con su propia cuenta, ambos ven misma finca, Manuel registra una Pesada offline y Antonio la ve una vez al sincronizar. Caso inverso: explotador crea finca e invita al propietario, sin atribuir propiedad legal automática. Caso tercero: recolector solo ve sus capacidades, ningún gasto/contrato ajeno. Casos negativos obligatorios: QR caducado/reusado/revocado, otra cuenta reclama, screenshot reenviado, carreras concurrentes, invitado sin Auth, fuga de Storage y revocación. Registro existente en otra cuenta con Catastro coincidente nunca dispara merge automático.
 
 Issue canónica de UX y contrato: https://github.com/izc05/magina-olivo-v20/issues/739. **No implementar al margen de #726 Auth/RLS, #735 colaboración y G0 #731; esta PR sigue siendo exclusivamente documental.**
+
+
+## 10. Acta de arranque y reparto de ejecución — 11/10/2026
+
+**Mandato recibido:** empezar ya la fase cuenta/roles/sync; la confirmación es para organizar y ejecutar por PRs seguras, **no** para cambiar directamente Supabase de producción ni fusionar ramas existentes sin revisión. Siguiente hito visible: dos cuentas comparten una finca y una Pesada se sincroniza una sola vez.
+
+### Inventario contrastado en GitHub, SHA de arranque `d536a6b6`
+- Android: `LocalWorkspaceRepository.ensureLocalWorkspace()` genera `workspaceId` y `ownerUserId` con UUIDs locales sin Auth cloud; `AppCompositionRoot.createAndroid()` monta repositorios Room; `SyncOutboxEntity` y `OutboxWriter` crean cambios pendientes. No hay evidencia de un motor WorkManager pull/push multiusuario operativo.
+- Room `MaginaOlivoDatabase` está en versión **25 en main**; PR territorial #721 introduce v26 y toca `MaginaOlivoDatabase.kt`, `DatabaseMigrations.kt`, `RoomMigrationTest.kt`. Esos archivos quedan **reservados** a #721 hasta su revisión/merge; luego cualquier evolución debe migrar desde v26 y preservar datos v25.
+- `FarmEntity` tiene un `workspaceId` y `DeliveryEntity` un `farmId`, `campaignId`, `netGrams`, `deliveryDate`: el esquema actual opera localmente; agregar miembros sin clonar pesadas requiere planificación de acceso remoto y caché por cuenta.
+- Supabase real `magina-olivo`: public `farms` y `plots` (prototipo Gate D) con 0 filas y RLS enabled; sin esquema cloud para campañas, pesadas ni permisos. Migraciones existentes son Gate D; no hay ramas dev de Supabase registradas al observar. Storage agrícola privado no configurado.
+- PR Android #736 Mercado usa `feature/home/OilMarketScreen.kt` y pruebas, y tiene fallos CI de gate3-emulator/gate3-evidence; PR #734 weather modifica `supabase/functions/weather-forecast/**`; PR docs #732/#733 para Admin/híbrida; PR #721 territorial Room. **Nunca incorporar archivos de esas PRs de forma implícita**.
+
+### Matriz de propietarios de cambios / trabajo seguro en paralelo
+
+| Frente | Responsable sugerido al aceptar la tarea | Alcance inicial | Archivos reservados / condición |
+|---|---|---|---|
+| G0 Identidad/Backend (prioridad absoluta) | **Antigravity** cuando confirme disponibilidad, o Codex si el usuario lo reasigna | Inventario con pruebas, CR, identidad Auth, RLS grants y esquema propuesto, tests A/B/C/D, políticas Storage privado **en rama propia** | Propietario exclusivo de nuevo SQL/Auth/sync; no tocar v25→v26 ni `supabase/functions/weather-forecast/**` |
+| Android UX agrícola | **Claude** tras corregir CI/PR Mercado y cerrar su siguiente slice | Pantallas Cuenta/Invitaciones/Personas y acuerdos; prototipo Compose no conectado y contrato de repository para futuro backend; tests accesibilidad | `feature/profile/**`, nueva `feature/sharing/**`, `feature/farm/**` tras comprobar dueño; no editar `DatabaseMigrations.kt` ni prometer login real |
+| Room territorial | **Antigravity — PR #721 vigente** | Terminar v26 y pruebas de migración/CI | Único dueño de `MaginaOlivoDatabase.kt`, `DatabaseMigrations.kt` hasta merge; no mezclar con Auth |
+| ADMIN y web | **Codex** cuando esté disponible | Auditoría de PRs #16/#66/#117, matriz KEEP/ADAPT/DROP, primer contrato `/admin` con acceso restringido, dashboard de salud técnico; rama documental separada al inicio | No introducir una segunda identidad ni usar service_role desde el cliente; sin acceso general a finca/contratos |
+| Coordinación | **ChatGPT + propietario** | Auditar SHA/PR/CI, gate, preservar prioridades y reportar dependencias | PR #738 documental, issue master #727; nadie trabaja en `main` |
+
+**Si un agente ya tiene archivos asignados:** no interrumpir a mitad de una PR ni asumir que una issue la activa; aceptar el traspaso explícitamente. No iniciar dos motores de sync o dos migraciones Room simultáneamente.
+
+### Secuencia de trabajo con PR pequeñas
+
+1. **G0-Auditoría** (se puede hacer hoy): comparar `main` y PRs, RLS/Storage/Auth live, inventario edge functions, threat model, formalizar CR, matriz de quién puede leer/escribir `farm/campaign/delivery/expense/agreement/document`; declarar HECHO/PARCIAL/FALTANTE. Deliverable: PR solo docs con referencias por SHA.
+2. **G1-Identidad** (primera PR productiva tras G0): Supabase Auth email verificado, sesión segura y recuperación; user_id estable, workspace claim de Room v25/v26 con backup y consentimiento. Pruebas de 2 usuarios sin datos cruzados; no mostrar sincronizado si no pasó roundtrip.
+3. **G2-Sync propia**: modelo remoto canónico compatible Room, outbox persistente WorkManager pull/push, fotos, idempotencia y reconexión; 1 usuario/2 dispositivos con fincas/Pesadas y E2E.
+4. **G3-Compartir finca**: `farm_invitation` QR o enlace one-time con aceptación y permiso servidor; caché por usuario y RLS. Dos cuentas ven la **misma** pesada tras sync. Aun sin acuerdos 70/30 en este gate.
+5. **G4-Acuerdos y contratos**: porcentajes de cosecha aceptados y versionados por campaña, PDF/foto contrato ambos lados (privado), periodo de vigencia/renovaciones, aceptación separada de firma.
+6. **G5-Contratistas y gastos**: enviar actuación y coste propuesto, aprobación de propietario, Expense canónico único, avisos push/in-app por evento confirmado y permisos; auditoría.
+7. **G6-Web privada y ADMIN**: acceso a finca según las mismas grants; Admin plataforma solo controles de cuentas, avisos de fallos, métricas técnicas y CMS autorizado, **nunca lectura general de contratos**. Entrega final tras QA y aprobación del propietario.
+
+**Gates de producto obligatorios por PR:** SHA HEAD, diff delimitado, cambios Room/SQL migraciones con rollback, pruebas unitarias/RLS A-B-C-D/instrumentadas, CI verde, capturas (si UI), evidencias offline/multidispositivo. No merge automático.
+
+### Matriz mínima de autorización a validar (los permisos reales serán por capabilities)
+
+| Datos/acción | Propietario autorizado | Explotador autorizado | Trabajador externo autorizado | ADMIN plataforma |
+|---|---|---|---|---|
+| Ver finca, campaña y pesadas | Sí | Sí | Solo lo estrictamente concedido | No |
+| Crear Pesada | Solo si delegado | Sí | Opcional por trabajo | No |
+| Ver cuota 70/30 aceptada | Sí | Sí | No | No |
+| Ver/subir contrato | Requiere permiso específico | Requiere permiso específico | No por defecto | No |
+| Ver gastos económicos | Solo gastos autorizados | Solo gastos autorizados | Solo propios/autorizados | No |
+| Proponer trabajo/gasto | Si autorizado | Si autorizado | Sí, ámbito propio | No |
+| Conceder/revocar permisos | Con privilegio de gestión verificable | Solo si se le delega | No | No (salvo soporte especial reglado y auditado) |
+| Estado técnico de sync agregado | Propio | Propio | Propio | Sí, sin datos agrícolas privados |
+
+**Riesgos de decisión pendientes del equipo antes de deploy:** titular jurídico vs creador del workspace, consentimiento de cesión/revocación, convivencia de finca preexistente en ambos móviles, protección de contratos contra accesos cruzados, control de versiones y discrepancias en un 70/30, comportamiento offline con grant revocado, coste de Storage y avisos. Se requiere diseño específico para cada uno, no solo una pantalla.
+
+### Primer test de aceptación a preparar desde G0
+
+A crea finca F y asigna a B con QR temporal. B acepta con Auth verificada. B registra sin red una Pesada de 1.200 kg y fecha local; A ve **exactamente una Pesada** al sincronizar, fecha y origen correctos. C no invitado recibe denegación incluso con URL o ID conocido. B no ve contratos ni gastos que no se le han concedido; revocación bloquea nuevos pulls; se documenta el estado offline del dispositivo B hasta la próxima validación. No hay ningún dato histórico Gate21 perdido ni fincas reetiquetadas como «en propiedad» sin consentimiento.
+
+### Estado del arranque
+- **COMENZADO:** inventario contrastado, definición funcional y plan operativo PR #738 + issues #735/#726/#737/#739.
+- **PENDIENTE:** aceptación de dueño de archivos por agentes, G0 de seguridad/CR formal, primeras PRs productivas, pruebas E2E; no afirmar app sincronizada.
