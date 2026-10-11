@@ -19,7 +19,6 @@ import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -40,8 +39,17 @@ class CachedOilMarketFeed(
     private val weeks: Int = 12,
     private val timeoutMillis: Long = 10_000,
 ) : OilMarketFeed {
+    /**
+     * #355 — a build without the public key cannot ask for new weeks, but the phone may still hold
+     * the last official reading it fetched, and those prices do not stop being the Junta's. So the
+     * cache is read either way and «sin fuente» is said only when there is genuinely nothing saved;
+     * what is shown always carries its week and the date it was fetched, never an invented value.
+     */
     override fun observe(): Flow<FeedState<OilMarketSeries>> =
-        if (source == null) flowOf(FeedState.NotConfigured) else database.weatherCacheDao().observe(KEY).map(::stateOf)
+        database.weatherCacheDao().observe(KEY).map { row ->
+            val saved = stateOf(row)
+            if (source != null) saved else saved as? FeedState.Value ?: FeedState.NotConfigured
+        }
 
     override suspend fun refreshIfStale() {
         val market = source ?: return

@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -96,7 +97,10 @@ internal fun OilMarketCard(
                     )
                     if (official.stale) MoStatusChip("Dato antiguo", tone = MoStatusTone.Warning, modifier = Modifier.testTag("home-market-official-stale"))
                 }
-                FeedState.NotConfigured -> Note("Sin fuente configurada.", "home-market-official-not-configured")
+                FeedState.NotConfigured -> Note(
+                    "Sin precios oficiales guardados todavía.",
+                    "home-market-official-not-configured",
+                )
                 FeedState.NoLocation, FeedState.Unavailable ->
                     Note("Aún sin datos oficiales. Se actualizará cuando haya conexión.", "home-market-official-unavailable")
             }
@@ -199,6 +203,9 @@ internal fun AoveNetPulse() {
         onDispose { if (registered) runCatching { connectivity?.unregisterNetworkCallback(callback) } }
     }
 
+    // #355: on a short phone the widget must not push the official weekly prices off the screen.
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp
+
     // Waiting has an end: past the limit the block gives up instead of holding the space open.
     LaunchedEffect(attempt, online) {
         elapsedMs = 0L
@@ -213,7 +220,7 @@ internal fun AoveNetPulse() {
     val outcome = MarketPulse.outcome(online, failed, measured, elapsedMs)
     PulseBlock(
         outcome = outcome,
-        heightDp = MarketPulse.blockHeightDp(outcome, measured),
+        heightDp = MarketPulse.blockHeightDp(outcome, measured, screenHeightDp),
         onRetry = {
             online = isOnline(context)
             attempt += 1

@@ -3,6 +3,10 @@ package com.isivoltpro.maginaolivo.feature.notebook
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
@@ -62,6 +66,15 @@ internal fun CampaignCharts(series: CampaignSeries) {
     }
     Text("Kilos pesados por día y acumulado", style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
     if (kgKnown) {
+        // #355 — the two series share a drawing but not a scale, so the chart says so instead of
+        // letting the line and the bars look comparable.
+        ChartLegend(
+            listOf(
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.55f) to "Barras: kg de cada día",
+                MoColors.current.primaryText to "Línea: kg acumulados",
+            ),
+            tag = "chart-kg-legend",
+        )
         val bar = MaterialTheme.colorScheme.primary
         val line = MoColors.current.primaryText
         Canvas(
@@ -86,6 +99,12 @@ internal fun CampaignCharts(series: CampaignSeries) {
             }
             drawPath(path, line, style = Stroke(width = 3.dp.toPx()))
         }
+        ChartAxis(
+            left = "máx. día ${Weight.format(series.days.maxOf { it.deliveredGrams ?: 0L })}",
+            right = "total ${Weight.format(knownTotal!!)}",
+            tag = "chart-kg-scale",
+        )
+        ChartAxis(left = first.format(SHORT_DAY), right = last.format(SHORT_DAY), tag = "chart-kg-dates")
     } else {
         Text("La gráfica de kilos se oculta para no dibujar un total incorrecto.", color = MoColors.current.secondaryText, modifier = Modifier.testTag("chart-kg-unavailable"))
     }
@@ -113,6 +132,12 @@ internal fun CampaignCharts(series: CampaignSeries) {
                 drawCircle(dot, radius = 5.dp.toPx(), center = Offset(cx, cy))
             }
         }
+        ChartAxis(left = "mín. ${Percent.format(low)}", right = "máx. ${Percent.format(high)}", tag = "chart-yield-scale")
+        ChartAxis(
+            left = analysed.first().date.format(SHORT_DAY),
+            right = analysed.last().date.format(SHORT_DAY),
+            tag = "chart-yield-dates",
+        )
         Text(yieldSummary, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("chart-yield-summary"))
     }
 
@@ -230,6 +255,7 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
     Text("Kilos pesados por campaña", style = MaterialTheme.typography.labelLarge, color = MoColors.current.secondaryText)
     val kilosLine = historyKilosLine(history)
     if (history.hasKilos) {
+        val topBar = points.maxOf { it.deliveredGrams ?: 0L }
         Canvas(Modifier.fillMaxWidth().height(110.dp).testTag("history-kg").semantics { contentDescription = kilosLine }) {
             val max = points.maxOf { it.deliveredGrams ?: 0L }.coerceAtLeast(1)
             val slot = size.width / points.size
@@ -241,6 +267,9 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
                     topLeft = Offset(slot * index + (slot - barWidth) / 2, size.height - height), size = Size(barWidth, height))
             }
         }
+    }
+    if (history.hasKilos) {
+        ChartAxis(left = "0 kg", right = "máx. ${Weight.format(points.maxOf { it.deliveredGrams ?: 0L })}", tag = "history-kg-scale")
     }
     Text(kilosLine, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("history-kg-summary"))
     if (points.any { (it.legacyUnweighedGrams ?: 0L) > 0 }) {
@@ -257,6 +286,7 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
         Canvas(Modifier.fillMaxWidth().height(80.dp).testTag("history-yield").semantics { contentDescription = yieldLine }) {
             drawSeries(points.map { it.yieldHundredths?.toLong() }, low.toLong(), high.toLong(), ink)
         }
+        ChartAxis(left = "mín. ${Percent.format(low)}", right = "máx. ${Percent.format(high)}", tag = "history-yield-scale")
     }
     Text(yieldLine, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("history-yield-summary"))
 
@@ -266,6 +296,13 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
         val costs = points.mapNotNull { it.costPerKgMilli }
         Canvas(Modifier.fillMaxWidth().height(80.dp).testTag("history-cost").semantics { contentDescription = costLine }) {
             drawSeries(points.map { it.costPerKgMilli }, costs.min(), costs.max(), ink)
+        }
+        history.costCurrency?.let { currency ->
+            ChartAxis(
+                left = "mín. " + com.isivoltpro.maginaolivo.domain.expense.CostPerKg.format(costs.min(), currency),
+                right = "máx. " + com.isivoltpro.maginaolivo.domain.expense.CostPerKg.format(costs.max(), currency),
+                tag = "history-cost-scale",
+            )
         }
     }
     Text(costLine, style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText, modifier = Modifier.testTag("history-cost-summary"))
@@ -308,5 +345,30 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSeries(values: 
         drawCircle(color, radius = 5.dp.toPx(), center = center)
         val next = values.getOrNull(index + 1) ?: return@forEachIndexed
         drawLine(color, center, Offset(slot * (index + 1) + slot / 2, y(next)), strokeWidth = 2.dp.toPx())
+    }
+}
+
+/**
+ * #355 — the ends of a chart's scale in words, under the drawing: without them a line only says
+ * "it went up", and a reader cannot tell 2 % from 20 %. Both ends always carry their unit.
+ */
+@Composable
+private fun ChartAxis(left: String, right: String, tag: String) {
+    Row(Modifier.fillMaxWidth().testTag(tag), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(left, style = MaterialTheme.typography.labelSmall, color = MoColors.current.secondaryText)
+        Text(right, style = MaterialTheme.typography.labelSmall, color = MoColors.current.secondaryText)
+    }
+}
+
+/** What each mark of a chart means, so bars and line are never read as the same magnitude. */
+@Composable
+private fun ChartLegend(entries: List<Pair<androidx.compose.ui.graphics.Color, String>>, tag: String) {
+    Row(Modifier.fillMaxWidth().testTag(tag), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+        entries.forEach { (color, label) ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
+                Box(Modifier.size(10.dp).background(color, CircleShape))
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MoColors.current.secondaryText)
+            }
+        }
     }
 }

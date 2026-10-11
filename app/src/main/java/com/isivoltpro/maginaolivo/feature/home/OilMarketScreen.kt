@@ -105,7 +105,10 @@ fun OilMarketScreen(
                         modifier = Modifier.testTag("oil-market-source"),
                     )
                 }
-                FeedState.NotConfigured -> Note("Sin fuente configurada.", "oil-market-not-configured")
+                FeedState.NotConfigured -> Note(
+                    "Esta instalación no trae la fuente de precios oficiales y no hay ninguna semana guardada todavía.",
+                    "oil-market-not-configured",
+                )
                 FeedState.NoLocation, FeedState.Unavailable ->
                     Note("Aún sin datos oficiales. Se actualizará cuando haya conexión.", "oil-market-unavailable")
             }
@@ -175,9 +178,23 @@ internal fun OilMarketChart(series: OilMarketSeries, compact: Boolean = false) {
             drawPath(path, color, style = Stroke(width = 2.5.dp.toPx()))
         }
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Semana ${OilTrends.weekOf(weeks.first())}", style = MaterialTheme.typography.labelSmall, color = MoColors.current.secondaryText)
-        Text("Semana ${OilTrends.weekOf(weeks.last())}", style = MaterialTheme.typography.labelSmall, color = MoColors.current.secondaryText)
+    // #355 — the ends of the price scale and the dates of the span, so the line can be read as
+    // €/kg and not merely as a shape. Both are taken from the drawn weeks, never rounded up.
+    Row(Modifier.fillMaxWidth().testTag("oil-market-chart-scale"), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("mín. ${OilTrends.euros(all.min())}", style = MaterialTheme.typography.labelSmall, color = MoColors.current.secondaryText)
+        Text("máx. ${OilTrends.euros(all.max())}", style = MaterialTheme.typography.labelSmall, color = MoColors.current.secondaryText)
+    }
+    Row(Modifier.fillMaxWidth().testTag("oil-market-chart-weeks"), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(
+            "Semana ${OilTrends.weekOf(weeks.first())} · ${weeks.first().format(DAY)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MoColors.current.secondaryText,
+        )
+        Text(
+            "Semana ${OilTrends.weekOf(weeks.last())} · ${weeks.last().plusDays(6).format(DAY)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MoColors.current.secondaryText,
+        )
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         lines.forEach { (category, color) ->

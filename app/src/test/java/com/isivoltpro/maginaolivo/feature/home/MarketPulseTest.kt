@@ -29,6 +29,19 @@ class MarketPulseTest {
         assertEquals(640, MarketPulse.MAX_CONTENT_HEIGHT_DP)
     }
 
+    /** #355 — on a short phone the block never eats the official weekly prices above it. */
+    @Test fun onASmallScreenTheBlockKeepsItsShareAndNoMore() {
+        assertEquals(288, MarketPulse.maxContentHeightDp(640))     // a short phone
+        assertEquals(288, MarketPulse.contentHeightDp(606, screenHeightDp = 640))
+        assertEquals(MarketPulse.MAX_CONTENT_HEIGHT_DP, MarketPulse.maxContentHeightDp(2_000))
+        // Never below what the widget needs to paint into while it loads.
+        assertEquals(MarketPulse.LOADING_HEIGHT_DP, MarketPulse.maxContentHeightDp(100))
+        assertEquals(
+            288,
+            MarketPulse.blockHeightDp(PulseOutcome.SHOWN, measuredCssPx = 606, screenHeightDp = 640),
+        )
+    }
+
     @Test fun anEmptyPageIsNotContent() {
         val outcome = MarketPulse.outcome(online = true, failed = false, measuredCssPx = 40, elapsedMs = 1_000)
         assertEquals(PulseOutcome.LOADING, outcome)   // still waiting, not shown

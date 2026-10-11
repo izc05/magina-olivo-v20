@@ -64,6 +64,16 @@ class OilMarketFeedContractTest {
         assertEquals(FeedState.Unavailable, market.observe().first())
     }
 
+    /** #355 — a build with no key still shows the last official weeks the phone saved. */
+    @Test
+    fun withoutASourceTheOfficialWeeksAlreadySavedAreStillShown() = runBlocking {
+        feed().refreshIfStale()                     // one fetch with a source configured
+        val offline = feed(null).observe().first() as FeedState.Value
+        assertEquals("Observatorio de Precios y Mercados - Junta de Andalucía", offline.source)
+        assertEquals(start, offline.fetchedAt)
+        assertEquals(6, offline.value.observations.size)
+    }
+
     @Test
     fun theCachedWeeksGiveTheTrendAndSurviveAFailureUntilTheyAreOld() = runBlocking {
         val market = feed()

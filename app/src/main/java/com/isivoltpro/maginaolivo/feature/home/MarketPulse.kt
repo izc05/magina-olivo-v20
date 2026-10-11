@@ -51,11 +51,28 @@ object MarketPulse {
     const val TIMEOUT_MS = 12_000L
 
     /**
-     * The height to give the widget for a page that measured [measuredCssPx] (CSS pixels, which are
-     * dp at the default zoom), or null when that measurement is not usable content.
+     * On a short phone 640 dp is the whole screen, so the block never takes more than this share of
+     * it: the official weekly prices above stay visible without scrolling the pulse away first.
      */
-    fun contentHeightDp(measuredCssPx: Int): Int? =
-        if (measuredCssPx < MIN_CONTENT_HEIGHT_DP) null else measuredCssPx.coerceAtMost(MAX_CONTENT_HEIGHT_DP)
+    const val MAX_SHARE_OF_SCREEN = 0.45f
+
+    /** The tallest the block may be on a screen of [screenHeightDp]; never below the loading size. */
+    fun maxContentHeightDp(screenHeightDp: Int): Int =
+        (screenHeightDp * MAX_SHARE_OF_SCREEN).toInt().coerceIn(LOADING_HEIGHT_DP, MAX_CONTENT_HEIGHT_DP)
+
+    /**
+     * The height to give the widget for a page that measured [measuredCssPx] (CSS pixels, which are
+     * dp at the default zoom), bounded by what [screenHeightDp] allows, or null when that
+     * measurement is not usable content.
+     */
+    fun contentHeightDp(measuredCssPx: Int, screenHeightDp: Int = Int.MAX_VALUE): Int? =
+        if (measuredCssPx < MIN_CONTENT_HEIGHT_DP) {
+            null
+        } else {
+            measuredCssPx.coerceAtMost(
+                if (screenHeightDp == Int.MAX_VALUE) MAX_CONTENT_HEIGHT_DP else maxContentHeightDp(screenHeightDp),
+            )
+        }
 
     /**
      * [measuredCssPx] is the last height the page reported, or null if it has reported none.
@@ -70,8 +87,8 @@ object MarketPulse {
     }
 
     /** The height the block occupies for an [outcome]; the notice has no fixed height of its own. */
-    fun blockHeightDp(outcome: PulseOutcome, measuredCssPx: Int?): Int = when (outcome) {
-        PulseOutcome.SHOWN -> measuredCssPx?.let(::contentHeightDp) ?: LOADING_HEIGHT_DP
+    fun blockHeightDp(outcome: PulseOutcome, measuredCssPx: Int?, screenHeightDp: Int = Int.MAX_VALUE): Int = when (outcome) {
+        PulseOutcome.SHOWN -> measuredCssPx?.let { contentHeightDp(it, screenHeightDp) } ?: LOADING_HEIGHT_DP
         PulseOutcome.LOADING -> LOADING_HEIGHT_DP
         PulseOutcome.UNAVAILABLE -> 0
     }

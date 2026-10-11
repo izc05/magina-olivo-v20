@@ -378,11 +378,19 @@ private fun ParcelYields(notebook: CampaignNotebook) {
             Text(parcel.fatYield?.let { Percent.format(it.hundredths) } ?: "—", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
         }
     }
-    notebook.deliverySummary.unallocatedGrams?.takeIf { it > 0 }?.let { unallocated ->
+    // #355: the kilos of the campaign, of the parcels and of the mixed Pesadas are three different
+    // figures and the line names all three; no total is recomputed here.
+    kiloBreakdownLine(
+        KiloBreakdown.of(
+            deliveredGrams = notebook.deliverySummary.deliveredGrams,
+            attributedPerParcel = notebook.parcelYields.map { it.attributedGrams },
+        ),
+    )?.let { line ->
         Text(
-            "${Weight.format(unallocated)} sin reparto por parcela cuentan solo en el total de la campaña.",
+            line,
             style = MaterialTheme.typography.bodySmall,
             color = MoColors.current.secondaryText,
+            modifier = Modifier.testTag("notebook-parcel-kilos"),
         )
     }
 }
