@@ -254,6 +254,11 @@ internal fun SummaryTab(
             } ?: "Pendiente de análisis",
             recollectionDays = com.isivoltpro.maginaolivo.feature.harvests.harvestDayCount(notebook.harvests).toString(),
             costPerKg = ledger.costKgLabel(),
+            // El mismo juicio que usan las tarjetas de coste: si algo sigue sin confirmar, la cifra
+            // se llama «contabilizado» y lo dice. Un coste/kg sacado de la mitad de los costes
+            // parece una buena noticia, porque sale mas bajo que el real.
+            costIncomplete = !com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness
+                .of(notebook.labour, notebook.equipment, notebook.expenses).complete,
             span = dashboard.calendarDays?.let { days ->
                 val range = dashboard.countedFrom?.let { from ->
                     dashboard.closedOn?.let { "del ${date(from)} al ${date(it)}" } ?: "desde el ${date(from)}"
@@ -293,8 +298,9 @@ internal fun SummaryTab(
             // #355 bloque C: el coste/kg ya está arriba, en el resumen; aquí sobraría.
             showPerKg = false)
         ParcelYields(notebook)
-        // Phase 19G: charts and year-over-year, all derived from the same records.
-        CampaignCharts(CampaignSeries.of(notebook))
+        // #355 bloque D: las cuatro graficas de esta campana, plegadas por defecto. El historico y
+        // la comparacion entre campanas se quedan fuera: hablan de otras campanas, no de esta.
+        CampaignStatsSection(notebook, CampaignSeries.of(notebook))
         val legacy = notebook.legacyUnweighedGrams
         if (legacy == null || legacy > 0) {
             // CR-010 (A2): the charts are drawn from Pesadas; the legacy kilos are named, not hidden.
