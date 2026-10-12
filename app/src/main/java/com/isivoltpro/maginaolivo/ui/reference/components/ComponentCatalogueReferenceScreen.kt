@@ -39,6 +39,10 @@ import com.isivoltpro.maginaolivo.ui.components.MoSyncState
 import com.isivoltpro.maginaolivo.ui.components.MoSyncStatus
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.components.MoTopAppBar
+import com.isivoltpro.maginaolivo.domain.analytics.ExpenseSlice
+import com.isivoltpro.maginaolivo.ui.charts.MoChartPalette
+import com.isivoltpro.maginaolivo.ui.charts.MoDonut
+import com.isivoltpro.maginaolivo.ui.charts.MoDonutSlice
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
@@ -189,6 +193,46 @@ fun ComponentCatalogueReferenceScreen(
                     color = MoColors.current.secondaryText,
                 )
             }
+
+            // #355 Fase 2, bloque B: los dos donuts con las cifras reales de la finca DEMO, para
+            // revisar color, contraste y leyenda en claro y oscuro antes de llevarlos a Campaña.
+            Text(
+                text = "Gráficas · reparto (#355)",
+                style = MaterialTheme.typography.titleMedium,
+                color = MoColors.current.primaryText,
+            )
+            Text(
+                text = "Kilos por parcela",
+                style = MaterialTheme.typography.labelLarge,
+                color = MoColors.current.secondaryText,
+            )
+            MoDonut(
+                slices = listOf(
+                    MoDonutSlice("El Barranco", 2_710_000, "2.710 kg", MoChartPalette.parcel(0)),
+                    MoDonutSlice("Los Llanos", 1_850_000, "1.850 kg", MoChartPalette.parcel(1)),
+                    MoDonutSlice("Pesadas mezcladas", 2_120_000, "2.120 kg", MoChartPalette.unassigned(), muted = true),
+                ),
+                centreValue = "6.680 kg",
+                centreLabel = "pesados",
+                tag = "catalogue-donut-parcels",
+            )
+            Spacer(Modifier.height(MoSpacing.md))
+            Text(
+                text = "Gastos por categoría",
+                style = MaterialTheme.typography.labelLarge,
+                color = MoColors.current.secondaryText,
+            )
+            MoDonut(
+                slices = listOf(
+                    MoDonutSlice("Jornales", 73_250, "732,50 €", MoChartPalette.cost(ExpenseSlice.LABOUR)),
+                    MoDonutSlice("Maquinaria", 54_000, "540,00 €", MoChartPalette.cost(ExpenseSlice.EQUIPMENT)),
+                    MoDonutSlice("Combustible", 12_000, "120,00 €", MoChartPalette.cost(ExpenseSlice.FUEL)),
+                    MoDonutSlice("Otros", 13_000, "130,00 €", MoChartPalette.cost(ExpenseSlice.OTHER)),
+                ),
+                centreValue = "1.522,50 €",
+                centreLabel = "recogida",
+                tag = "catalogue-donut-costs",
+            )
 
             Spacer(Modifier.height(MoSpacing.xl))
         }
