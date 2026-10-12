@@ -34,6 +34,18 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
  * An unknown figure shows «—». Never a zero: a campaign with no analysis yet has no yield, it
  * does not have a yield of nought.
  */
+/**
+ * #355 — what the cost per kilo is called in the summary.
+ *
+ * The cards this block replaces changed their own title when costs were missing: «Coste/kg» became
+ * «Coste contabilizado/kg». The summary must not lose that warning, because a cost per kilo worked
+ * out from half the costs looks like good news — it is lower than the real one. So when anything
+ * is still unconfirmed the figure is labelled as accounted-for and says, underneath, that it is
+ * incomplete. The figure itself is untouched: the same cents, from the same ledger.
+ */
+internal fun campaignCostLabel(incomplete: Boolean): Pair<String, String?> =
+    if (incomplete) "Coste contabilizado/kg" to "Incompleto" else "Coste/kg" to null
+
 @Composable
 internal fun CampaignSummaryCard(
     weighedKilos: String,
@@ -42,6 +54,8 @@ internal fun CampaignSummaryCard(
     yieldSupport: String,
     recollectionDays: String,
     costPerKg: String,
+    /** True while any jornal, machine use or cost of this campaign is still unconfirmed. */
+    costIncomplete: Boolean,
     span: String?,
     pesadaDates: String?,
     modifier: Modifier = Modifier,
@@ -71,7 +85,8 @@ internal fun CampaignSummaryCard(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 SummaryFigure("Rendimiento", yieldLabel, yieldSupport, Modifier.weight(1f), "campaign-summary-yield")
                 SummaryFigure("Días de recolección", recollectionDays, null, Modifier.weight(1f), "campaign-summary-days")
-                SummaryFigure("Coste/kg", costPerKg, null, Modifier.weight(1f), "campaign-summary-cost")
+                val (costLabel, costNote) = campaignCostLabel(costIncomplete)
+                SummaryFigure(costLabel, costPerKg, costNote, Modifier.weight(1f), "campaign-summary-cost")
             }
             listOfNotNull(span, pesadaDates).takeIf { it.isNotEmpty() }?.let { lines ->
                 Text(
