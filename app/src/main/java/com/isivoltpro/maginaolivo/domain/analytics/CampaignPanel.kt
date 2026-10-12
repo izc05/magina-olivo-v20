@@ -40,7 +40,9 @@ data class ParcelKiloSplit(
     /** Everything the campaign weighed, or null when that total is not known (#497). */
     val deliveredGrams: Long?,
 ) {
-    val attributedGrams: Long? get() = slices.filterNot { it.isMixed }.map { it.grams }.checkedSum()
+    /** Unknown when there are no slices: a refused split has no attributed kilos, not zero of them. */
+    val attributedGrams: Long?
+        get() = slices.filterNot { it.isMixed }.map { it.grams }.takeIf { slices.isNotEmpty() }?.checkedSum()
     val mixedGrams: Long? get() = slices.firstOrNull { it.isMixed }?.grams
     val isEmpty: Boolean get() = slices.isEmpty()
 
@@ -55,8 +57,12 @@ data class ParcelKiloSplit(
          * wrong.
          */
         fun of(deliveredGrams: Long?, attributed: List<ParcelKiloSlice>): ParcelKiloSplit {
-            val named = attributed.filter { it.grams > 0 && it.parcelId != null }
             val total = deliveredGrams?.takeIf { it >= 0 }
+            // A Parcel with negative kilos is a broken record, not an empty one. Dropping it would
+            // quietly hand its kilos to «Pesadas mezcladas», inventing mixed kilos out of a bad
+            // figure, so the whole split is refused instead.
+            if (attributed.any { it.grams < 0 }) return ParcelKiloSplit(emptyList(), total)
+            val named = attributed.filter { it.grams > 0 && it.parcelId != null }
             val namedTotal = named.map { it.grams }.checkedSum()
             if (total == null || namedTotal == null || namedTotal > total) {
                 return ParcelKiloSplit(emptyList(), total)
@@ -123,12 +129,21 @@ object CampaignCostSplit {
     fun of(campaignId: UUID, expenses: List<Expense>, deliveries: List<Delivery>): List<ExpenseSplit> =
         RecollectionLedger.of(campaignId, expenses, deliveries).map { ledger ->
             val bySlice = ledger.posted.groupBy(ExpenseSlice::of)
+            val amounts = ExpenseSlice.entries.associateWith { slice ->
+                bySlice[slice]?.map { it.amountMinor }?.checkedSum()
+            }
+            // One unusable category makes the whole donut of this currency unusable: drawing the
+            // sound categories alone would show parts that do not add up to the total, which reads
+            // as a smaller cost than the real one. The other currencies are unaffected.
+            val unusable = ExpenseSlice.entries.any { bySlice[it] != null && amounts[it] == null }
             ExpenseSplit(
                 currency = ledger.currency,
-                slices = ExpenseSlice.entries.mapNotNull { slice ->
-                    val amount = bySlice[slice]?.map { it.amountMinor }?.checkedSum()
-                    // An amount that does not add up is left out of the drawing, never shown as 0.
-                    amount?.takeIf { it > 0 }?.let { slice to it }
+                slices = if (unusable) {
+                    emptyList()
+                } else {
+                    amounts.entries.mapNotNull { (slice, amount) ->
+                        amount?.takeIf { it > 0 }?.let { slice to it }
+                    }
                 },
             )
         }.filterNot { it.isEmpty }

@@ -89,6 +89,22 @@ class CampaignPanelTest {
         assertTrue(overflow.isEmpty)
     }
 
+    @Test fun aParcelWithNegativeKilosRejectsTheSplitInsteadOfSwellingTheMixedSlice() {
+        // Regression (#355): a negative figure used to be dropped silently, and the kilos it should
+        // have held reappeared inside «Pesadas mezcladas» — a Parcel's bad record turning into
+        // mixed kilos the farmer never weighed that way.
+        val split = ParcelKiloSplit.of(
+            deliveredGrams = 6_680_000,
+            attributed = listOf(
+                ParcelKiloSlice(barranco, "El Barranco", 2_710_000),
+                ParcelKiloSlice(llanos, "Los Llanos", -1_850_000),
+            ),
+        )
+        assertTrue(split.isEmpty)
+        assertNull(split.mixedGrams)
+        assertNull(split.attributedGrams)
+    }
+
     // -------------------------------------------------------------------- costs
 
     @Test fun fuelIsItsOwnSliceOnlyWhenTheCostSaysSo() {
@@ -162,6 +178,39 @@ class CampaignPanelTest {
         val eur = CampaignCostSplit.of(campaign, listOf(expense(ExpenseCategory.FUEL, 12_000)), emptyList()).single()
         // No empty «Jornales 0 €» slice: a category with nothing in it simply is not drawn.
         assertEquals(listOf(ExpenseSlice.FUEL), eur.slices.map { it.first })
+    }
+
+    @Test fun aCurrencyWithAnInvalidAmountDrawsNoDonutAtAll() {
+        // Regression (#355): one unusable category used to leave the others drawn, so the donut
+        // showed parts that did not add up to the total. A partial donut is a wrong donut.
+        val overflowing = CampaignCostSplit.of(
+            campaign,
+            listOf(
+                expense(ExpenseCategory.LABOR, 73_250),
+                expense(ExpenseCategory.FUEL, Long.MAX_VALUE - 10),
+                expense(ExpenseCategory.FUEL, 1_000),
+            ),
+            deliveries = emptyList(),
+        )
+        assertTrue(overflowing.isEmpty())
+
+        val negative = CampaignCostSplit.of(
+            campaign,
+            listOf(expense(ExpenseCategory.LABOR, 73_250), expense(ExpenseCategory.FUEL, -5_000)),
+            deliveries = emptyList(),
+        )
+        assertTrue(negative.isEmpty())
+
+        // A second currency that is sound is still drawn: one bad currency does not hide the rest.
+        val mixed = CampaignCostSplit.of(
+            campaign,
+            listOf(
+                expense(ExpenseCategory.FUEL, -5_000, currency = "EUR"),
+                expense(ExpenseCategory.LABOR, 5_000, currency = "GBP"),
+            ),
+            deliveries = emptyList(),
+        )
+        assertEquals(listOf("GBP"), mixed.map { it.currency })
     }
 
     @Test fun aCampaignWithNoPostedCostsDrawsNothing() {
