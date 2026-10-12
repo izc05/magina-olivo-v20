@@ -1,0 +1,8 @@
+
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:....
+
+Time: 15.144
+
+OK (4 tests)
+
+

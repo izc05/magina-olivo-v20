@@ -69,6 +69,15 @@ dump_ui() {
   done
 
   echo "UI hierarchy was unavailable after 10 attempts" >&2
+  # Preserve the boundary state before emulator-runner tears the device down.
+  # A missing hierarchy alone cannot distinguish an app ANR from a lost AVD.
+  {
+    adb get-state || true
+    adb shell pidof -s "$PKG" || true
+    adb shell dumpsys activity activities || true
+    adb shell dumpsys meminfo "$PKG" || true
+    adb logcat -b crash -d -v threadtime || true
+  } > "${destination%.xml}-failure.txt" 2>&1
   return 1
 }
 
@@ -346,6 +355,10 @@ adb shell am instrument -w \
 INSTRUMENTATION_RC=$?
 set -e
 cat evidence/instrumentation-all.txt
+
+# The panel tests capture production surfaces in both themes, not reference mocks.
+# Pull before checking the result so failing runs retain their visual evidence too.
+adb pull /sdcard/Android/data/"$PKG"/files/cr012-slice4 evidence/campaign-panel >/dev/null 2>&1 || true
 
 assert_instrumentation_passed \
   evidence/instrumentation-all.txt \

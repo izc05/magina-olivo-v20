@@ -84,6 +84,11 @@ class Cr012SurfacesTest {
         } } }
         rule.onNodeWithTag("notebook-summary-labour").performScrollTo().assertTextContains("300,00", substring = true).assertTextContains("sin confirmar", substring = true)
         rule.onNodeWithTag("notebook-summary-equipment").performScrollTo().assertTextContains("180,00", substring = true).assertTextContains("sin confirmar", substring = true)
+        rule.onNodeWithTag("campaign-summary").performScrollTo()
+            .assertTextContains("Coste contabilizado/kg", substring = true)
+            .assertTextContains("Incompleto", substring = true)
+            .assertTextContains("0,166", substring = true)
+        capture("campaign-incomplete-summary")
     }
 
     @Test fun dayPostedZeroIsShownWithoutFabricatedJpyResourceZero() {
@@ -184,7 +189,9 @@ class Cr012SurfacesTest {
         rule.onNodeWithTag("notebook-summary-labour").performScrollTo().assertTextContains("60,00", substring = true).assertTextContains("240,00", substring = true)
         rule.onNodeWithTag("notebook-summary-other").performScrollTo()
         capture("campaign-costs")
-        rule.onNodeWithTag("dashboard-cost-per-kg").performScrollTo().assertTextContains("0,166", substring = true) // #486: thousandths, never 0,17
+        rule.onNodeWithTag("campaign-summary-cost", useUnmergedTree = true).performScrollTo()
+            .assert(hasAnyDescendant(hasText("0,166", substring = true))) // #486: thousandths, never 0,17
+        rule.onNodeWithTag("campaign-summary").assertTextContains("Coste/kg", substring = true)
         capture("campaign-total-cost-kg")
         rule.onNodeWithText(workers[0].name).assertDoesNotExist()
         rule.onNodeWithText("Trabajos").assertDoesNotExist()
@@ -208,6 +215,62 @@ class Cr012SurfacesTest {
         capture("payment-after-close")
         nativeClick("Guardar pago")
         rule.runOnIdle { assertEquals(4000L, saved?.amountMinor); assertEquals(campaign.id, saved?.campaignId) }
+    }
+
+    @Test fun campaignPanelIsReadableAndChartsStayFoldedInLight() = campaignPanel(com.isivoltpro.maginaolivo.app.AppearanceMode.LIGHT)
+    @Test fun campaignPanelIsReadableAndChartsStayFoldedInDark() = campaignPanel(com.isivoltpro.maginaolivo.app.AppearanceMode.DARK)
+
+    private fun campaignPanel(mode: com.isivoltpro.maginaolivo.app.AppearanceMode) {
+        val analysed = delivery.copy(analysis = YieldAnalysis(UUID.randomUUID(), delivery.id, date, 2057, null, null, 1))
+        val data = CampaignNotebook.project(campaign, emptyList(), listOf(day), listOf(analysed), costs, entries, equipment)
+        rule.setContent {
+            MaginaOlivoTheme(mode) {
+                Surface(color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
+                    Column(Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(MoSpacing.screen)) {
+                        CampaignView(data, NotebookUiState(isLoading = false, notebook = data), NotebookActions())
+                    }
+                }
+            }
+        }
+        rule.onNodeWithTag("campaign-summary").performScrollTo()
+            .assertTextContains("3.200 kg", substring = true)
+            .assertTextContains("20,57", substring = true)
+            .assertTextContains("0,166", substring = true)
+        capture("panel-${mode.name.lowercase()}-summary")
+        for (tag in listOf("campaign-summary-kilos", "campaign-summary-yield", "campaign-summary-days", "campaign-summary-cost")) {
+            val texts = rule.onAllNodes(hasText("", substring = true) and
+                (hasTestTag(tag) or hasAnyAncestor(hasTestTag(tag))), useUnmergedTree = true)
+            texts.fetchSemanticsNodes().indices.forEach { index ->
+                val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+                texts[index].performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                assertTrue("$tag must have a measured text layout", layouts.isNotEmpty())
+                layouts.forEach {
+                    // multiParagraph.width is the available constraint, even when Text measures
+                    // to its shorter intrinsic width. Check actual glyph lines, not that width.
+                    for (line in 0 until it.lineCount) {
+                        assertFalse("$tag must not ellipsize", it.isLineEllipsized(line))
+                        assertTrue("$tag line must fit horizontally", it.getLineLeft(line) >= -1f && it.getLineRight(line) <= it.size.width + 1f)
+                        assertTrue("$tag line must fit vertically", it.getLineBottom(line) <= it.size.height + 1f)
+                    }
+                }
+            }
+        }
+        rule.onNodeWithTag("campaign-stats").assertDoesNotExist()
+        rule.onNodeWithTag("campaign-stats-toggle").performScrollTo().performClick()
+        rule.onNodeWithTag("campaign-stats-parcels").performScrollTo()
+        rule.onNodeWithTag("campaign-stats-parcels-centre", useUnmergedTree = true).assertTextContains("3.200 kg")
+        capture("panel-${mode.name.lowercase()}-parcels")
+        rule.onNodeWithTag("campaign-stats-costs").performScrollTo()
+        rule.onNodeWithTag("campaign-stats-costs-centre", useUnmergedTree = true).assertTextContains("530,00", substring = true)
+        capture("panel-${mode.name.lowercase()}-costs")
+        rule.onNodeWithTag("chart-kg").performScrollTo().assertExists()
+        rule.onNodeWithTag("chart-kg-summary").performScrollTo()
+        capture("panel-${mode.name.lowercase()}-kilos")
+        rule.onNodeWithTag("chart-yield").performScrollTo().assertExists()
+        rule.onNodeWithTag("chart-yield-summary").performScrollTo()
+        capture("panel-${mode.name.lowercase()}-yield")
+        rule.onNodeWithTag("campaign-stats-toggle").performScrollTo().performClick()
+        rule.onNodeWithTag("campaign-stats").assertDoesNotExist()
     }
 
     @Test fun equipmentSaveIsPhysicallyReachableAfterPriceEditAndImeDismissal() {
