@@ -45,7 +45,12 @@ object MoChartPalette {
     /**
      * The kilos that belong to no parcel. Deliberately the quietest colour of the ring: they are
      * not a parcel, and the eye should not read them as one more.
+     *
+     * It is the app's cool slate rather than its warm grey. In dark mode the warm grey sat close
+     * to the pale teal of a parcel when the two slices touched; slate is plainly cooler, so the
+     * two separate by hue and not only by lightness — and it stays the quietest colour of the
+     * ring, which is the point.
      */
     @Composable
-    fun unassigned(): Color = MoColors.current.secondaryText
+    fun unassigned(): Color = MoColors.current.cloudText
 }

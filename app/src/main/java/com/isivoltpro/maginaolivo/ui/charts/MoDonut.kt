@@ -80,7 +80,7 @@ fun MoDonut(
                 slices.forEach { slice ->
                     val sweep = 360f * slice.value / total
                     drawArc(
-                        color = if (slice.muted) slice.color.copy(alpha = 0.55f) else slice.color,
+                        color = if (slice.muted) slice.color.copy(alpha = MUTED_ALPHA) else slice.color,
                         startAngle = start + GAP / 2,
                         sweepAngle = (sweep - GAP).coerceAtLeast(0f),
                         useCenter = false,
@@ -117,7 +117,14 @@ fun MoDonut(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                 ) {
-                    Box(Modifier.size(12.dp).background(slice.color, CircleShape))
+                    // The dot carries the same alpha as its arc, so the legend identifies the
+                    // slice it names rather than a brighter cousin of it.
+                    Box(
+                        Modifier.size(12.dp).background(
+                            if (slice.muted) slice.color.copy(alpha = MUTED_ALPHA) else slice.color,
+                            CircleShape,
+                        ),
+                    )
                     Text(
                         slice.label,
                         style = MaterialTheme.typography.bodyMedium,
@@ -140,3 +147,6 @@ private val DONUT_STROKE = 26.dp
 
 /** A hair of background between slices, so two neighbours never read as one. */
 private const val GAP = 1.5f
+
+/** How much quieter the unassigned slice is than a named one. */
+private const val MUTED_ALPHA = 0.45f
