@@ -132,19 +132,20 @@ object CampaignCostSplit {
             val amounts = ExpenseSlice.entries.associateWith { slice ->
                 bySlice[slice]?.map { it.amountMinor }?.checkedSum()
             }
-            // One unusable category makes the whole donut of this currency unusable: drawing the
-            // sound categories alone would show parts that do not add up to the total, which reads
-            // as a smaller cost than the real one. The other currencies are unaffected.
-            val unusable = ExpenseSlice.entries.any { bySlice[it] != null && amounts[it] == null }
+            val drawn = amounts.entries.mapNotNull { (slice, amount) ->
+                amount?.takeIf { it > 0 }?.let { slice to it }
+            }
+            // Three reasons to draw nothing for this currency, all of them the same reason really:
+            // an arc only means something against a whole that is known.
+            //  - a category whose own amount does not add up;
+            //  - categories that are each sound but whose total does not fit, so the whole the
+            //    arcs would be drawn against is unknown;
+            // The other currencies are unaffected either way.
+            val brokenCategory = ExpenseSlice.entries.any { bySlice[it] != null && amounts[it] == null }
+            val brokenTotal = drawn.map { it.second }.checkedSum() == null
             ExpenseSplit(
                 currency = ledger.currency,
-                slices = if (unusable) {
-                    emptyList()
-                } else {
-                    amounts.entries.mapNotNull { (slice, amount) ->
-                        amount?.takeIf { it > 0 }?.let { slice to it }
-                    }
-                },
+                slices = if (brokenCategory || brokenTotal) emptyList() else drawn,
             )
         }.filterNot { it.isEmpty }
 }

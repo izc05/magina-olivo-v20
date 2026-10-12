@@ -213,6 +213,32 @@ class CampaignPanelTest {
         assertEquals(listOf("GBP"), mixed.map { it.currency })
     }
 
+    @Test fun categoriesThatAreSoundOnTheirOwnButDoNotAddUpDrawNoDonut() {
+        // Regression (#355): each category fitted in a Long, so each slice was drawn, but their
+        // total did not fit. The donut would have shown four honest-looking wedges under a total
+        // that could not be worked out — the arcs would be drawn against an unknown whole.
+        val half = Long.MAX_VALUE / 2
+        val splits = CampaignCostSplit.of(
+            campaign,
+            listOf(
+                expense(ExpenseCategory.LABOR, half),
+                expense(ExpenseCategory.MACHINERY, half),
+                expense(ExpenseCategory.FUEL, half),
+            ),
+            deliveries = emptyList(),
+        )
+        assertTrue(splits.isEmpty())
+
+        // Just under the limit it still answers: the guard is not over-eager.
+        val fits = CampaignCostSplit.of(
+            campaign,
+            listOf(expense(ExpenseCategory.LABOR, half), expense(ExpenseCategory.FUEL, half)),
+            deliveries = emptyList(),
+        ).single()
+        assertEquals(half * 2, fits.totalMinor)
+        assertEquals(2, fits.slices.size)
+    }
+
     @Test fun aCampaignWithNoPostedCostsDrawsNothing() {
         assertTrue(CampaignCostSplit.of(campaign, emptyList(), emptyList()).isEmpty())
         assertTrue(
