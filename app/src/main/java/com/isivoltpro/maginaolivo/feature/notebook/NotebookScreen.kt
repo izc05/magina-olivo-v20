@@ -6,6 +6,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
 import com.isivoltpro.maginaolivo.domain.analytics.CampaignDashboard
+import com.isivoltpro.maginaolivo.feature.harvests.costKgLabel
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import com.isivoltpro.maginaolivo.feature.harvests.moneyLabel
@@ -240,15 +241,29 @@ internal fun SummaryTab(
     var machineryDetail by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs), modifier = Modifier.testTag("notebook-summary")) {
         MoSectionHeader("Producción")
-        CampaignAtAGlance(CampaignDashboard.of(notebook, today), deliveries.deliveredGrams)
-        MoKpiMetric("Días de recolección", com.isivoltpro.maginaolivo.feature.harvests.harvestDayCount(notebook.harvests).toString(), Modifier.fillMaxWidth(), icon = MoIcons.Harvest, kind = MoKpiKind.CAMPAIGN)
-        MoKpiMetric("Kg pesados", if (deliveries.deliveryCount == 0) "—" else deliveries.deliveredGrams?.let(Weight::format) ?: "No disponible", Modifier.fillMaxWidth(),
-            icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS, supportingText = if (deliveries.deliveryCount == 1) "1 pesada" else "${deliveries.deliveryCount} pesadas")
-        MoKpiMetric("Rendimiento", deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—", Modifier.fillMaxWidth(),
-            icon = MoIcons.Percent, kind = MoKpiKind.YIELD,
-            supportingText = deliveries.fatYield?.let { yield ->
-                deliveries.coveragePercent(yield)?.let { "Sobre el $it % de los kilos" } ?: "Cobertura no disponible"
-            } ?: "Pendiente de análisis")
+        // #355 bloque C: los kilos, el rendimiento, los días de recolección y el coste/kg se leen
+        // juntos aquí arriba. Las tarjetas sueltas que los repetían se han retirado.
+        val dashboard = CampaignDashboard.of(notebook, today)
+        val date = { value: LocalDate? -> value?.let { DATE_FORMAT.format(it) } ?: "—" }
+        CampaignSummaryCard(
+            weighedKilos = if (deliveries.deliveryCount == 0) "—" else deliveries.deliveredGrams?.let(Weight::format) ?: "No disponible",
+            pesadasLabel = if (deliveries.deliveryCount == 1) "1 pesada" else "${deliveries.deliveryCount} pesadas",
+            yieldLabel = deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—",
+            yieldSupport = deliveries.fatYield?.let { yield ->
+                deliveries.coveragePercent(yield)?.let { "Sobre el $it %" } ?: "Cobertura no disponible"
+            } ?: "Pendiente de análisis",
+            recollectionDays = com.isivoltpro.maginaolivo.feature.harvests.harvestDayCount(notebook.harvests).toString(),
+            costPerKg = ledger.costKgLabel(),
+            span = dashboard.calendarDays?.let { days ->
+                val range = dashboard.countedFrom?.let { from ->
+                    dashboard.closedOn?.let { "del ${date(from)} al ${date(it)}" } ?: "desde el ${date(from)}"
+                }
+                listOfNotNull("$days días de campaña", range).joinToString(", ")
+            } ?: dashboard.closedOn?.let { "Cerrada el ${date(it)}" },
+            pesadaDates = dashboard.firstPesada?.let {
+                "primera pesada ${date(it)}, última ${date(dashboard.lastPesada)}"
+            },
+        )
         MoSectionHeader("Costes de recogida")
         val accounts = runCatching { com.isivoltpro.maginaolivo.feature.harvests.labourAccounts(notebook.campaign.id, notebook.labour, notebook.expenses, payments) }.getOrNull()
         val balances = accounts?.flatMap { it.balances }.orEmpty()
@@ -274,7 +289,9 @@ internal fun SummaryTab(
             supportingText = "Combustible, transporte, reparaciones y otros · Ver gastos", onClick = onExpenses)
         com.isivoltpro.maginaolivo.feature.harvests.RecollectionTotalCards(ledger, false,
             deliveries.deliveredGrams?.takeIf { it > 0 }?.let(Weight::format),
-            com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(notebook.labour, notebook.equipment, notebook.expenses))
+            com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(notebook.labour, notebook.equipment, notebook.expenses),
+            // #355 bloque C: el coste/kg ya está arriba, en el resumen; aquí sobraría.
+            showPerKg = false)
         ParcelYields(notebook)
         // Phase 19G: charts and year-over-year, all derived from the same records.
         CampaignCharts(CampaignSeries.of(notebook))
@@ -309,40 +326,6 @@ internal fun SummaryTab(
                 com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton("Cerrar", { machineryDetail = false })
             }
         }
-    }
-
-}
-
-/**
- * CR-010 §12 — the Campaign in seconds: its days, Pesada and jornal days, first/last Pesada,
- * close date and the ledger's cost with cost per kilo. Each unknown shows «—», never 0.
- */
-@Composable
-private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long?) {
-    val date = { value: LocalDate? -> value?.let { DATE_FORMAT.format(it) } ?: "—" }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        MoKpiMetric(
-            "Días de campaña", dashboard.calendarDays?.toString() ?: "—", Modifier.weight(1f).testTag("dashboard-days"),
-            icon = MoIcons.Calendar,
-            kind = MoKpiKind.CAMPAIGN,
-            supportingText = dashboard.countedFrom?.let { from ->
-                dashboard.closedOn?.let { "Del ${date(from)} al ${date(it)}" } ?: "Desde el ${date(from)}"
-            } ?: dashboard.closedOn?.let { "Cerrada el ${date(it)}" } ?: "Sin empezar",
-        )
-        MoKpiMetric(
-            "Días con pesadas", dashboard.pesadaDays.toString(), Modifier.weight(1f).testTag("dashboard-pesada-days"),
-            icon = MoIcons.Delivery,
-            kind = MoKpiKind.PESADAS,
-            supportingText = if (dashboard.labourDays == 1) "1 día con jornales" else "${dashboard.labourDays} días con jornales",
-        )
-    }
-    if (dashboard.firstPesada != null) {
-        Text(
-            "Primera pesada ${date(dashboard.firstPesada)} · última ${date(dashboard.lastPesada)}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MoColors.current.secondaryText,
-            modifier = Modifier.testTag("dashboard-pesada-dates"),
-        )
     }
 
 }

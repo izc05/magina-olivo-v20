@@ -59,6 +59,11 @@ internal fun RecollectionTotalCards(
      * while any of the day's sources is still loading or could not be read: never shown as final.
      */
     completeness: RecollectionCostCompleteness?,
+    /**
+     * #355 bloque C: «Campaña» muestra el coste por kilo en su resumen compacto de arriba, así que
+     * pide el total sin él. Los demás sitios conservan las dos tarjetas, como hasta ahora.
+     */
+    showPerKg: Boolean = true,
 ) {
     val pending = if (completeness == null) "Comprobando si faltan costes…" else completeness.pendingLabel()
     MoKpiMetric(
@@ -71,6 +76,7 @@ internal fun RecollectionTotalCards(
         Modifier.fillMaxWidth().testTag(if (day) "day-cost" else "dashboard-cost"),
         icon = MoIcons.Euro, kind = MoKpiKind.TOTAL,
         supportingText = listOfNotNull(pending, "Solo gastos confirmados · pagar no cambia el coste").joinToString("\n"))
+    if (!showPerKg) return
     MoKpiMetric(if (pending != null) "Coste contabilizado/kg" else "Coste/kg", ledger.costKgLabel(),
         Modifier.fillMaxWidth().testTag(if (day) "day-cost-per-kg" else "dashboard-cost-per-kg"),
         icon = MoIcons.Percent, kind = MoKpiKind.TOTAL,
