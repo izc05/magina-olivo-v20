@@ -1,0 +1,191 @@
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stream=
+com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest:
+INSTRUMENTATION_STATUS: test=darkScopeSwitchRetainsDraftsAndSavesCorrectContract
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1200' (ignoreCase: false))
+Semantics of the node:
+Node #439 at (l=53.0, t=1361.0, r=1027.0, b=1580.0)px, Tag: 'labour-rate'
+ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+EditableText = ''
+Error = 'Invalid input'
+FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@e7650d3'
+Focused = 'false'
+ImeAction = 'Default'
+InputText = ''
+IsEditable = 'true'
+Text = '[Tarifa por hora (JPY), Confirma un precio válido o marca «Precio aún sin saber»]'
+TextSelectionRange = 'TextRange(0, 0)'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'labour-rate')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.verify(QuickLabourFormTest.kt:103)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.darkScopeSwitchRetainsDraftsAndSavesCorrectContract(QuickLabourFormTest.kt:33)
+
+INSTRUMENTATION_STATUS: stream=
+Error in darkScopeSwitchRetainsDraftsAndSavesCorrectContract(com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1200' (ignoreCase: false))
+Semantics of the node:
+Node #439 at (l=53.0, t=1361.0, r=1027.0, b=1580.0)px, Tag: 'labour-rate'
+ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+EditableText = ''
+Error = 'Invalid input'
+FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@e7650d3'
+Focused = 'false'
+ImeAction = 'Default'
+InputText = ''
+IsEditable = 'true'
+Text = '[Tarifa por hora (JPY), Confirma un precio válido o marca «Precio aún sin saber»]'
+TextSelectionRange = 'TextRange(0, 0)'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'labour-rate')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.verify(QuickLabourFormTest.kt:103)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.darkScopeSwitchRetainsDraftsAndSavesCorrectContract(QuickLabourFormTest.kt:33)
+
+INSTRUMENTATION_STATUS: test=darkScopeSwitchRetainsDraftsAndSavesCorrectContract
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=lightScopeSwitchRetainsDraftsAndSavesCorrectContract
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1200' (ignoreCase: false))
+Semantics of the node:
+Node #913 at (l=53.0, t=1361.0, r=1027.0, b=1580.0)px, Tag: 'labour-rate'
+ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+EditableText = ''
+Error = 'Invalid input'
+FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@67cfd26'
+Focused = 'false'
+ImeAction = 'Default'
+InputText = ''
+IsEditable = 'true'
+Text = '[Tarifa por hora (JPY), Confirma un precio válido o marca «Precio aún sin saber»]'
+TextSelectionRange = 'TextRange(0, 0)'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'labour-rate')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.verify(QuickLabourFormTest.kt:103)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.lightScopeSwitchRetainsDraftsAndSavesCorrectContract(QuickLabourFormTest.kt:32)
+
+INSTRUMENTATION_STATUS: stream=
+Error in lightScopeSwitchRetainsDraftsAndSavesCorrectContract(com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1200' (ignoreCase: false))
+Semantics of the node:
+Node #913 at (l=53.0, t=1361.0, r=1027.0, b=1580.0)px, Tag: 'labour-rate'
+ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+EditableText = ''
+Error = 'Invalid input'
+FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@67cfd26'
+Focused = 'false'
+ImeAction = 'Default'
+InputText = ''
+IsEditable = 'true'
+Text = '[Tarifa por hora (JPY), Confirma un precio válido o marca «Precio aún sin saber»]'
+TextSelectionRange = 'TextRange(0, 0)'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'labour-rate')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.verify(QuickLabourFormTest.kt:103)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.lightScopeSwitchRetainsDraftsAndSavesCorrectContract(QuickLabourFormTest.kt:32)
+
+INSTRUMENTATION_STATUS: test=lightScopeSwitchRetainsDraftsAndSavesCorrectContract
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 41.421
+There were 2 failures:
+1) darkScopeSwitchRetainsDraftsAndSavesCorrectContract(com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1200' (ignoreCase: false))
+Semantics of the node:
+Node #439 at (l=53.0, t=1361.0, r=1027.0, b=1580.0)px, Tag: 'labour-rate'
+ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+EditableText = ''
+Error = 'Invalid input'
+FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@e7650d3'
+Focused = 'false'
+ImeAction = 'Default'
+InputText = ''
+IsEditable = 'true'
+Text = '[Tarifa por hora (JPY), Confirma un precio válido o marca «Precio aún sin saber»]'
+TextSelectionRange = 'TextRange(0, 0)'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'labour-rate')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.verify(QuickLabourFormTest.kt:103)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.darkScopeSwitchRetainsDraftsAndSavesCorrectContract(QuickLabourFormTest.kt:33)
+2) lightScopeSwitchRetainsDraftsAndSavesCorrectContract(com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1200' (ignoreCase: false))
+Semantics of the node:
+Node #913 at (l=53.0, t=1361.0, r=1027.0, b=1580.0)px, Tag: 'labour-rate'
+ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+EditableText = ''
+Error = 'Invalid input'
+FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@67cfd26'
+Focused = 'false'
+ImeAction = 'Default'
+InputText = ''
+IsEditable = 'true'
+Text = '[Tarifa por hora (JPY), Confirma un precio válido o marca «Precio aún sin saber»]'
+TextSelectionRange = 'TextRange(0, 0)'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'labour-rate')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.verify(QuickLabourFormTest.kt:103)
+	at com.isivoltpro.maginaolivo.feature.harvests.QuickLabourFormTest.lightScopeSwitchRetainsDraftsAndSavesCorrectContract(QuickLabourFormTest.kt:32)
+
+FAILURES!!!
+Tests run: 2,  Failures: 2
+
+
+INSTRUMENTATION_CODE: -1

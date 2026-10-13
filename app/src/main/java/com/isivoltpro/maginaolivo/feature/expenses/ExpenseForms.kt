@@ -124,8 +124,11 @@ internal fun ExpenseEditor(
      * calculation of that kind exists; with jornales paid it can only add). Null asks nothing.
      */
     dayCostQuestion: suspend (UUID, ExpenseCategory) -> com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? = { _, _ -> null },
+    draftState: androidx.compose.runtime.MutableState<ExpenseForm>? = null,
+    categoryLocked: Boolean = false,
 ) {
-    var form by remember(initial) { mutableStateOf(initial) }
+    val formHolder: androidx.compose.runtime.MutableState<ExpenseForm> = draftState ?: remember(initial) { mutableStateOf(initial) }
+    var form by formHolder
     val lockedCampaignId = initial.campaignId.takeIf { campaignLocked }
     var categoryChosen by rememberSaveable(initial, askCategory) { mutableStateOf(!askCategory) }
     // #411: a new Farm-level expense may start deliberately undecided; existing/explicit
@@ -231,7 +234,8 @@ internal fun ExpenseEditor(
             isError = errors.date != null, supportingText = errors.date,
             modifier = Modifier.fillMaxWidth().testTag("expense-date"),
         )
-        MoSelectField(
+        if (categoryLocked) Text("Mano de obra", style = MaterialTheme.typography.bodyMedium)
+        else MoSelectField(
             "Categoría", if (categoryChosen) form.category.label() else "Elige la categoría", { picker = "category" },
             Modifier.testTag("expense-category"),
         )

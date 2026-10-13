@@ -1,0 +1,3 @@
+airplane=disabled
+wifi=1
+bluetooth=1

@@ -29,6 +29,8 @@ internal fun LabourSheet(
     harvestId: UUID, campaignId: UUID, date: LocalDate, rates: RecollectionRates?,
     onSaveCrew: (CrewDraft) -> Unit, onAddWorker: (String) -> Unit, onCancel: () -> Unit,
     currency: String = rates?.currency ?: "EUR",
+    title: String = "Registrar jornal",
+    currencyResetToken: Int = 0,
 ) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     var newPerson by rememberSaveable { mutableStateOf(false) }
@@ -47,6 +49,7 @@ internal fun LabourSheet(
     var priceUnknown by rememberSaveable { mutableStateOf(false) }
     var paymentAmount by rememberSaveable(currency) { mutableStateOf("") }
     var paymentId by rememberSaveable(currency) { mutableStateOf(UUID.randomUUID().toString()) }
+    var appliedCurrencyResetToken by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(workers, pendingName) {
         val name = pendingName ?: return@LaunchedEffect
         workers.firstOrNull { it.name.equals(name, true) && it.id.toString() !in knownBeforeAdd.split(',') }?.let {
@@ -62,6 +65,13 @@ internal fun LabourSheet(
     }
     LaunchedEffect(rates, unit, currency) {
         if (!touchedPrice) price = Money.editable(if (unit == LabourUnit.HOURS) usualRates?.hourlyMinor else usualRates?.fullDayMinor, currency)
+    }
+    LaunchedEffect(currencyResetToken) {
+        if (currencyResetToken > appliedCurrencyResetToken) {
+            price = ""; touchedPrice = true; priceUnknown = false
+            initialPayment = "NONE"; paymentAmount = ""; paymentId = UUID.randomUUID().toString()
+            appliedCurrencyResetToken = currencyResetToken
+        }
     }
     val minutes = if (unit == LabourUnit.HOURS) parseHours(hours)?.takeIf { it <= LabourRules.MAX_MINUTES } else null
     val minor = Money.parseMinor(price, currency)
@@ -80,7 +90,7 @@ internal fun LabourSheet(
         else -> null
     }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("labour-sheet"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        Text("Registrar jornal", style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text("Persona", style = MaterialTheme.typography.titleMedium, color = MoColors.current.labourText)
         if (workers.isEmpty()) Text("Añade una persona para guardar su jornal.", color = MoColors.current.secondaryText)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {

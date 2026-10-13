@@ -50,7 +50,7 @@ class AppNavigationTest {
     @get:Rule
     val rules: RuleChain =
         RuleChain
-            .outerRule(ClearOnboardingStateRule())
+            .outerRule(IsolatedAppStateRule())
             .around(composeRule)
 
     /** #705 / CR-014: the central control is an action, never a selected fifth tab. */
@@ -926,11 +926,10 @@ class AppNavigationTest {
     }
 
     /**
-     * CR-011 flows 7–9 and 13: Cuaderno → Jornal opens today's día de recolección by itself,
-     * the same day again after a cold restart, and never a second one.
+     * #512: global Jornal explicitly chooses scope; opening/cancelling never creates a day.
      */
     @Test
-    fun cuadernoJornalOpensTodaysDayOnceAndItSurvivesARestart() {
+    fun cuadernoJornalKeepsGeneralAndCampaignCostsSeparate() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         waitForTag("add-farm")
@@ -965,7 +964,7 @@ class AppNavigationTest {
         // Only an active campaign offers «Cerrar»: activation has been saved before leaving.
         waitForTag("close-campaign")
 
-        // Cuaderno → Jornal: today's day opens by itself; nobody opens a «jornada».
+        // Cuaderno → Jornal opens the editable scope form; no day exists before saving recollection.
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         chooseNotebookFarm("Finca Jornal E2E")
         // The Cuaderno has loaded that campaign (already active) before Jornal is pressed.
@@ -991,31 +990,68 @@ class AppNavigationTest {
         pressBack()
         waitForTag("notebook-root")
         clickByTag("notebook-quick-labour")
-        // Build 683: the container alone renders while still loading; wait for the day itself.
-        waitForTagOrDumpScreen("day-resource-labour")
-        // #365: Jornal lands on the day's Jornales, with «Registrar jornales» at hand.
-        closeJornalFocus()
-
-        // Back and Jornal again, before any restart: the same day opens again.
-        pressBack()
+        waitForTag("quick-labour-form")
+        val unopened = agriculturalCounts()
+        waitForTag("quick-labour-campaign")
+        composeRule.onNodeWithText("Asignar a").assertExists()
+        assertEquals(beforePesada, unopened)
+        composeRule.onNodeWithTag("expense-concept").performScrollTo().performTextClearance()
+        composeRule.onNodeWithTag("expense-concept").performTextInput("Reparación jornal E2E")
+        composeRule.onNodeWithTag("expense-amount").performScrollTo().performTextInput("65")
+        closeSoftKeyboard()
+        composeRule.onNodeWithText("Guardar jornal general").performScrollTo().performClick()
         waitForTag("notebook-root")
-        cancelGlobalWithoutAgriculturalWrites()
+        assertEquals(0L, agriculturalCounts()[3])
+        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca Jornal E2E", substring = true)
+
         openGlobalQuickAction("labour")
-        waitForTagOrDumpScreen("day-resource-labour")
-        closeJornalFocus()
+        waitForTag("quick-labour-form")
+        clickByTag("quick-labour-campaign")
+        waitForTag("labour-sheet")
+        assertEquals(0L, agriculturalCounts()[3])
+        clickByTag("labour-new-person")
+        composeRule.onNodeWithTag("labour-new-name").performScrollTo().performTextInput("Persona Jornal E2E")
+        closeSoftKeyboard()
+        clickByTag("labour-add-worker")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("labour-worker").fetchSemanticsNodes().isNotEmpty()
+        }
+        clickByTag("labour-worker")
+        clickByTag("labour-unit-HOURS")
+        composeRule.onNodeWithTag("labour-hours").performScrollTo().performTextInput("3")
+        composeRule.onNodeWithTag("labour-rate").performScrollTo().performTextInput("12")
+        closeSoftKeyboard()
+        clickByTag("labour-save")
+        waitForTag("notebook-root")
+        assertEquals(1L, agriculturalCounts()[3])
+        assertEquals(2L, agriculturalCounts()[5])
 
-        // Cold restart: the same day is still there.
+        // Reopening and Activity recreation preserve context without writing another day/cost.
+        openGlobalQuickAction("labour")
+        waitForTag("quick-labour-form")
+        clickByTag("quick-labour-campaign")
+        waitForTag("labour-sheet")
+        val recorded = agriculturalCounts()
         composeRule.activityRule.scenario.recreate()
-        composeRule.waitForIdle()
-        waitForTagOrDumpScreen("day-resource-labour")
-
-        // Jornal again the same day reuses it.
+        waitForTag("quick-labour-form")
+        waitForTag("labour-sheet")
+        assertEquals(recorded, agriculturalCounts())
         pressBack()
         waitForTag("notebook-root")
-        clickByTag("notebook-quick-labour")
-        waitForTagOrDumpScreen("day-resource-labour")
-        closeJornalFocus()
+        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca Jornal E2E", substring = true)
 
+        val database = MaginaOlivoDatabase.getInstance(ApplicationProvider.getApplicationContext<Context>())
+        runBlocking {
+            val workspace = database.workspaceDao().findFirstActive()!!.id
+            val costs = database.expenseDao().observeForWorkspace(workspace).first()
+            val general = costs.single { it.concept == "Reparación jornal E2E" }
+            assertEquals(null, general.campaignId)
+            assertEquals(null, general.harvestId)
+            assertEquals(6500L, general.amountMinor)
+            val recollection = costs.filter { it.campaignId != null }
+            assertEquals(1, recollection.size)
+            assertEquals(3600L, recollection.single().amountMinor)
+        }
         // The campaign holds exactly one día de recolección.
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         waitForTag("farms-root")
@@ -1052,8 +1088,10 @@ class AppNavigationTest {
         // #417: without a Campaign the Cuaderno still opens on the Farm's own views.
         waitForTag("notebook-views")
         clickByTag("notebook-quick-labour")
-        waitForTag("expenses-root")
-        waitForNodeOrDump("Jornal fuera de campaña") { composeRule.onAllNodesWithText("Jornal fuera de campaña") }
+        waitForTag("quick-labour-form")
+        waitForText("Fuera de campaña")
+        composeRule.onNodeWithTag("quick-labour-campaign").assertDoesNotExist()
+        composeRule.onNodeWithText("Asignar a").assertDoesNotExist()
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 

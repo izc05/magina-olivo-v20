@@ -360,6 +360,7 @@ cat evidence/instrumentation-all.txt
 # Pull before checking the result so failing runs retain their visual evidence too.
 adb pull /sdcard/Android/data/"$PKG"/files/cr012-slice4 evidence/campaign-panel >/dev/null 2>&1 || true
 adb pull /sdcard/Android/data/"$PKG"/files/delivery-detail-evidence evidence/delivery-detail >/dev/null 2>&1 || true
+adb pull /sdcard/Android/data/"$PKG"/files/quick-labour-evidence evidence/quick-labour >/dev/null 2>&1 || true
 
 assert_instrumentation_passed \
   evidence/instrumentation-all.txt \
