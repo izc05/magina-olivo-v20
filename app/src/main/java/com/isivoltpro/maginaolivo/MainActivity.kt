@@ -23,6 +23,8 @@ class MainActivity : ComponentActivity() {
 
     /** The planned work a tapped reminder points at, until navigation has opened it. */
     private val openActivity = mutableStateOf<UUID?>(null)
+    private val openAccount = mutableStateOf(false)
+    private lateinit var account: com.isivoltpro.maginaolivo.feature.account.AccountRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +33,8 @@ class MainActivity : ComponentActivity() {
             context = applicationContext,
             environmentValue = BuildConfig.ENVIRONMENT,
         )
+        account = compositionRoot.accountRepository
+        if(savedInstanceState==null) handleAccountIntent(intent)
         // Alarms do not survive a reinstall or a force-stop; the stored reminders do.
         compositionRoot.localPersistence?.reminders?.let { reminders ->
             lifecycleScope.launch { runCatching { reminders.reconcile() } }
@@ -55,16 +59,29 @@ class MainActivity : ComponentActivity() {
                 compositionRoot = compositionRoot,
                 openActivityId = openActivity.value,
                 onActivityOpened = { openActivity.value = null },
+                openAccount = openAccount.value,
+                onAccountOpened = { openAccount.value = false },
             )
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        handleAccountIntent(intent)
         activityIdOf(intent)?.let { openActivity.value = it }
     }
 
     private fun activityIdOf(intent: Intent?): UUID? =
         intent?.getStringExtra(ReminderNotifier.EXTRA_ACTIVITY_ID)
             ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+    private fun handleAccountIntent(incoming: Intent?) {
+        val url=incoming?.dataString ?: return
+        if(!account.acceptsLink(url)) return
+        // Retain neither callback codes nor bearer tokens in a saved Activity intent.
+        setIntent(Intent(intent).setData(null))
+        openAccount.value=true
+        val connectivity=getSystemService(android.net.ConnectivityManager::class.java)
+        val online=connectivity?.getNetworkCapabilities(connectivity.activeNetwork)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)==true
+        account.receiveLink(url,online)
+    }
 }

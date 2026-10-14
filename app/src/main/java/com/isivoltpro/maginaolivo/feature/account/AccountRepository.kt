@@ -7,6 +7,10 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -19,8 +23,13 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
     val state: StateFlow<AccountState> = mutable
     private val mutex = Mutex()
     private var record: AccountRecord? = null
+    // This repository is the process Auth owner; a recreated Activity must not cancel exchange.
+    private val callbackScope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
+    fun receiveLink(url:String,online:Boolean) = callbackScope.launch { completeLink(url,online) }
 
-    suspend fun resume(online: Boolean) = operation(online,false) {
+    suspend fun resume(online: Boolean) {
+        if(api==null) { mutable.value=mutable.value.copy(online=online);return }
+        operation(online,false) {
         val current = current().session ?: return@operation
         if (!online) return@operation
         try {
@@ -34,7 +43,10 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
             if (e.kind in setOf(AuthFailure.Kind.EXPIRED,AuthFailure.Kind.CREDENTIALS,AuthFailure.Kind.PROTOCOL)) save(AccountRecord())
             throw e
         }
+        }
     }
+    fun clearNotice() { mutable.value=mutable.value.copy(error=null,message=null) }
+    suspend fun simulateLink(online:Boolean) { if(api?.simulated==true)completeLink("${api.redirectUri}?code=simulated-code",online) }
     suspend fun login(email: String, password: String, online: Boolean) = operation(online,true) {
         val normalized = checkedEmail(email)
         if (password.isBlank() || password.length > 1024) throw AuthFailure(AuthFailure.Kind.CREDENTIALS)
@@ -130,7 +142,7 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
             !mutable.value.online -> AccountStatus.OFFLINE
             else -> AccountStatus.SIGNED_IN
         }
-        mutable.value=mutable.value.copy(status=status,email=session?.email)
+        mutable.value=mutable.value.copy(status=status,email=session?.email,pendingPurpose=current.pending?.purpose)
     }
     private fun requireSignedOut() { if(current().session!=null) throw AuthFailure(AuthFailure.Kind.PROTOCOL) }
     private fun checkedEmail(value: String) = value.trim().also { if(!AccountValidation.email(it)) throw AuthFailure(AuthFailure.Kind.CREDENTIALS) }

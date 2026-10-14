@@ -102,6 +102,8 @@ fun AppNavigation(
     /** Planned work to open, from a tapped reminder (Phase 16). */
     openActivityId: UUID? = null,
     onActivityOpened: () -> Unit = {},
+    openAccount: Boolean = false,
+    onAccountOpened: () -> Unit = {},
 ) {
     val onboardingStateStore = compositionRoot.onboardingStateStore
     val startDestination = remember {
@@ -142,6 +144,13 @@ fun AppNavigation(
         }
     }
     // A reminder opens its Activity over the Calendar, so Back returns to the agenda.
+    LaunchedEffect(openAccount, backStackEntry == null) {
+        if(openAccount && backStackEntry!=null && startDestination!=AppDestination.Onboarding && compositionRoot.environment!=AppEnvironment.PRODUCTION) {
+            navController.navigateToRoot(RootDestination.Profile)
+            navController.navigate(AppDestination.Account) { launchSingleTop=true }
+            onAccountOpened()
+        }
+    }
     LaunchedEffect(openActivityId, backStackEntry == null) {
         val id = openActivityId ?: return@LaunchedEffect
         if (backStackEntry == null || startDestination == AppDestination.Onboarding) return@LaunchedEffect
@@ -344,6 +353,7 @@ fun AppNavigation(
             }
             composable(RootDestination.Profile.route) {
                 ProfileRoute(
+                    onAccount = if(compositionRoot.environment!=AppEnvironment.PRODUCTION) ({ navController.navigate(AppDestination.Account) }) else null,
                     appearanceStore = compositionRoot.appearanceStore,
                     appVersion = appVersionLabel(
                         com.isivoltpro.maginaolivo.BuildConfig.VERSION_NAME,
@@ -360,6 +370,11 @@ fun AppNavigation(
                         ?.let { com.isivoltpro.maginaolivo.app.DevTools.demoFarm(it) },
                     onHelp = { topic -> navController.navigate(AppDestination.help(topic.route)) },
                 )
+            }
+            composable(AppDestination.Account) {
+                com.isivoltpro.maginaolivo.feature.account.AccountRoute(compositionRoot.accountRepository,
+                    onBack={navController.popBackStack()},
+                    simulationAllowed=com.isivoltpro.maginaolivo.BuildConfig.DEBUG && compositionRoot.environment==AppEnvironment.DEV)
             }
             composable(AppDestination.AgronomicPeople) {
                 val persistence = compositionRoot.localPersistence

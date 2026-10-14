@@ -71,6 +71,7 @@ object AppDestination {
     const val Organizations = "organizations"
     const val Deliveries = "deliveries"
     const val Machinery = "machinery"
+    const val Account = "account"
     const val AgronomicPeople = "agronomic-people"
     const val AgronomicPersonPattern = "agronomic-person/{personId}"
 
@@ -229,7 +230,7 @@ object AppDestination {
             "document",
             -> RootDestination.Notebook
             RootDestination.Alerts.route, Calendar, PlanWork -> RootDestination.Alerts
-            RootDestination.Profile.route, DeveloperGallery, "help", AgronomicPeople, "agronomic-person" -> RootDestination.Profile
+            RootDestination.Profile.route, Account, DeveloperGallery, "help", AgronomicPeople, "agronomic-person" -> RootDestination.Profile
             else -> null
         }
     }

@@ -1,0 +1,172 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDevDebugBuild UP-TO-DATE
+> Task :app:generateDevDebugBuildConfig UP-TO-DATE
+> Task :app:generateDevDebugResValues UP-TO-DATE
+> Task :app:generateDevDebugResources UP-TO-DATE
+> Task :app:packageDevDebugResources UP-TO-DATE
+> Task :app:processDevDebugNavigationResources UP-TO-DATE
+> Task :app:parseDevDebugLocalResources UP-TO-DATE
+> Task :app:generateDevDebugRFile UP-TO-DATE
+> Task :app:kspDevDebugKotlin UP-TO-DATE
+> Task :app:compileDevDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDevDebug UP-TO-DATE
+> Task :app:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :app:checkDevDebugAarMetadata UP-TO-DATE
+> Task :app:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :app:compileDevDebugNavigationResources UP-TO-DATE
+> Task :app:mergeDevDebugResources UP-TO-DATE
+> Task :app:createDevDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDevDebug UP-TO-DATE
+> Task :app:processDevDebugMainManifest UP-TO-DATE
+> Task :app:processDevDebugManifest UP-TO-DATE
+> Task :app:processDevDebugManifestForPackage UP-TO-DATE
+> Task :app:processDevDebugResources UP-TO-DATE
+> Task :app:bundleDevDebugClassesToCompileJar UP-TO-DATE
+> Task :app:preDevDebugAndroidTestBuild SKIPPED
+> Task :app:processDevDebugAndroidTestManifest UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestBuildConfig UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestResValues UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:packageDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:processDevDebugAndroidTestNavigationResources UP-TO-DATE
+> Task :app:parseDevDebugAndroidTestLocalResources UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestRFile UP-TO-DATE
+> Task :app:kspDevDebugAndroidTestKotlin
+> Task :app:javaPreCompileDevDebugAndroidTest UP-TO-DATE
+> Task :app:preProductionDebugBuild UP-TO-DATE
+> Task :app:generateProductionDebugBuildConfig UP-TO-DATE
+> Task :app:generateProductionDebugResValues UP-TO-DATE
+> Task :app:generateProductionDebugResources UP-TO-DATE
+> Task :app:packageProductionDebugResources UP-TO-DATE
+> Task :app:processProductionDebugNavigationResources UP-TO-DATE
+> Task :app:parseProductionDebugLocalResources UP-TO-DATE
+> Task :app:generateProductionDebugRFile UP-TO-DATE
+> Task :app:javaPreCompileProductionDebug FROM-CACHE
+> Task :app:preStagingDebugBuild UP-TO-DATE
+> Task :app:generateStagingDebugBuildConfig UP-TO-DATE
+> Task :app:generateStagingDebugResValues UP-TO-DATE
+> Task :app:generateStagingDebugResources UP-TO-DATE
+> Task :app:packageStagingDebugResources UP-TO-DATE
+> Task :app:processStagingDebugNavigationResources UP-TO-DATE
+> Task :app:parseStagingDebugLocalResources UP-TO-DATE
+> Task :app:generateStagingDebugRFile UP-TO-DATE
+> Task :app:javaPreCompileStagingDebug FROM-CACHE
+> Task :app:copyRoomSchemasToAndroidTestAssetsDevDebugAndroidTest UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestAssets UP-TO-DATE
+> Task :app:compressDevDebugAndroidTestAssets UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestGlobalSynthetics UP-TO-DATE
+> Task :app:checkDevDebugAndroidTestDuplicateClasses UP-TO-DATE
+> Task :app:desugarDevDebugAndroidTestFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDevDebugAndroidTest UP-TO-DATE
+> Task :app:mergeLibDexDevDebugAndroidTest UP-TO-DATE
+> Task :app:checkDevDebugAndroidTestAarMetadata UP-TO-DATE
+> Task :app:mapDevDebugAndroidTestSourceSetPaths UP-TO-DATE
+> Task :app:compileDevDebugAndroidTestNavigationResources UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:processDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestJniLibFolders UP-TO-DATE
+> Task :app:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDevDebugNativeLibs UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestNativeLibs NO-SOURCE
+> Task :app:stripDevDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :app:validateSigningDevDebugAndroidTest UP-TO-DATE
+> Task :app:writeDevDebugAndroidTestSigningConfigVersions UP-TO-DATE
+> Task :app:mergeStagingDebugNativeDebugMetadata NO-SOURCE
+> Task :app:copyStagingDebugChangelogAsset
+> Task :app:generateStagingDebugAssets UP-TO-DATE
+> Task :app:mergeStagingDebugAssets
+> Task :app:compressStagingDebugAssets FROM-CACHE
+> Task :app:generateStagingDebugGlobalSynthetics FROM-CACHE
+> Task :app:desugarStagingDebugFileDependencies FROM-CACHE
+> Task :app:mapStagingDebugSourceSetPaths
+> Task :app:compileStagingDebugNavigationResources FROM-CACHE
+> Task :app:checkStagingDebugAarMetadata
+> Task :app:checkStagingDebugDuplicateClasses
+> Task :app:mergeExtDexStagingDebug FROM-CACHE
+> Task :app:mergeLibDexStagingDebug FROM-CACHE
+> Task :app:createStagingDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksStagingDebug FROM-CACHE
+> Task :app:mergeStagingDebugResources
+> Task :app:processStagingDebugMainManifest
+> Task :app:processStagingDebugManifest
+> Task :app:mergeStagingDebugJniLibFolders
+> Task :app:validateSigningStagingDebug
+> Task :app:writeStagingDebugAppMetadata
+> Task :app:writeStagingDebugSigningConfigVersions
+> Task :app:mergeProductionDebugNativeDebugMetadata NO-SOURCE
+> Task :app:copyProductionDebugChangelogAsset
+> Task :app:generateProductionDebugAssets UP-TO-DATE
+> Task :app:mergeProductionDebugAssets
+> Task :app:compressProductionDebugAssets FROM-CACHE
+> Task :app:generateProductionDebugGlobalSynthetics FROM-CACHE
+> Task :app:mergeStagingDebugNativeLibs
+> Task :app:desugarProductionDebugFileDependencies FROM-CACHE
+> Task :app:checkProductionDebugAarMetadata
+> Task :app:processStagingDebugManifestForPackage
+> Task :app:checkProductionDebugDuplicateClasses
+
+> Task :app:stripStagingDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libmaplibre.so, libmlkit_google_ocr_pipeline.so. Run with --info option to learn more.
+
+> Task :app:mergeExtDexProductionDebug FROM-CACHE
+> Task :app:mergeLibDexProductionDebug FROM-CACHE
+> Task :app:mapProductionDebugSourceSetPaths
+> Task :app:compileProductionDebugNavigationResources FROM-CACHE
+> Task :app:createProductionDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksProductionDebug FROM-CACHE
+> Task :app:processProductionDebugMainManifest FROM-CACHE
+> Task :app:processProductionDebugManifest FROM-CACHE
+> Task :app:processProductionDebugManifestForPackage FROM-CACHE
+> Task :app:mergeProductionDebugJniLibFolders
+> Task :app:validateSigningProductionDebug
+> Task :app:writeProductionDebugAppMetadata
+> Task :app:writeProductionDebugSigningConfigVersions
+> Task :app:mergeProductionDebugResources
+> Task :app:mergeProductionDebugNativeLibs
+
+> Task :app:compileDevDebugAndroidTestKotlin
+w: file:///C:/Users/ISICIO/.codex/worktrees/issue725-account-auth/MAGINA%20V20/app/src/androidTest/java/com/isivoltpro/maginaolivo/AccountAuthScreenTest.kt:35:25 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+
+> Task :app:stripProductionDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libmaplibre.so, libmlkit_google_ocr_pipeline.so. Run with --info option to learn more.
+
+> Task :app:kspProductionDebugKotlin
+> Task :app:kspStagingDebugKotlin
+> Task :app:compileDevDebugAndroidTestJavaWithJavac UP-TO-DATE
+> Task :app:processProductionDebugResources
+> Task :app:processStagingDebugResources
+> Task :app:processDevDebugAndroidTestJavaRes UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestJavaResource UP-TO-DATE
+> Task :app:dexBuilderDevDebugAndroidTest
+> Task :app:mergeProjectDexDevDebugAndroidTest
+> Task :app:packageDevDebugAndroidTest
+> Task :app:createDevDebugAndroidTestApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDevDebugAndroidTest
+> Task :app:compileStagingDebugKotlin
+> Task :app:compileProductionDebugKotlin
+> Task :app:compileStagingDebugJavaWithJavac
+> Task :app:compileProductionDebugJavaWithJavac
+> Task :app:copyRoomSchemas NO-SOURCE
+> Task :app:dexBuilderStagingDebug
+> Task :app:processStagingDebugJavaRes
+> Task :app:processProductionDebugJavaRes
+> Task :app:mergeProjectDexStagingDebug
+> Task :app:mergeStagingDebugJavaResource
+> Task :app:mergeProductionDebugJavaResource
+> Task :app:dexBuilderProductionDebug
+> Task :app:packageStagingDebug
+> Task :app:createStagingDebugApkListingFileRedirect
+> Task :app:assembleStagingDebug
+> Task :app:mergeProjectDexProductionDebug
+> Task :app:packageProductionDebug
+> Task :app:createProductionDebugApkListingFileRedirect
+> Task :app:assembleProductionDebug
+
+[Incubating] Problems report is available at: file:///C:/Users/ISICIO/.codex/worktrees/issue725-account-auth/MAGINA%20V20/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 2m 3s
+140 actionable tasks: 54 executed, 19 from cache, 67 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.4.1/userguide/configuration_cache_enabling.html

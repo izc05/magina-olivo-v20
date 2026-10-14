@@ -13,6 +13,7 @@ data class AccountState(
     val message: String? = null,
     val error: String? = null,
     val simulated: Boolean = false,
+    val pendingPurpose: LinkPurpose? = null,
 )
 
 /** Credentials deliberately have no generated data-class toString/copy/component methods. */

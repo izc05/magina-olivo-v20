@@ -78,6 +78,7 @@ fun ProfileRoute(
     /** #671: nested CUE resource management, never a bottom-bar destination. */
     onAgronomicPeople: () -> Unit = {},
     appearanceStore: AppearanceStore? = null,
+    onAccount: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val profileRepository = persistence?.profileRepository
@@ -99,6 +100,7 @@ fun ProfileRoute(
         else context.startActivity(notificationSettingsIntent(context, ReminderNotifier.CHANNEL_ID))
     }
     ProfileScreen(
+        onAccount = onAccount,
         appVersion = appVersion,
         notificationsOn = notificationsOn,
         onNotifications = openNotifications,
@@ -161,6 +163,7 @@ fun ProfileScreen(
     /** #671: CUE resources live under Perfil, not in the root navigation. */
     onAgronomicPeople: () -> Unit = {},
     appearanceSettings: (@Composable () -> Unit)? = null,
+    onAccount: (() -> Unit)? = null,
 ) {
     Column(
         Modifier
@@ -220,7 +223,11 @@ fun ProfileScreen(
             status = "Siempre",
             tone = MoStatusTone.Success,
         )
-        // CR-011 §25: no «Pronto» rows in the public app; account/sync returns when it exists.
+        if (onAccount != null) {
+            MoSectionHeader("Cuenta")
+            MoCompactListItem(title="Cuenta",subtitle="Acceso y recuperación. Tus fincas siguen guardadas en este teléfono.",
+                onClick=onAccount,modifier=Modifier.testTag("profile-account"),trailing={Chevron()})
+        }
         if (onHelp != null) {
             MoSectionHeader("Ayuda y privacidad")
             HelpTopic.entries.forEach { topic ->

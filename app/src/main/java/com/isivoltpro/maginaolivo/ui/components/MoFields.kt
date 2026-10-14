@@ -25,6 +25,8 @@ fun MoTextField(
     supportingText: String? = null,
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+    keyboardOptions: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default,
 ) {
     OutlinedTextField(
         value = value,
@@ -32,6 +34,8 @@ fun MoTextField(
         modifier = modifier.heightIn(min = MoSize.fieldMinHeight),
         enabled = enabled,
         singleLine = singleLine,
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
         isError = isError,
         label = { Text(label) },
         supportingText = supportingText?.let {

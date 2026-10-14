@@ -13,6 +13,8 @@ fun AppRoot(
     compositionRoot: AppCompositionRoot,
     openActivityId: UUID? = null,
     onActivityOpened: () -> Unit = {},
+    openAccount: Boolean = false,
+    onAccountOpened: () -> Unit = {},
 ) {
     val appearance by compositionRoot.appearanceStore.mode.collectAsStateWithLifecycle()
     MaginaOlivoTheme(mode = appearance) {
@@ -21,6 +23,8 @@ fun AppRoot(
                 compositionRoot = compositionRoot,
                 openActivityId = openActivityId,
                 onActivityOpened = onActivityOpened,
+                openAccount = openAccount,
+                onAccountOpened = onAccountOpened,
             )
         }
     }
