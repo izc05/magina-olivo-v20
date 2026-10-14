@@ -55,6 +55,7 @@ data class AppCompositionRoot(
     /** UX-C: the Farm Mi Cuaderno opens on (device preference). */
     val activeFarmStore: ActiveFarmStore = InMemoryActiveFarmStore(),
     val appearanceStore: AppearanceStore = InMemoryAppearanceStore(),
+    val accountRepository: com.isivoltpro.maginaolivo.feature.account.AccountRepository = com.isivoltpro.maginaolivo.feature.account.AccountRepository(null),
 ) {
     companion object {
         fun createDefault(environmentValue: String): AppCompositionRoot =
@@ -197,6 +198,7 @@ data class AppCompositionRoot(
                 database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
             )
             return defaults.copy(
+                accountRepository = com.isivoltpro.maginaolivo.feature.account.AccountRuntime.get(applicationContext),
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 activeFarmStore = AndroidActiveFarmStore(applicationContext),
                 appearanceStore = AndroidAppearanceStore(applicationContext),

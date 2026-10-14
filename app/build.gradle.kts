@@ -39,6 +39,27 @@ run {
 val appVersionName = "0.5.0"
 val appBuildNumber: Int = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull?.toIntOrNull() ?: 0
 
+// Account Auth is independent of the existing weather project. Production remains disabled.
+val authLocalProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+fun authSetting(name: String): String = (providers.gradleProperty(name).orNull
+    ?: providers.environmentVariable(name).orNull ?: authLocalProperties.getProperty(name)).orEmpty().trim()
+fun authSettings(environment: String): Pair<String,String> {
+    val url=authSetting("MAGINA_AUTH_${environment}_URL")
+    val key=authSetting("MAGINA_AUTH_${environment}_PUBLIC_KEY")
+    if(url.isEmpty() && key.isEmpty()) return "" to ""
+    check(Regex("^https://[a-z]{20}\\.supabase\\.co$").matches(url)) { "Account Auth requires an explicit HTTPS Supabase test project URL" }
+    check(url !in setOf("https://zzelvbcuxsboafibfxch.supabase.co","https://klchkjsdybbgritxkswp.supabase.co")) { "Existing Supabase projects are forbidden for Account Auth tests" }
+    val claims=runCatching { String(Base64.getUrlDecoder().decode(key.split('.')[1])) }.getOrDefault("")
+    val public=Regex("^sb_publishable_[A-Za-z0-9_-]+$").matches(key) ||
+        (key.split('.').size==3 && Regex("\"role\"\\s*:\\s*\"anon\"").containsMatchIn(claims) && !claims.contains("service_role"))
+    check(public) { "Account Auth only accepts a publishable/anon key; secret/service_role keys are forbidden" }
+    return url to key
+}
+val devAuth=authSettings("DEV")
+val stagingAuth=authSettings("STAGING")
+
 android {
     namespace = "com.isivoltpro.maginaolivo"
     compileSdk = 37
@@ -66,6 +87,8 @@ android {
             versionNameSuffix = "-dev"
             resValue("string", "app_name", "Mágina Olivo Dev")
             buildConfigField("String", "ENVIRONMENT", "\"DEV\"")
+            buildConfigField("String", "AUTH_PROJECT_URL", "\"${devAuth.first}\"")
+            buildConfigField("String", "AUTH_PUBLIC_KEY", "\"${devAuth.second}\"")
         }
         create("staging") {
             dimension = "environment"
@@ -73,11 +96,15 @@ android {
             versionNameSuffix = "-staging"
             resValue("string", "app_name", "Mágina Olivo Staging")
             buildConfigField("String", "ENVIRONMENT", "\"STAGING\"")
+            buildConfigField("String", "AUTH_PROJECT_URL", "\"${stagingAuth.first}\"")
+            buildConfigField("String", "AUTH_PUBLIC_KEY", "\"${stagingAuth.second}\"")
         }
         create("production") {
             dimension = "environment"
             resValue("string", "app_name", "Mágina Olivo")
             buildConfigField("String", "ENVIRONMENT", "\"PRODUCTION\"")
+            buildConfigField("String", "AUTH_PROJECT_URL", "\"\"")
+            buildConfigField("String", "AUTH_PUBLIC_KEY", "\"\"")
         }
     }
 
