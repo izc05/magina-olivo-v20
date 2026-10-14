@@ -133,6 +133,7 @@ dependencies {
     // Navigation requests serialization 1.7.3 while Room's schema reader requires 1.8.1.
     // One BOM keeps the production and instrumented runtime classpaths binary-aligned.
     implementation(platform(libs.kotlinx.serialization.bom))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json")
 
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
