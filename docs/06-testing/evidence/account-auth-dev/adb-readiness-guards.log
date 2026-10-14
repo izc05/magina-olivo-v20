@@ -1,0 +1,8 @@
+ADB ready: emulator-5554 (attempt 3)
+PASS: transient offline recovers on the pinned emulator
+Selected emulator did not recover: emulator-5554
+PASS: permanent loss fails after six attempts
+Selected device is not QEMU
+PASS: non-QEMU rejected
+Explicit emulator serial required
+PASS: physical/unknown serial rejected before ADB

@@ -19,6 +19,9 @@ import com.isivoltpro.maginaolivo.app.AppearanceMode
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.io.File
 import java.time.Instant
+import java.time.LocalDate
+import com.isivoltpro.maginaolivo.data.local.entity.*
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
@@ -63,6 +66,17 @@ class AccountAuthScreenTest {
         val root=AppCompositionRoot.createAndroid(context,"DEV");val local=checkNotNull(root.localPersistence)
         val workspace=(local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
         val farm=(local.farmRepository.create(NewFarm(workspace,"Synthetic retained farm")) as AppResult.Success).value
+        // Non-empty records in every agricultural module; compare all table bytes after Auth.
+        val meta=LocalMetadata(Instant.now(),Instant.now());val date=LocalDate.now()
+        val parcel=UUID.randomUUID();val campaign=UUID.randomUUID();val harvest=UUID.randomUUID()
+        val delivery=UUID.randomUUID();val labour=UUID.randomUUID()
+        local.database.parcelDao().upsert(ParcelEntity(parcel,workspace,"Synthetic retained parcel",source="MANUAL",metadata=meta))
+        local.database.campaignDao().upsert(CampaignEntity(campaign,workspace,farm,"Synthetic campaign",date.minusDays(1),null,CampaignStatus.HARVEST,metadata=meta))
+        local.database.harvestDao().upsert(HarvestEntity(harvest,workspace,campaign,farm,date,1_000_000,metadata=meta))
+        local.database.deliveryDao().upsert(DeliveryEntity(delivery,workspace,farm,campaign,date,
+            destinationName="Synthetic cooperative",netGrams=1_000_000,source="MANUAL",metadata=meta,harvestId=harvest))
+        local.database.labourDao().upsertLabour(listOf(HarvestLabourEntity(labour,workspace,harvest,
+            quantity=2,unit="FULL_DAY",metadata=meta)))
         photo.writeBytes(byteArrayOf(4,2,1,9));val before=fingerprint(local.database)
         val store=MemoryAccountSessionStore();val repo=AccountRepository(Api(),store);val online=MutableStateFlow(true)
         fun content() { compose.setContent { MaginaOlivoTheme(AppearanceMode.DARK) { Box(Modifier.fillMaxSize().systemBarsPadding()) { AccountRoute(repo,{},connectivity=online) } } } }
@@ -78,6 +92,10 @@ class AccountAuthScreenTest {
         compose.onNodeWithTag("account-logout").performScrollTo().performClick();waitFor("account-login")
         assertNull(store.read().session);assertEquals(before,fingerprint(local.database));assertArrayEquals(byteArrayOf(4,2,1,9),photo.readBytes())
         assertNotNull(local.database.farmDao().findById(farm));capture("logged-out")
+        assertNotNull(local.database.parcelDao().findById(parcel))
+        assertNotNull(local.database.campaignDao().findById(campaign))
+        assertNotNull(local.database.deliveryDao().findById(delivery))
+        assertNotNull(local.database.labourDao().findLabour(labour))
     }
     @Test fun registrationRecoveryAndErrorsAreHonestAndDoNotDuplicateSession() {
         val api=Api();val store=MemoryAccountSessionStore();val repo=AccountRepository(api,store);val online=MutableStateFlow(true)

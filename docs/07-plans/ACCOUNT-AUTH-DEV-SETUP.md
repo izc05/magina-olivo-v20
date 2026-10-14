@@ -8,13 +8,15 @@ El protocolo HTTPS, la custodia de credenciales, la pantalla y la navegación es
 
 Las pruebas JVM usan respuestas sintéticas. Las instrumentadas ejecutan navegación, recreación de Activity, custodia Keystore y conservación de datos sintéticos en Android; el proveedor remoto sigue simulado. Registro, correo, recuperación, refresh y revocación reales requieren verificación contra DEV antes de sacar la PR de borrador.
 
-## Proyecto independiente
+## Proyecto independiente verificado (15/10/2026)
 
-No usar `magina-olivo` ni `magina-olivo-aventura`. La organización elegida es «Magina olivo aventura», plan Free. La conexión enumera un proyecto activo y uno inactivo, pero la consulta de coste no está disponible y el navegador no arranca: la cuota efectiva y el formulario de creación siguen sin verificarse. No se ha creado un proyecto ni autorizado coste alguno.
+El propietario ha creado y autorizado exclusivamente `magina-olivo-dev`, referencia `zubpicdibqbmewxeurhm`, URL `https://zubpicdibqbmewxeurhm.supabase.co`. La conexión confirma ACTIVE_HEALTHY en la organización elegida y región eu-west-1. Se obtuvo únicamente la clave pública publishable habilitada y se guardó en `local.properties` ignorado, solo en las propiedades DEV. STAGING y Production no se configuraron. No se ha obtenido ninguna clave privada ni usado credenciales administrativas en Android.
 
-En el panel Supabase: seleccionar esa organización, abrir New project, nombre `magina-olivo-dev`, región Paris y contraseña de base de datos conservada por el propietario. Comprobar disponibilidad y Free/0 € antes de crear. Si requiere pago, detenerse. La creación requiere autorización previa del propietario; la selección de organización no la sustituye.
+La API pública Auth DEV responde con email/password habilitado, registro permitido, confirmación de correo requerida y usuarios anónimos deshabilitados. La prueba instrumentada opt-in ejecuta HTTPS y rechaza credenciales inexistentes sin importar una sesión. No crea usuarios ni envía correos.
 
-Después de crear, obtener únicamente Project URL y clave pública publishable/anon desde Connect o Settings → API Keys. Nunca usar ni solicitar service_role/secret ni compartir la contraseña de base de datos.
+Para completar E2E aún se necesitan un buzón de pruebas autorizado accesible y confirmar la allowlist exacta `com.isivoltpro.maginaolivo.dev://auth/callback` en Authentication → URL Configuration. Ambas entradas se han solicitado al propietario. No desactivar la confirmación ni crear usuarios administrativamente para simular estos pasos.
+
+No usar `magina-olivo` ni `magina-olivo-aventura`. Las comprobaciones de cuota/creación del 14/10 quedan como historia de preparación; el proyecto DEV ya lo creó el propietario.
 
 ## Configuración Android
 
