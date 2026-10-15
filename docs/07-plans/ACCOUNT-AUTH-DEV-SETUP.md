@@ -14,7 +14,7 @@ El propietario ha creado y autorizado exclusivamente `magina-olivo-dev`, referen
 
 La API pública Auth DEV responde con email/password habilitado, registro permitido, confirmación de correo requerida y usuarios anónimos deshabilitados. La prueba instrumentada opt-in ejecuta HTTPS y rechaza credenciales inexistentes sin importar una sesión. No crea usuarios ni envía correos.
 
-Para completar E2E aún se necesitan un buzón de pruebas autorizado accesible y confirmar la allowlist exacta `com.isivoltpro.maginaolivo.dev://auth/callback` en Authentication → URL Configuration. Ambas entradas se han solicitado al propietario. No desactivar la confirmación ni crear usuarios administrativamente para simular estos pasos.
+El propietario ha autorizado el buzón de pruebas y ha guardado el callback DEV. Su autorización efectiva se comprobó con GET /auth/v1/verify usando un hash sintético no emitido, sin seguir la redirección: antes devolvía localhost; después HTTP303 con destino exacto `com.isivoltpro.maginaolivo.dev://auth/callback`. No confirma ningún usuario ni sustituye la prueba del correo. La conexión Gmail disponible pertenece a otro buzón, por lo que los enlaces deberán abrirse o facilitarse por el propietario. No desactivar la confirmación ni crear usuarios administrativamente para simular estos pasos.
 
 No usar `magina-olivo` ni `magina-olivo-aventura`. Las comprobaciones de cuota/creación del 14/10 quedan como historia de preparación; el proyecto DEV ya lo creó el propietario.
 
@@ -44,3 +44,10 @@ Con buzón y usuarios sintéticos autorizados: registro con confirmación, retor
 El intercambio del enlace pertenece al repositorio de proceso y continúa al rotar la Activity. Si Android mata el proceso durante un intercambio incierto, solicitar un enlace nuevo: no se promete recuperar automáticamente ese código. Cerrar sesión offline elimina las credenciales locales y explica que la revocación remota no se ha confirmado.
 
 No generar APK candidata ni fusionar hasta la autorización correspondiente.
+## Journey manual opt-in sin secretos en CI
+
+`AccountAuthDevJourneyTest` prepara seis fases reales en Android: REGISTER → correo/callback → CONFIRMED → LOGIN → RESTORE_OFFLINE_LOGOUT → RECOVER → correo/callback → RESET_LOGIN_LOGOUT. Los callbacks pasan por MainActivity, sin reutilizar el código. Confirmación y recuperación deben iniciarse y terminar en el mismo emulador para conservar PKCE.
+
+El test solo se activa con `realDevAuthProject=zubpicdibqbmewxeurhm`, build DEV/debug/QEMU y entrada local privada `no_backup/qa-account-e2e-input.json`. En CI se omite; no hay contraseña, token ni buzón en argumentos del runner. La entrada se suministra por stdin a run-as con umask077 y se elimina antes de parsearla; sus errores nunca incluyen JSON ni valores secretos. Las contraseñas sintéticas del host están fuera de Git y cifradas con DPAPI para el usuario Windows. Nunca copiar esa entrada a evidencia ni adjuntar logcat de sesiones reales.
+
+Cada fase compara todas las tablas SQLite mediante hashes lógicos OPEN_READONLY y las bytes de los adjuntos originales de `files/attachments`; no restaura ni cambia datos agrícolas. Las miniaturas regenerables se excluyen. Una referencia persistida de hashes compara también los intervalos entre fases/procesos. El logout exige rechazo del refresh token anterior; la recuperación exige rechazo de la contraseña antigua y login con la nueva. Solo registrar fases como realizadas tras su ejecución y recepción de correo reales.

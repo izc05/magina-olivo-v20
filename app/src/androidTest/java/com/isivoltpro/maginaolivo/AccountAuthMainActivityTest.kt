@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.isivoltpro.maginaolivo.app.AndroidOnboardingStateStore
@@ -61,6 +61,8 @@ class AccountAuthMainActivityTest {
         compose.activityRule.scenario.recreate()
         gate.complete(Unit)
         compose.waitUntil(15_000) { repository.state.value.status==AccountStatus.RECOVERY }
+        // StateFlow publication precedes collection/recomposition on the UI dispatcher.
+        waitFor("account-new-password")
         compose.onNodeWithTag("account-new-password").performScrollTo().assertIsDisplayed()
         assertNotNull(store.read().recovery);assertNull(store.read().session)
         compose.activityRule.scenario.onActivity { assertNull("Callback code not retained in Activity intent",it.intent.data) }

@@ -1,25 +1,29 @@
-# Cuenta DEV — continuación 15/10/2026
+# Cuenta DEV — pruebas y gate por SHA
 
-Proyecto autorizado por el propietario: `magina-olivo-dev`, referencia `zubpicdibqbmewxeurhm`. La conexión confirma ACTIVE_HEALTHY. URL y clave pública publishable solo en configuración local DEV ignorada; no se configuró STAGING/Production ni se obtuvo una clave privada.
+Proyecto autorizado: magina-olivo-dev, zubpicdibqbmewxeurhm. Solo clave pública publishable local DEV; ninguna credencial administrativa en Android. STAGING/Production sin configuración Auth. Sin migraciones, Data API/Storage ni sincronización agrícola.
 
-## Pruebas reales
+## Red real y recorrido de correo
 
-- Consulta HTTPS de `/auth/v1/settings` con clave pública: email habilitado, signup permitido, mailer_autoconfirm=false, anonymous_users=false.
-- Android API35, emulator-5614: `AccountAuthDevConnectivityTest`, opt-in explícito del proyecto exacto, 1/1 correcto. Usa `SupabaseAuthApi` y `HttpsAuthTransport` reales para unas credenciales inexistentes; recibe CREDENTIALS, estado SIGNED_OUT, ningún token/sesión importado y simulated=false. No crea usuarios ni envía correos. Log adjunto.
+La API pública confirma registro/email habilitados y confirmación obligatoria. El probe Android HTTPS real rechaza credenciales inexistentes y conserva SIGNED_OUT: 1/1. No crea usuarios ni prueba correo.
 
-Esto prueba conectividad/clave/errores, no registro, confirmación, sesión real o recuperación. Esos flujos esperan buzón autorizado y allowlist de `com.isivoltpro.maginaolivo.dev://auth/callback`, solicitados al propietario. No se deshabilita la confirmación ni se crean usuarios con credenciales administrativas para sustituir el correo.
+El propietario ha autorizado el buzón y guardado el callback. La comprobación efectiva con un hash sintético no emitido devuelve HTTP303 a `com.isivoltpro.maginaolivo.dev://auth/callback`; antes devolvía localhost. Véase callback-authorization.json: no verifica ningún usuario ni revela un token real.
 
-## Pruebas simuladas y custodia Android
+`AccountAuthDevJourneyTest` prepara REGISTER → correo/callback → CONFIRMED → LOGIN → RESTORE_OFFLINE_LOGOUT → RECOVER → correo/callback → RESET_LOGIN_LOGOUT. Utiliza runtime/Keystore/API reales, guarda PKCE y compara hashes de todas las tablas SQLite OPEN_READONLY y adjuntos originales entre fases y procesos. La señal offline se inyecta al repositorio; no se presenta como una desconexión física del teléfono. El logout exige rechazo del refresh anterior; el reset, rechazo de la contraseña antigua. **Los resultados de cada fase real y su SHA se registran en la entrega de PR #753; compilar o saltar el test en CI no equivale a ejecutarlo.**
 
-La suite existente usa un proveedor Auth simulado explícito para login/signup/recovery/offline/logout. Se amplía el caso de conservación con registros no vacíos de finca, parcela, campaña, pesada y jornal; compara todas las tablas, owner/outbox y bytes de una fotografía sintética. Keystore/cifrado y Room se ejecutan realmente en Android, pero la identidad de esos casos es ficticia. Los resultados de la repetición se añadirán a la entrega por SHA; no equivalen a E2E remoto.
+Credenciales sintéticas generadas y cifradas con DPAPI fuera del repositorio. Entrada transitoria privada por stdin/run-as, permisos0600, retirada antes de parsear incluso con error. Sin valores secretos en argumentos del runner, informes ni logcat publicado. CI omite ambos tests remotos salvo opt-in explícito; no envía correos.
 
-## Corrección CI
+## Simulación, custodia y conservación local
 
-HEAD anterior `080af87ada3c7f13926015bc1e5637f2d2aab2d2`: foundation y gate3-emulator SUCCESS. gate3-evidence run38628110744 ejecutó **793 instrumentadas correctas**, luego falló por `adb: device offline` al pasar a verify-map-device, no por un test de Cuenta.
+663 JVM, sin fallos. UI y protocolo simulados se identifican como tales; Keystore/AES-GCM y Room sí se ejecutan en Android. El caso de conservación contiene finca/parcela/campaña/pesada/jornal no vacíos, owner/outbox y foto sintética; 7 instrumentadas verdes en el bloque40d9aad9 (1 probe real, 3 UI/Auth simulado, 3 custodia). Matriz360/390dp fuente1.3 del bloque anterior documentada aparte.
 
-Se fija ANDROID_SERIAL después del preflight del emulador desechable y se espera el mismo transporte/QEMU hasta seis intentos, con comandos limitados a tres segundos y pausas de dos segundos. No reinicia ADB, cambia dispositivo ni borra datos; si no se recupera, falla. Cuatro pruebas de stub verifican recuperación transitoria, fallo permanente, rechazo no-QEMU y rechazo físico antes de ADB. Ambos workflows ejecutan esas guardas.
+## Defecto de rotación y regresión
 
-El nuevo resultado remoto se documentará con el SHA definitivo en la PR #753 y #744; todavía no se declara verificado. Main sigue `193923a851629dcfb5b1dc54dfc9969fbc19c63d`.
+CI40d9aad9: foundation SUCCESS; ambos controles de emulador fallaron por el formulario de recuperación ausente tras recreate; uno registró además SnapshotStateObserver multihilo en ayuda/privacidad.
 
-PR en DRAFT. Sin producción, sincronización, merge, APK candidata ni cambios Web V3.
-Repetición local completada: 663 JVM, cero fallos/errores; lint DEV y compilación app/test correctos. Instrumentadas 7/7: un probe real Auth DEV, tres pantallas con Auth simulado y tres de Keystore. El caso de datos agrícolas no vacíos pasó con comparación de todas las tablas y fotografía tras login/offline/recreación/logout simulados. Revisión estática sin nuevos P1/P2. Registro/correo/recuperación y sesión real continúan pendientes; no se declaran probados.
+La reproducción local, ya con espera explícita de UI y reglas Compose v2, terminó con33 casos:31 navegación correctos, entrada normal a Cuenta correcta y solo callback/recreación fallido. RECOVERY persistía en el repositorio, pero se perdía openAccount antes de que navegación consumiese la acción. No bastaba esperar.
+
+MainActivity guarda/restaura únicamente el booleano de navegación pendiente. No guarda URI/código ni credenciales en Bundle. La corrección pasa4/4 dirigidas: callback con recreación, Cuenta/back, onboarding restaurado y ayuda/privacidad. Logs RED/GREEN adjuntos. Las dos clases usan el dispatcher estándar de [Compose test v2](https://developer.android.com/develop/ui/compose/testing/migrate-v2); revisión estática sin nuevos P1/P2.
+
+La espera acotada de ADB continúa comprobando el mismo serial/QEMU, sin reiniciar ni borrar datos; cuatro guardas previas verificadas. El resultado remoto vigente se consulta por HEAD exacto en PR #753 y #744, sin trasladar resultados de un SHA anterior.
+
+Main base193923a851629dcfb5b1dc54dfc9969fbc19c63d. Sin merge/APK candidata/Web V3. Configuración y protocolo manual: docs/07-plans/ACCOUNT-AUTH-DEV-SETUP.md.

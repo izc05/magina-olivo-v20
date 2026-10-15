@@ -1,0 +1,7 @@
+{
+  "project": "zubpicdibqbmewxeurhm",
+  "userVerified": false,
+  "httpStatus": 303,
+  "method": "GET /auth/v1/verify, synthetic non-issued hash, redirects disabled",
+  "destination": "com.isivoltpro.maginaolivo.dev://auth/callback"
+}

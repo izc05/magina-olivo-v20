@@ -19,6 +19,7 @@ class MainActivity : ComponentActivity() {
     private companion object {
         /** #475: the one-time reading of existing day replacements, per process. */
         val existingReplacementsMarked = java.util.concurrent.atomic.AtomicBoolean(false)
+        const val OPEN_ACCOUNT_PENDING = "open_account_pending"
     }
 
     /** The planned work a tapped reminder points at, until navigation has opened it. */
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
             environmentValue = BuildConfig.ENVIRONMENT,
         )
         account = compositionRoot.accountRepository
+        openAccount.value = savedInstanceState?.getBoolean(OPEN_ACCOUNT_PENDING) ?: false
         if(savedInstanceState==null) handleAccountIntent(intent)
         // Alarms do not survive a reinstall or a force-stop; the stored reminders do.
         compositionRoot.localPersistence?.reminders?.let { reminders ->
@@ -69,6 +71,13 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         handleAccountIntent(intent)
         activityIdOf(intent)?.let { openActivity.value = it }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        // Navigation may not have consumed the callback when rotation saves the back stack.
+        // Save only this pending action, never the callback URI/code or session credentials.
+        outState.putBoolean(OPEN_ACCOUNT_PENDING, openAccount.value)
+        super.onSaveInstanceState(outState)
     }
 
     private fun activityIdOf(intent: Intent?): UUID? =
