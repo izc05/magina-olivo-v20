@@ -1,0 +1,13 @@
+:root {
+  color-scheme: light;
+  --color-cream: #f6f3e9;
+  --color-paper: #fffdf7;
+  --color-olive: #52633a;
+  --color-forest: #263b2b;
+  --color-earth: #b59b69;
+  --color-ink: #20251e;
+  --color-muted: #62685e;
+  --color-border: #e5e1d5;
+  --font-editorial: Georgia, "Times New Roman", serif;
+  --font-ui: Arial, Helvetica, sans-serif;
+}
