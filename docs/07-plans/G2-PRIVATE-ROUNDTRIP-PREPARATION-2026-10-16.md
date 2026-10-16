@@ -1,0 +1,11 @@
+# G2 private round trip preparation — inactive
+
+Required gates: G1a integrated main checks, G1b consent and whole-local-workspace protection including account changes, and G1c durable immutable routing/receipts plus native server authorization and concurrency tests. No synchronization is activated by this document.
+
+1. Android writes agricultural changes to Room and an atomic outbox transaction. An operation retains its client UUID, original actor/issuer, selected farm, consent scope and aggregate version. Logout pauses that actor's work; another account cannot drain or inspect it.
+2. An explicitly authorized worker uploads through private Supabase endpoints. The server derives identity from verified credentials, rechecks current workspace grants and enforces operation idempotency. Conflicting versions remain visible and require a documented resolution; receipts never silently overwrite newer records.
+3. Attachments require actual bytes, length and checksum, private storage paths scoped to authorized workspace, resumable retries and stable content identity. A database reference alone cannot mark an attachment synchronized. Deletion and orphan cleanup need independent retention/recovery rules.
+4. The private web reads authorized farms, parcels, campaigns and records with the same row isolation. Browser clients hold no service-role secret. Any future web edit uses the same version and idempotency contract.
+5. Android downloads authorized versioned deltas into Room transactionally. Acknowledged operations leave the pending queue only after durable local commit; interrupted upload/download is replayable. Profile reports actual pending, retry, conflict and verified-success states, including attachment progress.
+
+Acceptance uses an ephemeral backend, two unrelated accounts and synthetic farms: offline create/update with attachments → private cloud → private web read/update → Android reopen/download. Include revoked membership, expired/wrong-project credentials, delayed receipt after account change, duplicate delivery, conflicting edits, tombstones, disk exhaustion and interrupted processes. Compare immutable identifiers, record counts and attachment checksums at every stage. No persistent deployment or production sync is authorized.

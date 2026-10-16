@@ -2,7 +2,7 @@ name: G0 security DEV
 
 on:
   pull_request:
-    paths: ['supabase/migrations/**', 'supabase/tests/**', 'supabase/package*.json', '.github/scripts/test-g0-native-supabase.sh', '.github/workflows/g0-security.yml']
+    paths: ['supabase/proposals/**', 'supabase/migrations/**', 'supabase/tests/**', 'supabase/package*.json', '.github/scripts/test-g0-native-supabase.sh', '.github/workflows/g0-security.yml']
   push:
     branches: ['feat/g0-auth-sync-contracts']
   workflow_dispatch:
