@@ -30,18 +30,18 @@ La corrupción del ledger bloquea acceso; nunca se interpreta como «sin vincula
 
 ## Plan de implementación y aceptación
 
-- [ ] Ledger AtomicFile validado, merge inmutable por identidad y finca; tests de
+- [x] Ledger AtomicFile validado, merge inmutable por identidad y finca; tests de
   reinicio, corrupción, escritura fallida, selección vacía y dos cuentas.
-- [ ] Repositorio G1b, inventario mínimo, comparación de selección y consentimiento,
+- [x] Repositorio G1b, inventario mínimo, comparación de selección y consentimiento,
   copia real G1a previa, sin escritura agrícola/outbox/red; pruebas offline/retry.
-- [ ] Panel en Cuenta con componentes actuales, lista/casilla/resumen/confirmación,
+- [x] Panel en Cuenta con componentes actuales, lista/casilla/resumen/confirmación,
   errores claros y estado pendiente honesto. Sin nuevas pestañas ni formularios agrícolas.
-- [ ] Proteger AppRoot, descartar navegación/ViewModels anteriores al cambiar de
+- [x] Proteger AppRoot, descartar navegación/ViewModels anteriores al cambiar de
   identidad y evitar notificaciones agrícolas al estar bloqueado. Restaurar sesión
   cacheada sin red antes de decidir acceso; no filtrar por email ni recovery token.
-- [ ] Android UI y Room sintéticos: A selecciona dos de tres fincas; B y logout
+- [x] Android UI y Room sintéticos: A selecciona dos de tres fincas; B y logout
   no acceden; A vuelve offline tras reinicio; cancelar y errores no alteran datos.
-- [ ] Preparar G1c (contrato RPC, idempotencia/validación y recuperación), sin activar
+- [x] Preparar G1c (contrato RPC, idempotencia/validación y recuperación), sin activar
   servidor ni G2. Revisión independiente, evidencia, PR y #744/#727.
 
 G1 seguirá incompleta hasta G1c y pruebas E2E del acuse. No producción, despliegue

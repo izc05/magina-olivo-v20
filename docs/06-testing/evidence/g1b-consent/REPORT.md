@@ -20,3 +20,7 @@ El ledger sobrevive logout/reinicio y está excluido de Android Backup. Una corr
 Copia G1a antes del consentimiento; fallo de lectura/adjunto inexistente/selección obsoleta impide registro. Una copia completada sin commit de ledger puede quedar huérfana: no concede asociación y el retry toma una copia nueva. No hay GC automático ni pruebas de corte eléctrico. Consentimiento nuevo requiere sesión real vigente; identidad cacheada, incluso expirada, permite seguir usando agricultura offline con la cuenta ya elegida. Recovery tokens y cuentas simuladas no conceden identidad local.
 
 G1c está preparado como contrato en docs/07-plans/G1C-REMOTE-RESERVATION-CONTRACT-2026-10-16.md, sin RPC ni SQL desplegado. G1 completa sigue pendiente de reserva/acuse/recuperación con servidor aislado. G2 no iniciada. Sin producción, migraciones persistentes, fusión ni APK candidata.
+
+## Revalidación sobre G1a actualizada
+
+Código G1b 2d1eb355c9d751fbda8daec90af86db25fb82348, base G1a 12420c978e8286688b3dce047690c88a7093d605. Recompilación/JVM SUCCESS (parent-build.log); 24 instrumentadas conjuntas (G1a 9 + G1b 13 + MainActivity 2), cero fallos (parent-native.log). Harness de dos procesos repetido con esa base: ambas fases 1/1 y todos los PASS (parent-process.log). Las tres clases G1b se incorporan al tramo offline de Gate 3 en CI. El lint final se ejecuta por separado tras cerrar el emulador para reducir consumo de memoria; su resultado y los checks remotos se registrarán en la PR sin extrapolarlos a otro SHA.
