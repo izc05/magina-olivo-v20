@@ -89,16 +89,23 @@ class FarmLinkScreenTest {
             File(folder,"$label.png").outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) };bitmap.recycle()
         }
     }
-    @Test fun explicitSelectionCancelAndConsentKeepThirdFarmUnlinked()=runBlocking {
+    @Test fun onlySelectedFarmsArePreparedButConsentProtectsTheEntireLocalDataset()=runBlocking {
         seed();content();waitFor("farm-link-choice-${ids[0]}")
         compose.onNodeWithTag("farm-link-choice-${ids[0]}").performScrollTo().performClick()
         compose.onNodeWithTag("farm-link-confirm").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("farm-link-cancel").performScrollTo().performClick();assertNull(ledger.read())
         ids.take(2).forEach { compose.onNodeWithTag("farm-link-choice-$it").performScrollTo().performClick() }
+        compose.onNodeWithText("Las fincas no seleccionadas también quedarán protegidas en este móvil. Todas se abrirán únicamente con esta cuenta. Si cierras sesión, tendrás que entrar con ella para volver a verlas. Con la sesión guardada podrás seguir trabajando sin conexión.")
+            .performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Acepto asociar las fincas seleccionadas y proteger todas las fincas de este móvil con esta cuenta.")
+            .performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("farm-link-consent").performScrollTo().performClick().assertIsOn();capture("selected")
         compose.onNodeWithTag("farm-link-confirm").performScrollTo().performClick();waitFor("farm-link-pending")
         assertEquals(ids.take(2).toSet(),ledger.read()!!.farmIds)
         assertFalse(ids[2] in ledger.read()!!.farmIds)
+        assertEquals(2,ledger.read()!!.consents.single().textVersion)
+        compose.onNodeWithTag("farm-link-protection-scope").performScrollTo()
+            .assertTextContains("incluidas las no seleccionadas",substring=true).assertIsDisplayed()
         compose.onNodeWithTag("farm-link-pending").performScrollTo();capture("pending")
     }
     @Test fun logoutSwitchAndRecreatedActivityCannotShowPreviousAgriculture()=runBlocking {
@@ -106,7 +113,9 @@ class FarmLinkScreenTest {
         content();waitFor("private-agriculture")
         account.logout(false);waitFor("farm-link-locked")
         compose.onNodeWithTag("private-agriculture").assertDoesNotExist()
+        compose.onNodeWithTag("farm-link-choice-${ids[2]}").assertDoesNotExist()
         account.login("b@example.test","password42",true);waitFor("farm-link-locked")
+        compose.onNodeWithTag("farm-link-choice-${ids[2]}").assertDoesNotExist()
         compose.onNodeWithTag("private-agriculture").assertDoesNotExist();capture("other-account-locked")
         compose.activityRule.scenario.recreate();content();waitFor("farm-link-locked")
         compose.onNodeWithTag("private-agriculture").assertDoesNotExist()

@@ -13,7 +13,7 @@ data class FarmLinkConsent(
     val backupId: UUID,
     val backupManifestHash: String,
     val acceptedAt: Instant,
-    val textVersion: Int = 1,
+    val textVersion: Int = 2,
     val state: String = "PENDING_REMOTE_RESERVATION",
 )
 

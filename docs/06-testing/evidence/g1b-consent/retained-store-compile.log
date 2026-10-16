@@ -1,0 +1,55 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDevDebugBuild UP-TO-DATE
+> Task :app:generateDevDebugBuildConfig UP-TO-DATE
+> Task :app:generateDevDebugResValues UP-TO-DATE
+> Task :app:generateDevDebugResources UP-TO-DATE
+> Task :app:packageDevDebugResources UP-TO-DATE
+> Task :app:processDevDebugNavigationResources UP-TO-DATE
+> Task :app:parseDevDebugLocalResources UP-TO-DATE
+> Task :app:generateDevDebugRFile UP-TO-DATE
+> Task :app:kspDevDebugKotlin
+> Task :app:compileDevDebugKotlin
+> Task :app:javaPreCompileDevDebug UP-TO-DATE
+> Task :app:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :app:checkDevDebugAarMetadata UP-TO-DATE
+> Task :app:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :app:compileDevDebugNavigationResources UP-TO-DATE
+> Task :app:mergeDevDebugResources UP-TO-DATE
+> Task :app:createDevDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDevDebug UP-TO-DATE
+> Task :app:processDevDebugMainManifest UP-TO-DATE
+> Task :app:processDevDebugManifest UP-TO-DATE
+> Task :app:processDevDebugManifestForPackage UP-TO-DATE
+> Task :app:processDevDebugResources UP-TO-DATE
+> Task :app:bundleDevDebugClassesToRuntimeJar
+> Task :app:bundleDevDebugClassesToCompileJar
+> Task :app:kspDevDebugUnitTestKotlin
+> Task :app:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :app:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :app:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :app:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:preDevDebugAndroidTestBuild SKIPPED
+> Task :app:processDevDebugAndroidTestManifest UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestBuildConfig UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestResValues UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:packageDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:processDevDebugAndroidTestNavigationResources UP-TO-DATE
+> Task :app:parseDevDebugAndroidTestLocalResources UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestRFile UP-TO-DATE
+> Task :app:kspDevDebugAndroidTestKotlin
+> Task :app:copyRoomSchemas NO-SOURCE
+> Task :app:processDevDebugJavaRes UP-TO-DATE
+> Task :app:processDevDebugUnitTestJavaRes UP-TO-DATE
+> Task :app:testDevDebugUnitTest
+
+> Task :app:compileDevDebugAndroidTestKotlin
+w: file:///C:/Users/ISICIO/.codex/worktrees/g1b-farm-consent/MAGINA%20V20/app/src/androidTest/java/com/isivoltpro/maginaolivo/FarmLinkScreenTest.kt:40:27 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+
+[Incubating] Problems report is available at: file:///C:/Users/ISICIO/.codex/worktrees/g1b-farm-consent/MAGINA%20V20/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 1m 25s
+39 actionable tasks: 8 executed, 31 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.4.1/userguide/configuration_cache_enabling.html

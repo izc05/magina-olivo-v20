@@ -46,3 +46,9 @@ La corrupción del ledger bloquea acceso; nunca se interpreta como «sin vincula
 
 G1 seguirá incompleta hasta G1c y pruebas E2E del acuse. No producción, despliegue
 persistente, merge ni APK candidata.
+
+## Cierre y consentimiento v2
+
+La selección determina qué fincas se preparan para la futura reserva, no qué fincas quedan independientes en el dispositivo. El texto y la casilla versión2 declaran explícitamente la protección de TODAS las fincas con una sola cuenta y el requisito de volver con ella después de logout. La versión1 se conserva como historia; no se reescribe como si el agricultor hubiera aceptado el texto nuevo.
+
+El gate conserva su único ViewModelStore hijo durante recreación de Activity mediante un holder ViewModel padre retenido. Solo cambiar la frontera (UUID/permisos) o finalizar Activity destruye ese store; no se conservan stores anteriores para recuperar navegación de otra cuenta. Esto corrige las tres regresiones funcionales de los runs 38905439052/38905439224 sin modificar aserciones agrícolas.

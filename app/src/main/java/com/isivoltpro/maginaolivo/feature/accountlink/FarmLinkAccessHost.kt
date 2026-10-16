@@ -9,9 +9,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
 import com.isivoltpro.maginaolivo.data.reminder.ReminderNotifier
@@ -25,6 +26,12 @@ fun FarmLinkAccessHost(repository: LocalFarmLinkRepository, account: AccountRepo
     val identity by account.state.collectAsStateWithLifecycle()
     val local by repository.state.collectAsStateWithLifecycle()
     val allowed=repository.accessAllowed(identity.userId)
+    // Resolve against the Activity owner before providing the protected child owner.
+    // Activity recreation must retain Navigation's stores and saveable-state identities.
+    val retained: FarmLinkAccessStore = viewModel(factory = viewModelFactory {
+        initializer { FarmLinkAccessStore() }
+    })
+    val owner = retained.ownerFor(identity.userId, allowed)
     val context=LocalContext.current
     LaunchedEffect(allowed) {
         if(!allowed) {
@@ -34,9 +41,6 @@ fun FarmLinkAccessHost(repository: LocalFarmLinkRepository, account: AccountRepo
         }
     }
     key(identity.userId,allowed) {
-        val store=remember { ViewModelStore() }
-        val owner=remember { object: ViewModelStoreOwner { override val viewModelStore=store } }
-        DisposableEffect(store) { onDispose { store.clear() } }
         CompositionLocalProvider(LocalViewModelStoreOwner provides owner) {
             if(allowed) content()
             else Column(Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).statusBarsPadding().testTag("farm-link-locked")) {

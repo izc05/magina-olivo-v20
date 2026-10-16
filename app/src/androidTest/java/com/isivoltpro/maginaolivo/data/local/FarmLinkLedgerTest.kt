@@ -54,4 +54,15 @@ class FarmLinkLedgerTest {
         file.copyTo(File(file.path+".bak"));file.writeText("partial-write")
         assertEquals(entry,AndroidFarmLinkLedger(file).read()!!.consents.single())
     }
+    @Test fun newWordingNeverRewritesPreviouslyAcceptedTextVersion() {
+        val store=AndroidFarmLinkLedger(file)
+        val old=consent().copy(textVersion=1)
+        store.append(old)
+        val fresh=consent(farms=listOf(farm.copy(id=UUID.randomUUID()))).copy(textVersion=2)
+        store.append(fresh)
+        assertEquals(listOf(old,fresh),AndroidFarmLinkLedger(file).read()!!.consents)
+        val before=file.readBytes()
+        try { store.append(consent(farms=listOf(farm.copy(id=UUID.randomUUID()))).copy(textVersion=999));fail("Unknown consent text") } catch (_:IOException) { }
+        assertArrayEquals(before,file.readBytes())
+    }
 }

@@ -358,6 +358,9 @@ assert_instrumentation_passed \
   "Airplane-mode Room Farm and Campaign CRUD instrumentation" \
   "$OFFLINE_ROOM_RC"
 
+# Explicit opt-in phases are skipped by ordinary suite discovery; exercise real process recovery here.
+bash .github/scripts/test-g1b-consent-restart.sh
+
 set_airplane_mode disable 0 | tee -a evidence/airplane-mode.txt
 
 set +e

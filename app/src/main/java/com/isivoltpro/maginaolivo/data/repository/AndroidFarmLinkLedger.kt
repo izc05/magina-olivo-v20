@@ -72,7 +72,7 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
         check(value.subject.isNotBlank() && value.subject.length <= 512 && '|' in value.subject)
         check(value.farms.isNotEmpty() && value.farms.size <= 1000 && value.farms.map { it.id }.distinct().size == value.farms.size)
         check(value.farms.all { it.name.isNotBlank() && it.name.length <= 4096 && it.version >= 1 })
-        check(value.textVersion == 1 && value.state == "PENDING_REMOTE_RESERVATION")
+        check(value.textVersion in 1..2 && value.state == "PENDING_REMOTE_RESERVATION")
         check(Regex("[a-f0-9]{64}").matches(value.backupManifestHash))
     }
     private fun java.io.InputStream.readBytesLimited(): ByteArray {
