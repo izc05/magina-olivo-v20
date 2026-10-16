@@ -1,0 +1,18 @@
+
+com.isivoltpro.maginaolivo.FarmLinkProcessTest:.
+
+Time: 4.406
+
+OK (1 test)
+
+
+PASS: durable consent committed; process force-stopped without clearing data
+
+com.isivoltpro.maginaolivo.FarmLinkProcessTest:.
+
+Time: 2.016
+
+OK (1 test)
+
+
+PASS: encrypted cached identity, exact farm selection, original data and bytes recovered offline; account B denied

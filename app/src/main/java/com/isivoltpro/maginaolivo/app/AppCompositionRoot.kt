@@ -56,6 +56,7 @@ data class AppCompositionRoot(
     val activeFarmStore: ActiveFarmStore = InMemoryActiveFarmStore(),
     val appearanceStore: AppearanceStore = InMemoryAppearanceStore(),
     val accountRepository: com.isivoltpro.maginaolivo.feature.account.AccountRepository = com.isivoltpro.maginaolivo.feature.account.AccountRepository(null),
+    val farmLinks: com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository? = null,
 ) {
     companion object {
         fun createDefault(environmentValue: String): AppCompositionRoot =
@@ -78,6 +79,8 @@ data class AppCompositionRoot(
             val applicationContext = context.applicationContext
             val defaults = createDefault(environmentValue)
             val database = MaginaOlivoDatabase.getInstance(applicationContext)
+            val account = com.isivoltpro.maginaolivo.feature.account.AccountRuntime.get(applicationContext)
+            val farmLinks = com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository(applicationContext,database,account,BuildConfig.AUTH_PROJECT_URL)
             val workspaceRepository = LocalWorkspaceRepository(
                 database = database,
                 clock = defaults.clock,
@@ -198,7 +201,8 @@ data class AppCompositionRoot(
                 database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
             )
             return defaults.copy(
-                accountRepository = com.isivoltpro.maginaolivo.feature.account.AccountRuntime.get(applicationContext),
+                accountRepository = account,
+                farmLinks = farmLinks,
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 activeFarmStore = AndroidActiveFarmStore(applicationContext),
                 appearanceStore = AndroidAppearanceStore(applicationContext),

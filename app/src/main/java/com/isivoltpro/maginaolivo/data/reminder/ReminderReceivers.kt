@@ -23,7 +23,9 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         scope.launch {
             try {
                 val database = MaginaOlivoDatabase.getInstance(context)
-                ReminderNotifier(context, database, SystemAppClock()).fire(reminderId)
+                com.isivoltpro.maginaolivo.data.repository.FarmLinkDeviceAccess.runIfAllowed(context,Unit) {
+                    ReminderNotifier(context, database, SystemAppClock()).fire(reminderId);Unit
+                }
             } finally {
                 pending.finish()
             }
@@ -49,12 +51,12 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
                 val database = MaginaOlivoDatabase.getInstance(context)
                 // Phase 21B: the same Perfil → Avisos preferences as the app, or a reboot would
                 // move day-before reminders back to the rules' default hour.
-                ReminderCoordinator(
+                com.isivoltpro.maginaolivo.data.repository.FarmLinkDeviceAccess.runIfAllowed(context,Unit) { ReminderCoordinator(
                     database,
                     AndroidReminderScheduler(context),
                     SystemAppClock(),
                     RoomReminderPreferences(database),
-                ).reconcile()
+                ).reconcile();Unit }
             } finally {
                 pending.finish()
             }

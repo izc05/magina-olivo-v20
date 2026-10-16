@@ -35,7 +35,8 @@ import kotlinx.coroutines.channels.awaitClose
 private enum class AccountForm { LOGIN, REGISTER, RECOVER }
 
 @Composable
-fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:Boolean=false,connectivity:Flow<Boolean>? = null) {
+fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:Boolean=false,connectivity:Flow<Boolean>? = null,
+    farmLinks:com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository?=null,showBack:Boolean=true) {
     val context=LocalContext.current
     var simulation by rememberSaveable { mutableStateOf(false) }
     val simulated=remember { AccountRepository(SimulatedAccountAuthApi()) }
@@ -55,7 +56,7 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
     fun choose(next:AccountForm) { form=next;password="";model.repository.clearNotice() }
     Column(Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).statusBarsPadding().imePadding()
         .verticalScroll(rememberScrollState()).padding(MoSpacing.screen).testTag("account-root"),verticalArrangement=Arrangement.spacedBy(MoSpacing.sm)) {
-        MoTertiaryButton("Volver a Perfil",onBack,Modifier.testTag("account-back"))
+        if(showBack) MoTertiaryButton("Volver a Perfil",onBack,Modifier.testTag("account-back"))
         Text("Cuenta",style=MaterialTheme.typography.headlineLarge,color=MoColors.current.primaryText)
         if(state.simulated) Text("Simulación de Auth: no crea cuentas ni envía correos. Usa datos ficticios.",Modifier.testTag("account-simulation"),color=MoColors.current.warningText)
         val status=when(state.status) {
@@ -69,11 +70,15 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
         }
         Text(status,Modifier.testTag("account-status"),style=MaterialTheme.typography.titleMedium,color=MoColors.current.bodyText)
         state.email?.let { Text(it,color=MoSurfaceTokens.secondaryText) }
-        Text("Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Esta pantalla no los vincula ni los sincroniza.",color=MoSurfaceTokens.secondaryText)
+        Text(if(farmLinks!=null && !simulation) "Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Puedes preparar su vinculación a la cuenta; todavía no se sincronizan."
+            else "Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Esta pantalla no los vincula ni los sincroniza.",color=MoSurfaceTokens.secondaryText)
         if(!online) Text("Sin conexión. Puedes seguir trabajando con tus datos locales; el acceso y la recuperación necesitan conexión.",color=MoSurfaceTokens.secondaryText)
         if(state.busy) { CircularProgressIndicator(Modifier.testTag("account-loading"));Text("Procesando…",color=MoSurfaceTokens.secondaryText) }
         state.error?.let { Text(it,Modifier.testTag("account-error").semantics { liveRegion=LiveRegionMode.Polite },color=MoColors.current.errorText) }
         state.message?.let { Text(it,Modifier.testTag("account-message").semantics { liveRegion=LiveRegionMode.Polite },color=MoSurfaceTokens.secondaryText) }
+        if(!simulation && !state.simulated && state.userId!=null && state.status in setOf(AccountStatus.SIGNED_IN,AccountStatus.OFFLINE) && farmLinks!=null) {
+            com.isivoltpro.maginaolivo.feature.accountlink.FarmLinkPanel(farmLinks,state.userId!!)
+        }
         if(state.status==AccountStatus.RECOVERY) {
             PasswordInput(password,{password=it},"Nueva contraseña (8–128 caracteres)","account-new-password",enabled)
             MoPrimaryButton("Guardar nueva contraseña",{ val value=password;password="";model.updatePassword(value,online) },Modifier.fillMaxWidth().testTag("account-save-password"),enabled)
