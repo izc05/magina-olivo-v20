@@ -99,6 +99,7 @@ dismiss_quickstep_anr() {
 
 wait_for_home() {
   local destination="$1"
+  local skip_retries=0
 
   for _ in {1..20}; do
     dump_ui "$destination"
@@ -107,6 +108,12 @@ wait_for_home() {
     fi
     if grep -q 'Buenos días' "$destination" || grep -q 'text="Inicio"' "$destination"; then
       return 0
+    fi
+    # Density changes can leave the first Skip tap unapplied. Retry only if a fresh
+    # hierarchy still exposes that exact action; never accept onboarding as Home.
+    if [[ "$skip_retries" -lt 3 ]] && grep -q 'text="Saltar"' "$destination"; then
+      tap_text_from_xml "Saltar" "$destination"
+      skip_retries=$((skip_retries + 1))
     fi
     sleep 0.25
   done

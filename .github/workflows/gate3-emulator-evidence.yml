@@ -82,6 +82,7 @@ jobs:
         run: |
           bash .github/scripts/test-install-gate3-sdk-image.sh
           bash .github/scripts/test-gate3-launcher-overlay.sh
+          bash .github/scripts/test-gate3-home-wait.sh
           bash .github/scripts/test-wait-gate3-emulator-ready.sh
 
       - name: Provision Android image with bounded retries
