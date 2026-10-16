@@ -5,7 +5,7 @@
   "description": "PostgreSQL and RLS integration tests for Magina Olivo Supabase migrations",
   "type": "module",
   "scripts": {
-    "test": "node --experimental-strip-types --test tests/postgres_rls_real.test.ts tests/auth_sync_rls_simulation.test.ts tests/legacy_security_regression.test.mjs"
+    "test": "node --experimental-strip-types --test tests/postgres_rls_real.test.ts tests/auth_sync_rls_simulation.test.ts tests/legacy_security_regression.test.mjs tests/g1c_reservations_isolated.test.mjs tests/g1c-native/safety.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.2.17"
