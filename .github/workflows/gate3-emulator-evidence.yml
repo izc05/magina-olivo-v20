@@ -18,7 +18,9 @@ permissions:
 jobs:
   gate3-evidence:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    # 68132f8c completed 826 tests and process recovery, then hit the 40m job limit
+    # during remaining notification probes. Keep individual assertions/timeouts unchanged.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout

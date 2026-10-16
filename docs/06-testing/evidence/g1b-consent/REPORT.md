@@ -1,5 +1,21 @@
 # G1b — evidencia local y límites
 
+## Cierre de evidencia 2026-10-16 — aún DRAFT
+
+Resultados del SHA anterior `68132f8c3fa699fa90d6d44f3eaf4bdbf2c8f339`, sin atribuirlos al nuevo commit de pruebas:
+
+- [Android CI 38915840888](https://github.com/izc05/magina-olivo-v20/actions/runs/38915840888): SUCCESS; suite completa `OK (826 tests)` (1276,251 s), offline Room `OK (219 tests)` y recuperación real persist/recover `OK (1 test)` en cada fase, con force-stop sin borrar datos. Sesión cifrada, selección 2/3, adjuntos y propietarios históricos conservados; logout/B denegados y retorno A permitido.
+- `AppNavigationTest` registra 31 puntos PASS para sus 31 métodos `@Test`, incluidos `globalAddKeepsTheVisibleNotebookFarmAfterCancellingAnotherFarm` y `cuadernoJornalKeepsGeneralAndCampaignCostsSeparate`. `MainMapNavigationTest` registra PASS para `actualNavigationSwitchesFarmAndRecreatesOnlyItsOwnParcel`, con capturas A/B/B recreada. El reporte usa puntos por clase, no XML nominal por método.
+- [Evidence 38915841207](https://github.com/izc05/magina-olivo-v20/actions/runs/38915841207): CANCELLED por presupuesto del job. La anotación del check `117022952882` confirma «The job has exceeded the maximum execution time of 40m0s». Su artefacto conserva 826 PASS (1304,364 s), 219 offline y ambos procesos PASS; las comprobaciones de notificaciones seguían avanzando hasta 15:06:53 UTC y se canceló a 15:07:02. El presupuesto del job sube de 40 a 60 minutos; no cambian aserciones, timeouts individuales ni pruebas.
+
+Se añade `realRotationPreservesProtectionAcrossLogoutOtherAccountAndRestoredOwner`: solicita orientación Android real y espera una Activity distinta con la configuración requerida, sin pausas fijas. Verifica A protegida, logout bloqueado, B bloqueada, recreación y retorno A. Reata el host Compose de prueba después de cada recreación, siguiendo el patrón existente de `NativeFarmMapLifecycleTest`. Su ejecución queda pendiente de CI en el nuevo SHA; no está incluida en los 826 anteriores.
+
+El test APK DEV compila localmente: `gradle --no-daemon --max-workers=1 --no-parallel :app:assembleDevDebugAndroidTest`, SUCCESS en 1m26s, 58 tareas (5 ejecutadas). El target DEV fue reconstruido con las fuentes actuales; no es una APK candidata ni entregable.
+
+La QA local nueva está bloqueada por disco: se creó el AVD propio `MaginaG1Close20261016`, API35 google_apis x86_64, sin reutilizar datos. Arranque oculto/headless, puerto 5614, sin audio/snapshots, RAM1536 y GPU software. Con 2248978432 bytes libres pasó la guarda inicial, pero rechazó crear userdata: disponibles 2144,79 MB, necesarios 7372,80 MB. El emulador normalizó userdata a 6442450944 bytes pese a configurar 512M y `-partition-size 512`. No arrancó, no se instalaron APKs y no se eludió ninguna guarda. No se declara PASS local de rotación ni de una nueva ejecución de las regresiones.
+
+Todos los gates del nuevo SHA siguen pendientes. PR #757 continúa DRAFT; sin READY, merge, producción ni migraciones. La evidencia antigua de las secciones siguientes se conserva como historial.
+
 Implementación: selección explícita de fincas en Cuenta, resumen y casilla de consentimiento. Ledger privado AtomicFile con identidad issuer+UUID, selección y versiones exactas, fecha/texto, checkpoint y hash del manifiesto. Estado PENDING_REMOTE_RESERVATION; no representa titularidad ni permiso servidor. Room v26, UUID, propietarios históricos, registros y adjuntos no se modifican.
 
 ## Verificación local

@@ -1,6 +1,8 @@
 package com.isivoltpro.maginaolivo
 
 import android.content.Context
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -82,6 +84,19 @@ class FarmLinkScreenTest {
         } } }
     }
     private fun waitFor(tag:String) = compose.waitUntil(20_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+    private fun rotate(orientation:Int,configuration:Int) {
+        val previous=compose.activity
+        compose.activityRule.scenario.onActivity { it.requestedOrientation=orientation }
+        compose.waitUntil(20_000) {
+            var rotated=false
+            compose.activityRule.scenario.onActivity {
+                rotated=it!==previous && it.resources.configuration.orientation==configuration
+            }
+            rotated
+        }
+        // ComponentActivity is the test host: reattach the real access host after Android recreates it.
+        content()
+    }
     private fun capture(label:String) {
         compose.waitForIdle()
         val folder=File(context.getExternalFilesDir(null),"g1b-consent-qa").apply { mkdirs() }
@@ -131,5 +146,33 @@ class FarmLinkScreenTest {
         finishSignOut.complete(Unit)
         compose.waitUntil(10_000) { revoked }
         assertNull(session.read().session)
+    }
+    @Test fun realRotationPreservesProtectionAcrossLogoutOtherAccountAndRestoredOwner()=runBlocking {
+        seed();repository.consent(account.state.value.userId!!,repository.choices().take(1),true)
+        // Establish a known starting orientation before observing actual Android recreations.
+        compose.activityRule.scenario.onActivity { it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+        compose.waitUntil(20_000) {
+            var portrait=false
+            compose.activityRule.scenario.onActivity { portrait=it.resources.configuration.orientation==Configuration.ORIENTATION_PORTRAIT }
+            portrait
+        }
+        content();waitFor("private-agriculture")
+        rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,Configuration.ORIENTATION_LANDSCAPE)
+        waitFor("private-agriculture");compose.onNodeWithTag("farm-link-locked").assertDoesNotExist()
+        account.logout(false);waitFor("farm-link-locked")
+        rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,Configuration.ORIENTATION_PORTRAIT)
+        waitFor("farm-link-locked");compose.onNodeWithTag("private-agriculture").assertDoesNotExist()
+        account.login("b@example.test","password42",true);waitFor("farm-link-locked")
+        rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,Configuration.ORIENTATION_LANDSCAPE)
+        waitFor("farm-link-locked");compose.onNodeWithTag("private-agriculture").assertDoesNotExist()
+        compose.onNodeWithTag("farm-link-choice-${ids[2]}").assertDoesNotExist()
+        compose.activityRule.scenario.recreate();content();waitFor("farm-link-locked")
+        compose.onNodeWithTag("private-agriculture").assertDoesNotExist();capture("rotation-other-account-locked")
+        account.logout(false);account.login("a@example.test","password42",true);account.resume(false)
+        waitFor("private-agriculture")
+        rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,Configuration.ORIENTATION_PORTRAIT)
+        waitFor("private-agriculture");compose.onNodeWithTag("farm-link-locked").assertDoesNotExist()
+        assertEquals(ids.take(1).toSet(),ledger.read()!!.farmIds)
+        capture("rotation-restored-owner")
     }
 }
