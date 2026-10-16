@@ -34,3 +34,7 @@ Main nativo no contiene base web desplegable; las ramas WEB-0 históricas y el a
 ## Entrega y coordinación
 
 Cada agente entrega rama, SHA completo, archivos, comandos/resultados, CI por SHA, riesgos y siguiente tarea. Sólo Codex actualiza #744/#727 y el traspaso para evitar escrituras simultáneas; Claude/Antigravity entregan sus resultados en sus PR/documentos. El propietario autoriza cada fusión y cualquier despliegue por separado. Nunca borrar cachés/AVD/checkouts ajenos para resolver recursos locales.
+
+## Checkpoint adicional de ejecución nativa
+
+El arnés preparado en esta PR se ejecutó en GitHub run38961135139 sobre ef8161884106f3f2e5885f56fcd2b67e80036fc1:5/5 pruebas PostgreSQL multiconexión y gateway con fixturesHTTPSsintéticas PASS. No demuestra emisión GoTrue HTTPS real ni configuración asimétrica. Este resultado sustituye la limitación local de Docker del plan inicial; no convierte G1c en integración activada. Mantener validación propia del HEAD final y las dependencias de #757.

@@ -5,9 +5,9 @@ The reservation SQL remains `supabase/proposals/g1c-reservations.sql`.
 This preparation adds no persistent migration, deployment, synchronization, G2,
 merge or candidate APK.
 
-## Execution status
+## Execution status at preparation checkpoint
 
-**Native PostgreSQL / Auth / PostgREST: NOT EXECUTED.** Docker CLI is installed,
+**Local checkpoint: native NOT EXECUTED. Superseded by the isolated GitHub execution below.** Docker CLI is installed,
 but `docker info --format '{{.ServerVersion}}'` failed because the
 `dockerDesktopLinuxEngine` named pipe does not exist. Supabase CLI was also absent
 from the inspected PowerShell PATH. This document is preparation, not Gate PASS.
@@ -85,3 +85,11 @@ PostgREST validates signatures and standard temporal/audience claims; project
 issuer enforcement must not be inferred from a well-formed `iss` value alone.
 
 Independent review caught two preparation defects before publication: raw loopback issuers could never pass the existing SQL, and node:test timeout options were in the wrong argument position. The fixtures and timeout placement were corrected; production SQL was unchanged. Native execution remains NOT EXECUTED. Real HTTPS GoTrue issuance and asymmetric signing remain separate gates.
+
+## Native CI evidence — executed after preparation
+
+GitHub run `38961135139`, exact source HEAD `ef8161884106f3f2e5885f56fcd2b67e80036fc1`, job `g1c-native-reservation`: SUCCESS. Artifact `g1c-native-reservation/tests.txt` records PostgreSQL17.11, Supabase CLI2.120.0 and five tests passed, zero failures/skips, in16.97s after ephemeral stack startup. The three existing G0 security jobs also passed on that SHA; they remain separate evidence.
+
+All five prepared assertions executed: reservation/reservation exact replay; concurrent same-operation/different-farm conflict; cross-account generic conflict/private-table denial; reservation/INSERT in both commit orderings; gateway signature/expiry/anonymous/revocation and HTTP replay. The race harness observed backend sleep and a competing lock wait before comparing outcomes. Raw local HTTP-issuer tokens were denied; positive gateway fixtures used the documented synthetic HTTPS issuer and ephemeral signing secret. Real HTTPS GoTrue issuance and asymmetric-key deployment validation remain pending.
+
+The runner created and stopped only a new disposable project, with SQL applied as test fixture DDL inside its fresh database. The proposal remains outside migrations; no persistent deployment, agricultural import, application consumer or G2 was activated. A later documentation-only HEAD must obtain its own CI; this run does not automatically validate another SHA. The durable remote routing, supported consent versions/evidence and native Android filesystem gates also remain open before integration.
