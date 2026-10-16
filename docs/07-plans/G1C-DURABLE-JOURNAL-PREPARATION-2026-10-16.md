@@ -19,3 +19,11 @@ The remote workspace routing parameter is separate from canonical payload v1. Be
 The additional wire/journal test simulates a remote commit with a lost response, reopens the journal, retries the identical serialized request and accepts the same receipt without another send after durable success. It also checks that the bearer is absent from the journal. Unit fault injection is reproducible evidence of commit handling; it does not substitute for Android process-kill, disk-full, physical power-loss or real gateway validation. Those remain gates before activation.
 
 Validation before publication: `:app:testDevDebugUnitTest` completed successfully, 710 tests / 0 failures / 0 errors / 0 skipped, including seven journal and seven RPC/recovery tests. `npm test --prefix supabase` completed 59/59, including six isolated proposal tests. The security workflow now includes proposal path changes and its existing npm test step runs the isolated suite automatically. Native G0 jobs continue to validate the existing migrations only; they do not deploy or validate this proposal as a native G1c service.
+
+## Real JVM process interruption follow-up
+
+`ReservationProcessInterruptionTest` starts a separate Java process and requires a flushed boundary marker before forcibly terminating it. Three boundaries are exercised: request committed, receipt temporary file fsynced before atomic rename while the file lock is held, and receipt committed. Reopening obtains the original pending request or the exact committed receipt, releases the killed writer's OS lock, rejects sending under another actor, and recovers under the original actor. This is real process termination on the host JVM, not physical power-loss or Android evidence.
+
+Focused test passed with all three boundaries; full JVM suite then passed 711 tests, zero failures/errors/skips. The earlier 710 count belongs to the preceding implementation. Android filesystem/process validation and durable remote-workspace routing remain gates before application integration.
+
+The closing preparation also runs the runner target guard through the ordinary npm suite: 60/60 passed (the previous 59 plus one guard test). This is not a native concurrency/gateway execution. Independent read-only review found no remaining blocker for the preparation scope after the issuer-fixture and timeout corrections.
