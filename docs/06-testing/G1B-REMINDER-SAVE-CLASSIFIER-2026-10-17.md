@@ -111,3 +111,43 @@ prueba previa que deje un ledger en ese directorio haría que la siguiente arran
 sustituida por la pantalla `farm-link-locked`. En el fallo analizado no ocurrió —la prueba superó
 las líneas 75 a 101, que exigen la UI real—, por lo que **no se declara causa** y no se toca la
 regla: es un hueco que conviene cerrar en #757 con revisión, no de paso aquí.
+
+## Medición: el botón Guardar queda pegado al borde del teclado, con margen cero
+
+Con una instrumentación temporal (parche local, no versionado) se registraron los límites del nodo
+`save-activity` y el estado de la ventana en el mismo punto en que la prueba original pulsa Guardar.
+Resultado idéntico en cuatro iteraciones a fuente 1.0 y en una a fuente 1.3, AVD 1080x2400:
+
+```
+beforeScroll      = Rect(0.0, 0.0, 0.0, 0.0)
+afterScroll       = Rect(53.0, 1391.0, 1027.0, 1517.0)
+afterScrollAgain  = Rect(53.0, 1391.0, 1027.0, 1517.0)
+window rootH=2400 imeBottom=883 imeVisible=true visibleFrame=[0,128][1080,1517]
+afterClick        = none   (el editor se cierra: el guardado sí ocurrió en este equipo)
+```
+
+Es decir: el teclado ocupa de y=1517 a y=2400 (`imeBottom=883`), el área visible de la aplicación
+termina exactamente en y=1517, y `performScrollTo` deja el botón Guardar con **bottom = 1517**, el
+mismísimo borde. Su centro —el punto donde Compose inyecta el toque— cae en y≈1454, a **63 px** del
+teclado, y la mitad inferior del botón está a ras de la frontera. El margen de seguridad es cero.
+
+Dos consecuencias:
+
+1. **No es sólo un problema de pruebas.** Un agricultor que escribe la descripción y pulsa Guardar
+   depende de que el borde inferior del botón no se solape con el teclado. Con márgenes de 0 px, un
+   teclado más alto, otro IME o un redimensionado que llegue tarde dejan el punto de toque dentro de
+   la ventana del teclado, y el toque se lo queda el teclado: sin excepción, sin error y sin
+   escritura en Room. Es exactamente el síntoma del fallo.
+2. **Explica por qué `Espresso.closeSoftKeyboard()` daba 5/5** sin demostrar nada: elimina la
+   condición en lugar de probarla. Codex hizo bien en no aceptarlo como corrección.
+
+En este equipo el orden siempre sale bien (14/14 verdes). En el emulador de CI, con frames de 500 a
+950 ms, el desplazamiento y la llegada del inset del IME se resuelven en instantes distintos, y ese
+margen cero es todo el presupuesto disponible.
+
+**Petición de autorización, no cambio unilateral.** La corrección razonable es que la acción
+primaria del formulario no descanse pegada al borde del inset (margen inferior a prueba de teclado
+en el contenedor con scroll), lo que toca `app/src/main` del área de #757 y afecta a una pantalla
+agrícola. No se toca sin autorización expresa del propietario. Mientras tanto, el clasificador de
+esta rama dejará nombrada la causa en la próxima aparición: `SAVE_NOT_PERSISTED` con el botón
+habilitado y la fila de Room intacta es la firma de un toque que no actuó.
