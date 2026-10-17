@@ -77,3 +77,37 @@ confundirse. Revertido el parche, el sondeo vuelve a `OK (1 test)`.
 
 Ejecutar la tubería warm completa sobre el HEAD de esta rama para que la próxima aparición del fallo
 venga ya clasificada. Nada de esto autoriza READY de #757 ni ninguna fusión.
+
+## Corrección: la hipótesis del re-key de identidad queda descartada
+
+Al comprobarla en lugar de arrastrarla, se cae. En el APK con el que se construye tanto en local
+como en los jobs de emulador de CI, `MAGINA_AUTH_DEV_URL` no está definida, de modo que
+`BuildConfig.AUTH_PROJECT_URL` queda vacío y `SupabaseAuthApi.forEnvironment` devuelve `null`
+(`url.isBlank()`). Con ello `AccountRuntime.get()` construye `AccountRepository(null)`:
+
+- `resume(online)` con `api == null` sólo copia `online`; nunca publica `userId`. `identity.userId`
+  es permanentemente `null`.
+- `LocalFarmLinkRepository.state` se inicializa con `load()` en el constructor y sólo cambia dentro
+  de `reloadAndRequire`, al que únicamente llegan `choices()` y `consent()`, que exigen
+  `withLocalIdentity` → `requireApi()` → excepción con `api == null`.
+
+Es decir: **ninguno de los dos componentes de `key(identity.userId, allowed)` puede cambiar** ni en
+este equipo ni en CI, así que el árbol protegido no se reconstruye por esa vía y no puede ser la
+causa del toque perdido. El informe conserva `farmLinkLocked` porque cuesta cero y cierra la
+pregunta con un dato en vez de con una suposición, pero la hipótesis no se sostiene.
+
+Quedan en pie, y el clasificador las separa: `FORM_GONE` (el editor se cerró por otra vía),
+`SAVE_NOT_PERSISTED` con el botón habilitado (el toque no actuó: desplazamiento de la ventana o del
+IME entre el `performScrollTo` y el `performClick`) y `SAVE_NOT_PERSISTED` con el botón
+deshabilitado (`isSaving` activo: el toque sí actuó y la escritura no había cuajado).
+
+## Riesgo de aislamiento detectado, no corregido aquí
+
+`IsolatedAppStateRule` aísla la base de datos y las SharedPreferences, pero no el estado de
+`noBackupFilesDir`: ni `farm-link-consents-v1.json` (`AndroidFarmLinkLedger.forContext`) ni
+`account-auth-*.enc` (`AndroidAccountSessionStore`). Como el sondeo no hace `pm clear`, cualquier
+prueba previa que deje un ledger en ese directorio haría que la siguiente arrancase con
+`ledger != null` y `userId == null`, es decir `allowed == false`, y toda la aplicación quedaría
+sustituida por la pantalla `farm-link-locked`. En el fallo analizado no ocurrió —la prueba superó
+las líneas 75 a 101, que exigen la UI real—, por lo que **no se declara causa** y no se toca la
+regla: es un hueco que conviene cerrar en #757 con revisión, no de paso aquí.
