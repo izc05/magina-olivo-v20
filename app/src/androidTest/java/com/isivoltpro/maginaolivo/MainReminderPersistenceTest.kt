@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -19,6 +20,7 @@ import com.isivoltpro.maginaolivo.domain.agenda.*
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
 import com.isivoltpro.maginaolivo.domain.parcel.NewParcel
 import java.time.Instant
+import java.io.File
 import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
@@ -104,8 +106,24 @@ class MainReminderPersistenceTest {
         compose.onNodeWithTag("edit-activity").performScrollTo().performClick()
         waitFor("activity-description")
         compose.onNodeWithTag("activity-description").performScrollTo().performTextReplacement("Aviso editado sin duplicados")
-        compose.onNodeWithTag("save-activity").performScrollTo().performClick()
-        compose.waitUntil(15_000) { runBlocking { db.activityDao().findWithTargets(work)!!.activity.description == "Aviso editado sin duplicados" } }
+        val args = InstrumentationRegistry.getArguments()
+        val diagnostics = args.getString("qaReminderDiagnostics") == "true"
+        val closeIme = args.getString("qaReminderCloseIme") == "true"
+        check(!closeIme || diagnostics) { "IME experiment requires explicit diagnostics opt-in" }
+        if (closeIme) {
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
+            compose.waitForIdle()
+        }
+        try {
+            // Default remains the original tap and original 15-second Room assertion.
+            compose.onNodeWithTag("save-activity").performScrollTo().performClick()
+            compose.waitUntil(15_000) { runBlocking { db.activityDao().findWithTargets(work)!!.activity.description == "Aviso editado sin duplicados" } }
+        } catch (failure: Throwable) {
+            if (diagnostics) runCatching { captureSaveDiagnostics("failed", closeIme) }
+                .exceptionOrNull()?.let(failure::addSuppressed)
+            throw failure
+        }
+        if (diagnostics) captureSaveDiagnostics("saved", closeIme)
         val editedReminder = runBlocking { db.agendaDao().listForOwner("ACTIVITY",work).single() }
         assertEquals(reminderBefore.id,editedReminder.id)
         assertTrue(editedReminder.enabled); assertNull(editedReminder.firedAt)
@@ -156,4 +174,29 @@ class MainReminderPersistenceTest {
         compose.onNodeWithTag("confirm-activity-action").performClick()
     }
     private fun waitFor(tag: String) = compose.waitUntil(15_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+    private fun captureSaveDiagnostics(outcome: String, closeIme: Boolean) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val label = InstrumentationRegistry.getArguments().getString("qaReminderIteration") ?: "unspecified"
+        check(label.matches(Regex("[A-Za-z0-9_-]{1,60}")))
+        val db = MaginaOlivoDatabase.getInstance(context)
+        check(checkNotNull(db.openHelper.databaseName).startsWith("isolated-main-"))
+        val folder = File(context.getExternalFilesDir(null), "reminder-save-diagnostics/$label").apply { mkdirs() }
+        File(folder, "room.txt").writeText(runBlocking {
+            val activity = db.activityDao().findWithTargets(work)
+            "outcome=$outcome\ncloseIme=$closeIme\ndatabase=${db.openHelper.databaseName}\n" +
+                "activityId=$work\nactivity=$activity\nreminders=${db.agendaDao().listForOwner("ACTIVITY", work)}\n"
+        })
+        File(folder, "semantics.txt").writeText(runCatching {
+            compose.onRoot(useUnmergedTree = true).printToString()
+        }.getOrElse { "Semantics unavailable: $it" })
+        File(folder, "active-window.txt").writeText(instrumentation.uiAutomation.rootInActiveWindow?.toString() ?: "No active window")
+        for ((name, command) in listOf("ime.txt" to "dumpsys input_method", "window.txt" to "dumpsys window")) {
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command))
+                .bufferedReader().use { File(folder, name).writeText(it.readText()) }
+        }
+        instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
+            File(folder, "screen.png").outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+            bitmap.recycle()
+        }
+    }
 }
