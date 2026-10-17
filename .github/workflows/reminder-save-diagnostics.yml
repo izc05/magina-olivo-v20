@@ -7,8 +7,15 @@ on:
       - .github/workflows/reminder-save-diagnostics.yml
       - .github/scripts/reminder-save-diagnostics.sh
       - .github/scripts/test-reminder-save-diagnostics.sh
+      - .github/scripts/verify-context-notifications.sh
+      - .github/scripts/test-warm-reminder-diagnostics.sh
       - app/src/androidTest/java/com/isivoltpro/maginaolivo/MainReminderPersistenceTest.kt
   workflow_dispatch:
+    inputs:
+      warm_pipeline:
+        description: 'Run the complete Gate 3 pipeline with original-path reminder diagnostics'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -16,7 +23,7 @@ permissions:
 jobs:
   reminder-save-diagnostics:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.warm_pipeline == true && 60 || 30 }}
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -40,6 +47,7 @@ jobs:
         run: |
           bash .github/scripts/test-gate3-emulator-safe.sh
           bash .github/scripts/test-reminder-save-diagnostics.sh
+          bash .github/scripts/test-warm-reminder-diagnostics.sh
           bash .github/scripts/test-install-gate3-sdk-image.sh
       - name: Enable KVM
         run: |
@@ -49,6 +57,7 @@ jobs:
       - name: Provision Android image with bounded retries
         run: bash .github/scripts/install-gate3-sdk-image.sh
       - name: Compare original save and explicit IME close on fresh emulator
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.warm_pipeline }}
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 35
@@ -58,13 +67,24 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: GATE3_ALLOW_APP_DATA_RESET=1 bash .github/scripts/reminder-save-diagnostics.sh
+      - name: Run the complete original Gate 3 pipeline with warm reminder diagnostics
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.warm_pipeline == true }}
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: GATE3_ALLOW_APP_DATA_RESET=1 GATE3_REMINDER_DIAGNOSTICS=1 bash .github/scripts/gate3-emulator-evidence.sh
       - name: Preserve every experiment and build log
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: reminder-save-diagnostics
           path: |
-            evidence/reminder-save-diagnostics/
+            ${{ github.event_name == 'workflow_dispatch' && inputs.warm_pipeline == true && 'evidence/' || 'evidence/reminder-save-diagnostics/' }}
             build-output.log
           if-no-files-found: warn
           retention-days: 14

@@ -1,5 +1,35 @@
 # Reminder save — diagnostic experiment
 
+## Optional warm pipeline experiment — NOT EXECUTED
+
+Manual `workflow_dispatch` input `warm_pipeline=true` selects the complete existing
+`gate3-emulator-evidence.sh`, in its original capture, offline/full-suite, map and
+notification order. Its job budget is 60 minutes. PR runs and manual runs without
+that explicit input retain the cold 10 original + 5 IME experiment and 30-minute
+budget. No warm workflow has been dispatched or executed for this change.
+
+Only the MainReminderPersistence wrapper receives `qaReminderDiagnostics=true`,
+`qaReminderCloseIme=false`, and `qaReminderIteration=warm-later` through
+`GATE3_REMINDER_DIAGNOSTICS=1`. It does not clear app data, clear logcat, retry the
+test, close the IME, change assertions, or extend test timeouts. The existing
+pipeline retains its own original resets and device-state transitions. The
+disposable-emulator guard runs before wrapper permission mutations. Permission
+restoration and its existing EXIT trap are preserved.
+
+After instrumentation, and before interpreting any JUnit success/failure output,
+the wrapper pulls all six save captures and logcat. A manifest flags every missing
+or empty capture; missing evidence makes the wrapper fail even with passing JUnit.
+An adb failure retains its original exit status and instrumentation output.
+`evidence/` is uploaded in full for warm runs, including partial pipeline evidence
+when an earlier stage fails. Such a failure may prevent reaching the target test.
+
+Fake-adb coverage verifies collection after adb exit 0 with JUnit failure, missing
+capture failure, original nonzero adb exit preservation, permission restoration,
+unchanged default arguments, and rejection before mutations without safety opt-in.
+These local checks do not establish Kotlin compilation, warm reproduction or an
+IME cause. The cold observations (an early isolation guard failure followed by
+passing save experiments) do not reproduce the original save assertion timeout.
+
 Isolated QA branch `fix/reminder-save-diagnostics`, starting at G1b `12909d0a71054f5be338d1a8cd3e8043f20943fe`. Draft PR targets `feat/g1b-farm-consent` to show only QA changes. No production, database migration, existing gate assertion or ordinary test timeout changes.
 
 Observed failure: Android push run38958634772 passed827 full/220 offline and real process recovery, then `MainReminderPersistenceTest#failedPlanRetryAndRecreationPreserveReminder` timed out at the original line108 waiting15seconds for the edited Room description. The method passed in that same full suite and other exact-SHA pipelines. The failing artifact lacks the UI/Room/IME state at that point. IME resizing swallowing the save tap is a hypothesis, supported by the existing `AppNavigationTest.saveEditor` comment; it is not a proven cause.
