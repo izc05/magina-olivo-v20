@@ -50,7 +50,12 @@ async function master(deps: Deps, timeoutMs: number): Promise<MasterEntry[] | nu
     masterCache = { list: list as MasterEntry[], at: deps.now().getTime() };
     return masterCache.list;
   } catch (error) {
-    deps.log?.(`municipalities unavailable: ${(error as Error).message}`);
+    const msg = (error as Error).message;
+    if (msg.includes("401") || msg.includes("403")) {
+      deps.log?.(`AEMET API key unauthorized or expired (${msg}). Rotate AEMET_API_KEY in Supabase.`);
+    } else {
+      deps.log?.(`municipalities unavailable: ${msg}`);
+    }
     return null;
   }
 }
@@ -139,7 +144,12 @@ export async function handleForecast(rawBody: unknown, deps: Deps): Promise<Resu
     const reasons = [hourlyResult, dailyResult]
       .filter((result): result is PromiseRejectedResult => result.status === "rejected")
       .map((result) => (result.reason as Error).message);
-    deps.log?.(`AEMET incomplete, falling back: ${reasons.join(", ")}`);
+    const hasAuthError = reasons.some((r) => r.includes("401") || r.includes("403"));
+    if (hasAuthError) {
+      deps.log?.(`AEMET API key unauthorized or expired (${reasons.join(", ")}). Falling back to MET Norway.`);
+    } else {
+      deps.log?.(`AEMET incomplete, falling back: ${reasons.join(", ")}`);
+    }
   }
 
   // 2. MET Norway (needs coordinates: from the resolved place, else from the request).

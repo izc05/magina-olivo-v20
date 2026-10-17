@@ -95,7 +95,13 @@ test("AEMET hourly: the current hour, its rain range and wind; codes map without
   });
   assert.equal(updatedAt, "2026-09-25T05:40:00.000Z");
   assert.equal(aemetCondition("11n"), "CLEAR");
+  assert.equal(aemetCondition("27"), "RAIN");
+  assert.equal(aemetCondition("27n"), "RAIN");
+  assert.equal(aemetCondition("28"), "STORM");
+  assert.equal(aemetCondition("28n"), "STORM");
+  assert.equal(aemetCondition("43"), "RAIN");
   assert.equal(aemetCondition("54"), "STORM");
+  assert.equal(aemetCondition("62"), "STORM");
   assert.equal(aemetCondition("99"), null);
   assert.throws(() => parseAemetHourly([{ prediccion: { dia: [] } }], NOW));
   assert.equal(madridLocalToIso("2026-01-10T08:00:00"), "2026-01-10T07:00:00.000Z");
@@ -288,3 +294,46 @@ test("bad requests and unknown places are refused, not guessed", async () => {
   assert.equal((await handleForecast({ municipality: "Mancha Real", province: "Jaén" }, deps(fn))).status, 404);
   assert.equal((await handleForecast({ municipality: "Villanueva", province: "Jaén" }, deps(fn))).status, 409);
 });
+
+test("AEMET hourly matches multi-hour range periods for sky and wind, and 2-digit rain periods", () => {
+  const doc = {
+    elaborado: "2026-09-25T05:40:00",
+    prediccion: {
+      dia: [
+        {
+          fecha: "2026-09-25",
+          temperatura: [{ periodo: "08", value: "19" }],
+          estadoCielo: [{ periodo: "0814", value: "27", descripcion: "Chubascos" }],
+          probPrecipitacion: [{ periodo: "08", value: "65" }],
+          vientoAndRachaMax: [{ periodo: "0814", velocidad: ["15"], direccion: ["SO"] }],
+        },
+      ],
+    },
+  };
+  const { current } = parseAemetHourly(doc, NOW);
+  assert.equal(current.temperatureC, 19);
+  assert.equal(current.condition, "RAIN");
+  assert.equal(current.rainProbabilityPercent, 65);
+  assert.equal(current.windKmh, 15);
+});
+
+test("AEMET 401 logs clear rotation warning without exposing secrets", async () => {
+  resetMasterCache();
+  const logs: string[] = [];
+  const { fn } = fakeFetch([
+    { match: (u) => u.endsWith("/maestro/municipios"), reply: json({}, 401) },
+    metno(),
+  ]);
+  const customDeps = {
+    fetch: fn,
+    aemetApiKey: "secret-key-12345",
+    now: () => NOW,
+    log: (m: string) => logs.push(m),
+  };
+  const result = await handleForecast({ municipality: "Bedmar", province: "Jaén", latitude: 37.82, longitude: -3.41 }, customDeps);
+  assert.equal(result.status, 200);
+  assert.equal((result.body as { provider: string }).provider, "MET_NORWAY");
+  assert.ok(logs.some((l) => l.includes("AEMET API key unauthorized or expired")));
+  assert.ok(!logs.some((l) => l.includes("secret-key-12345")));
+});
+

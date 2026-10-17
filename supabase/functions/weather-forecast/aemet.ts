@@ -12,9 +12,9 @@ export function aemetCondition(code: string): Condition | null {
   if (n === 11) return "CLEAR";
   if (n === 12 || n === 13 || n === 17) return "PARTLY_CLOUDY";
   if (n >= 14 && n <= 16) return "CLOUDY";
-  if ((n >= 23 && n <= 26) || (n >= 43 && n <= 46)) return "RAIN";
+  if ((n >= 23 && n <= 27) || (n >= 43 && n <= 46)) return "RAIN";
+  if (n === 28 || (n >= 51 && n <= 54) || (n >= 61 && n <= 64)) return "STORM";
   if ((n >= 33 && n <= 36) || (n >= 71 && n <= 74)) return "SNOW";
-  if ((n >= 51 && n <= 54) || (n >= 61 && n <= 64)) return "STORM";
   if (n === 81 || n === 82) return "FOG";
   if (n === 83) return "HAZE";
   return null;
@@ -123,11 +123,15 @@ export function parseAemetHourly(doc: unknown, now: Date): { current: Current; u
     const slot = temps.find((t) => date > today || t.hour! >= nowHour);
     if (!slot) continue;
     const hour = slot.hour!;
-    const sky = (day.estadoCielo ?? []).find((s) => hourOf(s.periodo) === hour);
+    const sky = (day.estadoCielo ?? []).find((s) => hourOf(s.periodo) === hour)
+      ?? (day.estadoCielo ?? []).find((s) => inRange(s.periodo, hour))
+      ?? (day.estadoCielo ?? []).find((s) => s.value && aemetCondition(s.value) !== null);
     const condition = sky?.value ? aemetCondition(sky.value) : null;
     if (!condition) throw new ProviderError("aemet_invalid");
-    const rain = (day.probPrecipitacion ?? []).find((p) => inRange(p.periodo, hour));
-    const wind = (day.vientoAndRachaMax ?? []).find((w) => hourOf(w.periodo) === hour && w.velocidad);
+    const rain = (day.probPrecipitacion ?? []).find((p) => inRange(p.periodo, hour))
+      ?? (day.probPrecipitacion ?? []).find((p) => hourOf(p.periodo) === hour);
+    const wind = (day.vientoAndRachaMax ?? []).find((w) => hourOf(w.periodo) === hour && w.velocidad)
+      ?? (day.vientoAndRachaMax ?? []).find((w) => inRange(w.periodo, hour) && w.velocidad);
     const rainValue = rain?.value !== undefined && rain.value !== "" ? Number(rain.value) : NaN;
     const windValue = wind?.velocidad?.[0] !== undefined ? Number(wind.velocidad[0]) : NaN;
     const hh = String(hour).padStart(2, "0");
