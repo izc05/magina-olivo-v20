@@ -268,3 +268,88 @@ composición.
 
 Verificación local tras este cambio: `ActivityEditorCompactTest` 20/20, `AppNavigationTest` 31/31,
 `FirstReminderPermissionTest` 4/4 modos y el sondeo `later` 3/3.
+
+## Aislamiento de la sesión y del ledger privado
+
+`IsolatedAppStateRule` aislaba la base de datos y las SharedPreferences, pero no el estado de
+`noBackupFilesDir`, donde viven tres cosas privadas: `farm-link-consents-v1.json` (el ledger de
+consentimiento de fincas), `account-auth-<ref>.enc` (la sesión de cuenta) y `account-link-backups/`.
+Como el sondeo no hace `pm clear`, cualquier prueba previa que dejara ahí un ledger o una sesión la
+heredaba la siguiente. Además el dueño de Auth del proceso **cachea el registro en memoria**, así que
+vaciar el fichero no bastaba.
+
+La regla ahora aparta todo el contenido de `noBackupFilesDir` a una bóveda en `cacheDir` mientras
+dura la prueba, descarta lo que la prueba haya escrito allí, devuelve los originales a su sitio y
+suelta el singleton de `AccountRuntime` antes y después, de modo que la siguiente consulta lea el
+fichero que corresponde. No hay contaminación entre cuentas ni entre ejecuciones.
+
+Comprobado en rojo antes de corregir. Con el aislamiento desactivado a propósito, la nueva prueba
+`theAccountSessionAndTheLinkLedgerAreIsolatedAndRestored` falla así:
+
+```
+java.lang.AssertionError: The previous ledger must not reach the test
+expected null, but was:<{"device":"original"}>
+```
+
+Con la corrección, `IsolatedAppStateRuleTest` da `OK (2 tests)`. La regla la usan ocho clases
+instrumentadas; se comprobaron además `AccountAuthMainActivityTest` 2/2 y
+`ContextNotificationPermissionTest` 1/1.
+
+## MyProfileScreenTest: independiente del parche, misma familia de causa
+
+El fallo de `MyProfileScreenTest.theCooperativeIsChosenFromTheFarmersOwnListOrAdded:85` (run
+39033705914) **no depende de este parche**:
+
+- Usa `createComposeRule()` y `setContent` sobre `MyProfileSection`. No instancia MainActivity, no
+  toca Room y no hace ninguna referencia a `ActivityEditor`, `activity-description` ni
+  `save-activity`: cero coincidencias en el fichero.
+- El cambio productivo de esta rama se limita al contenedor con scroll de `ActivityEditor`.
+- Localmente pasa 7/7 sobre el HEAD actual.
+
+Pero es la **misma familia de causa**. La secuencia de la prueba es `performTextInput` en
+`profile-new-cooperative` —que abre el teclado—, luego `performScrollTo` y `performClick` sobre
+`profile-create-cooperative`. El propio comentario que Codex dejó en la línea 79 ya lo dice: «tapping
+it earlier is lost on a slow emulator». Y `MyProfile.kt` aparece en el inventario de abajo con cuatro
+campos de texto, tres acciones primarias y ningún hueco inferior.
+
+No se toca aquí: es otra pantalla y corresponde a la PR de formularios.
+
+## Inventario de formularios con el mismo riesgo (sin modificar)
+
+Ficheros con contenedor de scroll, campos de texto y acción primaria. `hueco` indica si ya existe
+algún `padding(bottom …)` en el fichero; no equivale a que el contenedor correcto lo tenga.
+
+| Fichero | Campos | Acciones primarias | Hueco inferior |
+| --- | --- | --- | --- |
+| DeliveryScreens.kt | 14 | 5 | no |
+| ParcelScreens.kt | 13 | 4 | parcial |
+| MachineryScreens.kt | 11 | 5 | no |
+| ExpenseForms.kt | 10 | 2 | no |
+| LabourForms.kt | 9 | 3 | no |
+| DocumentReviewScreens.kt | 7 | 3 | no |
+| FarmScreens.kt | 7 | 4 | no |
+| CostSection.kt | 6 | 3 | no |
+| CadastreImportScreen.kt | 5 | 3 | no |
+| AgronomicPeopleScreens.kt | 5 | 4 | no |
+| HarvestScreens.kt | 4 | 4 | no |
+| MyProfile.kt | 4 | 3 | no |
+| CampaignScreens.kt | 3 | 5 | parcial |
+| EquipmentSection.kt | 3 | 2 | no |
+| AccountScreen.kt | 2 | 4 | no |
+
+`ActivityScreens.kt` queda fuera de la lista: es el único corregido. Ninguno de los demás se modifica
+en esta PR.
+
+## Orden de integración seguro
+
+`fix/g1b-identity-rekey-save-loss` sale del HEAD de #757 y su PR apunta a `feat/g1b-farm-consent`, de
+modo que **no puede integrarse antes que #757**. El orden que no deja huecos:
+
+1. #758 se autoriza y fusiona por separado: su base es `main`, no depende de nada de esto.
+2. Validar el CI del main integrado tras esa fusión, sin dar por válidos los controles de PR.
+3. #763 se revisa y se fusiona **dentro de #757**, no en `main`.
+4. #757 pasa a READY sólo después, con sus controles verdes sobre el HEAD resultante.
+5. #759 se actualiza sobre ese #757 ya corregido; después #762 sobre #759.
+6. G2 permanece inactivo hasta que G1 esté cerrado y verificado sobre el main integrado.
+
+Ninguna fusión sin autorización expresa del propietario.
