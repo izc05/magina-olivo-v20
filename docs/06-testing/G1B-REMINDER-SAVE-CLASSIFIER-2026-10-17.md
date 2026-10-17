@@ -213,3 +213,26 @@ de como un timeout mudo. No relaja nada.
 - `FirstReminderPermissionTest` 4/4 modos OK
 - `MainReminderPersistenceTest` sondeo `later` 3/3 OK
 - `testDevDebugUnitTest` y `assembleDevDebug` verdes en el mismo build
+
+## Segundo fallo intermitente de la misma prueba, al principio y no en el guardado
+
+Gate 3 Evidence [39027814286](https://github.com/izc05/magina-olivo-v20/actions/runs/39027814286),
+sobre `d7a70e74`, falló **dentro de la suite completa** (`Tests run: 827, Failures: 1`), esta vez en
+`MainReminderPersistenceTest.kt:75`, es decir en el primer `waitFor("plan-activity")`:
+
+```
+java.lang.IllegalStateException: No compose hierarchies found in the app.
+  at MainReminderPersistenceTest.waitFor$lambda$0(MainReminderPersistenceTest.kt:180)
+  at MainReminderPersistenceTest.failedPlanRetryAndRecreationPreserveReminder(MainReminderPersistenceTest.kt:75)
+```
+
+No es el guardado: es el arranque. La línea anterior relanza MainActivity con el enlace profundo
+(`FLAG_ACTIVITY_SINGLE_TOP` más el id del trabajo), y entre que la jerarquía anterior desaparece y
+la nueva llama a `setContent` hay un instante sin ninguna jerarquía Compose. En ese instante
+`fetchSemanticsNodes` **lanza** en vez de devolver vacío, y la condición del `waitUntil` revienta en
+lugar de seguir esperando. En un emulador con frames de medio segundo ese instante se alcanza.
+
+Corrección: la condición trata ese momento como «todavía no», no como «roto». **El límite sigue
+siendo el mismo de 15 s y la etiqueta sigue decidiendo**, así que una pantalla que no llegue nunca
+sigue fallando ahí, por timeout, sin relajar nada ni añadir reintentos. Codex ya había visto este
+mismo arranque fallar en `0987e712` (su línea 74) sin explicación; ésta es la explicación.

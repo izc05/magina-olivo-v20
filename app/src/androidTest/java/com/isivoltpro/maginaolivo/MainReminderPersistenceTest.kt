@@ -177,5 +177,12 @@ class MainReminderPersistenceTest {
         waitFor("confirm-activity-action")
         compose.onNodeWithTag("confirm-activity-action").performClick()
     }
-    private fun waitFor(tag: String) = compose.waitUntil(15_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+    // The deep link relaunches MainActivity, and between the old hierarchy going away and the new
+    // setContent there is a moment with no Compose hierarchy at all, where fetchSemanticsNodes
+    // throws instead of returning nothing. That moment means "not ready yet", not "broken": treat
+    // it as a condition still unmet. The same 15-second limit and the same tag decide the outcome,
+    // so a screen that never arrives still fails here, by timeout, with nothing relaxed.
+    private fun waitFor(tag: String) = compose.waitUntil(15_000) {
+        runCatching { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false)
+    }
 }
