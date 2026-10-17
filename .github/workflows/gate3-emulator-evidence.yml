@@ -18,7 +18,9 @@ permissions:
 jobs:
   gate3-evidence:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    # 68132f8c completed 826 tests and process recovery, then hit the 40m job limit
+    # during remaining notification probes. Keep individual assertions/timeouts unchanged.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -83,6 +85,7 @@ jobs:
           bash .github/scripts/test-install-gate3-sdk-image.sh
           bash .github/scripts/test-gate3-launcher-overlay.sh
           bash .github/scripts/test-gate3-home-wait.sh
+          bash .github/scripts/test-g1b-process-harness.sh
           bash .github/scripts/test-wait-gate3-emulator-ready.sh
 
       - name: Provision Android image with bounded retries

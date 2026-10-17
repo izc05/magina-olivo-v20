@@ -26,6 +26,10 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
     // This repository is the process Auth owner; a recreated Activity must not cancel exchange.
     private val callbackScope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
     fun receiveLink(url:String,online:Boolean) = callbackScope.launch { completeLink(url,online) }
+    fun requestLogout(online:Boolean) = callbackScope.launch { logout(online) }
+    internal suspend fun <T> withCachedLocalAccess(action: suspend (java.util.UUID?) -> T): T = mutex.withLock {
+        action(if(api?.simulated==true) null else current().session?.userId)
+    }
 
     suspend fun resume(online: Boolean) {
         if(api==null) { mutable.value=mutable.value.copy(online=online);return }
@@ -46,6 +50,13 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
         }
     }
     fun clearNotice() { mutable.value=mutable.value.copy(error=null,message=null) }
+    /** Serializes local consent with logout/account replacement; recovery tokens are excluded. */
+    internal suspend fun <T> withLocalIdentity(requireFresh: Boolean = true, action: suspend (java.util.UUID) -> T): T = mutex.withLock {
+        if (requireApi().simulated) throw AuthFailure(AuthFailure.Kind.PROTOCOL)
+        val identity = current().session ?: throw AuthFailure(AuthFailure.Kind.CREDENTIALS)
+        if (requireFresh && !identity.expiresAt.isAfter(now())) throw AuthFailure(AuthFailure.Kind.EXPIRED)
+        action(identity.userId)
+    }
     suspend fun simulateLink(online:Boolean) { if(api?.simulated==true)completeLink("${api.redirectUri}?code=simulated-code",online) }
     suspend fun login(email: String, password: String, online: Boolean) = operation(online,true) {
         val normalized = checkedEmail(email)
@@ -142,7 +153,7 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
             !mutable.value.online -> AccountStatus.OFFLINE
             else -> AccountStatus.SIGNED_IN
         }
-        mutable.value=mutable.value.copy(status=status,email=session?.email,pendingPurpose=current.pending?.purpose)
+        mutable.value=mutable.value.copy(status=status,email=session?.email,pendingPurpose=current.pending?.purpose,userId=current.session?.userId)
     }
     private fun requireSignedOut() { if(current().session!=null) throw AuthFailure(AuthFailure.Kind.PROTOCOL) }
     private fun checkedEmail(value: String) = value.trim().also { if(!AccountValidation.email(it)) throw AuthFailure(AuthFailure.Kind.CREDENTIALS) }

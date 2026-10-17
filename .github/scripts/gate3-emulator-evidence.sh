@@ -12,6 +12,7 @@ OFFLINE_ROOM_TESTS="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmReposi
 
 # G1 preservation must run on the disposable CI emulator, not merely compile.
 OFFLINE_ROOM_TESTS="$OFFLINE_ROOM_TESTS,com.isivoltpro.maginaolivo.data.local.LocalLinkBackupTest"
+OFFLINE_ROOM_TESTS="$OFFLINE_ROOM_TESTS,com.isivoltpro.maginaolivo.data.local.FarmLinkLedgerTest,com.isivoltpro.maginaolivo.data.local.FarmLinkRepositoryTest,com.isivoltpro.maginaolivo.FarmLinkScreenTest"
 
 # Fail closed before any APK install or pm clear; see the non-destructive guard tests.
 bash .github/scripts/assert-gate3-emulator-safe.sh
@@ -356,6 +357,9 @@ assert_instrumentation_passed \
   evidence/offline-room-instrumentation.txt \
   "Airplane-mode Room Farm and Campaign CRUD instrumentation" \
   "$OFFLINE_ROOM_RC"
+
+# Explicit opt-in phases are skipped by ordinary suite discovery; exercise real process recovery here.
+bash .github/scripts/test-g1b-consent-restart.sh
 
 set_airplane_mode disable 0 | tee -a evidence/airplane-mode.txt
 

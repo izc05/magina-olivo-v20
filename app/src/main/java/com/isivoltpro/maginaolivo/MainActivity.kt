@@ -10,7 +10,6 @@ import com.isivoltpro.maginaolivo.app.AppCompositionRoot
 import com.isivoltpro.maginaolivo.app.AppRoot
 import com.isivoltpro.maginaolivo.data.reminder.ReminderNotifier
 import java.util.UUID
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import kotlinx.coroutines.launch
@@ -18,13 +17,14 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private companion object {
         /** #475: the one-time reading of existing day replacements, per process. */
-        val existingReplacementsMarked = java.util.concurrent.atomic.AtomicBoolean(false)
+        val existingReplacements = com.isivoltpro.maginaolivo.app.LocalStartupCorrection()
         const val OPEN_ACCOUNT_PENDING = "open_account_pending"
     }
 
     /** The planned work a tapped reminder points at, until navigation has opened it. */
     private val openActivity = mutableStateOf<UUID?>(null)
     private val openAccount = mutableStateOf(false)
+    private val localDataReady = mutableStateOf(false)
     private lateinit var account: com.isivoltpro.maginaolivo.feature.account.AccountRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,27 +37,31 @@ class MainActivity : ComponentActivity() {
         account = compositionRoot.accountRepository
         openAccount.value = savedInstanceState?.getBoolean(OPEN_ACCOUNT_PENDING) ?: false
         if(savedInstanceState==null) handleAccountIntent(intent)
-        // Alarms do not survive a reinstall or a force-stop; the stored reminders do.
-        compositionRoot.localPersistence?.reminders?.let { reminders ->
-            lifecycleScope.launch { runCatching { reminders.reconcile() } }
-        }
-        // #475: what counts today keeps counting once «Se añade / Sustituye» is explicit. It runs to
-        // the end before any screen exists, so no day's cost is written under the new rule first
-        // (Codex on #583); once per process, it is a short read of the drafted calculated costs.
-        compositionRoot.localPersistence?.dayCostRepository?.let { dayCosts ->
-            if (existingReplacementsMarked.compareAndSet(false, true)) {
-                val result = runBlocking(Dispatchers.IO) { runCatching { dayCosts.markExistingReplacements() }.getOrNull() }
-                if (result !is AppResult.Success) existingReplacementsMarked.set(false)
+        // Restore cached identity off the main thread: callback exchange can survive recreation
+        // while holding the Auth mutex. Never block Activity.onCreate waiting for that exchange.
+        lifecycleScope.launch(Dispatchers.IO) {
+            account.resume(false)
+            if(compositionRoot.farmLinks?.accessAllowed()!=false) {
+                compositionRoot.localPersistence?.reminders?.let { runCatching { it.reconcile() } }
+                // #475: complete this one-time correction before any agricultural screen exists.
+                compositionRoot.localPersistence?.dayCostRepository?.let { dayCosts ->
+                    existingReplacements.ensure {
+                        val result=try { dayCosts.markExistingReplacements() }
+                        catch(e:kotlinx.coroutines.CancellationException) { throw e }
+                        catch(_:Exception) { null }
+                        result is AppResult.Success
+                    }
+                }
+                // #458: automatic days without Pesadas are not attributed to every Parcel.
+                compositionRoot.localPersistence?.harvestRepository?.let { runCatching { it.clearUnfoundedDayOrigins() } }
             }
-        }
-        // #458: automatic days without Pesadas stop being attributed to every Parcel.
-        compositionRoot.localPersistence?.harvestRepository?.let { harvests ->
-            lifecycleScope.launch { runCatching { harvests.clearUnfoundedDayOrigins() } }
+            kotlinx.coroutines.withContext(Dispatchers.Main) { localDataReady.value=true }
         }
         if (savedInstanceState == null) openActivity.value = activityIdOf(intent)
 
         setContent {
             AppRoot(
+                privateDataReady = localDataReady.value,
                 compositionRoot = compositionRoot,
                 openActivityId = openActivity.value,
                 onActivityOpened = { openActivity.value = null },
