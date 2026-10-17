@@ -9,7 +9,14 @@ on:
       - .github/scripts/test-reminder-save-diagnostics.sh
       - .github/scripts/verify-context-notifications.sh
       - .github/scripts/test-warm-reminder-diagnostics.sh
+      - .github/scripts/test-failure-evidence.sh
+      - .github/scripts/gate3-emulator-evidence.sh
       - app/src/androidTest/java/com/isivoltpro/maginaolivo/MainReminderPersistenceTest.kt
+      - app/src/androidTest/java/com/isivoltpro/maginaolivo/FailureEvidenceRule.kt
+      - app/src/androidTest/java/com/isivoltpro/maginaolivo/FailureEvidenceRuleTest.kt
+      - app/src/androidTest/java/com/isivoltpro/maginaolivo/AppNavigationTest.kt
+      - app/src/androidTest/java/com/isivoltpro/maginaolivo/MainActivitySmokeTest.kt
+      - app/src/androidTest/java/com/isivoltpro/maginaolivo/MapSearchScreenTest.kt
   workflow_dispatch:
     inputs:
       warm_pipeline:
@@ -48,6 +55,7 @@ jobs:
           bash .github/scripts/test-gate3-emulator-safe.sh
           bash .github/scripts/test-reminder-save-diagnostics.sh
           bash .github/scripts/test-warm-reminder-diagnostics.sh
+          bash .github/scripts/test-failure-evidence.sh
           bash .github/scripts/test-install-gate3-sdk-image.sh
       - name: Enable KVM
         run: |

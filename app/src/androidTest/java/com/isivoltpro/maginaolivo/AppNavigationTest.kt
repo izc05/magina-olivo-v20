@@ -21,6 +21,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -52,6 +53,7 @@ class AppNavigationTest {
         RuleChain
             .outerRule(IsolatedAppStateRule())
             .around(composeRule)
+            .around(FailureEvidenceRule { composeRule.onRoot(useUnmergedTree = true).printToString() })
 
     /** #705 / CR-014: the central control is an action, never a selected fifth tab. */
     @Test

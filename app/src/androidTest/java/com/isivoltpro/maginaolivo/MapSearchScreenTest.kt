@@ -13,6 +13,8 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
@@ -30,10 +32,13 @@ import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 
 /** Production screen/native map, synthetic search outcomes; no records or live place lookups. */
 class MapSearchScreenTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
+    @get:Rule val rules: RuleChain = RuleChain.outerRule(compose)
+        .around(FailureEvidenceRule { compose.onRoot(useUnmergedTree = true).printToString() })
     @Test fun lightSearchKeepsErrorsAndCollapsesOnlyAfterResolution() = exercise(AppearanceMode.LIGHT)
     @Test fun darkSearchKeepsErrorsAndCollapsesOnlyAfterResolution() = exercise(AppearanceMode.DARK)
 

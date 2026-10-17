@@ -363,15 +363,40 @@ bash .github/scripts/test-g1b-consent-restart.sh
 
 set_airplane_mode disable 0 | tee -a evidence/airplane-mode.txt
 
+FAILURE_DIAGNOSTIC_ARGS=()
+if [[ "${GATE3_REMINDER_DIAGNOSTICS:-}" == 1 ]]; then
+  FAILURE_DIAGNOSTIC_ARGS=(-e qaFailureDiagnostics true)
+fi
 set +e
 # The live Catastro WFS check has its own Gate 17 workflow; ordinary emulator
 # validation remains deterministic when the external service is unavailable.
 adb shell am instrument -w \
+  "${FAILURE_DIAGNOSTIC_ARGS[@]}" \
   -e notClass com.isivoltpro.maginaolivo.CatastroLiveImportTest,com.isivoltpro.maginaolivo.Phase18OnlineImportTest,com.isivoltpro.maginaolivo.Phase18OfflineReopenTest,com.isivoltpro.maginaolivo.Phase18PolygonParcelLookupTest \
   "$TEST_PKG/$RUNNER" > evidence/instrumentation-all.txt 2>&1
 INSTRUMENTATION_RC=$?
 set -e
 cat evidence/instrumentation-all.txt
+
+if [[ "${GATE3_REMINDER_DIAGNOSTICS:-}" == 1 ]]; then
+  # Tests capture while Compose/Activity are alive; pull before any full-suite exit.
+  # A directory may be absent if instrumentation stops before the watched/self-test cases.
+  FAILURE_EVIDENCE_RC=0
+  timeout 20s adb pull "/sdcard/Android/data/$PKG/files/failure-evidence" evidence/failure-evidence > evidence/failure-evidence-pull.txt 2>&1 || FAILURE_EVIDENCE_RC=$?
+  : > evidence/failure-evidence-manifest.txt
+  for sentinel in synthetic-sentinel synthetic-sentinel-unavailable; do
+    folder="com.isivoltpro.maginaolivo.FailureEvidenceRuleTest-$sentinel"
+    for capture in failure.txt semantics.txt screen.png active-window.txt window.txt ime.txt activity.txt logcat.txt; do
+      if find evidence/failure-evidence -type f -path "*/$folder/$capture" -size +0c 2>/dev/null | grep -q .; then
+        printf 'PRESENT %s/%s\n' "$folder" "$capture" >> evidence/failure-evidence-manifest.txt
+      else
+        printf 'MISSING %s/%s\n' "$folder" "$capture" >> evidence/failure-evidence-manifest.txt
+        FAILURE_EVIDENCE_RC=1
+      fi
+    done
+  done
+  printf 'capture_exit=%s\n' "$FAILURE_EVIDENCE_RC" >> evidence/failure-evidence-manifest.txt
+fi
 
 # The panel tests capture production surfaces in both themes, not reference mocks.
 # Pull before checking the result so failing runs retain their visual evidence too.
@@ -390,6 +415,12 @@ assert_instrumentation_passed \
   evidence/instrumentation-all.txt \
   "Full instrumented test suite" \
   "$INSTRUMENTATION_RC"
+
+if [[ "${GATE3_REMINDER_DIAGNOSTICS:-}" == 1 && "$FAILURE_EVIDENCE_RC" != 0 ]]; then
+  echo 'Warm full suite passed but required sentinel evidence was not preserved' >&2
+  cat evidence/failure-evidence-manifest.txt
+  exit 1
+fi
 
 # Native GPS/permission/offline states use separate processes and restore device settings.
 bash .github/scripts/wait-gate3-emulator-ready.sh
