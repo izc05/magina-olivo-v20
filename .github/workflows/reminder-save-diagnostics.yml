@@ -1,0 +1,70 @@
+name: Reminder save diagnostics
+
+on:
+  pull_request:
+    branches: [feat/g1b-farm-consent]
+    paths:
+      - .github/workflows/reminder-save-diagnostics.yml
+      - .github/scripts/reminder-save-diagnostics.sh
+      - .github/scripts/test-reminder-save-diagnostics.sh
+      - app/src/androidTest/java/com/isivoltpro/maginaolivo/MainReminderPersistenceTest.kt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reminder-save-diagnostics:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle 9.4.1
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+        with:
+          gradle-version: 9.4.1
+          cache-provider: basic
+      - name: Build matching DEV target and test APKs
+        run: |
+          set -o pipefail
+          gradle --no-daemon --max-workers=1 --no-parallel assembleDevDebug assembleDevDebugAndroidTest 2>&1 | tee build-output.log
+      - name: Verify safety and image guards
+        run: |
+          bash .github/scripts/test-gate3-emulator-safe.sh
+          bash .github/scripts/test-reminder-save-diagnostics.sh
+          bash .github/scripts/test-install-gate3-sdk-image.sh
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+      - name: Provision Android image with bounded retries
+        run: bash .github/scripts/install-gate3-sdk-image.sh
+      - name: Compare original save and explicit IME close on fresh emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: GATE3_ALLOW_APP_DATA_RESET=1 bash .github/scripts/reminder-save-diagnostics.sh
+      - name: Preserve every experiment and build log
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: reminder-save-diagnostics
+          path: |
+            evidence/reminder-save-diagnostics/
+            build-output.log
+          if-no-files-found: warn
+          retention-days: 14
