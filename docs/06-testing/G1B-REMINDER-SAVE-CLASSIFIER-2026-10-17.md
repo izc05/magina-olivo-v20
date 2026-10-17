@@ -151,3 +151,65 @@ en el contenedor con scroll), lo que toca `app/src/main` del área de #757 y afe
 agrícola. No se toca sin autorización expresa del propietario. Mientras tanto, el clasificador de
 esta rama dejará nombrada la causa en la próxima aparición: `SAVE_NOT_PERSISTED` con el botón
 habilitado y la fila de Room intacta es la firma de un toque que no actuó.
+
+## El fallo se reprodujo en CI y el clasificador lo nombró
+
+Android CI run [39022667093](https://github.com/izc05/magina-olivo-v20/actions/runs/39022667093), job
+`gate3-emulator`, sobre `538195e55b69154e28322e3ba42144de3dd17ccd`. La suite completa dio
+`OK (827 tests)` —la prueba incluida— y el sondeo posterior de la línea 399 de
+`gate3-emulator-evidence.sh` falló. Por primera vez el fallo viene con causa:
+
+```
+ComposeTimeoutException: Condition still not satisfied after 15000 ms
+  at MainReminderPersistenceTest.failedPlanRetryAndRecreationPreserveReminder(MainReminderPersistenceTest.kt:114)
+  Suppressed: AssertionError: lost-save=SAVE_NOT_PERSISTED room="Aviso conservado"
+  roomUpdatedAt=2026-10-17T10:22:13.209Z field="Aviso editado sin duplicados" save=present
+  saveEnabled=true saveEnabledBeforeClick=true permissionDialog=absent farmLinkLocked=absent
+  detailRoot=present plannedBanner=absent
+```
+
+Qué dice, punto por punto:
+
+- El formulario sigue **intacto**: el campo conserva el texto sustituido y el botón Guardar existe.
+- El botón estaba **habilitado antes del toque y sigue habilitado quince segundos después**. Si el
+  toque hubiese llegado al botón, `isSaving` lo habría deshabilitado mientras guardaba. **No hubo
+  ningún guardado en curso.**
+- Room conserva la descripción vieja, y su `updatedAt` es el de la planificación previa
+  (10:22:13.209Z), no una escritura posterior.
+- Ni diálogo de permisos, ni pantalla `farm-link-locked`, ni árbol reconstruido.
+
+Es decir: **el toque no actuó sobre el botón**. Quedan descartados por los propios datos el editor
+cerrado, el botón deshabilitado, la edición perdida y la escritura lenta de Room. Encaja con el
+margen cero medido contra el teclado.
+
+Queda una alternativa que estos datos todavía no separan: que el toque sí llegara y uno de los
+guardas del formulario (`readMachines`, `readPlanning`, `readTypedDetail`, `readParcelAreas`)
+rechazara el guardado en silencio, lo que también deja el editor abierto y Room intacta. Por eso el
+informe incorpora ahora `formErrors`, que enumera los campos que el formulario considera erróneos:
+vacío significa que nada rechazó el guardado. La próxima aparición distingue las dos.
+
+## Corrección aplicada, con autorización expresa del propietario
+
+`ActivityEditor`: el hueco inferior pasa a estar **fuera** del área con scroll
+(`Modifier.fillMaxWidth().padding(bottom = MoSpacing.sm).verticalScroll(...)`), de modo que el
+contenido nunca puede descansar sobre el borde del teclado. Medición antes y después, mismo AVD:
+
+| | bottom del botón | borde del teclado | margen |
+|---|---|---|---|
+| antes | 1517 | 1517 | **0 px** |
+| después | 1485 | 1517 | **32 px (12 dp)** |
+
+No cambia ningún campo, color, tipografía ni orden. La captura con el teclado abierto muestra el
+hueco: antes el botón tocaba la barra de sugerencias.
+
+Además, la prueba original comprueba ahora la precondición que antes daba por supuesta: que el punto
+de toque esté libre del teclado. Si algún día no lo está, falla ahí nombrando el solapamiento en vez
+de como un timeout mudo. No relaja nada.
+
+### Verificación local sobre la corrección
+
+- `ActivityEditorCompactTest` `OK (20 tests)`
+- `AppNavigationTest` `OK (31 tests)`
+- `FirstReminderPermissionTest` 4/4 modos OK
+- `MainReminderPersistenceTest` sondeo `later` 3/3 OK
+- `testDevDebugUnitTest` y `assembleDevDebug` verdes en el mismo build

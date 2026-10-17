@@ -109,7 +109,13 @@ class MainReminderPersistenceTest {
         // leaving a bare timeout: nothing is retried, relaxed or hidden here.
         val saveEnabledBeforeClick = compose.onAllNodesWithTag("save-activity").fetchSemanticsNodes()
             .firstOrNull()?.let { !it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) }
-        compose.onNodeWithTag("save-activity").performScrollTo().performClick()
+        // The injected tap lands at the node's centre, and scrolling to the end parks Guardar at
+        // the bottom of the viewport. Assert the centre is clear of the keyboard before tapping,
+        // so a layout or an inset arriving late that puts it under the IME fails here naming the
+        // overlap, instead of as a mute 15-second Room timeout.
+        compose.onNodeWithTag("save-activity").performScrollTo()
+        assertSaveTapClearOfKeyboard(compose)
+        compose.onNodeWithTag("save-activity").performClick()
         try {
             compose.waitUntil(15_000) { runBlocking { db.activityDao().findWithTargets(work)!!.activity.description == "Aviso editado sin duplicados" } }
         } catch (failure: Throwable) {

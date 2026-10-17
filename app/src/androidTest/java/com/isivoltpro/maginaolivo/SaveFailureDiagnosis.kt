@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 
 /**
@@ -50,5 +51,44 @@ internal fun SemanticsNodeInteractionsProvider.lostSaveReport(
         append(" farmLinkLocked=").append(if (exists("farm-link-locked")) "present" else "absent")
         append(" detailRoot=").append(if (exists("activity-detail-root")) "present" else "absent")
         append(" plannedBanner=").append(if (textExists("Trabajo planificado")) "present" else "absent")
+        // A silent refusal by one of the form guards leaves the editor open and Room untouched
+        // too, so name the fields the form considers wrong: empty means nothing refused the save.
+        append(" formErrors=").append(
+            onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.Error), useUnmergedTree = true)
+                .fetchSemanticsNodes()
+                .mapNotNull { it.config.getOrNull(SemanticsProperties.Error) }
+                .joinToString("|")
+                .ifEmpty { "none" }
+        )
     }
+}
+
+/**
+ * Test-only precondition for the save tap. Compose injects the tap at the centre of the node, and
+ * `performScrollTo` leaves the primary action with its bottom edge on the keyboard boundary, so the
+ * whole safety budget is half the button's height. If the centre ever falls inside the IME window
+ * the keyboard eats the event and nothing reaches Room, which looks exactly like a silent timeout.
+ * Asserting it here keeps that case loud and named; it relaxes nothing.
+ */
+internal fun assertSaveTapClearOfKeyboard(
+    compose: androidx.compose.ui.test.junit4.AndroidComposeTestRule<
+        androidx.test.ext.junit.rules.ActivityScenarioRule<MainActivity>, MainActivity>,
+) {
+    val bounds = compose.onNodeWithTag("save-activity").fetchSemanticsNode().boundsInWindow
+    var imeTop = Float.MAX_VALUE
+    var detail = "ime=unavailable"
+    compose.activityRule.scenario.onActivity { activity ->
+        val root = activity.window.decorView
+        val insets = root.rootWindowInsets ?: return@onActivity
+        val type = android.view.WindowInsets.Type.ime()
+        if (!insets.isVisible(type)) { detail = "ime=hidden"; return@onActivity }
+        imeTop = (root.height - insets.getInsets(type).bottom).toFloat()
+        detail = "imeTop=" + imeTop + " rootHeight=" + root.height
+    }
+    val centre = (bounds.top + bounds.bottom) / 2f
+    org.junit.Assert.assertTrue(
+        "The Guardar tap point must stay clear of the keyboard: centre=" + centre +
+            " bounds=" + bounds + " " + detail + " margin=" + (imeTop - centre),
+        centre < imeTop,
+    )
 }
