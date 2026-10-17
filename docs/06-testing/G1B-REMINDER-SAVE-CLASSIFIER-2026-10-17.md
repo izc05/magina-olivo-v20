@@ -490,3 +490,35 @@ Hechos, sin interpretacion forzada:
 
 **Conclusion registrada: intermitente de una sola aparicion, sin causa demostrada.** No se le atribuye infraestructura, carrera de foco ni defecto productivo; no se ha modificado la prueba, ni sus aserciones, ni sus tiempos. Si reaparece, se investiga como fallo reproducible y se pide autorizacion antes de cualquier cambio.
 
+
+## `AppNavigationTest` — de "aparicion unica" a fallo reproducible, y correccion de dos afirmaciones mias
+
+### Lo que cambio respecto a la seccion anterior
+
+La repeticion sobre el SHA de documentacion `56ee08e6` (codigo identico a `602e476d`) **volvio a fallar igual**: Gate 3 Evidence `39074477847`, `AppNavigationTest.centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation`, `RootViewWithoutFocusException` en `Espresso.pressBack()` (`AppNavigationTest.kt:75`), `has-window-focus=false`, caida en la 8a de las 28 pruebas de la clase (`AppNavigationTest:.......`). Android CI `39074475569` sobre el mismo SHA quedo VERDE, con la clase completa (27 puntos) y `OK (828 tests)`.
+
+**Correccion 1.** Queda retirada la conclusion "intermitente de una sola aparicion, sin causa demostrada" de la seccion anterior. El recuento real sobre los dos SHA es **2 fallos en 7 ejecuciones completas del suite**, siempre en la misma linea: fallo reproducible no determinista.
+
+**Correccion 2.** Queda retirada la afirmacion "`AppNavigationTest` no esta tocado por ninguno de mis commits". Es cierta del fichero de la prueba y enganosa en lo que importa: la clase monta `RuleChain.outerRule(IsolatedAppStateRule())`, y el commit `fc702347` de esta rama modifica ese `IsolatedAppStateRule` (+43/-13: traslado de `noBackupFilesDir` y reinicio del singleton `AccountRuntime`). La prueba esta dentro del radio de alcance del cambio. No se afirma causalidad; se deja de presentarla como ajena.
+
+### Hipotesis descartada con datos: no hay diferencia de entorno
+
+Comparados `android-ci.yml` (job `gate3-emulator`) y `gate3-emulator-evidence.yml` (job `gate3-evidence`): misma accion `ReactiveCircus/android-emulator-runner@a421e438`, `api-level: 35`, `target: google_apis`, `arch: x86_64`, `profile: pixel_6`, `disable-animations: true`, identicas `emulator-options`, mismo `script: gate3-emulator-evidence.sh`, y **ambos** fijan `GATE3_ALLOW_APP_DATA_RESET=1` (CI mediante `env:` del paso, Evidence mediante prefijo del comando). El trabajo verde y el que falla corren el mismo codigo en el mismo entorno.
+
+### Lo que la evidencia no permite concluir
+
+El artefacto `magina-olivo-gate3-emulator-evidence` (57 MB) del run fallido **no contiene logcat ni volcado de ventanas**; solo `instrumentation-all.txt`. Sin eso no se puede identificar que ventana retuvo el foco, de modo que la causa no queda nombrada.
+
+### Linea base en main
+
+| Codigo | Ejecuciones completas del suite | Fallos de `AppNavigationTest` |
+|---|---|---|
+| Rama #763 (`602e476d`, `56ee08e6`) | 7 | 2 |
+| `main` `8151e469` | 1 (`39077107096` SUCCESS) | 0 |
+
+Una ejecucion verde en main no discrimina: la propia rama produce verde 5 de 7 veces. Segunda ejecucion de main en curso: `39079743034`.
+
+### Siguiente paso propuesto, pendiente de autorizacion
+
+Comparacion causal A/B con rama desechable (`qa/g1b-isolation-ab`): la rama de #763 con **unicamente** el cambio de `IsolatedAppStateRule` revertido, y dos ejecuciones de Gate 3 Evidence sobre ella. Solo arnes de pruebas, sin fusionar, sin tocar produccion y sin APK. #763 permanece en DRAFT y no se presenta para fusion hasta cerrar este punto.
+
