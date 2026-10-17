@@ -10,6 +10,8 @@ import com.isivoltpro.maginaolivo.account.reservation.*
 import com.isivoltpro.maginaolivo.account.reservation.persistence.DurableReservationJournal
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
@@ -70,13 +72,20 @@ class G1cJournalProcessTest {
     }
 
     private fun hold(fixture: Fixture, trace: StringBuilder): Nothing {
+        check(!fixture.markerFile.exists()) { "A ready marker must never be overwritten" }
+        val pendingMarker = File(fixture.directory, "marker.pending")
+        check(!pendingMarker.exists()) { "A pending marker must be fresh" }
         val marker = "checkpoint=${fixture.checkpoint}\npid=${Process.myPid()}\njournal_sha256=${sha256(fixture.journalFile)}\n"
-        durableWrite(fixture.markerFile, marker)
-        trace.appendLine("marker_durable=true").appendLine("writer_pid=${Process.myPid()}")
+        durableWrite(pendingMarker, marker)
+        trace.appendLine("marker_payload_synced=true").appendLine("writer_pid=${Process.myPid()}")
         durableWrite(fixture.resultFile, "state=WAITING_FOR_FORCE_STOP\n$trace")
         copyEvidence(fixture)
-        println("G1C_CHECKPOINT:${fixture.checkpoint}:pid=${Process.myPid()}")
-        CountDownLatch(1).await(60, TimeUnit.SECONDS)
+        val forceStop = CountDownLatch(1)
+        println("G1C_CHECKPOINT_PREPARED:${fixture.checkpoint}:pid=${Process.myPid()}")
+        // Publish READY only after every other fallible preparation step. No fallback:
+        // a failed result/copy/move cannot leave a marker that the host treats as ready.
+        Files.move(pendingMarker.toPath(), fixture.markerFile.toPath(), StandardCopyOption.ATOMIC_MOVE)
+        forceStop.await(60, TimeUnit.SECONDS)
         throw AssertionError("Writer must be force-stopped at the durable boundary; normal return is forbidden")
     }
 
