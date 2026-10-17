@@ -104,8 +104,24 @@ class MainReminderPersistenceTest {
         compose.onNodeWithTag("edit-activity").performScrollTo().performClick()
         waitFor("activity-description")
         compose.onNodeWithTag("activity-description").performScrollTo().performTextReplacement("Aviso editado sin duplicados")
+        // The original tap and the original 15-second Room assertion are unchanged. Only the
+        // failing path gains a classification, so a lost save names its own cause instead of
+        // leaving a bare timeout: nothing is retried, relaxed or hidden here.
+        val saveEnabledBeforeClick = compose.onAllNodesWithTag("save-activity").fetchSemanticsNodes()
+            .firstOrNull()?.let { !it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) }
         compose.onNodeWithTag("save-activity").performScrollTo().performClick()
-        compose.waitUntil(15_000) { runBlocking { db.activityDao().findWithTargets(work)!!.activity.description == "Aviso editado sin duplicados" } }
+        try {
+            compose.waitUntil(15_000) { runBlocking { db.activityDao().findWithTargets(work)!!.activity.description == "Aviso editado sin duplicados" } }
+        } catch (failure: Throwable) {
+            val stored = runCatching { runBlocking { db.activityDao().findWithTargets(work)?.activity } }
+            failure.addSuppressed(AssertionError(compose.lostSaveReport(
+                expectedText = "Aviso editado sin duplicados",
+                storedDescription = stored.getOrNull()?.description,
+                storedUpdatedAt = stored.getOrNull()?.metadata?.updatedAt?.toString(),
+                saveEnabledBeforeClick = saveEnabledBeforeClick,
+            )))
+            throw failure
+        }
         val editedReminder = runBlocking { db.agendaDao().listForOwner("ACTIVITY",work).single() }
         assertEquals(reminderBefore.id,editedReminder.id)
         assertTrue(editedReminder.enabled); assertNull(editedReminder.firedAt)
