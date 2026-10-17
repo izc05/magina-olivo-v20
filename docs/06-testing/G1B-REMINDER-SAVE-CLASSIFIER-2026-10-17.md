@@ -236,3 +236,35 @@ Corrección: la condición trata ese momento como «todavía no», no como «rot
 siendo el mismo de 15 s y la etiqueta sigue decidiendo**, así que una pantalla que no llegue nunca
 sigue fallando ahí, por timeout, sin relajar nada ni añadir reintentos. Codex ya había visto este
 mismo arranque fallar en `0987e712` (su línea 74) sin explicación; ésta es la explicación.
+
+## Tercer modo: el diálogo compuesto en un hilo de E/S de Room
+
+Android CI [39030158618](https://github.com/izc05/magina-olivo-v20/actions/runs/39030158618) sobre
+`2536b014`: suite completa `OK (827 tests)` y el sondeo `later` fallando con algo nuevo:
+
+```
+java.lang.RuntimeException: Can't create handler inside thread Thread[arch_disk_io_3,5,main]
+that has not called Looper.prepare()
+  at android.app.Dialog.<init> … DialogWrapper.<init> … BasicAlertDialog
+  at …NotificationPermissionHostKt.NotificationPermissionHost(NotificationPermissionHost.kt:109)
+  at androidx.compose.runtime.Recomposer.performRecompose(Recomposer.kt:1318)
+  at androidx.compose.ui.test.TestMonotonicFrameClock.performFrame(…)
+```
+
+La recomposición que crea el diálogo de permisos se ejecutó en un hilo de E/S de Room, donde no hay
+Looper y no se puede construir un `Dialog`. En la traza no aparece ninguna línea de la prueba: nace
+dentro de la recomposición de la aplicación.
+
+Causa: la prueba consulta Room con `runBlocking` desde el hilo de prueba, y bajo
+`TestMonotonicFrameClock` el reloj de frames puede acabar bombeado por el hilo que resuelve esas
+consultas. Sólo muerde en el camino con permiso revocado, el del sondeo, que es el único donde se
+compone ese diálogo.
+
+Corrección (autorizada por el propietario): las lecturas de Room del cuerpo de la prueba pasan por
+un hilo propio, `qa-room-read`, de modo que ninguna continuación de Room puede bombear los
+despachadores de Compose. **Las consultas, las aserciones, el recorrido y los límites de 15 s son
+los mismos.** Las reglas `seed` y `@After` se dejan como estaban: se ejecutan fuera de la vida de la
+composición.
+
+Verificación local tras este cambio: `ActivityEditorCompactTest` 20/20, `AppNavigationTest` 31/31,
+`FirstReminderPermissionTest` 4/4 modos y el sondeo `later` 3/3.

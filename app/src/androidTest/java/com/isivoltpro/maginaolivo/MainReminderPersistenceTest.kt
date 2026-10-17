@@ -74,19 +74,19 @@ class MainReminderPersistenceTest {
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra(ReminderNotifier.EXTRA_ACTIVITY_ID,work.toString())) }
         waitFor("plan-activity")
         compose.onNodeWithTag("notification-permission-dialog").assertDoesNotExist()
-        val reminderBefore = runBlocking { db.agendaDao().listForOwner("ACTIVITY",work).single() }
+        val reminderBefore = read { db.agendaDao().listForOwner("ACTIVITY",work).single() }
         db.openHelper.writableDatabase.execSQL("CREATE TRIGGER qa_fail_plan BEFORE UPDATE ON activities BEGIN SELECT RAISE(ABORT,'qa_expected_write_failure'); END")
         try {
             plan()
             compose.waitUntil(15_000) { compose.onAllNodesWithText("Trabajo planificado").fetchSemanticsNodes().isEmpty() &&
                 compose.onAllNodesWithTag("plan-activity").fetchSemanticsNodes().any { it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled).not() } }
             compose.waitForIdle()
-            assertEquals(ActivityStatus.DRAFT,runBlocking { db.activityDao().findWithTargets(work)!!.activity.status })
-            assertEquals(reminderBefore,runBlocking { db.agendaDao().listForOwner("ACTIVITY",work).single() })
+            assertEquals(ActivityStatus.DRAFT,read { db.activityDao().findWithTargets(work)!!.activity.status })
+            assertEquals(reminderBefore,read { db.agendaDao().listForOwner("ACTIVITY",work).single() })
             compose.onNodeWithTag("notification-permission-dialog").assertDoesNotExist()
         } finally { db.openHelper.writableDatabase.execSQL("DROP TRIGGER IF EXISTS qa_fail_plan") }
         plan()
-        compose.waitUntil(15_000) { runBlocking { db.activityDao().findWithTargets(work)!!.activity.status == ActivityStatus.PLANNED } }
+        compose.waitUntil(15_000) { read { db.activityDao().findWithTargets(work)!!.activity.status == ActivityStatus.PLANNED } }
         val denied = androidx.core.content.ContextCompat.checkSelfPermission(context,android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
         if (denied) {
             waitFor("notification-permission-dialog")
@@ -96,8 +96,8 @@ class MainReminderPersistenceTest {
             compose.onNodeWithTag("notification-permission-later").performClick()
         } else compose.activityRule.scenario.recreate()
         compose.waitForIdle()
-        assertEquals(ActivityStatus.PLANNED,runBlocking { db.activityDao().findWithTargets(work)!!.activity.status })
-        assertEquals(reminderBefore,runBlocking { db.agendaDao().listForOwner("ACTIVITY",work).single() })
+        assertEquals(ActivityStatus.PLANNED,read { db.activityDao().findWithTargets(work)!!.activity.status })
+        assertEquals(reminderBefore,read { db.agendaDao().listForOwner("ACTIVITY",work).single() })
         // Navigation restores the detail after recreation. Sending its deep link again
         // would rebuild that back stack asynchronously beneath the next click.
         waitFor("edit-activity")
@@ -117,9 +117,9 @@ class MainReminderPersistenceTest {
         assertSaveTapClearOfKeyboard(compose)
         compose.onNodeWithTag("save-activity").performClick()
         try {
-            compose.waitUntil(15_000) { runBlocking { db.activityDao().findWithTargets(work)!!.activity.description == "Aviso editado sin duplicados" } }
+            compose.waitUntil(15_000) { read { db.activityDao().findWithTargets(work)!!.activity.description == "Aviso editado sin duplicados" } }
         } catch (failure: Throwable) {
-            val stored = runCatching { runBlocking { db.activityDao().findWithTargets(work)?.activity } }
+            val stored = runCatching { read { db.activityDao().findWithTargets(work)?.activity } }
             failure.addSuppressed(AssertionError(compose.lostSaveReport(
                 expectedText = "Aviso editado sin duplicados",
                 storedDescription = stored.getOrNull()?.description,
@@ -128,7 +128,7 @@ class MainReminderPersistenceTest {
             )))
             throw failure
         }
-        val editedReminder = runBlocking { db.agendaDao().listForOwner("ACTIVITY",work).single() }
+        val editedReminder = read { db.agendaDao().listForOwner("ACTIVITY",work).single() }
         assertEquals(reminderBefore.id,editedReminder.id)
         assertTrue(editedReminder.enabled); assertNull(editedReminder.firedAt)
         assertEquals(reminderBefore.triggerAt,editedReminder.triggerAt)
@@ -150,8 +150,8 @@ class MainReminderPersistenceTest {
         automation.executeShellCommand("input keyevent KEYCODE_BACK").close()
         waitFor("profile-notifications")
         compose.onNodeWithTag("notification-permission-dialog").assertDoesNotExist()
-        assertEquals(ActivityStatus.PLANNED,runBlocking { db.activityDao().findWithTargets(work)!!.activity.status })
-        assertEquals(editedReminder,runBlocking { db.agendaDao().listForOwner("ACTIVITY",work).single() })
+        assertEquals(ActivityStatus.PLANNED,read { db.activityDao().findWithTargets(work)!!.activity.status })
+        assertEquals(editedReminder,read { db.agendaDao().listForOwner("ACTIVITY",work).single() })
         val manager = context.getSystemService(android.app.NotificationManager::class.java)
         val channel = "notification-access-test-${UUID.randomUUID()}"
         try {
@@ -169,7 +169,7 @@ class MainReminderPersistenceTest {
             automation.executeShellCommand("input keyevent KEYCODE_BACK").close()
             waitFor("profile-notifications")
             assertEquals(android.app.NotificationManager.IMPORTANCE_NONE,manager.getNotificationChannel(channel).importance)
-            assertEquals(editedReminder,runBlocking { db.agendaDao().listForOwner("ACTIVITY",work).single() })
+            assertEquals(editedReminder,read { db.agendaDao().listForOwner("ACTIVITY",work).single() })
         } finally { manager.deleteNotificationChannel(channel) }
     }
     private fun plan() {
@@ -182,6 +182,18 @@ class MainReminderPersistenceTest {
     // throws instead of returning nothing. That moment means "not ready yet", not "broken": treat
     // it as a condition still unmet. The same 15-second limit and the same tag decide the outcome,
     // so a screen that never arrives still fails here, by timeout, with nothing relaxed.
+    // Room resolves its queries on its own disk-IO threads. When the test blocks on them from the
+    // test thread, a Compose recomposition can end up running on one of those threads under the
+    // test frame clock, and composing the permission dialog there throws because that thread has
+    // no Looper. Reading inside a dedicated thread keeps every Room continuation away from the
+    // Compose dispatchers. The queries, the assertions and the waits are the same.
+    private fun <T> read(block: suspend () -> T): T {
+        var outcome: Result<T>? = null
+        val worker = Thread({ outcome = runCatching { runBlocking { block() } } }, "qa-room-read")
+        worker.start()
+        worker.join()
+        return checkNotNull(outcome).getOrThrow()
+    }
     private fun waitFor(tag: String) = compose.waitUntil(15_000) {
         runCatching { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false)
     }
