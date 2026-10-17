@@ -449,3 +449,44 @@ conservando la excepción original. Revertido el disparador, el sondeo vuelve a 
 
 La próxima aparición dirá cuál de los tres candidatos es: gesto comido por el scroll, nodo movido,
 o ventana del IME mayor que su inset declarado.
+
+## SHA `602e476d` â€” la instrumentacion se instala y el modo 1 no vuelve
+
+Commit: `602e476ddd696cf1e07ac93e717aacbdeb75a89e`, *test(qa): record the button's bounds and every scroller around the lost tap*.
+
+La adicion es de solo lectura y vive unicamente en la ruta de error: `lostSaveReport` publica ahora `boundsBefore`/`boundsNow` (los limites del boton Guardar antes del toque y en el momento del informe) y `scrollBefore`/`scrollNow` (el desplazamiento de **todos** los contenedores verticales, en orden de arbol, unidos por `/`). La captura ocurre inmediatamente antes del `performClick()` original, que no se ha tocado, igual que no se han tocado los tiempos ni las aserciones.
+
+Autoprueba local antes de subir: con un `CREATE TRIGGER qa_block_save` temporal que impide la escritura, el informe imprimio
+`boundsBefore=Rect.fromLTRB(53.0, 2179.0, 1027.0, 2305.0) boundsNow=<identico> scrollBefore=0.0 scrollNow=0.0 formErrors=none`
+conservando la `ComposeTimeoutException` original. Retirado el trigger: `OK (1 test)`.
+
+### Resultados en CI sobre `602e476d`
+
+| Control | Run | Resultado |
+|---|---|---|
+| Android CI (pasada 1) | `39069238393` | SUCCESS â€” `foundation` + `gate3-emulator` |
+| Gate 3 Evidence (pasada 1) | `39069240522` | FAILURE â€” 1 fallo de 828, **no** el guardado de avisos |
+| Android CI (pasada 2) | `39071623701` | SUCCESS â€” `foundation` + `gate3-emulator` |
+| Gate 3 Evidence (pasada 2) | `39071625522` | SUCCESS â€” `OK (828 tests)` |
+
+**El modo 1 no se reprodujo en ninguna de las dos pasadas.** La sonda aislada de `MainReminderPersistenceTest` (permiso POST_NOTIFICATIONS revocado, sin `pm clear`) termino `OK (1 test)` dos veces en cada ejecucion. La instrumentacion no imprimio nada porque no hubo fallo que clasificar; queda instalada para la proxima aparicion.
+
+### El fallo de la pasada 1 fue otro, y no se reprodujo
+
+```
+1) centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation(com.isivoltpro.maginaolivo.AppNavigationTest)
+androidx.test.espresso.base.RootViewPicker$RootViewWithoutFocusException:
+Waited for the root of the view hierarchy to have window focus and not request layout for 10 seconds.
+Root{... has-window-focus=false ...}
+at androidx.test.espresso.Espresso.pressBack(Espresso.java:237)
+at AppNavigationTest.centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation(AppNavigationTest.kt:75)
+```
+
+Hechos, sin interpretacion forzada:
+
+- `AppNavigationTest` no esta tocado por ningun commit de esta rama; su ultimo cambio es `b35f5c22` (#753, ya fusionada).
+- La linea 75 es el `pressBack()` posterior al `composeRule.activityRule.scenario.recreate()` que la prueba ejecuta solo en la iteracion "Cuaderno".
+- El mismo workflow termino SUCCESS en los cuatro SHA anteriores de la rama (`270a7413`, `fc702347`, `92a7baff`, `2536b014`) y volvio a terminar SUCCESS en la repeticion sobre el mismo `602e476d`, con `AppNavigationTest` entero en verde (27 pruebas).
+
+**Conclusion registrada: intermitente de una sola aparicion, sin causa demostrada.** No se le atribuye infraestructura, carrera de foco ni defecto productivo; no se ha modificado la prueba, ni sus aserciones, ni sus tiempos. Si reaparece, se investiga como fallo reproducible y se pide autorizacion antes de cualquier cambio.
+
