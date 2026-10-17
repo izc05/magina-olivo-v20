@@ -353,3 +353,55 @@ modo que **no puede integrarse antes que #757**. El orden que no deja huecos:
 6. G2 permanece inactivo hasta que G1 esté cerrado y verificado sobre el main integrado.
 
 Ninguna fusión sin autorización expresa del propietario.
+
+## FarmLinkScreenTest: el mismo hilo de Room, ahora en el arnés del consentimiento
+
+Android CI 39042261057 sobre `fc702347` falló en la etapa de Room offline:
+
+```
+FarmLinkScreenTest.onlySelectedFarmsArePreparedButConsentProtectsTheEntireLocalDataset
+ViewRootImpl$CalledFromWrongThreadException: Expected: main Calling: arch_disk_io_0
+  at AndroidComposeView.scheduleMeasureAndLayout(...)
+  at …ChangeList.executeAndFlushAllPendingChanges(...)
+```
+
+La interacción, pieza a pieza:
+
+1. `LocalFarmLinkRepository.consent()` escribe su `StateFlow` en la línea 59, **dentro de
+   `database.withTransaction { }`**: la emisión sale de un hilo `arch_disk_io_*`.
+2. La prueba compone `FarmLinkAccessHost`, que colecta ese flujo, y ejecuta su cuerpo dentro de
+   `runBlocking` sobre el hilo de prueba.
+3. `createAndroidComposeRule` sin `effectContext` usa un despachador **no confinado** —lo dice el
+   propio aviso de obsolescencia de nuestra compilación: «The v2 APIs use StandardTestDispatcher
+   instead of UnconfinedTestDispatcher»—, de modo que las continuaciones del colector y del
+   recompositor se reanudan en el hilo que emitió.
+4. Con el hilo de prueba bloqueado y la composición viva, esa reanudación aplica cambios sobre
+   `AndroidComposeView` fuera del hilo principal, y salta la excepción.
+
+Corrección, una línea en el arnés: la regla recibe `effectContext = Dispatchers.Main`, que es
+justo lo que hace la aplicación real, donde el colector corre sobre el despachador de la
+composición. La prueba pasa a observar el modelo de hilos de producción en lugar del del arnés.
+**No se toca `LocalFarmLinkRepository` ni ningún código productivo**, ni una aserción, ni un
+límite de tiempo, ni ninguno de los cuatro escenarios.
+
+### Límite honesto de esta corrección
+
+No hay rojo→verde local: el fallo **no se reproduce en este equipo** —`FarmLinkScreenTest` 6/6
+PASS antes de tocar nada, y la repetición del mismo SHA en CI (run 39045217041) terminó en
+SUCCESS con `OK (828 tests)`, `OK (220 tests)` y el sondeo del recordatorio `OK (1 test)`. La
+corrección se sostiene en el mecanismo demostrado por la traza, no en una reproducción. Un intento
+de instrumentar el hilo del colector en local devolvió siempre `main`, es decir, tampoco expuso el
+camino malo en esta máquina; queda registrado como lo que es, un intento sin resultado
+concluyente.
+
+Verificación tras la corrección: `FarmLinkScreenTest` 3/3 ejecuciones con sus `OK (4 tests)`,
+los cuatro escenarios intactos.
+
+### Un posible defecto productivo, documentado y no tocado
+
+Escribir estado de interfaz desde dentro de una transacción de Room es, como mínimo, discutible:
+`LocalFarmLinkRepository.kt:59` publica el `StateFlow` mientras la transacción sigue abierta. En
+producción no está demostrado que cause daño, porque el colector de la aplicación corre sobre el
+despachador principal, pero conviene revisarlo: publicar **después** de cerrar la transacción
+sería más seguro y no cambiaría la semántica del consentimiento. **No se modifica aquí**; queda
+anotado para que el propietario decida si autoriza esa revisión en #757.
