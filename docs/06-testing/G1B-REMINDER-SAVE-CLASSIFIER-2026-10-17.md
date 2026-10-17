@@ -405,3 +405,47 @@ producción no está demostrado que cause daño, porque el colector de la aplica
 despachador principal, pero conviene revisarlo: publicar **después** de cerrar la transacción
 sería más seguro y no cambiaría la semántica del consentimiento. **No se modifica aquí**; queda
 anotado para que el propietario decida si autoriza esa revisión en #757.
+
+## El margen no bastó: el modo 1 vuelve con la geometría verificada
+
+Android CI 39062267904 sobre `270a7413`: suite completa `OK (828 tests)`, Room offline
+`OK (220 tests)` —`FarmLinkScreenTest` pasó, la corrección del arnés aguantó— y el sondeo del
+recordatorio otra vez en rojo:
+
+```
+lost-save=SAVE_NOT_PERSISTED room="Aviso conservado"
+field="Aviso editado sin duplicados" save=present saveEnabled=true
+saveEnabledBeforeClick=true formErrors=none
+```
+
+Dos lecturas, una a favor y otra en contra de lo que veníamos diciendo:
+
+- **`formErrors=none` cierra la última alternativa.** Ningún guarda del formulario rechazó el
+  guardado en silencio. Con el botón habilitado antes y quince segundos después, no hubo ningún
+  guardado en curso: el toque no actuó.
+- **La precondición pasó.** El fallo está en la línea del `waitUntil`, no en la del
+  `assertSaveTapClearOfKeyboard`. En el momento de comprobarlo, el punto de toque estaba libre del
+  teclado, con el margen de 12 dp ya aplicado. **El solapamiento con el teclado no explica esta
+  aparición, y el margen no ha eliminado el modo 1.** La medición del margen cero sigue siendo
+  cierta y el margen sigue siendo bueno para el usuario, pero no era la causa completa.
+
+### Instrumentación añadida, sólo lectura
+
+El informe de fallo incorpora ahora cuatro datos más, leídos sin tocar el toque, los tiempos ni
+ninguna aserción:
+
+- `boundsBefore` y `boundsNow`: los límites del botón justo antes del toque y en el momento del
+  informe. Si difieren, el nodo resuelto se movió entre la resolución y la inyección y el toque
+  cayó donde el botón ya no estaba.
+- `scrollBefore` y `scrollNow`: el desplazamiento de **todos** los contenedores con scroll en
+  pantalla, en orden de árbol. Si alguno se movió mientras se inyectaba el toque, el contenedor se
+  quedó el gesto como desplazamiento en vez de como pulsación — el candidato más probable, porque
+  `performScrollTo` deja el desplazamiento asentándose y la secuencia down/up siguiente llega
+  encima.
+
+Autocomprobado con el disparador temporal `qa_block_save`: el informe dispara y escribe los cuatro
+valores (`boundsBefore` y `boundsNow` idénticos, `scrollBefore`/`scrollNow` presentes),
+conservando la excepción original. Revertido el disparador, el sondeo vuelve a `OK (1 test)`.
+
+La próxima aparición dirá cuál de los tres candidatos es: gesto comido por el scroll, nodo movido,
+o ventana del IME mayor que su inset declarado.

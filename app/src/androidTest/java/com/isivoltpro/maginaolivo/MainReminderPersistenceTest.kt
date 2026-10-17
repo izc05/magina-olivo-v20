@@ -115,6 +115,11 @@ class MainReminderPersistenceTest {
         // overlap, instead of as a mute 15-second Room timeout.
         compose.onNodeWithTag("save-activity").performScrollTo()
         assertSaveTapClearOfKeyboard(compose)
+        // Read-only, right before the original tap: where the button is and where the scrolling
+        // container stands. Compared in the failure report, they tell a gesture taken as a scroll
+        // from a tap aimed at a node that has since moved. Nothing here changes the tap.
+        val boundsBeforeClick = compose.saveBounds()
+        val scrollBeforeClick = compose.verticalScrollOffset()
         compose.onNodeWithTag("save-activity").performClick()
         try {
             compose.waitUntil(15_000) { read { db.activityDao().findWithTargets(work)!!.activity.description == "Aviso editado sin duplicados" } }
@@ -125,6 +130,8 @@ class MainReminderPersistenceTest {
                 storedDescription = stored.getOrNull()?.description,
                 storedUpdatedAt = stored.getOrNull()?.metadata?.updatedAt?.toString(),
                 saveEnabledBeforeClick = saveEnabledBeforeClick,
+                boundsBeforeClick = boundsBeforeClick,
+                scrollBeforeClick = scrollBeforeClick,
             )))
             throw failure
         }

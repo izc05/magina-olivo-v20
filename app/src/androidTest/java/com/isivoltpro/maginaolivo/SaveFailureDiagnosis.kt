@@ -24,6 +24,8 @@ internal fun SemanticsNodeInteractionsProvider.lostSaveReport(
     storedDescription: String?,
     storedUpdatedAt: String?,
     saveEnabledBeforeClick: Boolean?,
+    boundsBeforeClick: String?,
+    scrollBeforeClick: String?,
 ): String {
     fun exists(tag: String) = onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
     fun textExists(text: String) = onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
@@ -53,6 +55,13 @@ internal fun SemanticsNodeInteractionsProvider.lostSaveReport(
         append(" plannedBanner=").append(if (textExists("Trabajo planificado")) "present" else "absent")
         // A silent refusal by one of the form guards leaves the editor open and Room untouched
         // too, so name the fields the form considers wrong: empty means nothing refused the save.
+        // Two reads that tell a swallowed gesture from a missed target: if the scrollable
+        // ancestor moved while the tap was injected, the container took the gesture as a scroll;
+        // if the button's bounds moved, the node resolved before the tap is no longer there.
+        append(" boundsBefore=").append(boundsBeforeClick ?: "none")
+        append(" boundsNow=").append(saveNodes.firstOrNull()?.boundsInWindow?.toString() ?: "none")
+        append(" scrollBefore=").append(scrollBeforeClick ?: "none")
+        append(" scrollNow=").append(verticalScrollOffset() ?: "none")
         append(" formErrors=").append(
             onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.Error), useUnmergedTree = true)
                 .fetchSemanticsNodes()
@@ -92,3 +101,17 @@ internal fun assertSaveTapClearOfKeyboard(
         centre < imeTop,
     )
 }
+
+/**
+ * Offset of every vertical scroller on screen, in tree order. Reading them all avoids picking the
+ * wrong container: what matters is whether any of them moved while the tap was being injected.
+ */
+internal fun SemanticsNodeInteractionsProvider.verticalScrollOffset(): String? =
+    onAllNodes(androidx.compose.ui.test.hasScrollAction()).fetchSemanticsNodes()
+        .mapNotNull { it.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange)?.value?.invoke() }
+        .joinToString("/")
+        .ifEmpty { null }
+
+/** Bounds of the save button right now, for the before/after comparison of the tap. */
+internal fun SemanticsNodeInteractionsProvider.saveBounds(): String? =
+    onAllNodesWithTag("save-activity").fetchSemanticsNodes().firstOrNull()?.boundsInWindow?.toString()
