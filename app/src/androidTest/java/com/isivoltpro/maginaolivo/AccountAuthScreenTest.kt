@@ -105,14 +105,18 @@ class AccountAuthScreenTest {
         compose.onNodeWithTag("account-password").performScrollTo().performTextReplacement("incorrecta")
         compose.onNodeWithTag("account-login").performScrollTo().performClick()
         compose.waitUntil(15_000) { repo.state.value.error!=null && !repo.state.value.busy };assertNull(store.read().session);assertEquals(1,api.calls)
-        compose.onNodeWithTag("account-mode-register").performScrollTo().performClick()
+        compose.onNodeWithTag("account-mode-register").performScrollTo().assertIsEnabled().performClick()
+        waitFor("account-register")
         compose.onNodeWithTag("account-password").performScrollTo().performTextReplacement("password42")
         compose.onNodeWithTag("account-register").performScrollTo().performClick()
-        compose.waitUntil(15_000) { store.read().pending?.purpose==LinkPurpose.SIGNUP }
+        // Pending is persisted before the IO request finishes; only published idle state
+        // guarantees the mode controls can accept a click.
+        compose.waitUntil(15_000) { store.read().pending?.purpose==LinkPurpose.SIGNUP && repo.state.value.pendingPurpose==LinkPurpose.SIGNUP && !repo.state.value.busy }
         assertNull(store.read().session);capture("confirm-pending")
-        compose.onNodeWithTag("account-mode-recover").performScrollTo().performClick()
-        compose.onNodeWithTag("account-recover").performScrollTo().performClick()
-        compose.waitUntil(15_000) { store.read().pending?.purpose==LinkPurpose.RECOVERY }
+        compose.onNodeWithTag("account-mode-recover").performScrollTo().assertIsEnabled().performClick()
+        waitFor("account-recover")
+        compose.onNodeWithTag("account-recover").performScrollTo().assertIsEnabled().performClick()
+        compose.waitUntil(15_000) { store.read().pending?.purpose==LinkPurpose.RECOVERY && repo.state.value.pendingPurpose==LinkPurpose.RECOVERY && !repo.state.value.busy }
         runBlocking { repo.completeLink("${api.redirectUri}?code=synthetic-code",true) }
         waitFor("account-new-password")
         compose.onNodeWithTag("account-new-password").performScrollTo().performTextReplacement("New-password42")
