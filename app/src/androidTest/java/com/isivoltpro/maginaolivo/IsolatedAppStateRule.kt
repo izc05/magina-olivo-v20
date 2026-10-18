@@ -27,20 +27,18 @@ class IsolatedAppStateRule : TestRule {
                 if (it.value is Set<*>) (it.value as Set<*>).toSet() else it.value
             } }
             // Test-only binding of the existing singleton; no test API ships in production.
-            val field = MaginaOlivoDatabase::class.java.getDeclaredField("instance").apply { isAccessible = true }
-            val originalDatabase = field.get(null)
             val databaseName = "isolated-main-${UUID.randomUUID()}.db"
             val fixture = MaginaOlivoDatabase.create(context, databaseName)
             val noBackup = context.noBackupFilesDir
             val vault = File(context.cacheDir, "isolated-no-backup-${UUID.randomUUID()}")
+            val originalDatabase = IsolatedDatabaseBinding.install(fixture)
             try {
-                field.set(null, fixture)
                 originals.keys.forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().commit() }
                 moveAll(noBackup, vault)
                 resetAccountRuntime()
                 base.evaluate()
             } finally {
-                field.set(null, originalDatabase)
+                IsolatedDatabaseBinding.restore(originalDatabase)
                 // Whatever the test wrote there is this run's, never the device's: drop it, then
                 // put the original files back exactly where they were.
                 val spent = File(context.cacheDir, "isolated-no-backup-spent-${UUID.randomUUID()}")
@@ -68,6 +66,25 @@ class IsolatedAppStateRule : TestRule {
                 context.deleteDatabase(databaseName)
             }
         }
+    }
+}
+
+/**
+ * Coordinates the test binding with the production singleton initializer monitor. Swapping
+ * the field without this lock lets an initializer running on another thread observe a
+ * half-swapped singleton, so the lock stays even while the no-backup isolation is in force.
+ */
+internal object IsolatedDatabaseBinding {
+    private val field = MaginaOlivoDatabase::class.java.getDeclaredField("instance").apply { isAccessible = true }
+
+    fun install(fixture: MaginaOlivoDatabase?): MaginaOlivoDatabase? = synchronized(MaginaOlivoDatabase.Companion) {
+        val original = field.get(null) as MaginaOlivoDatabase?
+        field.set(null, fixture)
+        original
+    }
+
+    fun restore(original: MaginaOlivoDatabase?) = synchronized(MaginaOlivoDatabase.Companion) {
+        field.set(null, original)
     }
 }
 
