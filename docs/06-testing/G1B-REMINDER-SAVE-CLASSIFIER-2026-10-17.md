@@ -522,3 +522,48 @@ Una ejecucion verde en main no discrimina: la propia rama produce verde 5 de 7 v
 
 Comparacion causal A/B con rama desechable (`qa/g1b-isolation-ab`): la rama de #763 con **unicamente** el cambio de `IsolatedAppStateRule` revertido, y dos ejecuciones de Gate 3 Evidence sobre ella. Solo arnes de pruebas, sin fusionar, sin tocar produccion y sin APK. #763 permanece en DRAFT y no se presenta para fusion hasta cerrar este punto.
 
+
+## Informe A/B — el aislamiento de `IsolatedAppStateRule` no queda demostrado como causa del fallo de foco
+
+Rama de diagnostico `qa/g1b-isolation-ab`, SHA `6112db1018de71514505a2c7060eca469c3cf732`, creada desde `820cdbf6b29f6e04ce8071fc294f20a1952c763e`. Revierte `IsolatedAppStateRule.kt` y su propia prueba al estado de `main`; ningun otro cambio de #763 se toca. **No se fusionara.**
+
+### Resultados
+
+| Version | SHA | Run | Resultado |
+|---|---|---|---|
+| A — aislamiento revertido | `6112db10` | `39108847974` | SUCCESS |
+| A — aislamiento revertido | `6112db10` | `39111185147` | **NO CONCLUYENTE** — `error: device offline`; el emulador murio tras la primera fase (`OK (14 tests)`), antes del suite completo |
+| A — aislamiento revertido | `6112db10` | `39111805004` | SUCCESS |
+| B — #763 integra | `820cdbf6` | `39108879690` | FAILURE — 1 de 828: `MapSearchScreenTest.darkSearchKeepsErrorsAndCollapsesOnlyAfterResolution` |
+| B — #763 integra | `820cdbf6` | `39111196125` | SUCCESS |
+
+Acumulado sobre el mismo codigo:
+
+| Codigo | Ejecuciones completas del suite | Fallos |
+|---|---|---|
+| #763 (`602e476d`, `56ee08e6`, `820cdbf6`) | 9 | 3 — `AppNavigationTest` x2, `MapSearchScreenTest` x1 |
+| `main` `8151e469` | 3 | 0 |
+| A, aislamiento revertido | 2 comparables (+1 abortada por el emulador) | 0 |
+
+### La evidencia que descarta mi propia hipotesis
+
+El tercer fallo es el que decide. `MapSearchScreenTest` **no usa `IsolatedAppStateRule`**: monta `createComposeRule()`, sin actividad y sin estado de proceso. Solo ocho clases usan la regla (`AccountAuthMainActivityTest`, `AccountAuthScreenTest`, `AppNavigationTest`, `ContextNotificationPermissionTest`, `FirstReminderPermissionTest`, `IsolatedAppStateRuleTest`, `MainMapNavigationTest`, `MainReminderPersistenceTest`) y esa no esta entre ellas. Un fallo fuera del radio de alcance del cambio no puede explicarse por el cambio.
+
+A eso se suma que una de las ejecuciones de la rama A murio con `error: device offline`: el emulador del runner se cayo a mitad del trabajo. El entorno de este workflow no es estable por si mismo.
+
+### Conclusion sustentada
+
+Los tres fallos comparten una sola forma: **una espera de 10 s que no se cumple en un suite de 828 pruebas instrumentadas, ~22 min sobre un unico emulador**, con victima variable — dos veces el `pressBack()` posterior a `scenario.recreate()` en `AppNavigationTest` (foco de ventana nunca recuperado), una vez el colapso del buscador en `MapSearchScreenTest`. La tasa observada es de aproximadamente 1 de cada 3 ejecuciones de evidencia. Los 3 verdes de `main` y los 2 de la rama A son perfectamente compatibles con el azar a esa tasa (p ≈ 0,3 por ejecucion), de modo que **no demuestran lo contrario** y no se presentan como prueba.
+
+Por tanto: **el cambio del aislamiento no queda demostrado como causa**, y tampoco queda demostrado que sea inocente con solo 2 ejecuciones verdes. Lo que si queda demostrado es que el fenomeno excede el radio de alcance del cambio.
+
+### Correccion minima recomendada
+
+Independiente del origen del fallo intermitente, el commit `fc702347` introdujo una regresion concreta de robustez al sustituir el objeto `IsolatedDatabaseBinding` por un acceso directo al campo: se perdio el `synchronized(MaginaOlivoDatabase.Companion)` que coordinaba el intercambio del singleton de base de datos con el inicializador de produccion. Recomendacion: **restaurar `IsolatedDatabaseBinding` (y su `synchronized`) conservando el nuevo aislamiento de `noBackupFilesDir` y el reinicio de `AccountRuntime`.** Es un cambio de arnes, pequeño, sin efecto sobre produccion, y correcto con independencia de la causa del intermitente. No se aplica sin autorizacion.
+
+Para el intermitente en si, lo que haria falta no es mas repeticion ciega sino evidencia: capturar logcat y volcado de ventanas (`dumpsys window`) en el fallo, lo que exige tocar el script de evidencia (infraestructura compartida). Queda propuesto, no hecho.
+
+### Limitacion declarada
+
+No se recogio logcat, estado de foco ni datos de recreacion de Activity con instrumentacion identica en ambas versiones: hacerlo exigiria modificar el script de evidencia compartido o la propia #763, y #763 no debia tocarse. Se deja anotado como limitacion del experimento, no como dato obtenido.
+
