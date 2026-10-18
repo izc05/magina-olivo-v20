@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeout
@@ -39,7 +40,13 @@ import org.junit.Rule
 import org.junit.Test
 
 class FarmLinkScreenTest {
-    @get:Rule val compose=createAndroidComposeRule<ComponentActivity>()
+    // consent() writes its StateFlow inside a Room transaction, so the emission arrives on an
+    // arch_disk_io thread. This rule's default effect context is unconfined, so the composition's
+    // collectors and the recomposer resume on whichever thread emitted, and Compose ends up
+    // applying changes to the view off the main thread. Confining effects to the main dispatcher
+    // is what the application itself does, so the test observes the production threading instead
+    // of the harness's. No scenario, assertion or timeout changes.
+    @get:Rule val compose=createAndroidComposeRule<ComponentActivity>(effectContext=Dispatchers.Main)
     private val context=ApplicationProvider.getApplicationContext<Context>()
     private val fixture=UUID.randomUUID()
     private val name="qa-link-screen-$fixture.db"
