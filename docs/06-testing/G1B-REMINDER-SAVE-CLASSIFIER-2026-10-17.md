@@ -567,3 +567,14 @@ Para el intermitente en si, lo que haria falta no es mas repeticion ciega sino e
 
 No se recogio logcat, estado de foco ni datos de recreacion de Activity con instrumentacion identica en ambas versiones: hacerlo exigiria modificar el script de evidencia compartido o la propia #763, y #763 no debia tocarse. Se deja anotado como limitacion del experimento, no como dato obtenido.
 
+
+## Correccion minima autorizada: el intercambio del singleton vuelve bajo su cerrojo
+
+Commit `8b95015a37acceceec6ab077e3901f3cca62c7f6`, *fix(qa): put the database singleton swap back under its lock*. Un fichero, +21/-4, solo arnes de pruebas.
+
+`fc702347` habia sustituido el objeto `IsolatedDatabaseBinding` por un acceso directo al campo `instance`, perdiendo el `synchronized(MaginaOlivoDatabase.Companion)` que coordinaba el intercambio con el inicializador de produccion. El objeto queda restaurado, con `install` y `restore` dentro del cerrojo; el aislamiento de `noBackupFilesDir` y el reinicio de `AccountRuntime` se conservan intactos.
+
+No se presenta como la correccion del fallo intermitente: el informe A/B deja demostrado que el fenomeno excede el radio de alcance de esta regla. Es la reparacion de una regresion de robustez concreta, correcta con independencia de aquella causa.
+
+Primera pasada sobre `8b95015a`: Android CI `39116124742` SUCCESS (`foundation` + `gate3-emulator`) y Gate 3 Evidence `39116132995` SUCCESS.
+
