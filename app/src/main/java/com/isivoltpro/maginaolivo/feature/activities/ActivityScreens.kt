@@ -650,7 +650,13 @@ internal fun ActivityEditor(
     val showMore = moreOpen || machinesError != null || planningError != null
 
     Column(
-        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
+        // With the keyboard open the visible area ends on the keyboard edge, and scrolling to the
+        // end parks the last control flush against it: a tap a few pixels low lands on the
+        // keyboard instead of on Guardar. This bottom gap is outside the scrolling area on
+        // purpose, so the content can never rest on that edge. Nothing else moves: no field,
+        // colour or type size changes.
+        Modifier.fillMaxWidth().padding(bottom = MoSpacing.sm)
+            .verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall)
