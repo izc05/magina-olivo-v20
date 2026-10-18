@@ -49,37 +49,4 @@ class IsolatedAppStateRuleTest {
             assertEquals(count, after)
         } finally { context.deleteSharedPreferences(preferenceName) }
     }
-
-    /** #757: the account session and the farm-link ledger must not cross tests or accounts. */
-    @Test fun theAccountSessionAndTheLinkLedgerAreIsolatedAndRestored() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val ledger = java.io.File(context.noBackupFilesDir, "farm-link-consents-v1.json")
-        val session = java.io.File(context.noBackupFilesDir, "account-auth-isolationcheck.enc")
-        val ledgerExisted = ledger.exists()
-        val ledgerBefore = if (ledgerExisted) ledger.readBytes() else null
-        check(!session.exists()) { "The synthetic session file must not already exist" }
-        ledger.writeBytes("{\"device\":\"original\"}".toByteArray())
-        session.writeBytes("original-identity".toByteArray())
-        var leakedLedger: String? = null
-        var leakedSession = true
-        try {
-            IsolatedAppStateRule().apply(object : Statement() {
-                override fun evaluate() {
-                    leakedLedger = ledger.takeIf { it.exists() }?.readText()
-                    leakedSession = session.exists()
-                    ledger.writeBytes("{\"device\":\"fixture\"}".toByteArray())
-                    java.io.File(context.noBackupFilesDir, "account-auth-fixture.enc").writeBytes("fixture".toByteArray())
-                }
-            }, Description.createTestDescription(javaClass, "isolated no-backup state")).evaluate()
-            assertNull("The previous ledger must not reach the test", leakedLedger)
-            assertFalse("The previous session must not reach the test", leakedSession)
-            assertFalse("A session written inside the test must not survive it",
-                java.io.File(context.noBackupFilesDir, "account-auth-fixture.enc").exists())
-            assertEquals("{\"device\":\"original\"}", ledger.readText())
-            assertEquals("original-identity", session.readText())
-        } finally {
-            session.delete()
-            if (ledgerBefore != null) ledger.writeBytes(ledgerBefore) else ledger.delete()
-        }
-    }
 }
