@@ -21,7 +21,7 @@ class AccountRepositoryTest {
         var userIdOverride:UUID?=null
         var barrier:CompletableDeferred<Unit>?=null
         override suspend fun signIn(email:String,password:String):AuthSession { barrier?.await();failure?.let { throw it };return reply }
-        override suspend fun signUp(email:String,password:String,challenge:String):AuthSession? { assertTrue(challenge.length>=43);return signedUpSession }
+        override suspend fun signUp(email:String,password:String,challenge:String):AuthSession? { assertTrue(challenge.length>=43);barrier?.await();return signedUpSession }
         override suspend fun recover(email:String,challenge:String) { assertTrue(challenge.length>=43) }
         override suspend fun exchange(code:String,verifier:String):AuthSession { exchanges++;assertTrue(verifier.length>=43);failure?.let{throw it};return reply }
         override suspend fun refresh(session:AuthSession):AuthSession { refreshes++;failure?.let{throw it};return reply }
@@ -45,6 +45,20 @@ class AccountRepositoryTest {
         api.failure=AuthFailure(AuthFailure.Kind.CONFIRM_EMAIL)
         repo.login("qa@example.com","password42",true)
         assertNull(store.read().session);assertTrue(repo.state.value.error!!.contains("Confirma"));assertFalse(repo.state.value.busy)
+    }
+    @Test fun pendingSignupIsStoredBeforeRegistrationFinishes() = runTest {
+        val api=Api();val barrier=CompletableDeferred<Unit>();api.barrier=barrier
+        val store=MemoryAccountSessionStore();val repo=AccountRepository(api,store,{time})
+        val registration=launch { repo.register("qa@example.com","password42",true) }
+        testScheduler.runCurrent()
+        // Crash-safe storage is not an operation-completion signal for UI navigation.
+        assertEquals(LinkPurpose.SIGNUP,store.read().pending?.purpose)
+        assertTrue(repo.state.value.busy)
+        assertNull(repo.state.value.pendingPurpose)
+        barrier.complete(Unit);registration.join()
+        assertEquals(LinkPurpose.SIGNUP,repo.state.value.pendingPurpose)
+        assertFalse(repo.state.value.busy)
+        assertNull(store.read().session)
     }
     @Test fun offlineRestorationDistinguishesCachedIdentityFromExpiredAccess() = runTest {
         val api=Api();val store=MemoryAccountSessionStore();store.write(AccountRecord(session=session()))

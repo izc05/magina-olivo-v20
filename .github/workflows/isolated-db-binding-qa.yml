@@ -1,0 +1,62 @@
+name: Isolated DB binding QA
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - app/src/androidTest/java/com/isivoltpro/maginaolivo/IsolatedAppStateRule.kt
+      - app/src/androidTest/java/com/isivoltpro/maginaolivo/IsolatedDatabaseBindingRaceTest.kt
+      - .github/workflows/isolated-db-binding-qa.yml
+      - .github/scripts/test-isolated-db-binding-device.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  database-binding-race:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.4.1'
+          cache-provider: basic
+      - name: Build matching DEV QA pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --max-workers=1 assembleDevDebug assembleDevDebugAndroidTest 2>&1 | tee build-output.log
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: bash .github/scripts/install-gate3-sdk-image.sh
+      - name: Exercise real Room initialization against the test binding
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        env:
+          GATE3_ALLOW_APP_DATA_RESET: '1'
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash .github/scripts/test-isolated-db-binding-device.sh
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: isolated-db-binding-qa
+          path: |
+            evidence/isolated-db-binding/
+            build-output.log
+          retention-days: 14
