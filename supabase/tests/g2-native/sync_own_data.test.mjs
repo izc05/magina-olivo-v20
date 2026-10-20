@@ -326,3 +326,167 @@ test('offline recovery: check_sync_operations reports confirmed operations', asy
   assert.ok(res.data.confirmed_operations.includes(confirmedOp));
   assert.ok(!res.data.confirmed_operations.includes(unknownOp));
 });
+
+test('stale version conflict protection: stale delivery or expense update is rejected', async () => {
+  const deliveryId = randomUUID();
+  const op1 = randomUUID();
+  const delivery = {
+    id: deliveryId,
+    farmId: actors.A.farm,
+    campaignId: actors.A.campaign,
+    deliveryDate: '2026-11-21',
+    destinationName: 'Cooperativa San Isidro',
+    netGrams: 1000000
+  };
+
+  // Initial insert -> version 1
+  const ins = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: { p_operation_id: op1, p_delivery: delivery }
+  });
+  assert.equal(ins.status, 200);
+
+  // Update with correct baseVersion (1) -> version becomes 2
+  const op2 = randomUUID();
+  const upd1 = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: { p_operation_id: op2, p_delivery: { ...delivery, netGrams: 1100000, baseVersion: 1 } }
+  });
+  assert.equal(upd1.status, 200);
+
+  // Update with stale baseVersion (1) -> rejected because current version is 2
+  const op3 = randomUUID();
+  const updStale = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: { p_operation_id: op3, p_delivery: { ...delivery, netGrams: 1200000, baseVersion: 1 } }
+  });
+  assert.ok([400, 409].includes(updStale.status));
+  assert.match(JSON.stringify(updStale.data), /sync conflict: stale delivery version/);
+
+  // Same for expense:
+  const expenseId = randomUUID();
+  const opExp1 = randomUUID();
+  const exp = {
+    id: expenseId,
+    farmId: actors.A.farm,
+    campaignId: actors.A.campaign,
+    expenseDate: '2026-11-22',
+    concept: 'Poda',
+    category: 'LABORES',
+    amountMinor: 50000
+  };
+  const expIns = await http('/rest/v1/rpc/sync_own_expense', {
+    token: actors.A.token,
+    body: { p_operation_id: opExp1, p_expense: exp }
+  });
+  assert.equal(expIns.status, 200);
+
+  const opExp2 = randomUUID();
+  const expUpd = await http('/rest/v1/rpc/sync_own_expense', {
+    token: actors.A.token,
+    body: { p_operation_id: opExp2, p_expense: { ...exp, amountMinor: 55000, baseVersion: 1 } }
+  });
+  assert.equal(expUpd.status, 200);
+
+  const opExpStale = randomUUID();
+  const expStale = await http('/rest/v1/rpc/sync_own_expense', {
+    token: actors.A.token,
+    body: { p_operation_id: opExpStale, p_expense: { ...exp, amountMinor: 60000, baseVersion: 1 } }
+  });
+  assert.ok([400, 409].includes(expStale.status));
+  assert.match(JSON.stringify(expStale.data), /sync conflict: stale expense version/);
+});
+
+test('integrity: mismatched entity_type, entity_id or foreign campaign is rejected', async () => {
+  const opId = randomUUID();
+  const deliveryId = randomUUID();
+  const delivery = {
+    id: deliveryId,
+    farmId: actors.A.farm,
+    campaignId: actors.A.campaign,
+    deliveryDate: '2026-11-23',
+    destinationName: 'Cooperativa',
+    netGrams: 800000
+  };
+
+  // 1. Sync delivery with opId
+  const res1 = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: { p_operation_id: opId, p_delivery: delivery }
+  });
+  assert.equal(res1.status, 200);
+
+  // 2. Attempt to use same opId for an EXPENSE -> rejected with conflict
+  const expRes = await http('/rest/v1/rpc/sync_own_expense', {
+    token: actors.A.token,
+    body: {
+      p_operation_id: opId,
+      p_expense: {
+        id: randomUUID(),
+        farmId: actors.A.farm,
+        campaignId: actors.A.campaign,
+        expenseDate: '2026-11-23',
+        concept: 'Tractor',
+        category: 'MAQUINARIA',
+        amountMinor: 30000
+      }
+    }
+  });
+  assert.ok([400, 409].includes(expRes.status));
+  assert.match(JSON.stringify(expRes.data), /sync conflict: operation payload mismatch/);
+
+  // 3. Foreign campaign from Actor B on Actor A farm -> rejected (22023)
+  const opForeign = randomUUID();
+  const foreignCampRes = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: {
+      p_operation_id: opForeign,
+      p_delivery: {
+        id: randomUUID(),
+        farmId: actors.A.farm,
+        campaignId: actors.B.campaign, // Foreign campaign!
+        deliveryDate: '2026-11-24',
+        destinationName: 'Cooperativa',
+        netGrams: 500000
+      }
+    }
+  });
+  assert.ok([400, 422].includes(foreignCampRes.status));
+  assert.match(JSON.stringify(foreignCampRes.data), /sync invalid: campaign does not belong to farm/);
+});
+
+test('concurrency: simultaneous identical sync requests succeed idempotently without deadlocks or duplicates', async () => {
+  const opId = randomUUID();
+  const deliveryId = randomUUID();
+  const delivery = {
+    id: deliveryId,
+    farmId: actors.A.farm,
+    campaignId: actors.A.campaign,
+    deliveryDate: '2026-11-25',
+    destinationName: 'Cooperativa Sierra',
+    netGrams: 2500000
+  };
+
+  // Launch 3 simultaneous requests with same operation_id
+  const results = await Promise.all([
+    http('/rest/v1/rpc/sync_own_delivery', { token: actors.A.token, body: { p_operation_id: opId, p_delivery: delivery } }),
+    http('/rest/v1/rpc/sync_own_delivery', { token: actors.A.token, body: { p_operation_id: opId, p_delivery: delivery } }),
+    http('/rest/v1/rpc/sync_own_delivery', { token: actors.A.token, body: { p_operation_id: opId, p_delivery: delivery } })
+  ]);
+
+  // All 3 must succeed (200 OK)
+  for (const r of results) {
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(r.data.success, true);
+    assert.equal(r.data.operation_id, opId);
+  }
+
+  // Exactly 1 row in deliveries table
+  const total = sql(`SELECT count(*) FROM public.deliveries WHERE id = '${deliveryId}';`);
+  assert.equal(total, '1');
+
+  // Exactly 1 row in sync_operations table
+  const totalOps = sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE account_id = '${actors.A.id}' AND operation_id = '${opId}';`);
+  assert.equal(totalOps, '1');
+});
+

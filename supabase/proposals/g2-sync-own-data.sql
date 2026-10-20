@@ -158,7 +158,7 @@ BEGIN
     WHERE account_id = actor AND operation_id = p_operation_id;
 
     IF FOUND THEN
-        IF v_saved.payload_hash <> v_payload_hash THEN
+        IF v_saved.entity_type <> 'DELIVERY' OR v_saved.entity_id <> v_delivery_id OR v_saved.payload_hash <> v_payload_hash THEN
             RAISE EXCEPTION 'sync conflict: operation payload mismatch' USING ERRCODE = '23505';
         END IF;
         RETURN jsonb_build_object(
@@ -187,19 +187,25 @@ BEGIN
         RAISE EXCEPTION 'sync denied: actor does not own farm' USING ERRCODE = '42501';
     END IF;
 
-    -- Validate campaign linkage
+    -- Validate campaign linkage to farm and workspace
     PERFORM 1 FROM public.campaigns
-    WHERE id = v_campaign_id AND farm_id = v_farm_id AND deleted_at IS NULL;
+    WHERE id = v_campaign_id AND farm_id = v_farm_id AND workspace_id = v_workspace AND deleted_at IS NULL;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'sync invalid: campaign does not belong to farm' USING ERRCODE = '22023';
     END IF;
 
-    -- Apply delivery upsert
+    -- Apply delivery upsert with stale update protection
     SELECT * INTO v_existing_delivery FROM public.deliveries WHERE id = v_delivery_id;
     IF FOUND THEN
         IF v_existing_delivery.farm_id <> v_farm_id OR v_existing_delivery.workspace_id <> v_workspace THEN
             RAISE EXCEPTION 'sync conflict: delivery immutable binding mismatch' USING ERRCODE = '23505';
+        END IF;
+
+        IF p_delivery ? 'baseVersion' THEN
+            IF v_existing_delivery.version <> (p_delivery->>'baseVersion')::bigint THEN
+                RAISE EXCEPTION 'sync conflict: stale delivery version' USING ERRCODE = 'P0002';
+            END IF;
         END IF;
 
         UPDATE public.deliveries SET
@@ -217,7 +223,11 @@ BEGIN
             harvest_origin = v_harvest_origin,
             version = version + 1,
             updated_at = now()
-        WHERE id = v_delivery_id;
+        WHERE id = v_delivery_id AND workspace_id = v_workspace;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'sync error: delivery update failed' USING ERRCODE = 'P0002';
+        END IF;
     ELSE
         INSERT INTO public.deliveries (
             id, workspace_id, farm_id, campaign_id, delivery_date, destination_name,
@@ -274,6 +284,7 @@ DECLARE
     v_workspace UUID;
     v_payload_hash TEXT;
     v_saved magina_g2_private.sync_operations%ROWTYPE;
+    v_existing_expense public.expenses%ROWTYPE;
 BEGIN
     IF actor IS NULL THEN
         RAISE EXCEPTION 'sync denied: unauthenticated' USING ERRCODE = '42501';
@@ -329,7 +340,7 @@ BEGIN
     WHERE account_id = actor AND operation_id = p_operation_id;
 
     IF FOUND THEN
-        IF v_saved.payload_hash <> v_payload_hash THEN
+        IF v_saved.entity_type <> 'EXPENSE' OR v_saved.entity_id <> v_expense_id OR v_saved.payload_hash <> v_payload_hash THEN
             RAISE EXCEPTION 'sync conflict: operation payload mismatch' USING ERRCODE = '23505';
         END IF;
         RETURN jsonb_build_object(
@@ -358,8 +369,43 @@ BEGIN
         RAISE EXCEPTION 'sync denied: actor does not own farm for economic operations' USING ERRCODE = '42501';
     END IF;
 
-    -- Apply expense upsert
-    IF EXISTS (SELECT 1 FROM public.expenses WHERE id = v_expense_id) THEN
+    -- Validate campaign linkage if provided
+    IF v_campaign_id IS NOT NULL THEN
+        PERFORM 1 FROM public.campaigns
+        WHERE id = v_campaign_id AND farm_id = v_farm_id AND workspace_id = v_workspace AND deleted_at IS NULL;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'sync invalid: campaign does not belong to farm' USING ERRCODE = '22023';
+        END IF;
+    END IF;
+
+    -- Validate parcel linkage if provided
+    IF v_parcel_id IS NOT NULL THEN
+        PERFORM 1 FROM public.parcels
+        WHERE id = v_parcel_id AND workspace_id = v_workspace AND deleted_at IS NULL;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'sync invalid: parcel does not belong to workspace' USING ERRCODE = '22023';
+        END IF;
+    END IF;
+
+    -- Apply expense upsert with stale update protection
+    SELECT * INTO v_existing_expense FROM public.expenses WHERE id = v_expense_id;
+    IF FOUND THEN
+        IF v_existing_expense.workspace_id <> v_workspace THEN
+            RAISE EXCEPTION 'sync denied: expense belongs to another workspace' USING ERRCODE = '42501';
+        END IF;
+
+        IF v_existing_expense.farm_id IS NOT NULL AND v_existing_expense.farm_id <> v_farm_id THEN
+            RAISE EXCEPTION 'sync conflict: expense farm binding mismatch' USING ERRCODE = '23505';
+        END IF;
+
+        IF p_expense ? 'baseVersion' THEN
+            IF v_existing_expense.version <> (p_expense->>'baseVersion')::bigint THEN
+                RAISE EXCEPTION 'sync conflict: stale expense version' USING ERRCODE = 'P0002';
+            END IF;
+        END IF;
+
         UPDATE public.expenses SET
             farm_id = v_farm_id,
             campaign_id = v_campaign_id,
@@ -375,6 +421,10 @@ BEGIN
             version = version + 1,
             updated_at = now()
         WHERE id = v_expense_id AND workspace_id = v_workspace;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'sync error: expense update failed' USING ERRCODE = 'P0002';
+        END IF;
     ELSE
         INSERT INTO public.expenses (
             id, workspace_id, farm_id, campaign_id, parcel_id, expense_date,
