@@ -204,7 +204,7 @@ BEGIN
 
         IF p_delivery ? 'baseVersion' THEN
             IF v_existing_delivery.version <> (p_delivery->>'baseVersion')::bigint THEN
-                RAISE EXCEPTION 'sync conflict: stale delivery version' USING ERRCODE = 'P0002';
+                RAISE EXCEPTION 'sync conflict: stale delivery version' USING ERRCODE = '23505';
             END IF;
         END IF;
 
@@ -402,7 +402,7 @@ BEGIN
 
         IF p_expense ? 'baseVersion' THEN
             IF v_existing_expense.version <> (p_expense->>'baseVersion')::bigint THEN
-                RAISE EXCEPTION 'sync conflict: stale expense version' USING ERRCODE = 'P0002';
+                RAISE EXCEPTION 'sync conflict: stale expense version' USING ERRCODE = '23505';
             END IF;
         END IF;
 
