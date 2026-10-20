@@ -7,7 +7,13 @@ import java.util.UUID
 /** Local correlation only. A future server must derive actor identity from verified credentials. */
 data class ReservationActor(val issuer: String, val userId: UUID) {
     init {
-        require(issuer.isNotBlank() && issuer.length <= 2048)
+        require(issuer.isNotBlank() && issuer.length <= MAX_ISSUER_CHARS &&
+            issuer.toByteArray(Charsets.UTF_8).size <= MAX_ISSUER_BYTES)
+    }
+
+    companion object {
+        const val MAX_ISSUER_CHARS = 2048
+        const val MAX_ISSUER_BYTES = 8192
     }
 }
 

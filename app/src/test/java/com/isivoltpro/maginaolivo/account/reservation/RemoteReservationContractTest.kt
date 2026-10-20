@@ -131,6 +131,11 @@ class RemoteReservationContractTest {
         listOf("", " ", "x".repeat(2049)).forEach { issuer ->
             assertThrows(IllegalArgumentException::class.java) { actor.copy(issuer = issuer) }
         }
+        val validMultibyte = "\u3042".repeat(2048)
+        assertEquals(2048, validMultibyte.length)
+        assertEquals(6144, validMultibyte.toByteArray(Charsets.UTF_8).size)
+        val validActor = actor.copy(issuer = validMultibyte)
+        assertEquals(validMultibyte, validActor.issuer)
     }
 
     @Test fun `consent text version must be positive`() {

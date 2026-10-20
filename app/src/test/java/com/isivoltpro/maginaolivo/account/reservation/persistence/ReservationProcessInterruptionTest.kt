@@ -31,7 +31,15 @@ class ReservationProcessInterruptionTest {
                     process.destroyForcibly()
                     assertTrue("Writer must terminate", process.waitFor(10, TimeUnit.SECONDS))
                     assertNotEquals("Forced process exit must not be normal", 0, process.exitValue())
+                    if (checkpoint == "receipt-before-rename") {
+                        val orphansBefore = directory.listFiles { f -> f.isFile && f.name.startsWith(file.name + ".tmp-") } ?: emptyArray()
+                        assertTrue("Orphaned temporary must exist before recovery", orphansBefore.isNotEmpty())
+                    }
                     val restored = DurableReservationJournal(file).load(ProcessReservationFixture.scope)!!
+                    if (checkpoint == "receipt-before-rename") {
+                        val orphansAfter = directory.listFiles { f -> f.isFile && f.name.startsWith(file.name + ".tmp-") } ?: emptyArray()
+                        assertTrue("Orphaned temporary must be removed on recovery", orphansAfter.isEmpty())
+                    }
                     assertEquals(ProcessReservationFixture.request, restored.request)
                     val committed = checkpoint == "receipt-committed"
                     assertEquals(if (committed) ReservationStatus.RESERVED_REMOTE else ReservationStatus.PENDING, restored.status)

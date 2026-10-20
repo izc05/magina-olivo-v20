@@ -104,4 +104,40 @@ class DurableReservationJournalTest {
         assertEquals(request, journal.load(other)?.request)
         assertEquals(receipt(), journal.attempt(scope, { actor }, accepted()).receipt)
     }
+
+    @Test fun `orphaned temporaries are removed on recovery while retaining unrelated files`() {
+        val file = file()
+        val journal = DurableReservationJournal(file)
+        journal.prepare(scope, request)
+        val parent = file.parentFile
+        val orphan1 = File(parent, file.name + ".tmp-" + UUID.randomUUID()).also { it.writeText("stale-1") }
+        val orphan2 = File(parent, file.name + ".tmp-" + UUID.randomUUID()).also { it.writeText("stale-2") }
+        val otherJournalTemp = File(parent, "other.bin.tmp-" + UUID.randomUUID()).also { it.writeText("other-temp") }
+        val nonUuidTemp = File(parent, file.name + ".tmp").also { it.writeText("non-uuid") }
+        val unrelated = File(parent, "unrelated.txt").also { it.writeText("data") }
+
+        val reloaded = DurableReservationJournal(file).load(scope)
+        assertEquals(request, reloaded?.request)
+        assertFalse(orphan1.exists())
+        assertFalse(orphan2.exists())
+        assertTrue(otherJournalTemp.exists())
+        assertTrue(nonUuidTemp.exists())
+        assertTrue(unrelated.exists())
+    }
+
+    @Test fun `multibyte unicode issuer up to 2048 chars serializes and deserializes accurately`() {
+        val file = file()
+        val multibyteIssuer = "\u3042".repeat(2048)
+        assertEquals(2048, multibyteIssuer.length)
+        val multibyteBytes = multibyteIssuer.toByteArray(Charsets.UTF_8).size
+        assertEquals(6144, multibyteBytes)
+        val multibyteActor = ReservationActor(multibyteIssuer, UUID(0, 1))
+        val multibyteScope = ReservationScope(multibyteActor, UUID(0, 3))
+        val journal = DurableReservationJournal(file)
+        journal.prepare(multibyteScope, request)
+        val loaded = DurableReservationJournal(file).load(multibyteScope)
+        assertNotNull(loaded)
+        assertEquals(multibyteActor, loaded!!.scope.actor)
+        assertEquals(request, loaded.request)
+    }
 }

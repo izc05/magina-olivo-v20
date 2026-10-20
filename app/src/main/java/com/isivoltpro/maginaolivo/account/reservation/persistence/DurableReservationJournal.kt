@@ -46,7 +46,10 @@ class DurableReservationJournal(private val file: File, private val beforeCommit
             val parent=file.absoluteFile.parentFile ?: throw IOException("journal_directory_missing")
             if(!parent.mkdirs() && !parent.isDirectory) throw IOException("journal_directory_unavailable")
             RandomAccessFile(File(parent,file.name+".lock"),"rw").use { lock ->
-                lock.channel.lock().use { action() }
+                lock.channel.lock().use {
+                    cleanOrphanedTemporaries(parent)
+                    action()
+                }
             }
         }
     }
@@ -109,24 +112,38 @@ class DurableReservationJournal(private val file: File, private val beforeCommit
         } finally { if(temporary.exists()) temporary.delete() }
     }
 
+    private fun cleanOrphanedTemporaries(parent: File) {
+        val prefix = file.name + ".tmp-"
+        parent.listFiles()?.forEach { candidate ->
+            if (candidate.isFile && candidate.name.startsWith(prefix)) {
+                val suffix = candidate.name.substring(prefix.length)
+                if (UUID_REGEX.matches(suffix)) {
+                    try { candidate.delete() } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
     private fun DataInputStream.uuid()=UUID(readLong(),readLong())
     private fun DataOutputStream.uuid(value:UUID) { writeLong(value.mostSignificantBits);writeLong(value.leastSignificantBits) }
     private fun DataInputStream.scope()=ReservationScope(ReservationActor(text(),uuid()),uuid())
     private fun DataOutputStream.scope(value:ReservationScope) { text(value.actor.issuer);uuid(value.actor.userId);uuid(value.operationId) }
     private fun DataInputStream.text():String {
-        val count=readInt();check(count in 0..4096)
+        val count=readInt();check(count in 0..MAX_TEXT_BYTES)
         val bytes=ByteArray(count).also(::readFully)
         return Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
             .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString()
     }
     private fun DataOutputStream.text(value:String) {
-        val bytes=value.toByteArray(Charsets.UTF_8);require(bytes.size<=4096);writeInt(bytes.size);write(bytes)
+        val bytes=value.toByteArray(Charsets.UTF_8);require(bytes.size<=MAX_TEXT_BYTES);writeInt(bytes.size);write(bytes)
     }
     private fun digest(bytes:ByteArray)=MessageDigest.getInstance("SHA-256").digest(bytes)
     private companion object {
         const val MAGIC=0x4d475231
         const val MAX_BYTES=1_048_576
         const val MAX_RECORDS=1000
+        const val MAX_TEXT_BYTES=8192
         val locks=ConcurrentHashMap<String,Any>()
+        val UUID_REGEX=Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
     }
 }
