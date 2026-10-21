@@ -32,9 +32,6 @@ internal suspend fun MaginaOlivoDatabase.enqueueCollapsed(
     val existing = dao.listForEntity(entityType, entityId)
     val pendingExisting = existing.firstOrNull { it.status == com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING }
 
-    // Stable UUID: reuse existing operation ID if pending, ensuring idempotent tracking
-    val stableId = pendingExisting?.id ?: idGenerator.newId()
-
     val operation =
         if (existing.any { it.operation == OutboxOperation.CREATE } && requested != OutboxOperation.DELETE) {
             OutboxOperation.CREATE
@@ -42,26 +39,35 @@ internal suspend fun MaginaOlivoDatabase.enqueueCollapsed(
             requested
         }
 
-    // Preserve original payload or use new one if updated
-    val effectivePayload = payloadJson ?: pendingExisting?.payloadJson
-    val effectiveAccount = accountId ?: pendingExisting?.accountId
-    val effectiveFarm = farmId ?: pendingExisting?.farmId
-    val effectiveBaseVersion = baseRemoteVersion ?: pendingExisting?.baseRemoteVersion
+    // G2.3 Hardening:
+    // When an operation is pending and its canonical payload, bound account, and baseRemoteVersion
+    // are identical, reuse the stable operation UUID for idempotent retries.
+    // If payload, account, or baseRemoteVersion change, or if no pending operation exists,
+    // allocate a brand-new operation UUID to prevent tampering with a previously prepared or in-flight intent.
+    val isIdenticalPending = pendingExisting != null &&
+        pendingExisting.operation == operation &&
+        pendingExisting.payloadJson == payloadJson &&
+        pendingExisting.accountId == accountId &&
+        pendingExisting.baseRemoteVersion == baseRemoteVersion &&
+        pendingExisting.farmId == farmId
+
+    val operationId = if (isIdenticalPending) pendingExisting!!.id else idGenerator.newId()
+    val createdAt = if (isIdenticalPending) pendingExisting!!.createdAt else now
 
     dao.deletePendingForEntity(entityType, entityId)
     dao.insert(
         SyncOutboxEntity(
-            id = stableId,
+            id = operationId,
             entityType = entityType,
             entityId = entityId,
             operation = operation,
             payloadVersion = 1,
-            baseRemoteVersion = effectiveBaseVersion,
-            createdAt = pendingExisting?.createdAt ?: now,
+            baseRemoteVersion = baseRemoteVersion,
+            createdAt = createdAt,
             updatedAt = now,
-            accountId = effectiveAccount,
-            payloadJson = effectivePayload,
-            farmId = effectiveFarm,
+            accountId = accountId,
+            payloadJson = payloadJson,
+            farmId = farmId,
         ),
     )
 }

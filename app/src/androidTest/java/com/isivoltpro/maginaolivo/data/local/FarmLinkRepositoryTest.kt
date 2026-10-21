@@ -156,15 +156,58 @@ class FarmLinkRepositoryTest {
             )
         )
 
-        val pendingConsented = database.syncOutboxDao().listPendingForFarm(consentedFarm.id)
-        assertEquals(1, pendingConsented.size)
-        assertEquals(opConsentedId, pendingConsented[0].id)
+        // Also insert FAILED and PROCESSING operations for consented farm
+        val opFailedId = UUID.randomUUID()
+        database.syncOutboxDao().insert(
+            com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+                id = opFailedId,
+                entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+                entityId = UUID.randomUUID(),
+                operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+                payloadVersion = 1,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.FAILED,
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now(),
+                accountId = id.toString(),
+                farmId = consentedFarm.id,
+                payloadJson = "{\"test\":true}"
+            )
+        )
+        val opProcessingId = UUID.randomUUID()
+        database.syncOutboxDao().insert(
+            com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+                id = opProcessingId,
+                entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+                entityId = UUID.randomUUID(),
+                operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+                payloadVersion = 1,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PROCESSING,
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now(),
+                accountId = id.toString(),
+                farmId = consentedFarm.id,
+                payloadJson = "{\"test\":true}"
+            )
+        )
 
-        // Revoke consent for consented farm -> pending operations become BLOCKED
+        val pendingConsented = database.syncOutboxDao().listPendingForFarm(consentedFarm.id)
+        assertEquals(2, pendingConsented.size) // PENDING + FAILED
+
+        // Revoke consent for consented farm -> PENDING, FAILED and PROCESSING operations become BLOCKED
         repository.revokeConsentForFarm(consentedFarm.id)
-        val afterRevocation = database.syncOutboxDao().findById(opConsentedId)
-        assertNotNull(afterRevocation)
-        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED, afterRevocation!!.status)
+        val afterRevocationPending = database.syncOutboxDao().findById(opConsentedId)
+        val afterRevocationFailed = database.syncOutboxDao().findById(opFailedId)
+        val afterRevocationProcessing = database.syncOutboxDao().findById(opProcessingId)
+        assertNotNull(afterRevocationPending)
+        assertNotNull(afterRevocationFailed)
+        assertNotNull(afterRevocationProcessing)
+        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED, afterRevocationPending!!.status)
+        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED, afterRevocationFailed!!.status)
+        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED, afterRevocationProcessing!!.status)
+
+        // Ready queue for account excludes BLOCKED items
+        val ready = database.syncOutboxDao().listReadyForAccount(id.toString(), System.currentTimeMillis())
+        assertTrue("Ready operations must not contain blocked consented farm operations", ready.none { it.farmId == consentedFarm.id })
     }
 
     private fun fingerprint(): String {

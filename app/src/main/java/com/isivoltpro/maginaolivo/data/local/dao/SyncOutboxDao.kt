@@ -93,7 +93,7 @@ interface SyncOutboxDao {
         UPDATE sync_outbox
         SET status = :status,
             updated_at = :nowEpochMillis
-        WHERE farm_id = :farmId AND status = 'PENDING'
+        WHERE farm_id = :farmId AND status IN ('PENDING', 'FAILED', 'PROCESSING')
         """,
     )
     suspend fun updateStatusForFarm(farmId: UUID, status: com.isivoltpro.maginaolivo.data.local.model.OutboxStatus, nowEpochMillis: Long): Int

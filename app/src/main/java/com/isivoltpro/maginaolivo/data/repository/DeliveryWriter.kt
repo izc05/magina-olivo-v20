@@ -20,6 +20,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import org.json.JSONObject
 
 internal class InvalidDelivery(val field: String, val code: String) : RuntimeException("$field:$code")
 
@@ -66,12 +67,14 @@ internal class DeliveryWriter(
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
+        val payloadJson = buildDeliveryPayloadJson(row, baseRemoteVersion = null)
         database.enqueueCollapsed(
             idGenerator = idGenerator,
             entityType = SyncEntityType.DELIVERY,
             entityId = row.id,
             requested = OutboxOperation.CREATE,
             now = now,
+            payloadJson = payloadJson,
             farmId = row.farmId,
             baseRemoteVersion = null,
         )
@@ -115,14 +118,16 @@ internal class DeliveryWriter(
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
+        val payloadJson = buildDeliveryPayloadJson(row, baseRemoteVersion = current.metadata.remoteVersion)
         database.enqueueCollapsed(
             idGenerator = idGenerator,
             entityType = SyncEntityType.DELIVERY,
             entityId = row.id,
             requested = OutboxOperation.UPDATE,
             now = now,
+            payloadJson = payloadJson,
             farmId = row.farmId,
-            baseRemoteVersion = current.metadata.remoteVersion ?: current.metadata.version,
+            baseRemoteVersion = current.metadata.remoteVersion,
         )
         jornadas.reconcile(row.harvestId, now)
         // A1: the day it left follows the Pesadas that remain there.
@@ -216,6 +221,27 @@ internal class DeliveryWriter(
     private fun String?.normalized() = this?.trim()?.ifEmpty { null }
 
     private fun formatTime(time: LocalTime): String = time.format(HOUR)
+
+    private fun buildDeliveryPayloadJson(row: DeliveryEntity, baseRemoteVersion: Long?): String {
+        val json = JSONObject()
+        json.put("id", row.id.toString())
+        json.put("farmId", row.farmId.toString())
+        json.put("campaignId", row.campaignId.toString())
+        json.put("deliveryDate", row.deliveryDate.toString())
+        json.put("destinationName", row.destinationName)
+        json.put("netGrams", row.netGrams)
+        row.grossGrams?.let { json.put("grossGrams", it) }
+        row.tareGrams?.let { json.put("tareGrams", it) }
+        row.deliveryNumber?.let { json.put("deliveryNumber", it) }
+        row.ticketNumber?.let { json.put("ticketNumber", it) }
+        json.put("source", row.source)
+        row.notes?.let { json.put("notes", it) }
+        row.harvestId?.let { json.put("harvestId", it.toString()) }
+        row.deliveryTime?.let { json.put("deliveryTime", it) }
+        row.origin?.let { json.put("harvestOrigin", it) }
+        baseRemoteVersion?.let { json.put("baseVersion", it) }
+        return json.toString()
+    }
 
     private companion object {
         val RUNNING = setOf(CampaignStatus.ACTIVE, CampaignStatus.HARVEST)
