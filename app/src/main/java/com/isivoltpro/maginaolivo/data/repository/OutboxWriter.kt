@@ -54,7 +54,7 @@ internal suspend fun MaginaOlivoDatabase.enqueueCollapsed(
     val operationId = if (isIdenticalPending) pendingExisting!!.id else idGenerator.newId()
     val createdAt = if (isIdenticalPending) pendingExisting!!.createdAt else now
 
-    dao.deletePendingForEntity(entityType, entityId)
+    dao.deleteOnlyPendingForEntity(entityType, entityId)
     dao.insert(
         SyncOutboxEntity(
             id = operationId,
