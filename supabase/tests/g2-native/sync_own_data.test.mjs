@@ -493,6 +493,14 @@ test('integrity: mismatched entity_type, entity_id or foreign campaign is reject
   });
   assert.equal(mismatchCampRes.status, 409);
   assert.match(JSON.stringify(mismatchCampRes.data), /sync conflict: delivery campaign mismatch/);
+
+  // Verify delivery campaign remains unchanged in DB
+  const currentCampaign = sql(`SELECT campaign_id FROM public.deliveries WHERE id = '${deliveryId}';`);
+  assert.equal(currentCampaign.trim(), actors.A.campaign);
+
+  // Verify rejected operation was NOT recorded as applied
+  const rejectedOpCount = sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE operation_id = '${opMismatchCamp}';`);
+  assert.equal(rejectedOpCount.trim(), '0');
 });
 
 test('concurrency: simultaneous identical sync requests succeed idempotently without deadlocks or duplicates', async () => {
