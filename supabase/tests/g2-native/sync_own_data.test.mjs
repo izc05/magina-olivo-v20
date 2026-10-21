@@ -190,7 +190,7 @@ test('conflicting payload with reused operation_id fails closed (23505 conflict)
   });
 
   // PostgREST maps 23505 to 409 Conflict
-  assert.ok([409, 400].includes(res2.status));
+  assert.equal(res2.status, 409);
   assert.match(JSON.stringify(res2.data), /sync conflict: operation payload mismatch/);
 });
 
