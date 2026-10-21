@@ -361,7 +361,7 @@ test('stale version conflict protection: stale delivery or expense update is rej
     body: { p_operation_id: opNoBase, p_delivery: { ...delivery, netGrams: 1150000 } }
   });
   assert.equal(updNoBase.status, 409, `Expected 409 on missing baseVersion, got ${updNoBase.status}`);
-  assert.match(JSON.stringify(updNoBase.data), /sync conflict: baseVersion is required to update existing delivery/);
+  assert.match(JSON.stringify(updNoBase.data), /sync conflict: baseVersion required for updating existing delivery/);
 
   // Update with stale baseVersion (1) -> rejected because current version is 2
   const op3 = randomUUID();
@@ -404,7 +404,7 @@ test('stale version conflict protection: stale delivery or expense update is rej
     body: { p_operation_id: opExpNoBase, p_expense: { ...exp, amountMinor: 58000 } }
   });
   assert.equal(expNoBase.status, 409, `Expected 409 on missing baseVersion for expense, got ${expNoBase.status}`);
-  assert.match(JSON.stringify(expNoBase.data), /sync conflict: baseVersion is required to update existing expense/);
+  assert.match(JSON.stringify(expNoBase.data), /sync conflict: baseVersion required for updating existing expense/);
 
   const opExpStale = randomUUID();
   const expStale = await http('/rest/v1/rpc/sync_own_expense', {
@@ -472,7 +472,13 @@ test('integrity: mismatched entity_type, entity_id or foreign campaign is reject
   assert.ok([400, 422].includes(foreignCampRes.status));
   assert.match(JSON.stringify(foreignCampRes.data), /sync invalid: campaign does not belong to farm/);
 
-  // 4. Updating existing delivery with different campaign -> rejected 409
+  // 4. Updating existing delivery with different campaign belonging to the same farm -> rejected 409
+  const secondCampaignId = randomUUID();
+  sql(`
+    INSERT INTO public.campaigns(id, workspace_id, farm_id, name, start_date)
+    VALUES ('${secondCampaignId}', '${actors.A.workspace}', '${actors.A.farm}', 'Campaña 2027/2028', '2027-10-01');
+  `);
+
   const opMismatchCamp = randomUUID();
   const mismatchCampRes = await http('/rest/v1/rpc/sync_own_delivery', {
     token: actors.A.token,
@@ -480,13 +486,13 @@ test('integrity: mismatched entity_type, entity_id or foreign campaign is reject
       p_operation_id: opMismatchCamp,
       p_delivery: {
         ...delivery,
-        campaignId: randomUUID(),
+        campaignId: secondCampaignId,
         baseVersion: 1
       }
     }
   });
   assert.equal(mismatchCampRes.status, 409);
-  assert.match(JSON.stringify(mismatchCampRes.data), /sync conflict: campaign cannot be modified on existing delivery/);
+  assert.match(JSON.stringify(mismatchCampRes.data), /sync conflict: delivery campaign mismatch/);
 });
 
 test('concurrency: simultaneous identical sync requests succeed idempotently without deadlocks or duplicates', async () => {
