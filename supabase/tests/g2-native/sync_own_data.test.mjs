@@ -354,13 +354,22 @@ test('stale version conflict protection: stale delivery or expense update is rej
   });
   assert.equal(upd1.status, 200);
 
+  // Update without baseVersion -> rejected (must provide baseVersion on update) with 409
+  const opNoBase = randomUUID();
+  const updNoBase = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: { p_operation_id: opNoBase, p_delivery: { ...delivery, netGrams: 1150000 } }
+  });
+  assert.equal(updNoBase.status, 409, `Expected 409 on missing baseVersion, got ${updNoBase.status}`);
+  assert.match(JSON.stringify(updNoBase.data), /sync conflict: baseVersion is required to update existing delivery/);
+
   // Update with stale baseVersion (1) -> rejected because current version is 2
   const op3 = randomUUID();
   const updStale = await http('/rest/v1/rpc/sync_own_delivery', {
     token: actors.A.token,
     body: { p_operation_id: op3, p_delivery: { ...delivery, netGrams: 1200000, baseVersion: 1 } }
   });
-  assert.ok([400, 409, 500].includes(updStale.status), `Unexpected status ${updStale.status}`);
+  assert.equal(updStale.status, 409, `Expected 409 on stale delivery version, got ${updStale.status}`);
   assert.match(JSON.stringify(updStale.data), /sync conflict: stale delivery version/);
 
   // Same for expense:
@@ -388,12 +397,21 @@ test('stale version conflict protection: stale delivery or expense update is rej
   });
   assert.equal(expUpd.status, 200);
 
+  // Update expense without baseVersion -> rejected 409
+  const opExpNoBase = randomUUID();
+  const expNoBase = await http('/rest/v1/rpc/sync_own_expense', {
+    token: actors.A.token,
+    body: { p_operation_id: opExpNoBase, p_expense: { ...exp, amountMinor: 58000 } }
+  });
+  assert.equal(expNoBase.status, 409, `Expected 409 on missing baseVersion for expense, got ${expNoBase.status}`);
+  assert.match(JSON.stringify(expNoBase.data), /sync conflict: baseVersion is required to update existing expense/);
+
   const opExpStale = randomUUID();
   const expStale = await http('/rest/v1/rpc/sync_own_expense', {
     token: actors.A.token,
     body: { p_operation_id: opExpStale, p_expense: { ...exp, amountMinor: 60000, baseVersion: 1 } }
   });
-  assert.ok([400, 409, 500].includes(expStale.status), `Unexpected status ${expStale.status}`);
+  assert.equal(expStale.status, 409, `Expected 409 on stale expense version, got ${expStale.status}`);
   assert.match(JSON.stringify(expStale.data), /sync conflict: stale expense version/);
 });
 
@@ -432,7 +450,7 @@ test('integrity: mismatched entity_type, entity_id or foreign campaign is reject
       }
     }
   });
-  assert.ok([400, 409].includes(expRes.status));
+  assert.equal(expRes.status, 409);
   assert.match(JSON.stringify(expRes.data), /sync conflict: operation payload mismatch/);
 
   // 3. Foreign campaign from Actor B on Actor A farm -> rejected (22023)
@@ -453,6 +471,22 @@ test('integrity: mismatched entity_type, entity_id or foreign campaign is reject
   });
   assert.ok([400, 422].includes(foreignCampRes.status));
   assert.match(JSON.stringify(foreignCampRes.data), /sync invalid: campaign does not belong to farm/);
+
+  // 4. Updating existing delivery with different campaign -> rejected 409
+  const opMismatchCamp = randomUUID();
+  const mismatchCampRes = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: {
+      p_operation_id: opMismatchCamp,
+      p_delivery: {
+        ...delivery,
+        campaignId: randomUUID(),
+        baseVersion: 1
+      }
+    }
+  });
+  assert.equal(mismatchCampRes.status, 409);
+  assert.match(JSON.stringify(mismatchCampRes.data), /sync conflict: campaign cannot be modified on existing delivery/);
 });
 
 test('concurrency: simultaneous identical sync requests succeed idempotently without deadlocks or duplicates', async () => {
@@ -488,5 +522,52 @@ test('concurrency: simultaneous identical sync requests succeed idempotently wit
   // Exactly 1 row in sync_operations table
   const totalOps = sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE account_id = '${actors.A.id}' AND operation_id = '${opId}';`);
   assert.equal(totalOps, '1');
+});
+
+test('concurrency: race between distinct operations on same version results in exactly one 200 and one 409', async () => {
+  const initialOpId = randomUUID();
+  const deliveryId = randomUUID();
+  const initialDelivery = {
+    id: deliveryId,
+    farmId: actors.A.farm,
+    campaignId: actors.A.campaign,
+    deliveryDate: '2026-11-26',
+    destinationName: 'Cooperativa Mancha Real',
+    netGrams: 3000000
+  };
+
+  // Seed initial delivery (version 1)
+  const seedRes = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: { p_operation_id: initialOpId, p_delivery: initialDelivery }
+  });
+  assert.equal(seedRes.status, 200);
+
+  // Two distinct operations attempting to update version 1 simultaneously
+  const opA = randomUUID();
+  const opB = randomUUID();
+  const payloadA = { ...initialDelivery, netGrams: 3100000, baseVersion: 1 };
+  const payloadB = { ...initialDelivery, netGrams: 3200000, baseVersion: 1 };
+
+  const [resA, resB] = await Promise.all([
+    http('/rest/v1/rpc/sync_own_delivery', { token: actors.A.token, body: { p_operation_id: opA, p_delivery: payloadA } }),
+    http('/rest/v1/rpc/sync_own_delivery', { token: actors.A.token, body: { p_operation_id: opB, p_delivery: payloadB } })
+  ]);
+
+  const statuses = [resA.status, resB.status].sort();
+  assert.deepEqual(statuses, [200, 409], `Expected exactly one 200 and one 409, got ${JSON.stringify(statuses)}`);
+
+  const winner = resA.status === 200 ? 'A' : 'B';
+  const loserRes = winner === 'A' ? resB : resA;
+  assert.match(JSON.stringify(loserRes.data), /sync conflict: stale delivery version/);
+
+  // Delivery version in DB must be exactly 2
+  const finalVersion = sql(`SELECT version FROM public.deliveries WHERE id = '${deliveryId}';`);
+  assert.equal(finalVersion.trim(), '2');
+
+  // Verify winning netGrams
+  const finalGrams = sql(`SELECT net_grams FROM public.deliveries WHERE id = '${deliveryId}';`);
+  const expectedGrams = winner === 'A' ? '3100000' : '3200000';
+  assert.equal(finalGrams.trim(), expectedGrams);
 });
 

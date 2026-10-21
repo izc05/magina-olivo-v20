@@ -195,19 +195,30 @@ BEGIN
         RAISE EXCEPTION 'sync invalid: campaign does not belong to farm' USING ERRCODE = '22023';
     END IF;
 
-    -- Apply delivery upsert with stale update protection
-    SELECT * INTO v_existing_delivery FROM public.deliveries WHERE id = v_delivery_id;
+    -- Apply delivery upsert with row-level locking and stale update protection
+    SELECT * INTO v_existing_delivery
+    FROM public.deliveries
+    WHERE id = v_delivery_id
+    FOR UPDATE;
+
     IF FOUND THEN
         IF v_existing_delivery.farm_id <> v_farm_id OR v_existing_delivery.workspace_id <> v_workspace THEN
             RAISE EXCEPTION 'sync conflict: delivery immutable binding mismatch' USING ERRCODE = '23505';
         END IF;
 
-        IF p_delivery ? 'baseVersion' THEN
-            IF v_existing_delivery.version <> (p_delivery->>'baseVersion')::bigint THEN
-                RAISE EXCEPTION 'sync conflict: stale delivery version' USING ERRCODE = '23505';
-            END IF;
+        IF v_existing_delivery.campaign_id <> v_campaign_id THEN
+            RAISE EXCEPTION 'sync conflict: delivery campaign mismatch' USING ERRCODE = '23505';
         END IF;
 
+        IF NOT (p_delivery ? 'baseVersion') OR p_delivery->>'baseVersion' IS NULL THEN
+            RAISE EXCEPTION 'sync conflict: baseVersion required for updating existing delivery' USING ERRCODE = '23505';
+        END IF;
+
+        IF v_existing_delivery.version <> (p_delivery->>'baseVersion')::bigint THEN
+            RAISE EXCEPTION 'sync conflict: stale delivery version' USING ERRCODE = '23505';
+        END IF;
+
+        -- Notice: trg_deliveries_immutability auto-increments version and sets updated_at
         UPDATE public.deliveries SET
             delivery_date = v_delivery_date,
             destination_name = v_destination_name,
@@ -220,13 +231,11 @@ BEGIN
             notes = v_notes,
             harvest_id = v_harvest_id,
             delivery_time = v_delivery_time,
-            harvest_origin = v_harvest_origin,
-            version = version + 1,
-            updated_at = now()
-        WHERE id = v_delivery_id AND workspace_id = v_workspace;
+            harvest_origin = v_harvest_origin
+        WHERE id = v_delivery_id AND workspace_id = v_workspace AND version = v_existing_delivery.version;
 
         IF NOT FOUND THEN
-            RAISE EXCEPTION 'sync error: delivery update failed' USING ERRCODE = 'P0002';
+            RAISE EXCEPTION 'sync conflict: delivery concurrent update detected' USING ERRCODE = '23505';
         END IF;
     ELSE
         INSERT INTO public.deliveries (
@@ -389,8 +398,12 @@ BEGIN
         END IF;
     END IF;
 
-    -- Apply expense upsert with stale update protection
-    SELECT * INTO v_existing_expense FROM public.expenses WHERE id = v_expense_id;
+    -- Apply expense upsert with row-level locking and stale update protection
+    SELECT * INTO v_existing_expense
+    FROM public.expenses
+    WHERE id = v_expense_id
+    FOR UPDATE;
+
     IF FOUND THEN
         IF v_existing_expense.workspace_id <> v_workspace THEN
             RAISE EXCEPTION 'sync denied: expense belongs to another workspace' USING ERRCODE = '42501';
@@ -400,10 +413,12 @@ BEGIN
             RAISE EXCEPTION 'sync conflict: expense farm binding mismatch' USING ERRCODE = '23505';
         END IF;
 
-        IF p_expense ? 'baseVersion' THEN
-            IF v_existing_expense.version <> (p_expense->>'baseVersion')::bigint THEN
-                RAISE EXCEPTION 'sync conflict: stale expense version' USING ERRCODE = '23505';
-            END IF;
+        IF NOT (p_expense ? 'baseVersion') OR p_expense->>'baseVersion' IS NULL THEN
+            RAISE EXCEPTION 'sync conflict: baseVersion required for updating existing expense' USING ERRCODE = '23505';
+        END IF;
+
+        IF v_existing_expense.version <> (p_expense->>'baseVersion')::bigint THEN
+            RAISE EXCEPTION 'sync conflict: stale expense version' USING ERRCODE = '23505';
         END IF;
 
         UPDATE public.expenses SET
@@ -420,10 +435,10 @@ BEGIN
             status = v_status,
             version = version + 1,
             updated_at = now()
-        WHERE id = v_expense_id AND workspace_id = v_workspace;
+        WHERE id = v_expense_id AND workspace_id = v_workspace AND version = v_existing_expense.version;
 
         IF NOT FOUND THEN
-            RAISE EXCEPTION 'sync error: expense update failed' USING ERRCODE = 'P0002';
+            RAISE EXCEPTION 'sync conflict: expense concurrent update detected' USING ERRCODE = '23505';
         END IF;
     ELSE
         INSERT INTO public.expenses (
