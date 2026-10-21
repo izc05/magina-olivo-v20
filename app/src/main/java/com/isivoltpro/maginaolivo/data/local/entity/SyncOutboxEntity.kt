@@ -15,6 +15,8 @@ import java.util.UUID
     indices = [
         Index(value = ["status", "next_attempt_at", "created_at"]),
         Index(value = ["entity_type", "entity_id"]),
+        Index(value = ["account_id", "status"]),
+        Index(value = ["farm_id"]),
     ],
 )
 data class SyncOutboxEntity(
@@ -42,4 +44,22 @@ data class SyncOutboxEntity(
     val createdAt: Instant,
     @ColumnInfo(name = "updated_at")
     val updatedAt: Instant,
+    /**
+     * G2.3: Associated user account identifier. Null for legacy operations enqueued prior to G2.3
+     * or created offline without an active account session. Never automatically assumed.
+     */
+    @ColumnInfo(name = "account_id")
+    val accountId: String? = null,
+    /**
+     * G2.3: Canonical immutable JSON payload captured at operation creation time.
+     * Guarantees idempotent replays and preserves payload immutability across retries.
+     */
+    @ColumnInfo(name = "payload_json")
+    val payloadJson: String? = null,
+    /**
+     * G2.3: Optional farm binding for G1b consent gating. If consent for this farm is revoked or missing,
+     * the operation cannot be dispatched until consent is restored.
+     */
+    @ColumnInfo(name = "farm_id")
+    val farmId: UUID? = null,
 )

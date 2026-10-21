@@ -106,6 +106,67 @@ class FarmLinkRepositoryTest {
         val auth=AccountRepository(api,broken)
         assertFalse(FarmLinkDeviceAccess.runIfAllowed(store,auth,"fixture-project",false) { fail("No private access with broken identity");true })
     }
+
+    @Test fun g23OutboxRespectsG1bConsentAndBlocksOnRevocation()=runBlocking {
+        seed()
+        val repository = repo()
+        val id = account.state.value.userId!!
+        val choices = repository.choices()
+        val consentedFarm = choices[0]
+        val unconsentedFarm = choices[1]
+
+        // Only consentedFarm is consented
+        repository.consent(id, listOf(consentedFarm), true)
+        assertTrue(repository.isFarmConsented(consentedFarm.id))
+        assertFalse(repository.isFarmConsented(unconsentedFarm.id))
+
+        // Enqueue operation for consented farm
+        val opConsentedId = UUID.randomUUID()
+        database.syncOutboxDao().insert(
+            com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+                id = opConsentedId,
+                entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+                entityId = UUID.randomUUID(),
+                operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+                payloadVersion = 1,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING,
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now(),
+                accountId = id.toString(),
+                farmId = consentedFarm.id,
+                payloadJson = "{\"test\":true}"
+            )
+        )
+
+        // Enqueue operation for unconsented farm
+        val opUnconsentedId = UUID.randomUUID()
+        database.syncOutboxDao().insert(
+            com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+                id = opUnconsentedId,
+                entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+                entityId = UUID.randomUUID(),
+                operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+                payloadVersion = 1,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING,
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now(),
+                accountId = id.toString(),
+                farmId = unconsentedFarm.id,
+                payloadJson = "{\"test\":false}"
+            )
+        )
+
+        val pendingConsented = database.syncOutboxDao().listPendingForFarm(consentedFarm.id)
+        assertEquals(1, pendingConsented.size)
+        assertEquals(opConsentedId, pendingConsented[0].id)
+
+        // Revoke consent for consented farm -> pending operations become BLOCKED
+        repository.revokeConsentForFarm(consentedFarm.id)
+        val afterRevocation = database.syncOutboxDao().findById(opConsentedId)
+        assertNotNull(afterRevocation)
+        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED, afterRevocation!!.status)
+    }
+
     private fun fingerprint(): String {
         val db=database.openHelper.readableDatabase
         val tables=mutableListOf<String>()

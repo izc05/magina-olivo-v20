@@ -66,7 +66,15 @@ internal class DeliveryWriter(
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
-        database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY, row.id, OutboxOperation.CREATE, now)
+        database.enqueueCollapsed(
+            idGenerator = idGenerator,
+            entityType = SyncEntityType.DELIVERY,
+            entityId = row.id,
+            requested = OutboxOperation.CREATE,
+            now = now,
+            farmId = row.farmId,
+            baseRemoteVersion = null,
+        )
         jornadas.reconcile(row.harvestId, now)
         return row
     }
@@ -107,7 +115,15 @@ internal class DeliveryWriter(
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
-        database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY, row.id, OutboxOperation.UPDATE, now)
+        database.enqueueCollapsed(
+            idGenerator = idGenerator,
+            entityType = SyncEntityType.DELIVERY,
+            entityId = row.id,
+            requested = OutboxOperation.UPDATE,
+            now = now,
+            farmId = row.farmId,
+            baseRemoteVersion = current.metadata.remoteVersion ?: current.metadata.version,
+        )
         jornadas.reconcile(row.harvestId, now)
         // A1: the day it left follows the Pesadas that remain there.
         if (current.harvestId != row.harvestId) jornadas.reconcile(current.harvestId, now)

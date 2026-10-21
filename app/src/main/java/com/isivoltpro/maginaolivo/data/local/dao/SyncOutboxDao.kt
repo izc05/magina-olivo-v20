@@ -63,4 +63,41 @@ interface SyncOutboxDao {
         errorMessage: String?,
         nowEpochMillis: Long,
     ): Int
+
+    @Query("SELECT * FROM sync_outbox WHERE id = :id")
+    suspend fun findById(id: UUID): SyncOutboxEntity?
+
+    @Query(
+        """
+        SELECT * FROM sync_outbox
+        WHERE account_id = :accountId
+          AND status IN ('PENDING', 'FAILED')
+          AND (next_attempt_at IS NULL OR next_attempt_at <= :nowEpochMillis)
+        ORDER BY created_at, id
+        """,
+    )
+    suspend fun listReadyForAccount(accountId: String, nowEpochMillis: Long): List<SyncOutboxEntity>
+
+    @Query(
+        """
+        SELECT * FROM sync_outbox
+        WHERE farm_id = :farmId
+          AND status IN ('PENDING', 'FAILED')
+        ORDER BY created_at, id
+        """,
+    )
+    suspend fun listPendingForFarm(farmId: UUID): List<SyncOutboxEntity>
+
+    @Query(
+        """
+        UPDATE sync_outbox
+        SET status = :status,
+            updated_at = :nowEpochMillis
+        WHERE farm_id = :farmId AND status = 'PENDING'
+        """,
+    )
+    suspend fun updateStatusForFarm(farmId: UUID, status: com.isivoltpro.maginaolivo.data.local.model.OutboxStatus, nowEpochMillis: Long): Int
+
+    @Query("SELECT COUNT(*) FROM sync_outbox WHERE status IN ('PENDING', 'PROCESSING', 'FAILED')")
+    suspend fun countActive(): Int
 }

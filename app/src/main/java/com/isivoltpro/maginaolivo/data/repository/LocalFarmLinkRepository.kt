@@ -68,4 +68,28 @@ class LocalFarmLinkRepository(
         }
         return values
     }
+
+    /**
+     * G2.3: Returns true if the farm has active G1b consent under the currently logged-in account.
+     * Operations belonging to unconsented farms will remain local only and are not eligible for dispatch.
+     */
+    fun isFarmConsented(farmId: UUID, userId: UUID? = account.state.value.userId): Boolean {
+        if (!accessAllowed(userId)) return false
+        val ledger = mutable.value.ledger ?: return false
+        return farmId in ledger.farmIds
+    }
+
+    /**
+     * G2.3: Revokes local consent eligibility for a farm, transitioning its pending outbox operations
+     * to BLOCKED status in Room so they cannot be dispatched.
+     */
+    suspend fun revokeConsentForFarm(farmId: UUID) = withContext(Dispatchers.IO) {
+        database.withTransaction {
+            database.syncOutboxDao().updateStatusForFarm(
+                farmId = farmId,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED,
+                nowEpochMillis = System.currentTimeMillis(),
+            )
+        }
+    }
 }

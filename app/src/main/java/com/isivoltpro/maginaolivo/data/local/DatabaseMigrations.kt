@@ -496,13 +496,24 @@ object DatabaseMigrations {
         }
     }
 
+    /** G2.3: Cola offline-first en Room — account_id, payload_json, farm_id e índices de vinculación. */
+    val MIGRATION_26_27 = object : Migration(26, 27) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `sync_outbox` ADD COLUMN `account_id` TEXT")
+            db.execSQL("ALTER TABLE `sync_outbox` ADD COLUMN `payload_json` TEXT")
+            db.execSQL("ALTER TABLE `sync_outbox` ADD COLUMN `farm_id` TEXT")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_sync_outbox_account_id_status` ON `sync_outbox` (`account_id`, `status`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_sync_outbox_farm_id` ON `sync_outbox` (`farm_id`)")
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
             MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
             MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
-            MIGRATION_25_26,
+            MIGRATION_25_26, MIGRATION_26_27,
         )
 
     private val schemaVersion11Statements =
