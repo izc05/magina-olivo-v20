@@ -74,6 +74,10 @@ class LocalFarmLinkRepository(
      * Operations belonging to unconsented farms will remain local only and are not eligible for dispatch.
      */
     fun isFarmConsented(farmId: UUID, userId: UUID? = account.state.value.userId): Boolean {
+        // Authorization must use the latest on-disk ledger, not a potentially stale StateFlow
+        // snapshot held by another repository instance in this Android process.
+        // A corrupt or unreadable ledger fails closed.
+        mutable.value = load()
         if (!accessAllowed(userId)) return false
         val ledger = mutable.value.ledger ?: return false
         return farmId in ledger.activeFarmIds
