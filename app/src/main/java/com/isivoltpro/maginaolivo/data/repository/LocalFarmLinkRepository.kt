@@ -74,6 +74,10 @@ class LocalFarmLinkRepository(
      * Operations belonging to unconsented farms will remain local only and are not eligible for dispatch.
      */
     fun isFarmConsented(farmId: UUID, userId: UUID? = account.state.value.userId): Boolean {
+        // A caller must not obtain A's consent by supplying A's old userId after
+        // logout/account switch. The identity argument is a consistency assertion,
+        // never an authorization override.
+        if (userId == null || userId != account.state.value.userId) return false
         // Authorization must use the latest on-disk ledger, not a potentially stale StateFlow
         // snapshot held by another repository instance in this Android process.
         // A corrupt or unreadable ledger fails closed.
