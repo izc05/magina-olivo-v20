@@ -19,6 +19,15 @@ interface SyncOutboxDao {
         SELECT * FROM sync_outbox
         WHERE status IN ('PENDING', 'FAILED')
           AND (next_attempt_at IS NULL OR next_attempt_at <= :nowEpochMillis)
+          -- A second unresolved snapshot of the same aggregate may carry a stale base version.
+          -- Fail closed: G2.4 must reconcile/ACK/rebase before making either eligible.
+          AND NOT EXISTS (
+              SELECT 1 FROM sync_outbox sibling
+              WHERE sibling.entity_type = sync_outbox.entity_type
+                AND sibling.entity_id = sync_outbox.entity_id
+                AND sibling.id != sync_outbox.id
+                AND sibling.status IN ('PENDING', 'FAILED', 'PROCESSING', 'BLOCKED')
+          )
         ORDER BY created_at, id
         """,
     )
@@ -76,6 +85,15 @@ interface SyncOutboxDao {
         WHERE account_id = :accountId
           AND status IN ('PENDING', 'FAILED')
           AND (next_attempt_at IS NULL OR next_attempt_at <= :nowEpochMillis)
+          -- Never present competing snapshots of one aggregate to the network worker.
+          -- Check across ALL accounts: old account-bound intents must not be ignored.
+          AND NOT EXISTS (
+              SELECT 1 FROM sync_outbox sibling
+              WHERE sibling.entity_type = sync_outbox.entity_type
+                AND sibling.entity_id = sync_outbox.entity_id
+                AND sibling.id != sync_outbox.id
+                AND sibling.status IN ('PENDING', 'FAILED', 'PROCESSING', 'BLOCKED')
+          )
         ORDER BY created_at, id
         """,
     )
