@@ -64,8 +64,11 @@ class FarmLinkRepositoryTest {
     @Test fun logoutAndOtherAccountCannotReadPreviewOrReassignAnyFarm()=runBlocking {
         seed();val repository=repo();val selected=repository.choices().take(1)
         val id=account.state.value.userId!!;repository.consent(id,selected,true)
+        assertTrue(repository.isFarmConsented(selected.single().id, id))
         account.logout(false);assertFalse(repository.accessAllowed())
+        assertFalse("A stale caller identity cannot authorize a logged-out device", repository.isFarmConsented(selected.single().id, id))
         account.login("b@example.test","password42",true);assertFalse(repository.accessAllowed())
+        assertFalse("A stale explicit userId must not bypass the current account", repository.isFarmConsented(selected.single().id, id))
         try { repository.choices();fail("Other account must not see farm names") } catch (_:IOException) { }
         try { repository.consent(id,selected,true);fail("Stale A selection must not bind B") } catch (_:IOException) { }
         assertEquals(1,store.read()!!.consents.size)
