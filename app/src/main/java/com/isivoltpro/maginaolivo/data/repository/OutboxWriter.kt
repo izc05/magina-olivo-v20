@@ -33,7 +33,10 @@ internal suspend fun MaginaOlivoDatabase.enqueueCollapsed(
     val pendingExisting = existing.firstOrNull { it.status == com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING }
 
     val operation =
-        if (existing.any { it.operation == OutboxOperation.CREATE } && requested != OutboxOperation.DELETE) {
+        if (existing.any {
+                it.operation == OutboxOperation.CREATE &&
+                    it.status != com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.CONFIRMED
+            } && requested != OutboxOperation.DELETE) {
             OutboxOperation.CREATE
         } else {
             requested
