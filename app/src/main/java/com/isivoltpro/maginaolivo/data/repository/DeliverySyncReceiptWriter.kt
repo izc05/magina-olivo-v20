@@ -47,7 +47,8 @@ internal fun verifiedRecoveredDeliveryReceipt(
     val payload = operation.payloadJson ?: return null
     val farm = operation.farmId ?: return null
     if (recovered.accountId.isBlank() || recovered.remoteVersion < 1L ||
-        payload.isBlank() ||
+        payload.isBlank() || operation.payloadVersion < 1 ||
+        (operation.baseRemoteVersion != null && operation.baseRemoteVersion < 1L) ||
         (operation.operation == OutboxOperation.CREATE && operation.baseRemoteVersion != null) ||
         (operation.operation == OutboxOperation.UPDATE &&
             (operation.baseRemoteVersion == null || recovered.remoteVersion <= operation.baseRemoteVersion)) ||
