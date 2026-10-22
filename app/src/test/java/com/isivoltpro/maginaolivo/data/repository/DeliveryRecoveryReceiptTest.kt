@@ -66,6 +66,18 @@ class DeliveryRecoveryReceiptTest {
         assertNull(verifiedRecoveredDeliveryReceipt(operation(), receipt().copy(payloadHash = "A".repeat(64))) { _, _ -> true })
     }
 
+    @Test fun rejectsNonDeliveryAndNonWriteOperations() {
+        assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(entityType = SyncEntityType.FARM), receipt()) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(operation = OutboxOperation.DELETE), receipt()) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(operation = OutboxOperation.UPLOAD_ATTACHMENT), receipt()) { _, _ -> true })
+    }
+
+    @Test fun allowsOnlyRetryableOutboxStates() {
+        for (status in listOf(OutboxStatus.PENDING, OutboxStatus.PROCESSING, OutboxStatus.FAILED)) {
+            assertNotNull(verifiedRecoveredDeliveryReceipt(operation().copy(status = status), receipt()) { _, _ -> true })
+        }
+    }
+
     @Test fun rejectsBlockedConfirmedOrInvalidVersion() {
         assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(status = OutboxStatus.BLOCKED), receipt()) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(status = OutboxStatus.CONFIRMED), receipt()) { _, _ -> true })
