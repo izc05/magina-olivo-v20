@@ -96,6 +96,10 @@ class JornadaCostScreenTest {
         // Nothing is assumed: until the farmer answers, it cannot be saved.
         composeRule.onNodeWithTag("cost-save").performScrollTo().assertIsNotEnabled()
         composeRule.onNodeWithTag("cost-role-REPLACEMENT").performScrollTo().performClick()
+        // The explanatory row is conditional on the selected role; allow Compose to settle.
+        composeRule.waitUntil(10_000) {
+            composeRule.onAllNodesWithTag("cost-role-replaces-labour").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("cost-role-replaces-labour").performScrollTo().assertExists()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodes(hasTestTag("cost-save") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
