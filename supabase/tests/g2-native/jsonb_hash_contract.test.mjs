@@ -43,3 +43,18 @@ test('PostgreSQL JSONB hashes are not assumed equal to raw JSON UTF-8', () => {
   }
   assert.ok(differences > 0, 'Expected at least one JSONB normalization mismatch');
 });
+
+test('JSONB canonicalizes key order and insignificant whitespace before hashing', () => {
+  const compact = '{"a":1,"b":2}';
+  const reversed = '{"b":2,"a":1}';
+  const spaced = '{ "a" : 1, "b" : 2 }';
+  assert.notEqual(rawHash(compact), rawHash(reversed));
+  assert.notEqual(rawHash(compact), rawHash(spaced));
+  assert.equal(serverHash(compact), serverHash(reversed));
+  assert.equal(serverHash(compact), serverHash(spaced));
+});
+
+test('distinct semantic JSON values are not accepted as identical hashes', () => {
+  assert.notEqual(serverHash('{"netGrams":1000}'), serverHash('{"netGrams":1001}'));
+  assert.notEqual(serverHash('{"deleted":false}'), serverHash('{"deleted":true}'));
+});
