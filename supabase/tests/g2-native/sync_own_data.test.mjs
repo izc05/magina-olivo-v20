@@ -421,6 +421,15 @@ test('stale version conflict protection: stale delivery or expense update is rej
   assert.equal(expUpd.status, 200);
   assert.equal(expUpd.data.remote_version, 2);
 
+  // Late duplicate of v1 must return its original receipt, not the current expense version.
+  const expLateReplay = await http('/rest/v1/rpc/sync_own_expense', {
+    token: actors.A.token,
+    body: { p_operation_id: opExp1, p_expense: exp }
+  });
+  assert.equal(expLateReplay.status, 200, JSON.stringify(expLateReplay.data));
+  assert.equal(expLateReplay.data.idempotent, true);
+  assert.equal(expLateReplay.data.remote_version, 1);
+
   // Update expense without baseVersion -> rejected 409
   const opExpNoBase = randomUUID();
   const expNoBase = await http('/rest/v1/rpc/sync_own_expense', {
