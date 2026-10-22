@@ -68,4 +68,13 @@ class DeliveryRecoveryReceiptTest {
         assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(status = OutboxStatus.CONFIRMED), receipt()) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(operation(), receipt().copy(remoteVersion = 0)) { _, _ -> true })
     }
+
+    @Test fun rejectsInvalidBaseVersionContracts() {
+        assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(baseRemoteVersion = 1), receipt()) { _, _ -> true })
+        val update = operation().copy(operation = OutboxOperation.UPDATE)
+        assertNull(verifiedRecoveredDeliveryReceipt(update, receipt()) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(update.copy(baseRemoteVersion = 7), receipt()) { _, _ -> true })
+        assertNotNull(verifiedRecoveredDeliveryReceipt(update.copy(baseRemoteVersion = 6), receipt()) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(payloadJson = " "), receipt()) { _, _ -> true })
+    }
 }
