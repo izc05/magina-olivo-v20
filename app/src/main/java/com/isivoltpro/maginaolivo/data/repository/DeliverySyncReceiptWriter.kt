@@ -23,6 +23,47 @@ internal data class DeliverySyncReceipt(
     val remoteVersion: Long,
 )
 
+/**
+ * Server recovery receipts contain a payload hash, not the original JSON snapshot.
+ * Validate the hash against the exact persisted UTF-8 bytes before constructing a
+ * local receipt. No network call, permission grant or JSON reserialization occurs here.
+ */
+internal data class RecoveredDeliveryReceipt(
+    val operationId: UUID,
+    val deliveryId: UUID,
+    val accountId: String,
+    val remoteVersion: Long,
+    val payloadHash: String,
+)
+
+internal fun verifiedRecoveredDeliveryReceipt(
+    operation: com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity,
+    recovered: RecoveredDeliveryReceipt,
+    hashMatches: (String, String) -> Boolean,
+): DeliverySyncReceipt? {
+    val payload = operation.payloadJson ?: return null
+    val farm = operation.farmId ?: return null
+    if (recovered.accountId.isBlank() || recovered.remoteVersion < 1L ||
+        operation.id != recovered.operationId ||
+        operation.entityType != SyncEntityType.DELIVERY ||
+        operation.operation !in setOf(OutboxOperation.CREATE, OutboxOperation.UPDATE) ||
+        operation.entityId != recovered.deliveryId ||
+        operation.accountId != recovered.accountId ||
+        operation.status !in setOf(OutboxStatus.PENDING, OutboxStatus.FAILED, OutboxStatus.PROCESSING) ||
+        recovered.payloadHash.isBlank() ||
+        !hashMatches(payload, recovered.payloadHash)
+    ) return null
+
+    return DeliverySyncReceipt(
+        operationId = operation.id,
+        deliveryId = operation.entityId,
+        farmId = farm,
+        accountId = recovered.accountId,
+        payloadJson = payload,
+        remoteVersion = recovered.remoteVersion,
+    )
+}
+
 internal enum class DeliveryReceiptOutcome {
     SYNCED,
     NEEDS_REBASE,
