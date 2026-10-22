@@ -119,6 +119,36 @@ interface SyncOutboxDao {
     )
     suspend fun updateStatusForFarm(farmId: UUID, status: com.isivoltpro.maginaolivo.data.local.model.OutboxStatus, nowEpochMillis: Long): Int
 
+    /**
+     * Store a receipt only for an unresolved, dispatch-capable intent. A revoked BLOCKED
+     * operation cannot be promoted by a late callback; a CONFIRMED operation is immutable.
+     */
+    @Query(
+        """
+        UPDATE sync_outbox SET status = 'CONFIRMED', updated_at = :nowEpochMillis
+        WHERE id = :operationId AND status IN ('PENDING', 'PROCESSING', 'FAILED')
+        """,
+    )
+    suspend fun markConfirmed(operationId: UUID, nowEpochMillis: Long): Int
+
+    /**
+     * Freeze newer/competing snapshots after receiving an ACK for an older one.
+     * Rebuilding baseVersion and deciding what was applied belongs to G2.4 recovery.
+     */
+    @Query(
+        """
+        UPDATE sync_outbox SET status = 'BLOCKED', updated_at = :nowEpochMillis
+        WHERE entity_type = :entityType AND entity_id = :entityId AND id != :confirmedOperationId
+          AND status IN ('PENDING', 'PROCESSING', 'FAILED')
+        """,
+    )
+    suspend fun quarantineSiblings(
+        entityType: SyncEntityType,
+        entityId: UUID,
+        confirmedOperationId: UUID,
+        nowEpochMillis: Long,
+    ): Int
+
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE status IN ('PENDING', 'PROCESSING', 'FAILED')")
     suspend fun countActive(): Int
 }
