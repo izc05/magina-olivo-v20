@@ -36,12 +36,12 @@ class DeliveryRecoveryReceiptTest {
         deliveryId = deliveryId,
         accountId = "account-A",
         remoteVersion = 7,
-        payloadHash = "server-hash",
+        payloadHash = "a".repeat(64),
     )
 
     @Test fun matchingReceiptPreservesExactSnapshot() {
         val verified = verifiedRecoveredDeliveryReceipt(operation(), receipt()) { payload, hash ->
-            payload == snapshot && hash == "server-hash"
+            payload == snapshot && hash == "a".repeat(64)
         }
         assertNotNull(verified)
         assertEquals(snapshot, verified!!.payloadJson)
@@ -61,6 +61,9 @@ class DeliveryRecoveryReceiptTest {
         assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(payloadJson = null), receipt()) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(operation(), receipt()) { _, _ -> false })
         assertNull(verifiedRecoveredDeliveryReceipt(operation(), receipt().copy(payloadHash = "")) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(operation(), receipt().copy(payloadHash = "not-a-sha256")) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(operation(), receipt().copy(payloadHash = "G".repeat(64))) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(operation(), receipt().copy(payloadHash = "A".repeat(64))) { _, _ -> true })
     }
 
     @Test fun rejectsBlockedConfirmedOrInvalidVersion() {
