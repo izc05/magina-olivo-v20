@@ -124,6 +124,7 @@ test('sync_own_delivery inserts delivery idempotently and returns confirmation',
   assert.equal(res.data.operation_id, opId);
   assert.equal(res.data.entity_id, deliveryId);
   assert.equal(res.data.idempotent, false);
+  assert.equal(res.data.remote_version, 1);
 
   // Check delivery in DB
   const count = sql(`SELECT count(*) FROM public.deliveries WHERE id = '${deliveryId}' AND net_grams = 1540000;`);
@@ -149,6 +150,7 @@ test('duplicate operation_id with identical payload is an idempotent no-op', asy
   });
   assert.equal(res1.status, 200);
   assert.equal(res1.data.idempotent, false);
+  assert.equal(res1.data.remote_version, 1);
 
   // Re-sync with exact same operation_id (e.g. timeout retry)
   const res2 = await http('/rest/v1/rpc/sync_own_delivery', {
@@ -157,6 +159,23 @@ test('duplicate operation_id with identical payload is an idempotent no-op', asy
   });
   assert.equal(res2.status, 200);
   assert.equal(res2.data.idempotent, true);
+  assert.equal(res2.data.remote_version, 1);
+
+  // Another operation advances the delivery to v2, but a late retry of the original
+  // operation must still acknowledge its own committed v1 (not the current v2).
+  const next = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: { p_operation_id: randomUUID(), p_delivery: { ...delivery, netGrams: 2100000, baseVersion: 1 } }
+  });
+  assert.equal(next.status, 200, JSON.stringify(next.data));
+  assert.equal(next.data.remote_version, 2);
+  const lateReplay = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: { p_operation_id: opId, p_delivery: delivery }
+  });
+  assert.equal(lateReplay.status, 200, JSON.stringify(lateReplay.data));
+  assert.equal(lateReplay.data.idempotent, true);
+  assert.equal(lateReplay.data.remote_version, 1);
 
   // Confirm exactly 1 row exists
   const total = sql(`SELECT count(*) FROM public.deliveries WHERE id = '${deliveryId}';`);
@@ -255,6 +274,7 @@ test('economic data protection: sync_own_expense succeeds for owner and isolates
   assert.equal(res.status, 200, JSON.stringify(res.data));
   assert.equal(res.data.success, true);
   assert.equal(res.data.entity_id, expenseId);
+  assert.equal(res.data.remote_version, 1);
 
   // Actor A reads expense
   const resA = await http(`/rest/v1/expenses?id=eq.${expenseId}&select=*`, { token: actors.A.token, method: 'GET' });
@@ -345,6 +365,7 @@ test('stale version conflict protection: stale delivery or expense update is rej
     body: { p_operation_id: op1, p_delivery: delivery }
   });
   assert.equal(ins.status, 200);
+  assert.equal(ins.data.remote_version, 1);
 
   // Update with correct baseVersion (1) -> version becomes 2
   const op2 = randomUUID();
@@ -353,6 +374,7 @@ test('stale version conflict protection: stale delivery or expense update is rej
     body: { p_operation_id: op2, p_delivery: { ...delivery, netGrams: 1100000, baseVersion: 1 } }
   });
   assert.equal(upd1.status, 200);
+  assert.equal(upd1.data.remote_version, 2);
 
   // Update without baseVersion -> rejected (must provide baseVersion on update) with 409
   const opNoBase = randomUUID();
@@ -389,6 +411,7 @@ test('stale version conflict protection: stale delivery or expense update is rej
     body: { p_operation_id: opExp1, p_expense: exp }
   });
   assert.equal(expIns.status, 200);
+  assert.equal(expIns.data.remote_version, 1);
 
   const opExp2 = randomUUID();
   const expUpd = await http('/rest/v1/rpc/sync_own_expense', {
@@ -396,6 +419,7 @@ test('stale version conflict protection: stale delivery or expense update is rej
     body: { p_operation_id: opExp2, p_expense: { ...exp, amountMinor: 55000, baseVersion: 1 } }
   });
   assert.equal(expUpd.status, 200);
+  assert.equal(expUpd.data.remote_version, 2);
 
   // Update expense without baseVersion -> rejected 409
   const opExpNoBase = randomUUID();
@@ -527,6 +551,7 @@ test('concurrency: simultaneous identical sync requests succeed idempotently wit
     assert.equal(r.status, 200, JSON.stringify(r.data));
     assert.equal(r.data.success, true);
     assert.equal(r.data.operation_id, opId);
+    assert.equal(r.data.remote_version, 1);
   }
 
   // Exactly 1 row in deliveries table
