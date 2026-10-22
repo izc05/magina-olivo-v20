@@ -67,7 +67,8 @@ class JornadaCostScreenTest {
             composeRule.onAllNodes(hasTestTag("cost-save") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("cost-save").performClick()
-        composeRule.waitUntil(5_000) { saved != null }
+        // The callback runs on the Compose UI thread; read it on that same thread.
+        composeRule.waitUntil(10_000) { composeRule.runOnIdle { saved != null } }
         composeRule.runOnIdle { assertEquals(Triple(JornadaExpenseKind.RENTAL, 12_000L, false), saved) }
     }
 
