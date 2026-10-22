@@ -17,12 +17,29 @@ data class FarmLinkConsent(
     val state: String = "PENDING_REMOTE_RESERVATION",
 )
 
-data class FarmLinkLedger(val consents: List<FarmLinkConsent>) {
+/** A durable, local-only audit event. Never grants or removes server permissions. */
+data class FarmLinkRevocation(
+    val operationId: UUID,
+    val subject: String,
+    val farmId: UUID,
+    val revokedAt: Instant,
+)
+
+data class FarmLinkLedger(
+    val consents: List<FarmLinkConsent>,
+    val revocations: List<FarmLinkRevocation> = emptyList(),
+) {
     val subject: String get() = consents.first().subject
+    /** Historical selection, never re-adopted by simply reopening the account. */
     val farmIds: Set<UUID> get() = consents.flatMap { it.farms }.map { it.id }.toSet()
+    val revokedFarmIds: Set<UUID> get() = revocations.map { it.farmId }.toSet()
+    val activeFarmIds: Set<UUID> get() = farmIds - revokedFarmIds
 }
 
 interface FarmLinkLedgerStore {
     fun read(): FarmLinkLedger?
     fun append(consent: FarmLinkConsent): FarmLinkLedger
+    /** Other implementations must fail closed unless they deliberately support durable revocations. */
+    fun revoke(revocation: FarmLinkRevocation): FarmLinkLedger =
+        throw java.io.IOException("durable_farm_revocation_unavailable")
 }
