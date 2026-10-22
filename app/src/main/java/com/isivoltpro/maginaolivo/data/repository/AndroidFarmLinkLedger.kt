@@ -22,7 +22,7 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
         check(parser.nextClean() == '\u0000')
         val payload = envelope.getString("payload")
         check(hash(payload.toByteArray()) == envelope.getString("sha256"))
-        val json = JSONObject(payload); check(json.getInt("format") == 1)
+        val json = JSONObject(payload); val format = json.getInt("format"); check(format in 1..2)
         val records = json.getJSONArray("consents")
         val entries = (0 until records.length()).map { index ->
             val value = records.getJSONObject(index)
@@ -37,7 +37,22 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
         check(entries.map { it.subject }.distinct().size == 1)
         check(entries.map { it.operationId }.distinct().size == entries.size)
         check(entries.flatMap { it.farms }.map { it.id }.distinct().size == entries.sumOf { it.farms.size })
-        FarmLinkLedger(entries)
+        val revocations = if (format == 2) {
+            val events = json.getJSONArray("revocations")
+            (0 until events.length()).map { i -> events.getJSONObject(i).let { event ->
+                FarmLinkRevocation(
+                    UUID.fromString(event.getString("operation")),
+                    event.getString("subject"),
+                    UUID.fromString(event.getString("farm")),
+                    Instant.parse(event.getString("revokedAt")),
+                )
+            } }
+        } else emptyList()
+        val historicalFarms = entries.flatMap { it.farms }.map { it.id }.toSet()
+        check(revocations.all { it.subject == entries.first().subject && it.farmId in historicalFarms })
+        check(revocations.map { it.farmId }.distinct().size == revocations.size)
+        check((entries.map { it.operationId } + revocations.map { it.operationId }).distinct().size == entries.size + revocations.size)
+        FarmLinkLedger(entries, revocations)
     } }
 
     override fun append(consent: FarmLinkConsent): FarmLinkLedger = synchronized(lock) { guarded {
@@ -50,7 +65,24 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
             }
             check(consent.farms.none { it.id in old.farmIds })
         }
-        val next = FarmLinkLedger(previous?.consents.orEmpty() + consent)
+        val next = FarmLinkLedger(previous?.consents.orEmpty() + consent, previous?.revocations.orEmpty())
+        persist(next)
+        next
+    } }
+
+    override fun revoke(revocation: FarmLinkRevocation): FarmLinkLedger = synchronized(lock) { guarded {
+        val previous = read() ?: throw IOException("farm_link_consent_missing")
+        check(revocation.subject == previous.subject && revocation.farmId in previous.farmIds)
+        // Duplicate revocation is a no-op. A new consent requires a separate explicit flow.
+        if (revocation.farmId in previous.revokedFarmIds) return@guarded previous
+        check(revocation.operationId !in previous.consents.map { it.operationId })
+        check(revocation.operationId !in previous.revocations.map { it.operationId })
+        val next = previous.copy(revocations = previous.revocations + revocation)
+        persist(next)
+        next
+    } }
+
+    private fun persist(next: FarmLinkLedger) {
         val rows = JSONArray()
         next.consents.forEach { value ->
             val farms = JSONArray()
@@ -59,14 +91,22 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
                 .put("farms",farms).put("backup",value.backupId.toString()).put("manifestHash",value.backupManifestHash)
                 .put("acceptedAt",value.acceptedAt.toString()).put("textVersion",value.textVersion).put("state",value.state))
         }
-        val payload = JSONObject().put("format",1).put("consents",rows).toString()
+        val payloadRecord = JSONObject().put("format", if (next.revocations.isEmpty()) 1 else 2).put("consents",rows)
+        if (next.revocations.isNotEmpty()) {
+            val events = JSONArray()
+            next.revocations.forEach { event ->
+                events.put(JSONObject().put("operation",event.operationId.toString()).put("subject",event.subject)
+                    .put("farm",event.farmId.toString()).put("revokedAt",event.revokedAt.toString()))
+            }
+            payloadRecord.put("revocations", events)
+        }
+        val payload = payloadRecord.toString()
         val bytes = JSONObject().put("payload",payload).put("sha256",hash(payload.toByteArray())).toString().toByteArray()
         check(bytes.size <= MAX_BYTES)
         val output = atomic.startWrite()
         try { output.write(bytes); atomic.finishWrite(output) }
         catch (error: Exception) { atomic.failWrite(output); throw error }
-        next
-    } }
+    }
 
     private fun validate(value: FarmLinkConsent) {
         check(value.subject.isNotBlank() && value.subject.length <= 512 && '|' in value.subject)
