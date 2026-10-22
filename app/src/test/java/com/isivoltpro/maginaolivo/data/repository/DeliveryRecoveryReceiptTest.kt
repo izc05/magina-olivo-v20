@@ -57,6 +57,8 @@ class DeliveryRecoveryReceiptTest {
 
     @Test fun rejectsMissingBindingsOrHashMismatch() {
         assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(accountId = null), receipt()) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(accountId = ""), receipt().copy(accountId = "")) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(operation(), receipt().copy(accountId = "")) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(farmId = null), receipt()) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(payloadJson = null), receipt()) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(operation(), receipt()) { _, _ -> false })
