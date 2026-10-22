@@ -34,4 +34,4 @@ if ! supabase start --workdir "$work" --exclude studio,postgres-meta,imgproxy,re
 fi
 supabase status --workdir "$work" --output json > "$work/status.json"
 G2_NATIVE_WORK="$work" G2_NATIVE_PROJECT="$project" \
-  node --test --test-concurrency=1 supabase/tests/g2-native/sync_own_data.test.mjs
+  node --test --test-concurrency=1 supabase/tests/g2-native/sync_own_data.test.mjs supabase/tests/g2-native/jsonb_hash_contract.test.mjs
