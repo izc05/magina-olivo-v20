@@ -222,29 +222,31 @@ internal class DeliveryWriter(
 
     private fun formatTime(time: LocalTime): String = time.format(HOUR)
 
-    private fun buildDeliveryPayloadJson(row: DeliveryEntity, baseRemoteVersion: Long?): String {
-        val json = JSONObject()
-        json.put("id", row.id.toString())
-        json.put("farmId", row.farmId.toString())
-        json.put("campaignId", row.campaignId.toString())
-        json.put("deliveryDate", row.deliveryDate.toString())
-        json.put("destinationName", row.destinationName)
-        json.put("netGrams", row.netGrams)
-        row.grossGrams?.let { json.put("grossGrams", it) }
-        row.tareGrams?.let { json.put("tareGrams", it) }
-        row.deliveryNumber?.let { json.put("deliveryNumber", it) }
-        row.ticketNumber?.let { json.put("ticketNumber", it) }
-        json.put("source", row.source)
-        row.notes?.let { json.put("notes", it) }
-        row.harvestId?.let { json.put("harvestId", it.toString()) }
-        row.deliveryTime?.let { json.put("deliveryTime", it) }
-        row.origin?.let { json.put("harvestOrigin", it) }
-        baseRemoteVersion?.let { json.put("baseVersion", it) }
-        return json.toString()
-    }
-
     private companion object {
         val RUNNING = setOf(CampaignStatus.ACTIVE, CampaignStatus.HARVEST)
         val HOUR: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     }
 }
+
+/** Exactly the same snapshot bytes are used for enqueue and ACK matching. */
+internal fun buildDeliveryPayloadJson(row: DeliveryEntity, baseRemoteVersion: Long?): String {
+    val json = JSONObject()
+    json.put("id", row.id.toString())
+    json.put("farmId", row.farmId.toString())
+    json.put("campaignId", row.campaignId.toString())
+    json.put("deliveryDate", row.deliveryDate.toString())
+    json.put("destinationName", row.destinationName)
+    json.put("netGrams", row.netGrams)
+    row.grossGrams?.let { json.put("grossGrams", it) }
+    row.tareGrams?.let { json.put("tareGrams", it) }
+    row.deliveryNumber?.let { json.put("deliveryNumber", it) }
+    row.ticketNumber?.let { json.put("ticketNumber", it) }
+    json.put("source", row.source)
+    row.notes?.let { json.put("notes", it) }
+    row.harvestId?.let { json.put("harvestId", it.toString()) }
+    row.deliveryTime?.let { json.put("deliveryTime", it) }
+    row.origin?.let { json.put("harvestOrigin", it) }
+    baseRemoteVersion?.let { json.put("baseVersion", it) }
+    return json.toString()
+}
+
