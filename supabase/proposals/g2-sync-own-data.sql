@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS magina_g2_private.sync_operations (
     entity_id UUID NOT NULL,
     payload_hash TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'APPLIED',
+    result_version BIGINT NOT NULL CHECK (result_version > 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, operation_id)
 );
@@ -93,6 +94,7 @@ DECLARE
     v_harvest_origin TEXT;
     v_workspace UUID;
     v_payload_hash TEXT;
+    v_result_version BIGINT;
     v_saved magina_g2_private.sync_operations%ROWTYPE;
     v_existing_delivery public.deliveries%ROWTYPE;
 BEGIN
@@ -166,6 +168,7 @@ BEGIN
             'operation_id', p_operation_id,
             'entity_id', v_saved.entity_id,
             'status', v_saved.status,
+            'remote_version', v_saved.result_version,
             'idempotent', true
         );
     END IF;
@@ -251,11 +254,17 @@ BEGIN
         );
     END IF;
 
+    -- Capture the version committed by this operation; later retries must return this exact value.
+    SELECT version INTO v_result_version FROM public.deliveries WHERE id = v_delivery_id;
+    IF v_result_version IS NULL THEN
+        RAISE EXCEPTION 'sync invalid: applied delivery version missing' USING ERRCODE = '22023';
+    END IF;
+
     -- Record idempotent operation
     INSERT INTO magina_g2_private.sync_operations(
-        account_id, operation_id, entity_type, entity_id, payload_hash, status
+        account_id, operation_id, entity_type, entity_id, payload_hash, status, result_version
     ) VALUES (
-        actor, p_operation_id, 'DELIVERY', v_delivery_id, v_payload_hash, 'APPLIED'
+        actor, p_operation_id, 'DELIVERY', v_delivery_id, v_payload_hash, 'APPLIED', v_result_version
     );
 
     RETURN jsonb_build_object(
@@ -263,6 +272,7 @@ BEGIN
         'operation_id', p_operation_id,
         'entity_id', v_delivery_id,
         'status', 'APPLIED',
+        'remote_version', v_result_version,
         'idempotent', false
     );
 END;
@@ -292,6 +302,7 @@ DECLARE
     v_status TEXT;
     v_workspace UUID;
     v_payload_hash TEXT;
+    v_result_version BIGINT;
     v_saved magina_g2_private.sync_operations%ROWTYPE;
     v_existing_expense public.expenses%ROWTYPE;
 BEGIN
@@ -357,6 +368,7 @@ BEGIN
             'operation_id', p_operation_id,
             'entity_id', v_saved.entity_id,
             'status', v_saved.status,
+            'remote_version', v_saved.result_version,
             'idempotent', true
         );
     END IF;
@@ -452,10 +464,16 @@ BEGIN
         );
     END IF;
 
+    -- Store the exact committed version, including for a later idempotent replay.
+    SELECT version INTO v_result_version FROM public.expenses WHERE id = v_expense_id;
+    IF v_result_version IS NULL THEN
+        RAISE EXCEPTION 'sync invalid: applied expense version missing' USING ERRCODE = '22023';
+    END IF;
+
     INSERT INTO magina_g2_private.sync_operations(
-        account_id, operation_id, entity_type, entity_id, payload_hash, status
+        account_id, operation_id, entity_type, entity_id, payload_hash, status, result_version
     ) VALUES (
-        actor, p_operation_id, 'EXPENSE', v_expense_id, v_payload_hash, 'APPLIED'
+        actor, p_operation_id, 'EXPENSE', v_expense_id, v_payload_hash, 'APPLIED', v_result_version
     );
 
     RETURN jsonb_build_object(
@@ -463,6 +481,7 @@ BEGIN
         'operation_id', p_operation_id,
         'entity_id', v_expense_id,
         'status', 'APPLIED',
+        'remote_version', v_result_version,
         'idempotent', false
     );
 END;
