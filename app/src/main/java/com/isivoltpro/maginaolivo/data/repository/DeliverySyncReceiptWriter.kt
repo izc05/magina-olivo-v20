@@ -41,6 +41,9 @@ internal fun verifiedRecoveredDeliveryReceipt(
     recovered: RecoveredDeliveryReceipt,
     hashMatches: (String, String) -> Boolean,
 ): DeliverySyncReceipt? {
+    // This is a pure binding guard, NOT an authenticated-server-ACK verifier.
+    // Callers must establish a trusted server response and use a tested JSONB-compatible
+    // hash algorithm; a permissive callback must never be wired into production.
     val payload = operation.payloadJson ?: return null
     val farm = operation.farmId ?: return null
     if (recovered.accountId.isBlank() || recovered.remoteVersion < 1L ||
