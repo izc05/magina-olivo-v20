@@ -276,6 +276,15 @@ test('economic data protection: sync_own_expense succeeds for owner and isolates
   assert.equal(res.data.entity_id, expenseId);
   assert.equal(res.data.remote_version, 1);
 
+  const expenseRecovery = await http('/rest/v1/rpc/check_sync_operations', {
+    token: actors.A.token,
+    body: { p_operation_ids: [opId] }
+  });
+  assert.equal(expenseRecovery.status, 200);
+  assert.equal(expenseRecovery.data.confirmed_receipts[0].entity_type, 'EXPENSE');
+  assert.equal(expenseRecovery.data.confirmed_receipts[0].entity_id, expenseId);
+  assert.equal(expenseRecovery.data.confirmed_receipts[0].remote_version, 1);
+
   // Actor A reads expense
   const resA = await http(`/rest/v1/expenses?id=eq.${expenseId}&select=*`, { token: actors.A.token, method: 'GET' });
   assert.equal(resA.status, 200);
@@ -345,6 +354,52 @@ test('offline recovery: check_sync_operations reports confirmed operations', asy
   assert.equal(res.data.success, true);
   assert.ok(res.data.confirmed_operations.includes(confirmedOp));
   assert.ok(!res.data.confirmed_operations.includes(unknownOp));
+  const originalReceipt = res.data.confirmed_receipts.find(x => x.operation_id === confirmedOp);
+  assert.equal(originalReceipt.entity_id, deliveryId);
+  assert.equal(originalReceipt.entity_type, 'DELIVERY');
+  assert.equal(originalReceipt.remote_version, 1);
+  assert.match(originalReceipt.payload_hash, /^[a-f0-9]{64}$/);
+  assert.ok(!res.data.confirmed_receipts.some(x => x.operation_id === unknownOp));
+
+  // The delivery is now on version 2, but recovery of an old operation must return
+  // its historical v1, not the current delivery row's version.
+  const changedOp = randomUUID();
+  const update = await http('/rest/v1/rpc/sync_own_delivery', {
+    token: actors.A.token,
+    body: {
+      p_operation_id: changedOp,
+      p_delivery: {
+        id: deliveryId, farmId: actors.A.farm, campaignId: actors.A.campaign,
+        deliveryDate: '2026-11-20', destinationName: 'Almazara Sierra Mágina',
+        netGrams: 3500000, baseVersion: 1
+      }
+    }
+  });
+  assert.equal(update.status, 200, JSON.stringify(update.data));
+  assert.equal(update.data.remote_version, 2);
+  const recovered = await http('/rest/v1/rpc/check_sync_operations', {
+    token: actors.A.token,
+    body: { p_operation_ids: [confirmedOp, changedOp] }
+  });
+  assert.equal(recovered.status, 200, JSON.stringify(recovered.data));
+  assert.equal(recovered.data.confirmed_receipts.find(x => x.operation_id === confirmedOp).remote_version, 1);
+  assert.equal(recovered.data.confirmed_receipts.find(x => x.operation_id === changedOp).remote_version, 2);
+
+  // Neither the operation IDs nor the committed versions of account A can be recovered by B.
+  const foreign = await http('/rest/v1/rpc/check_sync_operations', {
+    token: actors.B.token,
+    body: { p_operation_ids: [confirmedOp, changedOp] }
+  });
+  assert.equal(foreign.status, 200);
+  assert.deepEqual(foreign.data.confirmed_operations, []);
+  assert.deepEqual(foreign.data.confirmed_receipts, []);
+
+  // Bound the size of a recovery request and fail closed.
+  const oversized = await http('/rest/v1/rpc/check_sync_operations', {
+    token: actors.A.token,
+    body: { p_operation_ids: Array.from({ length: 201 }, () => randomUUID()) }
+  });
+  assert.equal(oversized.status, 400);
 });
 
 test('stale version conflict protection: stale delivery or expense update is rejected', async () => {
