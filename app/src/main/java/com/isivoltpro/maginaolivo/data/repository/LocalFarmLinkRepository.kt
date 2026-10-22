@@ -76,14 +76,20 @@ class LocalFarmLinkRepository(
     fun isFarmConsented(farmId: UUID, userId: UUID? = account.state.value.userId): Boolean {
         if (!accessAllowed(userId)) return false
         val ledger = mutable.value.ledger ?: return false
-        return farmId in ledger.farmIds
+        return farmId in ledger.activeFarmIds
     }
 
     /**
      * G2.3: Revokes local consent eligibility for a farm, transitioning its pending outbox operations
      * to BLOCKED status in Room so they cannot be dispatched.
      */
-    suspend fun revokeConsentForFarm(farmId: UUID) = withContext(Dispatchers.IO) {
+    suspend fun revokeConsentForFarm(farmId: UUID) = account.withLocalIdentity { userId -> withContext(Dispatchers.IO) {
+        val old = reloadAndRequire(userId) ?: throw IOException("No hay consentimiento local para revocar.")
+        if (farmId !in old.farmIds) throw IOException("La finca no tiene consentimiento para esta cuenta.")
+        // Persist the denial first. If Room fails, a later dispatch must still recheck this
+        // durable ledger; the operation remains blocked from authorization after process death.
+        val next = store.revoke(FarmLinkRevocation(UUID.randomUUID(), subject(userId), farmId, Instant.now()))
+        mutable.value = FarmLinkLocalState(next)
         database.withTransaction {
             database.syncOutboxDao().updateStatusForFarm(
                 farmId = farmId,
@@ -91,5 +97,5 @@ class LocalFarmLinkRepository(
                 nowEpochMillis = System.currentTimeMillis(),
             )
         }
-    }
+    } }
 }
