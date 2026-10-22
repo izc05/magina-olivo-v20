@@ -7,6 +7,7 @@ import com.isivoltpro.maginaolivo.feature.account.*
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineStart
@@ -232,6 +233,78 @@ class FarmLinkRepositoryTest {
         second.revokeConsentForFarm(selected.id)
         assertFalse("An outdated repository must reread durable revocation before authorizing", first.isFarmConsented(selected.id))
         assertFalse(LocalFarmLinkRepository(context, database, account, "fixture-project", AndroidFarmLinkLedger(file)).isFarmConsented(selected.id))
+    }
+
+    /**
+     * Two locally persisted snapshots of one Pesada must not be sent out of order.
+     * An ambiguous group waits for G2.4 explicit ACK/rebase instead of dropping
+     * the FAILED payload or letting a new CREATE race the old attempt.
+     */
+    @Test fun g23ReadyQueueQuarantinesAmbiguousAggregateAndKeepsOtherFarmsReady()=runBlocking {
+        seed()
+        val userId = account.state.value.userId!!.toString()
+        val farms = repo().choices()
+        val firstFarm = farms[0].id
+        val independentFarm = farms[1].id
+        val delivery = UUID.randomUUID()
+        val otherDelivery = UUID.randomUUID()
+        val oldOperation = UUID.randomUUID()
+        val newerOperation = UUID.randomUUID()
+        val independentOperation = UUID.randomUUID()
+        val at = java.time.Instant.parse("2026-11-18T08:00:00Z")
+        val older = com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+            id = oldOperation,
+            entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+            entityId = delivery,
+            operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+            payloadVersion = 1,
+            status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.FAILED,
+            createdAt = at,
+            updatedAt = at,
+            accountId = userId,
+            farmId = firstFarm,
+            payloadJson = "{\"id\":\"$delivery\",\"netGrams\":2500000}",
+        )
+        val newer = older.copy(
+            id = newerOperation,
+            status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING,
+            payloadJson = "{\"id\":\"$delivery\",\"netGrams\":3000000}",
+            updatedAt = at.plusSeconds(10),
+            createdAt = at.plusSeconds(10),
+        )
+        val independent = older.copy(
+            id = independentOperation,
+            entityId = otherDelivery,
+            farmId = independentFarm,
+            payloadJson = "{\"id\":\"$otherDelivery\",\"netGrams\":1000000}",
+            status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING,
+        )
+        val outbox = database.syncOutboxDao()
+        outbox.insert(older)
+        outbox.insert(newer)
+        outbox.insert(independent)
+
+        val eligible = outbox.listReadyForAccount(userId, at.plusSeconds(20).toEpochMilli())
+        assertEquals(listOf(independentOperation), eligible.map { it.id })
+        assertEquals(listOf(independentOperation), outbox.observeReady(at.plusSeconds(20).toEpochMilli()).first().map { it.id })
+        assertEquals(setOf(oldOperation, newerOperation), outbox.listForEntity(
+            com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY, delivery
+        ).map { it.id }.toSet())
+
+        // Even a single PROCESSING sibling (possibly awaiting ACK) prevents the later
+        // PENDING snapshot from being dispatched.
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='PROCESSING' WHERE id=?",
+            arrayOf(oldOperation.toString()),
+        )
+        assertEquals(listOf(independentOperation), outbox.listReadyForAccount(userId, at.plusSeconds(20).toEpochMilli()).map { it.id })
+
+        // A BLOCKED sibling from revoked consent must not be bypassed either.
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='BLOCKED' WHERE id=?",
+            arrayOf(oldOperation.toString()),
+        )
+        assertEquals(listOf(independentOperation), outbox.listReadyForAccount(userId, at.plusSeconds(20).toEpochMilli()).map { it.id })
     }
 
     private fun fingerprint(): String {
