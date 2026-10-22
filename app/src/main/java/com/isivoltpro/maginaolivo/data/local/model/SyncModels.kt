@@ -49,6 +49,8 @@ enum class OutboxStatus {
     PROCESSING,
     FAILED,
     BLOCKED,
+    /** Durable local receipt: excluded from dispatch, kept for audit and replay safety. */
+    CONFIRMED,
 }
 
 enum class FarmStatus {
