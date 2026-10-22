@@ -218,6 +218,22 @@ class FarmLinkRepositoryTest {
         assertTrue("Ready operations must not contain blocked consented farm operations", ready.none { it.farmId == consentedFarm.id })
     }
 
+    @Test fun g23RevocationInAnotherRepositoryInstanceInvalidatesCachedConsent()=runBlocking {
+        seed()
+        val first = repo()
+        val userId = account.state.value.userId!!
+        val selected = first.choices().first()
+        first.consent(userId, listOf(selected), true)
+        assertTrue(first.isFarmConsented(selected.id))
+
+        // A second instance can revoke the same on-disk ledger, e.g. after account
+        // repository recreation. A cached grant in the first instance must not survive.
+        val second = LocalFarmLinkRepository(context, database, account, "fixture-project", AndroidFarmLinkLedger(file))
+        second.revokeConsentForFarm(selected.id)
+        assertFalse("An outdated repository must reread durable revocation before authorizing", first.isFarmConsented(selected.id))
+        assertFalse(LocalFarmLinkRepository(context, database, account, "fixture-project", AndroidFarmLinkLedger(file)).isFarmConsented(selected.id))
+    }
+
     private fun fingerprint(): String {
         val db=database.openHelper.readableDatabase
         val tables=mutableListOf<String>()
