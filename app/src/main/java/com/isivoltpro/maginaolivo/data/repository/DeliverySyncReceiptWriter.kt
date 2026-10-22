@@ -44,6 +44,10 @@ internal fun verifiedRecoveredDeliveryReceipt(
     val payload = operation.payloadJson ?: return null
     val farm = operation.farmId ?: return null
     if (recovered.accountId.isBlank() || recovered.remoteVersion < 1L ||
+        payload.isBlank() ||
+        (operation.operation == OutboxOperation.CREATE && operation.baseRemoteVersion != null) ||
+        (operation.operation == OutboxOperation.UPDATE &&
+            (operation.baseRemoteVersion == null || recovered.remoteVersion <= operation.baseRemoteVersion)) ||
         operation.id != recovered.operationId ||
         operation.entityType != SyncEntityType.DELIVERY ||
         operation.operation !in setOf(OutboxOperation.CREATE, OutboxOperation.UPDATE) ||
