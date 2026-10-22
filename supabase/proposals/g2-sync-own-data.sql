@@ -497,19 +497,40 @@ AS $$
 DECLARE
     actor UUID := auth.uid();
     v_confirmed JSONB;
+    v_receipts JSONB;
 BEGIN
     IF actor IS NULL THEN
         RAISE EXCEPTION 'access denied: unauthenticated' USING ERRCODE = '42501';
     END IF;
+    -- Bound the request so a user cannot submit huge recovery arrays to the RPC.
+    IF p_operation_ids IS NULL OR cardinality(p_operation_ids) > 200 THEN
+        RAISE EXCEPTION 'sync invalid: operation list must have at most 200 entries'
+            USING ERRCODE = '22023';
+    END IF;
 
-    SELECT coalesce(jsonb_agg(operation_id), '[]'::jsonb) INTO v_confirmed
+    -- Preserve the legacy list for older clients; include immutable per-operation
+    -- committed versions for G2.4 recovery. Never return the CURRENT entity version,
+    -- which may now belong to a later operation and would corrupt Android baseVersion.
+    SELECT
+        coalesce(jsonb_agg(operation_id ORDER BY operation_id), '[]'::jsonb),
+        coalesce(jsonb_agg(
+            jsonb_build_object(
+                'operation_id', operation_id,
+                'entity_id', entity_id,
+                'entity_type', entity_type,
+                'remote_version', result_version,
+                'payload_hash', payload_hash
+            ) ORDER BY operation_id
+        ), '[]'::jsonb)
+    INTO v_confirmed, v_receipts
     FROM magina_g2_private.sync_operations
     WHERE account_id = actor
       AND operation_id = ANY(p_operation_ids);
 
     RETURN jsonb_build_object(
         'success', true,
-        'confirmed_operations', v_confirmed
+        'confirmed_operations', v_confirmed,
+        'confirmed_receipts', v_receipts
     );
 END;
 $$;
