@@ -57,7 +57,7 @@ internal fun verifiedRecoveredDeliveryReceipt(
         operation.entityId != recovered.deliveryId ||
         operation.accountId != recovered.accountId ||
         operation.status !in setOf(OutboxStatus.PENDING, OutboxStatus.FAILED, OutboxStatus.PROCESSING) ||
-        recovered.payloadHash.isBlank() ||
+        !Regex("^[0-9a-f]{64}$").matches(recovered.payloadHash) ||
         !hashMatches(payload, recovered.payloadHash)
     ) return null
 
