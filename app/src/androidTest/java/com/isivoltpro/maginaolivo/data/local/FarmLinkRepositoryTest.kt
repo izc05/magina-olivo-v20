@@ -195,6 +195,14 @@ class FarmLinkRepositoryTest {
 
         // Revoke consent for consented farm -> PENDING, FAILED and PROCESSING operations become BLOCKED
         repository.revokeConsentForFarm(consentedFarm.id)
+        assertFalse("Revoked consent must be unavailable immediately", repository.isFarmConsented(consentedFarm.id))
+        val restored = LocalFarmLinkRepository(context, database, account, "fixture-project", AndroidFarmLinkLedger(file))
+        assertFalse("Revocation must remain effective after reopening the ledger", restored.isFarmConsented(consentedFarm.id))
+        assertEquals(1, restored.state.value.ledger!!.revocations.size)
+        assertEquals(setOf(consentedFarm.id), restored.state.value.ledger!!.revokedFarmIds)
+        // Repeated revocation must not append another operation or alter the original receipt.
+        repository.revokeConsentForFarm(consentedFarm.id)
+        assertEquals(1, AndroidFarmLinkLedger(file).read()!!.revocations.size)
         val afterRevocationPending = database.syncOutboxDao().findById(opConsentedId)
         val afterRevocationFailed = database.syncOutboxDao().findById(opFailedId)
         val afterRevocationProcessing = database.syncOutboxDao().findById(opProcessingId)
