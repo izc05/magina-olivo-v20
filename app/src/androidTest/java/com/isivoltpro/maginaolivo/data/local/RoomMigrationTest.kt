@@ -33,7 +33,40 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(26, MaginaOlivoDatabase.VERSION)
+        assertEquals(27, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration26To27PreservesFarmsDeliveriesAndExtendsSyncOutbox() {
+        migrationHelper.createDatabase(TEST_DATABASE, 26).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos','Olivos centenarios','Bedmar y Garcíez','Jaén','ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','PREPARATION',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, created_at, updated_at, version, sync_status) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO sync_outbox (id, entity_type, entity_id, operation, payload_version, base_remote_version, status, attempt_count, next_attempt_at, last_error_code, last_error_message, created_at, updated_at) VALUES ('op-1','DELIVERY','d','CREATE',1,NULL,'PENDING',0,NULL,NULL,NULL,1000,1000)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 27, true, DatabaseMigrations.MIGRATION_26_27).use { database ->
+            database.query("SELECT name, municipality FROM farms WHERE id='f'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Finca Los Olivos", cursor.getString(0))
+                assertEquals("Bedmar y Garcíez", cursor.getString(1))
+            }
+            database.query("SELECT destination_name, net_grams FROM deliveries WHERE id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("S.C.A. Bedmarense", cursor.getString(0))
+                assertEquals(3500000L, cursor.getLong(1))
+            }
+            database.query("SELECT id, entity_type, operation, status, account_id, payload_json, farm_id FROM sync_outbox WHERE id='op-1'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("op-1", cursor.getString(0))
+                assertEquals("DELIVERY", cursor.getString(1))
+                assertEquals("CREATE", cursor.getString(2))
+                assertEquals("PENDING", cursor.getString(3))
+                assertTrue(cursor.isNull(4)) // account_id defaults to null on existing rows
+                assertTrue(cursor.isNull(5)) // payload_json defaults to null on existing rows
+                assertTrue(cursor.isNull(6)) // farm_id defaults to null on existing rows
+            }
+        }
     }
 
     @Test

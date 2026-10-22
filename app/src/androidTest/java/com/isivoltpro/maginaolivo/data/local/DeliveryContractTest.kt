@@ -59,6 +59,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -691,6 +692,59 @@ class DeliveryContractTest {
             cursor.moveToFirst()
             cursor.getInt(0)
         }
+
+    @Test
+    fun g23DeliveryWriterCapturesCanonicalJsonAndStrictRemoteVersion() = runBlocking {
+        val id = ok(deliveries.create(draft(2_850_000, north to null)))
+        val outboxRows = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id)
+        assertEquals(1, outboxRows.size)
+        val createOp = outboxRows.single()
+        assertEquals(OutboxOperation.CREATE, createOp.operation)
+        assertEquals(farmId, createOp.farmId)
+        assertNull(createOp.baseRemoteVersion)
+        assertNotNull(createOp.payloadJson)
+
+        val createPayload = org.json.JSONObject(createOp.payloadJson!!)
+        assertEquals(id.toString(), createPayload.getString("id"))
+        assertEquals(farmId.toString(), createPayload.getString("farmId"))
+        assertEquals(campaignId.toString(), createPayload.getString("campaignId"))
+        assertEquals("2026-11-18", createPayload.getString("deliveryDate"))
+        assertEquals(2_850_000L, createPayload.getLong("netGrams"))
+        assertEquals("MANUAL", createPayload.getString("source"))
+        assertFalse(createPayload.has("baseVersion"))
+
+        // Simulate local rewrite without server remoteVersion (remoteVersion remains null)
+        ok(deliveries.update(id, draft(3_100_000, north to null)))
+        val afterFirstUpdate = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertEquals(OutboxOperation.CREATE, afterFirstUpdate.operation) // collapsed create + update remains CREATE
+        assertNull(afterFirstUpdate.baseRemoteVersion)
+        val firstUpdatePayload = org.json.JSONObject(afterFirstUpdate.payloadJson!!)
+        assertEquals(3_100_000L, firstUpdatePayload.getLong("netGrams"))
+        assertFalse(firstUpdatePayload.has("baseVersion"))
+
+        // Simulate delivery having been confirmed remotely with remoteVersion = 5
+        val currentDelivery = db.deliveryDao().findById(id)!!
+        db.deliveryDao().upsert(currentDelivery.copy(metadata = currentDelivery.metadata.copy(remoteVersion = 5L, syncStatus = com.isivoltpro.maginaolivo.data.local.model.SyncStatus.SYNCED)))
+        // Mark previous outbox operation as already dispatched / removed
+        db.syncOutboxDao().deletePendingForEntity(SyncEntityType.DELIVERY, id)
+
+        // Now perform rewrite on synced delivery
+        ok(deliveries.update(id, draft(3_250_000, north to null)))
+        val updateOp = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertEquals(OutboxOperation.UPDATE, updateOp.operation)
+        assertEquals(5L, updateOp.baseRemoteVersion) // Strict remoteVersion: must be 5L, NOT local version!
+        val updatePayload = org.json.JSONObject(updateOp.payloadJson!!)
+        assertEquals(5L, updatePayload.getLong("baseVersion"))
+        assertEquals(3_250_000L, updatePayload.getLong("netGrams"))
+
+        // Verify UUID behavior:
+        // Editing again creates a new operation ID to prevent in-flight tampering
+        val prevOpId = updateOp.id
+        ok(deliveries.update(id, draft(3_300_000, north to null)))
+        val secondUpdateOp = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertTrue("Expected new operation UUID on payload edit", secondUpdateOp.id != prevOpId)
+        assertEquals(3_300_000L, org.json.JSONObject(secondUpdateOp.payloadJson!!).getLong("netGrams"))
+    }
 
     private fun <T> ok(result: AppResult<T>): T = when (result) {
         is AppResult.Success -> result.value

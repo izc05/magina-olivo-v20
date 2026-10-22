@@ -68,4 +68,42 @@ class LocalFarmLinkRepository(
         }
         return values
     }
+
+    /**
+     * G2.3: Returns true if the farm has active G1b consent under the currently logged-in account.
+     * Operations belonging to unconsented farms will remain local only and are not eligible for dispatch.
+     */
+    fun isFarmConsented(farmId: UUID, userId: UUID? = account.state.value.userId): Boolean {
+        // A caller must not obtain A's consent by supplying A's old userId after
+        // logout/account switch. The identity argument is a consistency assertion,
+        // never an authorization override.
+        if (userId == null || userId != account.state.value.userId) return false
+        // Authorization must use the latest on-disk ledger, not a potentially stale StateFlow
+        // snapshot held by another repository instance in this Android process.
+        // A corrupt or unreadable ledger fails closed.
+        mutable.value = load()
+        if (!accessAllowed(userId)) return false
+        val ledger = mutable.value.ledger ?: return false
+        return farmId in ledger.activeFarmIds
+    }
+
+    /**
+     * G2.3: Revokes local consent eligibility for a farm, transitioning its pending outbox operations
+     * to BLOCKED status in Room so they cannot be dispatched.
+     */
+    suspend fun revokeConsentForFarm(farmId: UUID) = account.withLocalIdentity { userId -> withContext(Dispatchers.IO) {
+        val old = reloadAndRequire(userId) ?: throw IOException("No hay consentimiento local para revocar.")
+        if (farmId !in old.farmIds) throw IOException("La finca no tiene consentimiento para esta cuenta.")
+        // Persist the denial first. If Room fails, a later dispatch must still recheck this
+        // durable ledger; the operation remains blocked from authorization after process death.
+        val next = store.revoke(FarmLinkRevocation(UUID.randomUUID(), subject(userId), farmId, Instant.now()))
+        mutable.value = FarmLinkLocalState(next)
+        database.withTransaction {
+            database.syncOutboxDao().updateStatusForFarm(
+                farmId = farmId,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED,
+                nowEpochMillis = System.currentTimeMillis(),
+            )
+        }
+    } }
 }
