@@ -19,6 +19,11 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
+import com.isivoltpro.maginaolivo.data.repository.DeliverySyncReceipt
+import com.isivoltpro.maginaolivo.data.repository.DeliveryReceiptOutcome
+import com.isivoltpro.maginaolivo.data.repository.applyConfirmedDeliveryReceipt
+import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
+import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
 import com.isivoltpro.maginaolivo.data.repository.JsonProposalCodec
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstAttachmentRepository
@@ -744,6 +749,107 @@ class DeliveryContractTest {
         val secondUpdateOp = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
         assertTrue("Expected new operation UUID on payload edit", secondUpdateOp.id != prevOpId)
         assertEquals(3_300_000L, org.json.JSONObject(secondUpdateOp.payloadJson!!).getLong("netGrams"))
+    }
+
+    @Test
+    fun g24ConfirmedReceiptUpdatesOnlyRemoteMetadataAndPreservesIdempotency() = runBlocking {
+        val deliveryId = ok(deliveries.create(draft(2_850_000, north to null)))
+        val accountId = UUID.randomUUID().toString()
+        val dao = db.syncOutboxDao()
+        val created = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
+        // Network adoption is explicitly out of scope: simulate an intent bound to
+        // a verified account without granting that binding automatically in production.
+        dao.deletePendingForEntity(SyncEntityType.DELIVERY, deliveryId)
+        val bound = created.copy(accountId = accountId)
+        dao.insert(bound)
+        val before = db.deliveryDao().findById(deliveryId)!!
+        val receipt = DeliverySyncReceipt(
+            operationId = bound.id,
+            deliveryId = deliveryId,
+            farmId = farmId,
+            accountId = accountId,
+            payloadJson = bound.payloadJson!!,
+            remoteVersion = 1L,
+        )
+
+        assertEquals(DeliveryReceiptOutcome.SYNCED, db.applyConfirmedDeliveryReceipt(receipt, now.plusSeconds(10)))
+        val synced = db.deliveryDao().findById(deliveryId)!!
+        assertEquals(before.netGrams, synced.netGrams)
+        assertEquals(before.metadata.version, synced.metadata.version)
+        assertEquals(before.metadata.updatedAt, synced.metadata.updatedAt)
+        assertEquals(1L, synced.metadata.remoteVersion)
+        assertEquals(SyncStatus.SYNCED, synced.metadata.syncStatus)
+        assertEquals(OutboxStatus.CONFIRMED, dao.findById(bound.id)!!.status)
+        assertTrue(dao.listReadyForAccount(accountId, now.plusSeconds(11).toEpochMilli()).isEmpty())
+
+        assertEquals(DeliveryReceiptOutcome.ALREADY_CONFIRMED, db.applyConfirmedDeliveryReceipt(receipt, now.plusSeconds(12)))
+        ok(deliveries.update(deliveryId, draft(3_000_000, north to null)))
+        val changed = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single { it.status == OutboxStatus.PENDING }
+        assertEquals(OutboxOperation.UPDATE, changed.operation)
+        assertEquals(1L, changed.baseRemoteVersion)
+        assertEquals(1L, org.json.JSONObject(changed.payloadJson!!).getLong("baseVersion"))
+    }
+
+    @Test
+    fun g24LateConfirmationQuarantinesNewerSnapshotWithoutLosingKilos() = runBlocking {
+        val deliveryId = ok(deliveries.create(draft(2_850_000, north to null)))
+        val accountId = UUID.randomUUID().toString()
+        val dao = db.syncOutboxDao()
+        val original = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
+        dao.deletePendingForEntity(SyncEntityType.DELIVERY, deliveryId)
+        dao.insert(original.copy(accountId = accountId))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='PROCESSING' WHERE id=?",
+            arrayOf(original.id.toString()),
+        )
+
+        ok(deliveries.update(deliveryId, draft(3_300_000, north to null)))
+        val latestBefore = db.deliveryDao().findById(deliveryId)!!
+        val newer = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single { it.status == OutboxStatus.PENDING }
+        assertEquals(OutboxOperation.CREATE, newer.operation)
+
+        val receipt = DeliverySyncReceipt(
+            operationId = original.id,
+            deliveryId = deliveryId,
+            farmId = farmId,
+            accountId = accountId,
+            payloadJson = original.payloadJson!!,
+            remoteVersion = 1L,
+        )
+        assertEquals(DeliveryReceiptOutcome.NEEDS_REBASE, db.applyConfirmedDeliveryReceipt(receipt, now.plusSeconds(20)))
+        assertEquals(OutboxStatus.CONFIRMED, dao.findById(original.id)!!.status)
+        assertEquals(OutboxStatus.BLOCKED, dao.findById(newer.id)!!.status)
+        val local = db.deliveryDao().findById(deliveryId)!!
+        assertEquals(3_300_000L, local.netGrams)
+        assertEquals(latestBefore.metadata.version, local.metadata.version)
+        assertEquals(latestBefore.metadata.updatedAt, local.metadata.updatedAt)
+        assertEquals(1L, local.metadata.remoteVersion)
+        assertEquals(SyncStatus.CONFLICT, local.metadata.syncStatus)
+        assertTrue(dao.listReadyForAccount(accountId, now.plusSeconds(21).toEpochMilli()).isEmpty())
+        assertEquals(DeliveryReceiptOutcome.ALREADY_CONFIRMED, db.applyConfirmedDeliveryReceipt(receipt, now.plusSeconds(22)))
+        assertEquals(3_300_000L, db.deliveryDao().findById(deliveryId)!!.netGrams)
+    }
+
+    @Test
+    fun g24RejectsWrongAccountFarmAndPayloadWithoutMutatingLocalData() = runBlocking {
+        val deliveryId = ok(deliveries.create(draft(2_850_000, north to null)))
+        val accountId = UUID.randomUUID().toString()
+        val dao = db.syncOutboxDao()
+        val initial = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
+        dao.deletePendingForEntity(SyncEntityType.DELIVERY, deliveryId)
+        val bound = initial.copy(accountId = accountId)
+        dao.insert(bound)
+        val valid = DeliverySyncReceipt(
+            operationId = initial.id, deliveryId = deliveryId, farmId = farmId,
+            accountId = accountId, payloadJson = initial.payloadJson!!, remoteVersion = 1L,
+        )
+        val before = db.deliveryDao().findById(deliveryId)!!
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(valid.copy(accountId = UUID.randomUUID().toString()), now))
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(valid.copy(farmId = UUID.randomUUID()), now))
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(valid.copy(payloadJson = "{}"), now))
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(valid.copy(remoteVersion = 0L), now))
+        assertEquals(before, db.deliveryDao().findById(deliveryId))
+        assertEquals(OutboxStatus.PENDING, dao.findById(initial.id)!!.status)
     }
 
     private fun <T> ok(result: AppResult<T>): T = when (result) {
