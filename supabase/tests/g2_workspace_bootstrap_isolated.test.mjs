@@ -12,7 +12,7 @@ async function fixture() {
   await db.exec("CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT current_setting('request.jwt.claims',true)::jsonb $$;");
   for(const file of readdirSync(new URL('../migrations/',import.meta.url)).sort())
     await db.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
-  for(const name of ['g1c-reservations.sql','g2-sync-own-data.sql'])
+  for(const name of ['g1c-reservations.sql','g2-sync-own-data.sql','g2-parcel-bootstrap.sql'])
     await db.exec(readFileSync(new URL('../proposals/'+name,import.meta.url),'utf8'));
   const actor=randomUUID();
   await db.query('INSERT INTO auth.users(id) VALUES($1)',[actor]);
@@ -47,6 +47,78 @@ test('workspace creation has an immutable recoverable receipt and never adopts a
     await assert.rejects(call(db,actor,randomUUID(),payload),e=>e.code==='23505');
     assert.equal((await db.query('SELECT count(*)::int AS n FROM magina_g2_private.sync_operations')).rows[0].n,1);
     assert.equal((await db.query('SELECT owner_user_id FROM public.workspaces WHERE id=$1',[payload.id])).rows[0].owner_user_id,actor);
+  } finally {await db.close();}
+});
+
+function parcelPayload(workspaceId,farmId) {
+  return {id:randomUUID(),workspaceId,displayName:'Parcela sintética',cadastralReference:'SYNTHETIC-REF',
+    cadastralPolygon:'03',cadastralParcel:'17',municipality:'Synthetic municipality',province:null,
+    source:'CATASTRO',geometryGeoJson:'{"type":"Polygon","coordinates":[]}',sourceProvider:'ES_CATASTRO',
+    sourceImportedAt:'2026-01-01T23:59:59.999999999Z',cadastralAreaM2:2000.125,managedAreaM2:1500.25,
+    notes:'Do not lose notes',status:'ACTIVE',oliveTreeCount:100,variety:'Picual',irrigationSystem:'DRIP',
+    irrigationNetwork:'Synthetic community',irrigationSector:'S3',irrigationDays:'MONDAY,FRIDAY',
+    memberships:[{id:randomUUID(),farmId,validFrom:'2026-01-01T00:00:00.123456789Z',validUntil:null,deletedAt:null}]};
+}
+async function parcelCall(db,actor,operation,payload) {
+  return asActor(db,actor,async()=>(await db.query('SELECT public.create_own_parcel($1::uuid,$2::jsonb) AS receipt',
+    [operation,JSON.stringify(payload)])).rows[0].receipt);
+}
+test('parcel bootstrap preserves agronomy, exact instants and membership with one recoverable receipt',async()=>{
+  const {db,actor}=await fixture();
+  try {
+    const farm=await reservedFarm(db,actor);await farmCall(db,actor,randomUUID(),farm,farm.payload);
+    const payload=parcelPayload(farm.payload.workspaceId,farm.payload.id),operation=randomUUID();
+    const first=await parcelCall(db,actor,operation,payload);assert.equal(first.entity_id,payload.id);
+    assert.equal((await parcelCall(db,actor,operation,payload)).idempotent,true);
+    const restored=await asActor(db,actor,async()=>(await db.query('SELECT public.get_own_parcel($1::uuid) AS data',[payload.id])).rows[0].data);
+    assert.equal(restored.parcel.irrigation_network,'Synthetic community');assert.equal(restored.parcel.olive_tree_count,100);
+    assert.equal(restored.parcel.geometry_geo_json,payload.geometryGeoJson);
+    assert.equal(restored.parcel.source_imported_at_exact,payload.sourceImportedAt);
+    assert.equal(restored.memberships[0].valid_from_exact,payload.memberships[0].validFrom);
+    assert.equal(restored.memberships[0].valid_until,null);
+    await db.query("UPDATE public.parcels SET source_imported_at='2026-02-01T00:00:00Z' WHERE id=$1",[payload.id]);
+    assert.equal((await db.query('SELECT source_imported_at_exact FROM public.parcels WHERE id=$1',[payload.id])).rows[0].source_imported_at_exact,null);
+    await assert.rejects(parcelCall(db,actor,randomUUID(),payload),e=>e.code==='23505');
+  } finally {await db.close();}
+});
+test('parcel bootstrap rejects overlapping memberships and malformed fields without partial persistence',async()=>{
+  const {db,actor}=await fixture();
+  try {
+    const farm=await reservedFarm(db,actor);await farmCall(db,actor,randomUUID(),farm,farm.payload);
+    const p=parcelPayload(farm.payload.workspaceId,farm.payload.id),m=p.memberships[0];
+    for(const payload of [{...p,oliveTreeCount:1.5},{...p,managedAreaM2:-1},{...p,ownerUserId:actor},
+      {...p,memberships:[]},{...p,memberships:[m,{...m,id:randomUUID(),validFrom:'2026-01-02T00:00:00Z'}]},
+      {...p,memberships:[{...m,validUntil:'2025-01-01T00:00:00Z'}]},
+      {...p,memberships:[{...m,validFrom:'2026-01-01T00:00:00.000000001Z',validUntil:'2026-01-01T00:00:00.000000003Z'},
+        {...m,id:randomUUID(),validFrom:'2026-01-01T00:00:00.000000002Z',validUntil:'2026-01-01T00:00:00.000000004Z'}]},
+      {...p,sourceImportedAt:'2026-02-30T00:00:00Z'}])
+      await assert.rejects(parcelCall(db,actor,randomUUID(),payload),e=>e.code==='22023');
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.parcels')).rows[0].n,0);
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.farm_parcel_memberships')).rows[0].n,0);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM magina_g2_private.sync_operations WHERE entity_type='PARCEL'")).rows[0].n,0);
+  } finally {await db.close();}
+});
+
+test('empty membership cannot authorize delivery while one nanosecond remains a positive interval',async()=>{
+  const {db,actor}=await fixture();
+  try {
+    const farm=await reservedFarm(db,actor);await farmCall(db,actor,randomUUID(),farm,farm.payload);
+    for(const [end,allowed] of [['2026-11-25T12:00:00.000000001Z',false],['2026-11-25T12:00:00.000000002Z',true]]) {
+      const parcel=parcelPayload(farm.payload.workspaceId,farm.payload.id);
+      parcel.memberships[0].validFrom='2026-11-25T12:00:00.000000001Z';parcel.memberships[0].validUntil=end;
+      await parcelCall(db,actor,randomUUID(),parcel);
+      const campaign={id:randomUUID(),workspaceId:parcel.workspaceId,farmId:farm.payload.id,name:'Interval campaign',
+        startDate:'2026-11-25',endDate:'2026-11-25',status:'CLOSED',notes:null,parcels:[{
+          id:randomUUID(),parcelId:parcel.id,farmIdAtStart:farm.payload.id,farmNameAtStart:'Farm',parcelNameAtStart:'Parcel',
+          managedAreaM2AtStart:null,cadastralReferenceAtStart:null,geometryGeoJsonSnapshot:null}]};
+      await campaignCall(db,actor,randomUUID(),campaign);
+      const delivery={id:randomUUID(),farmId:farm.payload.id,campaignId:campaign.id,deliveryDate:'2026-11-25',
+        destinationName:'Synthetic destination',netGrams:1000,source:'MANUAL',parcels:[{id:randomUUID(),parcelId:parcel.id,
+          campaignParcelId:campaign.parcels[0].id,parcelNameAtDelivery:'Parcel',weightGrams:null,allocationMode:'UNALLOCATED'}]};
+      const send=()=>asActor(db,actor,()=>db.query('SELECT public.sync_own_delivery_v2($1::uuid,$2::jsonb)',[randomUUID(),JSON.stringify(delivery)]));
+      if(allowed) await send();else await assert.rejects(send(),e=>e.code==='42501');
+    }
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.deliveries')).rows[0].n,1);
   } finally {await db.close();}
 });
 

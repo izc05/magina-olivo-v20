@@ -1,6 +1,7 @@
 -- Mágina Olivo — G2.1 Proposal: Idempotent Own-Data Sync & Farm Isolation
 -- Candidate proposal only; not a migration or deployment artifact.
 -- NO DEPLOY: Ephemeral native testing only. Never deploy to production or persistent DEV.
+-- Current disposable bootstrap loads G1c, this file and g2-parcel-bootstrap.sql before any RPC.
 
 CREATE SCHEMA IF NOT EXISTS magina_g2_private;
 REVOKE ALL ON SCHEMA magina_g2_private FROM PUBLIC, anon, authenticated;
@@ -320,8 +321,17 @@ BEGIN
               ON m.parcel_id=p.id AND m.workspace_id=p.workspace_id
               WHERE p.id=v_parcel AND p.workspace_id=v_workspace AND m.farm_id=v_farm_id
                 AND p.deleted_at IS NULL AND m.deleted_at IS NULL
-                AND m.valid_from < (v_delivery_date + 1)::timestamptz
-                AND (m.valid_until IS NULL OR m.valid_until > v_delivery_date::timestamptz)
+                AND (m.valid_until IS NULL OR
+                    (CASE WHEN m.valid_until_exact IS NULL THEN extract(epoch FROM m.valid_until)*1000000000
+                        ELSE magina_g2_private.instant_key(m.valid_until_exact) END) >
+                    (CASE WHEN m.valid_from_exact IS NULL THEN extract(epoch FROM m.valid_from)*1000000000
+                        ELSE magina_g2_private.instant_key(m.valid_from_exact) END))
+                AND (CASE WHEN m.valid_from_exact IS NULL THEN extract(epoch FROM m.valid_from)*1000000000
+                    ELSE magina_g2_private.instant_key(m.valid_from_exact) END)
+                    < extract(epoch FROM (v_delivery_date+1)::timestamptz)*1000000000
+                AND (m.valid_until IS NULL OR (CASE WHEN m.valid_until_exact IS NULL THEN extract(epoch FROM m.valid_until)*1000000000
+                    ELSE magina_g2_private.instant_key(m.valid_until_exact) END)
+                    > extract(epoch FROM v_delivery_date::timestamptz)*1000000000)
               FOR SHARE OF p,m;
             IF NOT FOUND THEN
                 RAISE EXCEPTION 'sync denied: parcel does not belong to farm' USING ERRCODE='42501';
@@ -1108,6 +1118,7 @@ BEGIN
     JOIN public.farms f ON f.id=c.farm_id AND f.workspace_id=c.workspace_id
     JOIN public.workspaces w ON w.id=c.workspace_id
     WHERE c.id=p_campaign_id AND c.snapshot_format=1 AND c.deleted_at IS NULL AND f.deleted_at IS NULL AND w.deleted_at IS NULL
+      AND EXISTS(SELECT 1 FROM magina_g2_private.sync_operations WHERE account_id=actor AND entity_type='CAMPAIGN' AND entity_id=c.id)
       AND w.owner_user_id=actor AND (f.creator_user_id=actor OR f.owner_id=actor);
     IF result IS NULL THEN RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501'; END IF;
     RETURN result;
