@@ -91,16 +91,20 @@ class BootstrapPlan(
     ): List<BootstrapStep> {
         if (visibleActor != actor || currentConsentId != consentId ||
             !currentlyConsentedFarmIds.containsAll(consentedFarmIds)) return emptyList()
+        if (!validReceipts(receipts)) return emptyList()
+        val confirmed = receipts.map { it.operationId }.toSet()
+        return steps.filter { it.operationId !in confirmed && confirmed.containsAll(it.dependencies) }
+    }
+
+    internal fun validReceipts(receipts: List<BootstrapReceipt>): Boolean {
         val byOperation = steps.associateBy { it.operationId }
         val confirmed = mutableSetOf<UUID>()
         receipts.forEach { receipt ->
-            val step = byOperation[receipt.operationId] ?: return emptyList()
+            val step = byOperation[receipt.operationId] ?: return false
             if (receipt.actor != actor || receipt.entityId != step.entityId || receipt.entity != step.entity ||
                 receipt.payloadHash != step.payloadHash || receipt.payloadVersion != step.payloadVersion ||
-                receipt.remoteVersion <= 0 || !confirmed.add(receipt.operationId)) return emptyList()
+                receipt.remoteVersion <= 0 || !confirmed.add(receipt.operationId)) return false
         }
-        // A descendant receipt without its prerequisite receipts is an incomplete recovery snapshot.
-        if (steps.any { it.operationId in confirmed && !confirmed.containsAll(it.dependencies) }) return emptyList()
-        return steps.filter { it.operationId !in confirmed && confirmed.containsAll(it.dependencies) }
+        return steps.none { it.operationId in confirmed && !confirmed.containsAll(it.dependencies) }
     }
 }
