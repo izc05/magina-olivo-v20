@@ -1,6 +1,8 @@
 package com.isivoltpro.maginaolivo
 
 import android.content.Context
+import android.view.KeyEvent
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.getOrNull
@@ -72,7 +74,12 @@ class AppNavigationTest {
                 composeRule.activityRule.scenario.recreate()
                 waitForTag("quick-register-sheet")
             }
-            pressBack()
+            // ModalBottomSheet owns a separate window after recreation. Send the
+            // real Android Back key without Espresso choosing the unfocused Activity root.
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                composeRule.onAllNodesWithTag("quick-register-sheet").fetchSemanticsNodes().isEmpty()
+            }
             composeRule.onNodeWithTag("quick-register-sheet").assertDoesNotExist()
             composeRule.onNodeWithTag("bottom-$label").assertIsSelected()
         }
