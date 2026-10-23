@@ -117,3 +117,56 @@ test('reserved farm creation rejects mismatched reservation, actor, issuer or pa
     assert.equal((await db.query("SELECT count(*)::int AS n FROM magina_g2_private.sync_operations WHERE entity_type='FARM'")).rows[0].n,0);
   } finally {await db.close();}
 });
+
+async function campaignFixture(db,actor) {
+  const farm=await reservedFarm(db,actor);await farmCall(db,actor,randomUUID(),farm,farm.payload);
+  const parcel=randomUUID();
+  await db.query('INSERT INTO public.parcels(id,workspace_id,display_name) VALUES($1,$2,$3)',[parcel,farm.payload.workspaceId,'Current name']);
+  await db.query('INSERT INTO public.farm_parcel_memberships(workspace_id,farm_id,parcel_id,valid_from) VALUES($1,$2,$3,$4)',
+    [farm.payload.workspaceId,farm.payload.id,parcel,'2026-01-01']);
+  return {id:randomUUID(),workspaceId:farm.payload.workspaceId,farmId:farm.payload.id,name:'Campaign history',
+    startDate:'2026-01-01',endDate:'2026-12-31',status:'CLOSED',notes:'Preserve notes',parcels:[{
+      id:randomUUID(),parcelId:parcel,farmIdAtStart:farm.payload.id,farmNameAtStart:'Historical farm',
+      parcelNameAtStart:'Historical parcel',managedAreaM2AtStart:1250.25,cadastralReferenceAtStart:null,
+      geometryGeoJsonSnapshot:'{"type":"Polygon","coordinates":[]}'}]};
+}
+async function campaignCall(db,actor,operation,payload) {
+  return asActor(db,actor,async()=>(await db.query('SELECT public.create_own_campaign($1::uuid,$2::jsonb) AS receipt',
+    [operation,JSON.stringify(payload)])).rows[0].receipt);
+}
+
+test('campaign creation atomically preserves historical parcel snapshots and a recoverable receipt',async()=>{
+  const {db,actor}=await fixture();
+  try {
+    const payload=await campaignFixture(db,actor),operation=randomUUID();
+    const first=await campaignCall(db,actor,operation,payload);
+    assert.equal(first.remote_version,1);assert.equal(first.entity_id,payload.id);
+    const restored=await asActor(db,actor,async()=>(await db.query('SELECT public.get_own_campaign($1::uuid) AS aggregate',[payload.id])).rows[0].aggregate);
+    assert.equal(restored.campaign.status,'CLOSED');assert.equal(restored.parcels.length,1);
+    const child=restored.parcels[0];
+    assert.equal(child.id,payload.parcels[0].id);assert.equal(child.parcel_name_at_start,'Historical parcel');
+    assert.equal(child.farm_name_at_start,'Historical farm');assert.equal(child.managed_area_m2_at_start,1250.25);
+    assert.equal(child.geometry_geo_json_snapshot,payload.parcels[0].geometryGeoJsonSnapshot);
+    assert.equal(child.cadastral_reference_at_start,null);
+    assert.equal((await campaignCall(db,actor,operation,payload)).idempotent,true);
+    await assert.rejects(campaignCall(db,actor,operation,{...payload,parcels:[]}),e=>e.code==='22023'||e.code==='23505');
+    await assert.rejects(campaignCall(db,actor,randomUUID(),payload),e=>e.code==='23505');
+  } finally {await db.close();}
+});
+
+test('campaign creation rejects incomplete or invalid historical snapshots without partial campaign or receipt',async()=>{
+  const {db,actor}=await fixture();
+  try {
+    const p=await campaignFixture(db,actor);
+    for(const payload of [{...p,startDate:'2026-02-30'},{...p,endDate:'2025-01-01'},
+      {...p,status:'ARCHIVED'},{...p,parcels:[]},{...p,parcels:[p.parcels[0],p.parcels[0]]},
+      {...p,parcels:[{...p.parcels[0],farmIdAtStart:randomUUID()}]},
+      {...p,parcels:[{...p.parcels[0],managedAreaM2AtStart:-1}]},
+      {...p,parcels:[{...p.parcels[0],unexpected:true}]}]) {
+      await assert.rejects(campaignCall(db,actor,randomUUID(),payload),e=>['22023','42501'].includes(e.code));
+    }
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.campaigns')).rows[0].n,0);
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.campaign_parcels')).rows[0].n,0);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM magina_g2_private.sync_operations WHERE entity_type='CAMPAIGN'")).rows[0].n,0);
+  } finally {await db.close();}
+});

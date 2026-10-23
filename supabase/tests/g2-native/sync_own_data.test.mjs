@@ -826,14 +826,22 @@ async function clientBootstrapFixture(pendingFarmOnly=false) {
   assert.equal(farmReplay.status,200);assert.equal(farmReplay.data.idempotent,true);
   // A lost reservation ACK can be recovered even after the farm was materialized.
   assert.deepEqual((await reserve()).data, reservation.data);
-  await create('campaigns', {id:campaign, workspace_id:workspace, farm_id:farm,
-    name:'Client-created campaign', start_date:'2026-01-01'});
   await create('parcels', {id:parcel, workspace_id:workspace, display_name:'Client-created parcel'});
   await create('farm_parcel_memberships', {id:randomUUID(), workspace_id:workspace,
     farm_id:farm, parcel_id:parcel, valid_from:'2026-01-01T00:00:00Z'});
+  const snapshot={id:randomUUID(),parcelId:parcel,farmIdAtStart:farm,farmNameAtStart:'Client-created farm',
+    parcelNameAtStart:'Client-created parcel',managedAreaM2AtStart:null,cadastralReferenceAtStart:null,geometryGeoJsonSnapshot:null};
+  const campaignBody={p_operation_id:randomUUID(),p_campaign:{id:campaign,workspaceId:workspace,farmId:farm,
+    name:'Client-created campaign',startDate:'2026-01-01',endDate:null,status:'ACTIVE',notes:null,parcels:[snapshot]}};
+  const firstCampaign=await http('/rest/v1/rpc/create_own_campaign',{token,body:campaignBody});
+  assert.equal(firstCampaign.status,200,JSON.stringify(firstCampaign.data));
+  const campaignReplay=await http('/rest/v1/rpc/create_own_campaign',{token,body:campaignBody});
+  assert.equal(campaignReplay.status,200);assert.equal(campaignReplay.data.idempotent,true);
+  const campaignRead=await http('/rest/v1/rpc/get_own_campaign',{token,body:{p_campaign_id:campaign}});
+  assert.equal(campaignRead.status,200);assert.equal(campaignRead.data.parcels[0].id,snapshot.id);
   const payload = {id:randomUUID(), farmId:farm, campaignId:campaign,
     deliveryDate:'2026-11-25', destinationName:'Synthetic destination', netGrams:3000000,
-    source:'MANUAL', parcels:[{id:randomUUID(), parcelId:parcel, campaignParcelId:null,
+    source:'MANUAL', parcels:[{id:randomUUID(), parcelId:parcel, campaignParcelId:snapshot.id,
       parcelNameAtDelivery:'Historical client parcel', weightGrams:null, allocationMode:'UNALLOCATED'}]};
   return {workspace, farm, campaign, parcel, token, request, reservation, payload};
 }
@@ -1029,6 +1037,113 @@ test('reserved farm bootstrap denies mismatched reservations and different opera
   assert.deepEqual(results.map(x=>x.status).sort(),[200,409]);
   assert.equal(sql(`SELECT count(*) FROM public.farms WHERE id=${quote(f.farm)}::uuid;`),'1');
   assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_type='FARM' AND entity_id=${quote(f.farm)}::uuid;`),'1');
+});
+
+async function campaignBootstrapFixture(status='CLOSED') {
+  const f=await clientBootstrapFixture(true);
+  const farm=await http('/rest/v1/rpc/create_reserved_farm',{token:f.token,body:f.farmBody});
+  assert.equal(farm.status,200,JSON.stringify(farm.data));
+  const parcel=randomUUID();
+  const created=await http('/rest/v1/parcels',{token:f.token,body:{id:parcel,workspace_id:f.workspace,
+    display_name:'Current parcel name',managed_area_m2:2500}});
+  assert.equal(created.status,201,JSON.stringify(created.data));
+  const membership=await http('/rest/v1/farm_parcel_memberships',{token:f.token,body:{id:randomUUID(),
+    workspace_id:f.workspace,farm_id:f.farm,parcel_id:parcel,valid_from:'2026-01-01T00:00:00Z',
+    valid_until:status==='CLOSED'?'2026-07-01T00:00:00Z':null}});
+  assert.equal(membership.status,201,JSON.stringify(membership.data));
+  const payload={id:randomUUID(),workspaceId:f.workspace,farmId:f.farm,name:'Historical campaign',
+    startDate:'2026-01-01',endDate:status==='CLOSED'?'2026-06-30':null,status,notes:'Historical notes',
+    parcels:[{id:randomUUID(),parcelId:parcel,farmIdAtStart:f.farm,farmNameAtStart:'Historical farm name',
+      parcelNameAtStart:'Historical parcel name',managedAreaM2AtStart:1250.25,cadastralReferenceAtStart:null,
+      geometryGeoJsonSnapshot:'{"type":"Polygon","coordinates":[]}'}]};
+  return {...f,parcel,payload};
+}
+const createCampaign=(f,operation,payload=f.payload,token=f.token)=>http('/rest/v1/rpc/create_own_campaign',{
+  token,body:{p_operation_id:operation,p_campaign:payload}
+});
+const readCampaign=(f,token=f.token)=>http('/rest/v1/rpc/get_own_campaign',{token,body:{p_campaign_id:f.payload.id}});
+
+test('campaign bootstrap preserves complete historical snapshots atomically and restores them after replay',async()=>{
+  const f=await campaignBootstrapFixture(),operation=randomUUID();
+  const results=await Promise.all([createCampaign(f,operation),createCampaign(f,operation),createCampaign(f,operation)]);
+  results.forEach(result=>assert.equal(result.status,200,JSON.stringify(result.data)));
+  assert.equal(results.filter(result=>result.data.idempotent===false).length,1);
+  const renamed=await http(`/rest/v1/parcels?id=eq.${f.parcel}`,{token:f.token,method:'PATCH',
+    body:{display_name:'Renamed current parcel',managed_area_m2:5000}});
+  assert.equal(renamed.status,204);
+  const restored=await readCampaign(f);assert.equal(restored.status,200,JSON.stringify(restored.data));
+  assert.equal(restored.data.campaign.snapshot_format,1);assert.equal(restored.data.campaign.status,'CLOSED');
+  assert.equal(restored.data.campaign.start_date,'2026-01-01');assert.equal(restored.data.campaign.end_date,'2026-06-30');
+  assert.equal(restored.data.campaign.notes,'Historical notes');assert.equal(restored.data.parcels.length,1);
+  const child=restored.data.parcels[0],original=f.payload.parcels[0];
+  assert.equal(child.id,original.id);assert.equal(child.parcel_id,original.parcelId);
+  assert.equal(child.farm_id_at_start,f.farm);assert.equal(child.farm_name_at_start,original.farmNameAtStart);
+  assert.equal(child.parcel_name_at_start,original.parcelNameAtStart);assert.equal(child.managed_area_m2_at_start,1250.25);
+  assert.equal(child.cadastral_reference_at_start,null);assert.equal(child.geometry_geo_json_snapshot,original.geometryGeoJsonSnapshot);
+  const edited=await http(`/rest/v1/campaigns?id=eq.${f.payload.id}`,{token:f.token,method:'PATCH',body:{name:'Later campaign name',version:2}});
+  assert.equal(edited.status,204);
+  const replay=await createCampaign(f,operation);assert.equal(replay.status,200);assert.equal(replay.data.remote_version,1);
+  assert.equal((await readCampaign(f)).data.campaign.name,'Later campaign name');
+  const recovery=await http('/rest/v1/rpc/check_sync_operations',{token:f.token,body:{p_operation_ids:[operation]}});
+  assert.equal(recovery.status,200);assert.equal(recovery.data.confirmed_receipts[0].entity_type,'CAMPAIGN');
+  assert.equal(recovery.data.confirmed_receipts[0].remote_version,1);
+  assert.equal((await createCampaign(f,operation,{...f.payload,parcels:[{...original,managedAreaM2AtStart:1500}]})).status,409);
+  assert.equal((await readCampaign(f,actors.B.token)).status,403);
+  const foreign=await http(`/rest/v1/campaign_parcels?campaign_id=eq.${f.payload.id}`,{token:actors.B.token,method:'GET'});
+  assert.equal(foreign.status,200);assert.deepEqual(foreign.data,[]);
+  const directWrite=await http(`/rest/v1/campaign_parcels?id=eq.${original.id}`,{token:f.token,method:'PATCH',body:{parcel_name_at_start:'Forbidden rewrite'}});
+  assert.equal(directWrite.status,403);
+  const other=await createCampaign(f,randomUUID(),f.payload,actors.B.token);assert.equal(other.status,403);
+  sql(`UPDATE public.farms SET deleted_at=now() WHERE id=${quote(f.farm)}::uuid;`);
+  assert.equal((await readCampaign(f)).status,403);assert.equal((await createCampaign(f,operation)).status,403);
+});
+
+test('campaign bootstrap rolls back malformed children and existing snapshot collisions without partial receipts',async()=>{
+  const f=await campaignBootstrapFixture(),p=f.payload,child=p.parcels[0];
+  const invalid=[{...p,startDate:'2026-02-30'},{...p,endDate:'2025-12-31'},{...p,status:'ARCHIVED'},
+    {...p,parcels:[]},{...p,parcels:[child,child]}, {...p,parcels:[{...child,farmIdAtStart:randomUUID()}]},
+    {...p,parcels:[{...child,managedAreaM2AtStart:-1}]},{...p,parcels:[{...child,managedAreaM2AtStart:'1250'}]},
+    {...p,parcels:[{...child,extra:true}]},{...p,parcels:[{...child,parcelId:randomUUID()}]}];
+  for(const payload of invalid) {
+    const operation=randomUUID(),result=await createCampaign(f,operation,payload);
+    assert.ok([400,403].includes(result.status),JSON.stringify(result.data));
+    assert.equal(sql(`SELECT count(*) FROM public.campaigns WHERE id=${quote(p.id)}::uuid;`),'0');
+    assert.equal(sql(`SELECT count(*) FROM public.campaign_parcels WHERE campaign_id=${quote(p.id)}::uuid;`),'0');
+    assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE operation_id=${quote(operation)}::uuid;`),'0');
+  }
+  const first=await createCampaign(f,randomUUID());assert.equal(first.status,200,JSON.stringify(first.data));
+  const collision={...p,id:randomUUID()},operation=randomUUID();
+  assert.equal((await createCampaign(f,operation,collision)).status,409);
+  assert.equal(sql(`SELECT count(*) FROM public.campaigns WHERE id=${quote(collision.id)}::uuid;`),'0');
+  assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE operation_id=${quote(operation)}::uuid;`),'0');
+  assert.equal((await readCampaign(f)).data.parcels.length,1);
+});
+
+test('campaign bootstrap serializes competing ACTIVE and legacy HARVEST and never restores incomplete legacy headers',async()=>{
+  const f=await campaignBootstrapFixture('ACTIVE');
+  const second={...f.payload,id:randomUUID(),status:'HARVEST',parcels:f.payload.parcels.map(x=>({...x,id:randomUUID()}))};
+  const results=await Promise.all([createCampaign(f,randomUUID()),createCampaign(f,randomUUID(),second)]);
+  assert.deepEqual(results.map(x=>x.status).sort(),[200,409]);
+  assert.equal(sql(`SELECT count(*) FROM public.campaigns WHERE farm_id=${quote(f.farm)}::uuid AND status IN ('ACTIVE','HARVEST');`),'1');
+  const draft={...f.payload,id:randomUUID(),status:'PREPARATION',parcels:[]};
+  const result=await createCampaign(f,randomUUID(),draft);assert.equal(result.status,200,JSON.stringify(result.data));
+  const restored=await http('/rest/v1/rpc/get_own_campaign',{token:f.token,body:{p_campaign_id:draft.id}});
+  assert.equal(restored.status,200);assert.deepEqual(restored.data.parcels,[]);
+  const legacy=await http('/rest/v1/rpc/get_own_campaign',{token:actors.A.token,body:{p_campaign_id:actors.A.campaign}});
+  assert.equal(legacy.status,403);
+});
+
+test('complete campaign delivery rejects an unrelated historical snapshot pointer atomically',async()=>{
+  const f=await clientBootstrapFixture(),operation=randomUUID();
+  const payload={...f.payload,parcels:f.payload.parcels.map(x=>({...x,campaignParcelId:randomUUID()}))};
+  const rejected=await sendComplete(operation,payload,f.token);
+  assert.equal(rejected.status,400,JSON.stringify(rejected.data));
+  assert.equal(sql(`SELECT count(*) FROM public.deliveries WHERE id=${quote(payload.id)}::uuid;`),'0');
+  assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE operation_id=${quote(operation)}::uuid;`),'0');
+  const accepted=await sendComplete(operation,f.payload,f.token);
+  assert.equal(accepted.status,200,JSON.stringify(accepted.data));
+  const restored=await readComplete(f.payload.id,f.token);
+  assert.equal(restored.data.parcels[0].campaign_parcel_id,f.payload.parcels[0].campaignParcelId);
 });
 
 test('v2 persists and restores historical parcel shares with idempotent versioned receipts',async()=>{

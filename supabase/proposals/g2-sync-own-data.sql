@@ -327,6 +327,14 @@ BEGIN
                 RAISE EXCEPTION 'sync denied: parcel does not belong to farm' USING ERRCODE='42501';
             END IF;
             PERFORM (v_share->>'campaignParcelId')::uuid;
+            IF v_share->>'campaignParcelId' IS NOT NULL AND EXISTS (
+                SELECT 1 FROM public.campaigns WHERE id=v_campaign_id AND snapshot_format=1) THEN
+                PERFORM 1 FROM public.campaign_parcels WHERE id=(v_share->>'campaignParcelId')::uuid
+                    AND campaign_id=v_campaign_id AND parcel_id=v_parcel AND workspace_id=v_workspace FOR SHARE;
+                IF NOT FOUND THEN
+                    RAISE EXCEPTION 'sync invalid: campaign parcel snapshot mismatch' USING ERRCODE='22023';
+                END IF;
+            END IF;
             IF v_share->>'allocationMode' = 'UNALLOCATED'
                AND jsonb_typeof(v_share->'weightGrams') = 'null' THEN
                 v_unknown_count := v_unknown_count + 1;
@@ -927,3 +935,182 @@ RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path='' AS $$
 $$;
 REVOKE ALL ON FUNCTION public.create_reserved_farm(UUID,UUID,UUID,JSONB) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.create_reserved_farm(UUID,UUID,UUID,JSONB) TO authenticated;
+
+-- Complete campaign bootstrap, including immutable historical parcel snapshots.
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS snapshot_format INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE public.campaign_parcels (
+    id UUID PRIMARY KEY, workspace_id UUID NOT NULL, campaign_id UUID NOT NULL, parcel_id UUID NOT NULL,
+    farm_id_at_start UUID NOT NULL, farm_name_at_start TEXT NOT NULL, parcel_name_at_start TEXT NOT NULL,
+    managed_area_m2_at_start DOUBLE PRECISION, cadastral_reference_at_start TEXT, geometry_geo_json_snapshot TEXT,
+    UNIQUE(campaign_id,parcel_id),
+    FOREIGN KEY(campaign_id,workspace_id) REFERENCES public.campaigns(id,workspace_id),
+    FOREIGN KEY(parcel_id,workspace_id) REFERENCES public.parcels(id,workspace_id),
+    FOREIGN KEY(farm_id_at_start,workspace_id) REFERENCES public.farms(id,workspace_id)
+);
+ALTER TABLE public.campaign_parcels ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.campaign_parcels FROM PUBLIC,anon,authenticated;
+GRANT SELECT ON public.campaign_parcels TO authenticated;
+CREATE POLICY campaign_parcels_own_read ON public.campaign_parcels FOR SELECT TO authenticated
+USING (coalesce(auth.jwt()->>'is_anonymous','false')='false' AND EXISTS (
+    SELECT 1 FROM public.campaigns c JOIN public.farms f ON f.id=c.farm_id AND f.workspace_id=c.workspace_id
+    JOIN public.workspaces w ON w.id=c.workspace_id
+    WHERE c.id=campaign_id AND c.workspace_id=campaign_parcels.workspace_id AND c.deleted_at IS NULL
+    AND f.deleted_at IS NULL AND w.deleted_at IS NULL AND w.owner_user_id=auth.uid()
+    AND (f.creator_user_id=auth.uid() OR f.owner_id=auth.uid())
+));
+
+CREATE FUNCTION magina_g2_private.create_campaign(p_operation_id UUID,p_campaign JSONB)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE
+    actor UUID:=auth.uid(); claims JSONB:=auth.jwt(); field TEXT; campaign UUID; workspace UUID; farm UUID;
+    starts DATE; ends DATE; child JSONB; child_id UUID; parcel UUID; original_farm UUID; area DOUBLE PRECISION;
+    seen_ids UUID[]:='{}'; seen_parcels UUID[]:='{}'; payload_hash TEXT;
+    saved magina_g2_private.sync_operations%ROWTYPE;
+BEGIN
+    IF actor IS NULL OR claims IS NULL OR claims->>'role' IS DISTINCT FROM 'authenticated'
+       OR claims->>'sub' IS DISTINCT FROM actor::text OR coalesce(claims->>'is_anonymous','false')<>'false'
+       OR jsonb_typeof(claims->'exp') IS DISTINCT FROM 'number' OR (claims->>'exp') !~ '^[0-9]+$' THEN
+        RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501';
+    END IF;
+    IF (claims->>'exp')::numeric<=extract(epoch FROM now()) THEN
+        RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501';
+    END IF;
+    IF p_operation_id IS NULL OR p_campaign IS NULL OR jsonb_typeof(p_campaign)<>'object'
+       OR (SELECT count(*) FROM jsonb_object_keys(p_campaign))<>9
+       OR NOT p_campaign ?& ARRAY['id','workspaceId','farmId','name','startDate','endDate','status','notes','parcels']
+       OR octet_length(p_campaign::text)>4194304 THEN
+        RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+    END IF;
+    FOREACH field IN ARRAY ARRAY['id','workspaceId','farmId','name','startDate','status'] LOOP
+        IF jsonb_typeof(p_campaign->field) IS DISTINCT FROM 'string' THEN
+            RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+        END IF;
+    END LOOP;
+    IF jsonb_typeof(p_campaign->'endDate') NOT IN ('string','null')
+       OR jsonb_typeof(p_campaign->'notes') NOT IN ('string','null')
+       OR jsonb_typeof(p_campaign->'parcels') IS DISTINCT FROM 'array' THEN
+        RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+    END IF;
+    BEGIN
+        campaign:=(p_campaign->>'id')::uuid; workspace:=(p_campaign->>'workspaceId')::uuid; farm:=(p_campaign->>'farmId')::uuid;
+        IF p_campaign->>'startDate' !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+           OR (p_campaign->>'endDate' IS NOT NULL AND p_campaign->>'endDate' !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') THEN
+            RAISE invalid_parameter_value;
+        END IF;
+        starts:=(p_campaign->>'startDate')::date; ends:=(p_campaign->>'endDate')::date;
+    EXCEPTION WHEN invalid_text_representation OR datetime_field_overflow OR invalid_datetime_format OR invalid_parameter_value THEN
+        RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+    END;
+    IF length(p_campaign->>'name') NOT BETWEEN 1 AND 200 OR btrim(p_campaign->>'name')=''
+       OR ends<starts OR p_campaign->>'status' NOT IN ('PREPARATION','ACTIVE','HARVEST','CLOSED')
+       OR length(p_campaign->>'notes')>10000 OR jsonb_array_length(p_campaign->'parcels')>1000
+       OR (p_campaign->>'status'<>'PREPARATION' AND jsonb_array_length(p_campaign->'parcels')=0) THEN
+        RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+    END IF;
+    FOR child IN SELECT value FROM jsonb_array_elements(p_campaign->'parcels') LOOP
+        IF jsonb_typeof(child)<>'object' OR (SELECT count(*) FROM jsonb_object_keys(child))<>8
+           OR NOT child ?& ARRAY['id','parcelId','farmIdAtStart','farmNameAtStart','parcelNameAtStart',
+               'managedAreaM2AtStart','cadastralReferenceAtStart','geometryGeoJsonSnapshot'] THEN
+            RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+        END IF;
+        FOREACH field IN ARRAY ARRAY['id','parcelId','farmIdAtStart','farmNameAtStart','parcelNameAtStart'] LOOP
+            IF jsonb_typeof(child->field) IS DISTINCT FROM 'string' THEN
+                RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+            END IF;
+        END LOOP;
+        IF jsonb_typeof(child->'managedAreaM2AtStart') NOT IN ('number','null')
+           OR jsonb_typeof(child->'cadastralReferenceAtStart') NOT IN ('string','null')
+           OR jsonb_typeof(child->'geometryGeoJsonSnapshot') NOT IN ('string','null') THEN
+            RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+        END IF;
+        BEGIN
+            child_id:=(child->>'id')::uuid; parcel:=(child->>'parcelId')::uuid;
+            original_farm:=(child->>'farmIdAtStart')::uuid; area:=(child->>'managedAreaM2AtStart')::double precision;
+        EXCEPTION WHEN invalid_text_representation OR numeric_value_out_of_range THEN
+            RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+        END;
+        IF original_farm<>farm OR child_id=ANY(seen_ids) OR parcel=ANY(seen_parcels) OR area<0
+           OR length(child->>'farmNameAtStart') NOT BETWEEN 1 AND 200 OR btrim(child->>'farmNameAtStart')=''
+           OR length(child->>'parcelNameAtStart') NOT BETWEEN 1 AND 200 OR btrim(child->>'parcelNameAtStart')=''
+           OR length(child->>'cadastralReferenceAtStart')>200 THEN
+            RAISE EXCEPTION 'campaign invalid' USING ERRCODE='22023';
+        END IF;
+        seen_ids:=array_append(seen_ids,child_id); seen_parcels:=array_append(seen_parcels,parcel);
+    END LOOP;
+    payload_hash:=encode(sha256(convert_to(p_campaign::text,'UTF8')),'hex');
+    PERFORM pg_advisory_xact_lock(hashtextextended(actor::text||p_operation_id::text,0));
+    PERFORM 1 FROM public.workspaces WHERE id=workspace AND owner_user_id=actor AND deleted_at IS NULL FOR SHARE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501'; END IF;
+    -- Serializes running-campaign checks between callers of this creation RPC.
+    PERFORM 1 FROM public.farms WHERE id=farm AND workspace_id=workspace AND deleted_at IS NULL
+        AND (creator_user_id=actor OR owner_id=actor) FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501'; END IF;
+    SELECT * INTO saved FROM magina_g2_private.sync_operations WHERE account_id=actor AND operation_id=p_operation_id;
+    IF FOUND THEN
+        IF saved.entity_type<>'CAMPAIGN' OR saved.entity_id<>campaign OR saved.payload_hash<>payload_hash THEN
+            RAISE EXCEPTION 'campaign conflict' USING ERRCODE='23505';
+        END IF;
+        PERFORM 1 FROM public.campaigns WHERE id=campaign AND workspace_id=workspace AND farm_id=farm
+            AND deleted_at IS NULL AND snapshot_format=1 FOR SHARE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501'; END IF;
+        RETURN jsonb_build_object('success',true,'operation_id',p_operation_id,'entity_id',campaign,
+            'status',saved.status,'remote_version',saved.result_version,'payload_version',saved.payload_version,'idempotent',true);
+    END IF;
+    IF p_campaign->>'status' IN ('ACTIVE','HARVEST') AND EXISTS (
+        SELECT 1 FROM public.campaigns WHERE farm_id=farm AND deleted_at IS NULL AND status IN ('ACTIVE','HARVEST')) THEN
+        RAISE EXCEPTION 'campaign conflict' USING ERRCODE='23505';
+    END IF;
+    FOREACH parcel IN ARRAY seen_parcels LOOP
+        -- Historical import: require the association to exist, not to still be current today.
+        PERFORM 1 FROM public.parcels p JOIN public.farm_parcel_memberships m ON m.parcel_id=p.id AND m.workspace_id=p.workspace_id
+            WHERE p.id=parcel AND p.workspace_id=workspace AND m.farm_id=farm FOR SHARE OF p,m;
+        IF NOT FOUND THEN RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501'; END IF;
+    END LOOP;
+    INSERT INTO public.campaigns(id,workspace_id,farm_id,name,start_date,end_date,status,notes,snapshot_format)
+    VALUES(campaign,workspace,farm,p_campaign->>'name',starts,ends,p_campaign->>'status',p_campaign->>'notes',1)
+    ON CONFLICT(id) DO NOTHING;
+    IF NOT FOUND THEN RAISE EXCEPTION 'campaign conflict' USING ERRCODE='23505'; END IF;
+    FOR child IN SELECT value FROM jsonb_array_elements(p_campaign->'parcels') LOOP
+        INSERT INTO public.campaign_parcels(id,workspace_id,campaign_id,parcel_id,farm_id_at_start,farm_name_at_start,
+            parcel_name_at_start,managed_area_m2_at_start,cadastral_reference_at_start,geometry_geo_json_snapshot)
+        VALUES((child->>'id')::uuid,workspace,campaign,(child->>'parcelId')::uuid,farm,child->>'farmNameAtStart',
+            child->>'parcelNameAtStart',(child->>'managedAreaM2AtStart')::double precision,
+            child->>'cadastralReferenceAtStart',child->>'geometryGeoJsonSnapshot');
+    END LOOP;
+    INSERT INTO magina_g2_private.sync_operations(account_id,operation_id,entity_type,entity_id,payload_hash,result_version)
+    VALUES(actor,p_operation_id,'CAMPAIGN',campaign,payload_hash,1) RETURNING * INTO saved;
+    RETURN jsonb_build_object('success',true,'operation_id',p_operation_id,'entity_id',campaign,
+        'status',saved.status,'remote_version',saved.result_version,'payload_version',saved.payload_version,'idempotent',false);
+END $$;
+REVOKE ALL ON FUNCTION magina_g2_private.create_campaign(UUID,JSONB) FROM PUBLIC,anon,authenticated;
+CREATE FUNCTION public.create_own_campaign(p_operation_id UUID,p_campaign JSONB)
+RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path='' AS $$
+    SELECT magina_g2_private.create_campaign(p_operation_id,p_campaign);
+$$;
+REVOKE ALL ON FUNCTION public.create_own_campaign(UUID,JSONB) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.create_own_campaign(UUID,JSONB) TO authenticated;
+
+CREATE FUNCTION public.get_own_campaign(p_campaign_id UUID) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE actor UUID:=auth.uid(); claims JSONB:=auth.jwt(); result JSONB;
+BEGIN
+    IF actor IS NULL OR claims IS NULL OR claims->>'role' IS DISTINCT FROM 'authenticated'
+       OR claims->>'sub' IS DISTINCT FROM actor::text OR coalesce(claims->>'is_anonymous','false')<>'false'
+       OR jsonb_typeof(claims->'exp') IS DISTINCT FROM 'number' OR (claims->>'exp') !~ '^[0-9]+$' THEN
+        RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501';
+    END IF;
+    IF (claims->>'exp')::numeric<=extract(epoch FROM now()) THEN
+        RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501';
+    END IF;
+    SELECT jsonb_build_object('payload_version',1,'campaign',to_jsonb(c),'parcels',coalesce((
+        SELECT jsonb_agg(to_jsonb(cp) ORDER BY cp.parcel_id) FROM public.campaign_parcels cp WHERE cp.campaign_id=c.id
+    ),'[]'::jsonb)) INTO result FROM public.campaigns c
+    JOIN public.farms f ON f.id=c.farm_id AND f.workspace_id=c.workspace_id
+    JOIN public.workspaces w ON w.id=c.workspace_id
+    WHERE c.id=p_campaign_id AND c.snapshot_format=1 AND c.deleted_at IS NULL AND f.deleted_at IS NULL AND w.deleted_at IS NULL
+      AND w.owner_user_id=actor AND (f.creator_user_id=actor OR f.owner_id=actor);
+    IF result IS NULL THEN RAISE EXCEPTION 'campaign denied' USING ERRCODE='42501'; END IF;
+    RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION public.get_own_campaign(UUID) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.get_own_campaign(UUID) TO authenticated;
