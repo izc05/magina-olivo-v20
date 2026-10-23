@@ -152,7 +152,10 @@ class OfflineFirstDeliveryRepository(
             writer.runningCampaign(current)
             val now = clock.nowInstant()
             database.deliveryDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
-            database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY, id, OutboxOperation.DELETE, now)
+            database.enqueueCollapsed(
+                idGenerator, SyncEntityType.DELIVERY, id, OutboxOperation.DELETE, now,
+                farmId = current.farmId,
+            )
             writer.afterDelete(current, now)
             // Its analysis only describes this Delivery: it goes with it.
             database.deliveryDao().findLiveAnalysis(id)?.let { analysis -> tombstone(analysis, now) }

@@ -407,6 +407,28 @@ class DeliveryContractTest {
         )
     }
 
+    @Test
+    fun deletedDeliveryKeepsFarmScopeSoRevocationBlocksItsLocalIntent() = runBlocking {
+        val id = ok(deliveries.create(draft(3_000_000, south to null)))
+        assertEquals(farmId, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single().farmId)
+        ok(deliveries.delete(id))
+        val deletion = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertEquals(OutboxOperation.DELETE, deletion.operation)
+        assertEquals(farmId, deletion.farmId)
+        // Preserve local-only behavior: farm scope is not upload authorization.
+        assertNull(deletion.accountId)
+        assertNull(deletion.payloadJson)
+        db.syncOutboxDao().updateStatusForFarm(
+            farmId,
+            com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED,
+            now.toEpochMilli(),
+        )
+        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED,
+            db.syncOutboxDao().findById(deletion.id)!!.status)
+        assertTrue(db.syncOutboxDao().listPendingForFarm(farmId).none { it.id == deletion.id })
+        assertNull(deliveries.observe(id).first())
+    }
+
     // ------------------------------------------------------------ OCR cannot auto-confirm
 
     @Test
