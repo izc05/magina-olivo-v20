@@ -833,3 +833,97 @@ RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path='' AS $$
 $$;
 REVOKE ALL ON FUNCTION public.create_own_workspace(UUID,JSONB) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.create_own_workspace(UUID,JSONB) TO authenticated;
+
+-- Requires the reviewed G1c proposal in the SAME disposable database.
+-- Opaque local document identity only; no file URI or claim that bytes were uploaded.
+ALTER TABLE public.farms ADD COLUMN IF NOT EXISTS cover_document_id UUID;
+CREATE FUNCTION magina_g2_private.create_reserved_farm(
+    p_operation_id UUID,p_reservation_operation_id UUID,p_reservation_receipt_id UUID,p_farm JSONB)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE
+    actor UUID:=auth.uid(); claims JSONB:=auth.jwt(); field TEXT; farm UUID; workspace UUID; cover UUID;
+    token_issuer TEXT; payload_hash TEXT; saved magina_g2_private.sync_operations%ROWTYPE;
+    reservation magina_g1c_private.g1c_reservations%ROWTYPE; replay BOOLEAN:=false;
+BEGIN
+    IF actor IS NULL OR claims IS NULL OR claims->>'role' IS DISTINCT FROM 'authenticated'
+       OR claims->>'sub' IS DISTINCT FROM actor::text OR coalesce(claims->>'is_anonymous','false')<>'false'
+       OR jsonb_typeof(claims->'exp') IS DISTINCT FROM 'number' OR (claims->>'exp') !~ '^[0-9]+$' THEN
+        RAISE EXCEPTION 'farm denied' USING ERRCODE='42501';
+    END IF;
+    IF (claims->>'exp')::numeric<=extract(epoch FROM now()) THEN
+        RAISE EXCEPTION 'farm denied' USING ERRCODE='42501';
+    END IF;
+    token_issuer:=claims->>'iss';
+    IF token_issuer IS NULL OR token_issuer !~ '^https://[^/?#]+/auth/v1$' THEN
+        RAISE EXCEPTION 'farm denied' USING ERRCODE='42501';
+    END IF;
+    token_issuer:=regexp_replace(token_issuer,'/auth/v1$','');
+    IF p_operation_id IS NULL OR p_reservation_operation_id IS NULL OR p_reservation_receipt_id IS NULL
+       OR p_farm IS NULL OR jsonb_typeof(p_farm)<>'object'
+       OR (SELECT count(*) FROM jsonb_object_keys(p_farm))<>9
+       OR NOT p_farm ?& ARRAY['id','workspaceId','name','description','municipality','province','notes','status','coverDocumentId'] THEN
+        RAISE EXCEPTION 'farm invalid' USING ERRCODE='22023';
+    END IF;
+    FOREACH field IN ARRAY ARRAY['id','workspaceId','name','status'] LOOP
+        IF jsonb_typeof(p_farm->field) IS DISTINCT FROM 'string' THEN
+            RAISE EXCEPTION 'farm invalid' USING ERRCODE='22023';
+        END IF;
+    END LOOP;
+    FOREACH field IN ARRAY ARRAY['description','municipality','province','notes','coverDocumentId'] LOOP
+        IF jsonb_typeof(p_farm->field) NOT IN ('string','null') THEN
+            RAISE EXCEPTION 'farm invalid' USING ERRCODE='22023';
+        END IF;
+    END LOOP;
+    BEGIN
+        farm:=(p_farm->>'id')::uuid; workspace:=(p_farm->>'workspaceId')::uuid;
+        cover:=(p_farm->>'coverDocumentId')::uuid;
+    EXCEPTION WHEN invalid_text_representation THEN
+        RAISE EXCEPTION 'farm invalid' USING ERRCODE='22023';
+    END;
+    IF length(p_farm->>'name') NOT BETWEEN 1 AND 200 OR btrim(p_farm->>'name')=''
+       OR p_farm->>'status' NOT IN ('ACTIVE','ARCHIVED')
+       OR length(p_farm->>'description')>10000 OR length(p_farm->>'notes')>10000
+       OR length(p_farm->>'municipality')>200 OR length(p_farm->>'province')>200 THEN
+        RAISE EXCEPTION 'farm invalid' USING ERRCODE='22023';
+    END IF;
+    payload_hash:=encode(sha256(convert_to(jsonb_build_object('farm',p_farm,
+        'reservationOperationId',p_reservation_operation_id,'reservationReceiptId',p_reservation_receipt_id)::text,'UTF8')),'hex');
+    PERFORM pg_advisory_xact_lock(hashtextextended(actor::text||p_operation_id::text,0));
+    -- Workspace then farm lock order matches G1c and the INSERT guard.
+    PERFORM 1 FROM public.workspaces WHERE id=workspace AND owner_user_id=actor AND deleted_at IS NULL FOR SHARE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'farm denied' USING ERRCODE='42501'; END IF;
+    PERFORM pg_advisory_xact_lock(hashtextextended(farm::text,0));
+    SELECT * INTO reservation FROM magina_g1c_private.g1c_reservations
+        WHERE actor_id=actor AND operation_id=p_reservation_operation_id
+        AND receipt_id=p_reservation_receipt_id AND farm_id=farm
+        AND remote_workspace_id=workspace AND issuer=token_issuer;
+    IF NOT FOUND THEN RAISE EXCEPTION 'farm denied' USING ERRCODE='42501'; END IF;
+    SELECT * INTO saved FROM magina_g2_private.sync_operations WHERE account_id=actor AND operation_id=p_operation_id;
+    IF FOUND THEN
+        IF saved.entity_type<>'FARM' OR saved.entity_id<>farm OR saved.payload_hash<>payload_hash THEN
+            RAISE EXCEPTION 'farm conflict' USING ERRCODE='23505';
+        END IF;
+        PERFORM 1 FROM public.farms WHERE id=farm AND workspace_id=workspace AND creator_user_id=actor
+            AND owner_id=actor AND deleted_at IS NULL FOR SHARE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'farm denied' USING ERRCODE='42501'; END IF;
+        replay:=true;
+    ELSE
+        INSERT INTO public.farms(id,workspace_id,creator_user_id,owner_id,name,description,municipality,province,notes,status,cover_document_id)
+        VALUES(farm,workspace,actor,actor,p_farm->>'name',p_farm->>'description',p_farm->>'municipality',
+            p_farm->>'province',p_farm->>'notes',p_farm->>'status',cover)
+        ON CONFLICT(id) DO NOTHING;
+        IF NOT FOUND THEN RAISE EXCEPTION 'farm conflict' USING ERRCODE='23505'; END IF;
+        INSERT INTO magina_g2_private.sync_operations(account_id,operation_id,entity_type,entity_id,payload_hash,result_version)
+        VALUES(actor,p_operation_id,'FARM',farm,payload_hash,1) RETURNING * INTO saved;
+    END IF;
+    RETURN jsonb_build_object('success',true,'operation_id',p_operation_id,'entity_id',farm,
+        'status',saved.status,'remote_version',saved.result_version,'payload_version',saved.payload_version,'idempotent',replay);
+END $$;
+REVOKE ALL ON FUNCTION magina_g2_private.create_reserved_farm(UUID,UUID,UUID,JSONB) FROM PUBLIC,anon,authenticated;
+CREATE FUNCTION public.create_reserved_farm(
+    p_operation_id UUID,p_reservation_operation_id UUID,p_reservation_receipt_id UUID,p_farm JSONB)
+RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path='' AS $$
+    SELECT magina_g2_private.create_reserved_farm(p_operation_id,p_reservation_operation_id,p_reservation_receipt_id,p_farm);
+$$;
+REVOKE ALL ON FUNCTION public.create_reserved_farm(UUID,UUID,UUID,JSONB) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.create_reserved_farm(UUID,UUID,UUID,JSONB) TO authenticated;

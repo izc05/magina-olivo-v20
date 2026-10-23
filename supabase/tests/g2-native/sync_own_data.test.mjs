@@ -787,7 +787,7 @@ function reservationGatewayToken(actor) {
   return body + '.' + createHmac('sha256', status.JWT_SECRET).update(body).digest('base64url');
 }
 
-async function clientBootstrapFixture() {
+async function clientBootstrapFixture(pendingFarmOnly=false) {
   const actor = actors.A, token = reservationGatewayToken(actor);
   const workspace = randomUUID(), farm = randomUUID(), campaign = randomUUID(), parcel = randomUUID();
   const create = async (table, body) => {
@@ -815,8 +815,15 @@ async function clientBootstrapFixture() {
   assert.equal(reservation.data.actorId, actor.id);
   assert.equal(reservation.data.farmId, farm);
   assert.equal(reservation.data.remoteWorkspaceId, workspace);
-  await create('farms', {id:farm, workspace_id:workspace, creator_user_id:actor.id,
-    owner_id:actor.id, name:'Client-created farm'});
+  const farmBody={p_operation_id:randomUUID(),p_reservation_operation_id:request.operationId,
+    p_reservation_receipt_id:reservation.data.receiptId,p_farm:{id:farm,workspaceId:workspace,
+      name:'Client-created farm',description:'Synthetic grove',municipality:'Synthetic municipality',
+      province:null,notes:'Preserved farm notes',status:'ACTIVE',coverDocumentId:randomUUID()}};
+  if(pendingFarmOnly) return {workspace,farm,token,request,reservation,farmBody,workspaceOperationId:workspaceBody.p_operation_id};
+  const firstFarm=await http('/rest/v1/rpc/create_reserved_farm',{token,body:farmBody});
+  assert.equal(firstFarm.status,200,JSON.stringify(firstFarm.data));
+  const farmReplay=await http('/rest/v1/rpc/create_reserved_farm',{token,body:farmBody});
+  assert.equal(farmReplay.status,200);assert.equal(farmReplay.data.idempotent,true);
   // A lost reservation ACK can be recovered even after the farm was materialized.
   assert.deepEqual((await reserve()).data, reservation.data);
   await create('campaigns', {id:campaign, workspace_id:workspace, farm_id:farm,
@@ -964,6 +971,64 @@ test('workspace bootstrap never adopts own legacy IDs and rejects anonymous or m
   assert.ok([401,403].includes(unauthenticated.status));
   assert.equal(sql(`SELECT count(*) FROM public.workspaces WHERE id=${quote(id)}::uuid;`),'0');
   assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_id=${quote(id)}::uuid;`),'0');
+});
+
+test('reserved farm bootstrap atomically stores all fields and recovers the historical receipt under concurrency',async()=>{
+  const f=await clientBootstrapFixture(true);
+  const create=(body=f.farmBody,token=f.token)=>http('/rest/v1/rpc/create_reserved_farm',{token,body});
+  const replies=await Promise.all([create(),create(),create()]);
+  replies.forEach(result=>assert.equal(result.status,200,JSON.stringify(result.data)));
+  assert.equal(replies.filter(result=>result.data.idempotent===false).length,1);
+  const row=await http(`/rest/v1/farms?id=eq.${f.farm}`,{token:f.token,method:'GET'});
+  assert.equal(row.status,200);assert.equal(row.data.length,1);
+  const stored=row.data[0],payload=f.farmBody.p_farm;
+  assert.equal(stored.workspace_id,f.workspace);assert.equal(stored.creator_user_id,actors.A.id);
+  assert.equal(stored.owner_id,actors.A.id);assert.equal(stored.name,payload.name);
+  assert.equal(stored.description,payload.description);assert.equal(stored.municipality,payload.municipality);
+  assert.equal(stored.province,null);assert.equal(stored.notes,payload.notes);
+  assert.equal(stored.status,payload.status);assert.equal(stored.cover_document_id,payload.coverDocumentId);
+  assert.equal(stored.cover_image_uri,null);
+  const edited=await http(`/rest/v1/farms?id=eq.${f.farm}`,{token:f.token,method:'PATCH',body:{name:'Later farm name',version:2}});
+  assert.equal(edited.status,204);
+  const replay=await create();assert.equal(replay.status,200);assert.equal(replay.data.remote_version,1);
+  assert.equal(sql(`SELECT name FROM public.farms WHERE id=${quote(f.farm)}::uuid;`),'Later farm name');
+  const recovered=await http('/rest/v1/rpc/check_sync_operations',{
+    token:f.token,body:{p_operation_ids:[f.farmBody.p_operation_id]}
+  });
+  assert.equal(recovered.status,200);assert.equal(recovered.data.confirmed_receipts.length,1);
+  assert.equal(recovered.data.confirmed_receipts[0].entity_type,'FARM');
+  assert.equal(recovered.data.confirmed_receipts[0].remote_version,1);
+  assert.equal((await create({...f.farmBody,p_farm:{...payload,notes:'Changed operation'}})).status,409);
+  assert.equal((await create({...f.farmBody,p_operation_id:randomUUID()})).status,409);
+  assert.equal((await create(f.farmBody,reservationGatewayToken(actors.B))).status,403);
+  const foreignRead=await http(`/rest/v1/farms?id=eq.${f.farm}`,{token:actors.B.token,method:'GET'});
+  assert.deepEqual(foreignRead.data,[]);
+  assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_type='FARM' AND entity_id=${quote(f.farm)}::uuid;`),'1');
+  sql(`UPDATE public.farms SET deleted_at=now() WHERE id=${quote(f.farm)}::uuid;`);
+  assert.equal((await create()).status,403);
+});
+
+test('reserved farm bootstrap denies mismatched reservations and different operations cannot adopt the same ID',async()=>{
+  const f=await clientBootstrapFixture(true);
+  const create=(body,token=f.token)=>http('/rest/v1/rpc/create_reserved_farm',{token,body});
+  for(const body of [{...f.farmBody,p_reservation_operation_id:randomUUID()},
+    {...f.farmBody,p_reservation_receipt_id:randomUUID()},
+    {...f.farmBody,p_farm:{...f.farmBody.p_farm,id:randomUUID()}},
+    {...f.farmBody,p_farm:{...f.farmBody.p_farm,workspaceId:actors.B.workspace}}])
+    assert.equal((await create(body)).status,403);
+  // The native HTTP issuer cannot stand in for the HTTPS issuer stored in this reservation fixture.
+  assert.equal((await create(f.farmBody,actors.A.token)).status,403);
+  for(const p_farm of [{...f.farmBody.p_farm,ownerUserId:actors.A.id},
+    {...f.farmBody.p_farm,notes:123},{...f.farmBody.p_farm,coverDocumentId:'not-a-uuid'},
+    {...f.farmBody.p_farm,status:'DELETED'}])
+    assert.equal((await create({...f.farmBody,p_farm})).status,400);
+  assert.equal((await create({...f.farmBody,p_operation_id:f.workspaceOperationId})).status,409);
+  assert.equal(sql(`SELECT count(*) FROM public.farms WHERE id=${quote(f.farm)}::uuid;`),'0');
+  assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_type='FARM' AND entity_id=${quote(f.farm)}::uuid;`),'0');
+  const results=await Promise.all([create(f.farmBody),create({...f.farmBody,p_operation_id:randomUUID()})]);
+  assert.deepEqual(results.map(x=>x.status).sort(),[200,409]);
+  assert.equal(sql(`SELECT count(*) FROM public.farms WHERE id=${quote(f.farm)}::uuid;`),'1');
+  assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_type='FARM' AND entity_id=${quote(f.farm)}::uuid;`),'1');
 });
 
 test('v2 persists and restores historical parcel shares with idempotent versioned receipts',async()=>{
