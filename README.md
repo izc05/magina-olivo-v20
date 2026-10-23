@@ -30,14 +30,14 @@ La aplicación será Android nativa, privada y offline-first, especializada en l
 
 ## Lectura obligatoria para agentes
 
-1. [`docs/00-master/RC1-BASELINE.md`](docs/00-master/RC1-BASELINE.md)
-2. [`docs/00-master/RC1.2-PRODUCT-LOCK.md`](docs/00-master/RC1.2-PRODUCT-LOCK.md)
-3. [`docs/00-master/SINGLE-TRACK-EXECUTION.md`](docs/00-master/SINGLE-TRACK-EXECUTION.md)
-4. [`docs/00-master/RC1.2-CHANGE-REQUEST.md`](docs/00-master/RC1.2-CHANGE-REQUEST.md)
-5. [`docs/00-master/RC1-NORMATIVE-ADDENDUM.md`](docs/00-master/RC1-NORMATIVE-ADDENDUM.md)
-6. [`docs/00-master/MASTER-SPEC-RC1.md`](docs/00-master/MASTER-SPEC-RC1.md)
-7. [`docs/00-master/RC1-GATE-REVIEW.md`](docs/00-master/RC1-GATE-REVIEW.md)
-8. [`docs/00-master/CURRENT-STATE.md`](docs/00-master/CURRENT-STATE.md)
+1. [`docs/00-master/CURRENT-STATE.md`](docs/00-master/CURRENT-STATE.md) — leer **primero la cola vigente de 1.0**; las fases antiguas del mismo archivo son historial.
+2. [`docs/00-master/RC1-BASELINE.md`](docs/00-master/RC1-BASELINE.md)
+3. [`docs/00-master/RC1.2-PRODUCT-LOCK.md`](docs/00-master/RC1.2-PRODUCT-LOCK.md)
+4. [`docs/00-master/SINGLE-TRACK-EXECUTION.md`](docs/00-master/SINGLE-TRACK-EXECUTION.md)
+5. [`docs/00-master/RC1.2-CHANGE-REQUEST.md`](docs/00-master/RC1.2-CHANGE-REQUEST.md)
+6. [`docs/00-master/RC1-NORMATIVE-ADDENDUM.md`](docs/00-master/RC1-NORMATIVE-ADDENDUM.md)
+7. [`docs/00-master/MASTER-SPEC-RC1.md`](docs/00-master/MASTER-SPEC-RC1.md)
+8. [`docs/00-master/RC1-GATE-REVIEW.md`](docs/00-master/RC1-GATE-REVIEW.md)
 9. [`docs/07-plans/ROADMAP-RC1.2.md`](docs/07-plans/ROADMAP-RC1.2.md)
 
 ## Documentación fuente de verdad
