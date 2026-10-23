@@ -15,13 +15,14 @@ class DeliveryPayloadHashTest {
         val fixture = checkNotNull(javaClass.getResourceAsStream("/g2-delivery-payload-hash-vectors.json"))
             .bufferedReader(Charsets.UTF_8).use { it.readText() }
         val vectors = Json.parseToJsonElement(fixture).jsonArray
-        assertEquals(6, vectors.size)
+        assertEquals(9, vectors.size)
         for (entry in vectors) {
             val row = entry.jsonObject
             val name = row.getValue("name").jsonPrimitive.content
             val expected = row.getValue("sha256").jsonPrimitive.content
             assertEquals(name, expected, sha(row.getValue("postgresText").jsonPrimitive.content))
-            assertEquals(name, expected, deliveryPayloadHash(row.getValue("payload").jsonPrimitive.content))
+            assertEquals(name, expected, deliveryPayloadHash(row.getValue("payload").jsonPrimitive.content,
+                row.getValue("payloadVersion").jsonPrimitive.content.toInt()))
         }
     }
 
@@ -47,6 +48,19 @@ class DeliveryPayloadHashTest {
         val raw = """{"notes":"Línea\n\t\b\f\r\u0001\"\\/🌿"}"""
         val expected = """{"notes": "Línea\n\t\b\f\r\u0001\"\\/🌿"}"""
         assertEquals(sha(expected), deliveryPayloadHash(raw))
+    }
+
+    @Test fun rejectsUnsupportedV2ShapesAndCrossVersionPayloads() {
+        val fixture = checkNotNull(javaClass.getResourceAsStream("/g2-delivery-payload-hash-vectors.json"))
+            .bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val vector = Json.parseToJsonElement(fixture).jsonArray[6].jsonObject
+        val payload = vector.getValue("payload").jsonPrimitive.content
+        assertNull(deliveryPayloadHash(payload, 1))
+        assertNull(deliveryPayloadHash(payload, 3))
+        assertNull(deliveryPayloadHash("""{"parcels":[]}""", 2))
+        assertNull(deliveryPayloadHash("""{"parcels":[{}]}""", 2))
+        assertNull(deliveryPayloadHash("""{"parcels":null}""", 2))
+        assertNull(deliveryPayloadHash("""{"notes":"x"}""", 2))
     }
 
     @Test fun rejectsAnythingOutsideWriterContract() {

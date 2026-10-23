@@ -3,36 +3,63 @@
     "name": "order-unicode",
     "payload": "{\"netGrams\":2500000,\"notes\":\"Mágina\",\"id\":\"x\"}",
     "postgresText": "{\"id\": \"x\", \"notes\": \"Mágina\", \"netGrams\": 2500000}",
-    "sha256": "0bfbfddbfc532eca8c68abd37a0d9b5e01dfd8df30b68ea4429b7f198225302b"
+    "sha256": "0bfbfddbfc532eca8c68abd37a0d9b5e01dfd8df30b68ea4429b7f198225302b",
+    "payloadVersion": 1
   },
   {
     "name": "escaped-unicode",
     "payload": "{ \"id\":\"x\", \"notes\":\"M\\u00e1gina\", \"netGrams\":2500000 }",
     "postgresText": "{\"id\": \"x\", \"notes\": \"Mágina\", \"netGrams\": 2500000}",
-    "sha256": "0bfbfddbfc532eca8c68abd37a0d9b5e01dfd8df30b68ea4429b7f198225302b"
+    "sha256": "0bfbfddbfc532eca8c68abd37a0d9b5e01dfd8df30b68ea4429b7f198225302b",
+    "payloadVersion": 1
   },
   {
     "name": "long-max",
     "payload": "{\"tareGrams\":0,\"grossGrams\":9223372036854775807,\"netGrams\":9223372036854775807,\"source\":\"MANUAL\"}",
     "postgresText": "{\"source\": \"MANUAL\", \"netGrams\": 9223372036854775807, \"tareGrams\": 0, \"grossGrams\": 9223372036854775807}",
-    "sha256": "cedefa8318782b549a3a53e8c6621dca6bae59ba2421304d885e6bb30f5da0a7"
+    "sha256": "cedefa8318782b549a3a53e8c6621dca6bae59ba2421304d885e6bb30f5da0a7",
+    "payloadVersion": 1
   },
   {
     "name": "controls",
     "payload": "{\"notes\":\"Línea\\n\\t\\b\\f\\r\\u0001\\\"\\\\/🌿\"}",
     "postgresText": "{\"notes\": \"Línea\\n\\t\\b\\f\\r\\u0001\\\"\\\\/🌿\"}",
-    "sha256": "a47aba359cf09bbcb79e66e059f43b345e62e862e1eb6b892799d6de9d22cdc0"
+    "sha256": "a47aba359cf09bbcb79e66e059f43b345e62e862e1eb6b892799d6de9d22cdc0",
+    "payloadVersion": 1
   },
   {
     "name": "equal-length-keys",
     "payload": "{\"source\":\"MANUAL\",\"farmId\":\"f\",\"id\":\"x\"}",
     "postgresText": "{\"id\": \"x\", \"farmId\": \"f\", \"source\": \"MANUAL\"}",
-    "sha256": "28d09a2ae85b4282df94fd5ee3a2c2fde0ea8253bb855732a11a5f68234963cd"
+    "sha256": "28d09a2ae85b4282df94fd5ee3a2c2fde0ea8253bb855732a11a5f68234963cd",
+    "payloadVersion": 1
   },
   {
     "name": "negative-zero",
     "payload": "{\"netGrams\":-0}",
     "postgresText": "{\"netGrams\": 0}",
-    "sha256": "20ee621b79f3ee50d6e38fdf202c48555c02e0c93eec9fcf191af2c86db1ab0e"
+    "sha256": "20ee621b79f3ee50d6e38fdf202c48555c02e0c93eec9fcf191af2c86db1ab0e",
+    "payloadVersion": 1
+  },
+  {
+    "name": "v2-mixed-shares",
+    "payloadVersion": 2,
+    "payload": "{\"netGrams\":3000000,\"notes\":\"Mágina 🌿\\nReparto\",\"id\":\"00000000-0000-0000-0000-000000000002\",\"farmId\":\"00000000-0000-0000-0000-000000000003\",\"campaignId\":\"00000000-0000-0000-0000-000000000004\",\"deliveryDate\":\"2026-11-25\",\"destinationName\":\"Cooperativa\",\"destinationOrganizationId\":\"00000000-0000-0000-0000-000000000010\",\"source\":\"MANUAL\",\"parcels\":[{\"id\":\"00000000-0000-0000-0000-000000000005\",\"parcelId\":\"00000000-0000-0000-0000-000000000007\",\"campaignParcelId\":\"00000000-0000-0000-0000-000000000009\",\"parcelNameAtDelivery\":\"Parcela histórica A\",\"weightGrams\":1000000,\"allocationMode\":\"EXACT\"},{\"id\":\"00000000-0000-0000-0000-000000000006\",\"parcelId\":\"00000000-0000-0000-0000-000000000008\",\"campaignParcelId\":null,\"parcelNameAtDelivery\":\"Parcela B\",\"weightGrams\":null,\"allocationMode\":\"UNALLOCATED\"}]}",
+    "postgresText": "{\"id\": \"00000000-0000-0000-0000-000000000002\", \"notes\": \"Mágina 🌿\\nReparto\", \"farmId\": \"00000000-0000-0000-0000-000000000003\", \"source\": \"MANUAL\", \"parcels\": [{\"id\": \"00000000-0000-0000-0000-000000000005\", \"parcelId\": \"00000000-0000-0000-0000-000000000007\", \"weightGrams\": 1000000, \"allocationMode\": \"EXACT\", \"campaignParcelId\": \"00000000-0000-0000-0000-000000000009\", \"parcelNameAtDelivery\": \"Parcela histórica A\"}, {\"id\": \"00000000-0000-0000-0000-000000000006\", \"parcelId\": \"00000000-0000-0000-0000-000000000008\", \"weightGrams\": null, \"allocationMode\": \"UNALLOCATED\", \"campaignParcelId\": null, \"parcelNameAtDelivery\": \"Parcela B\"}], \"netGrams\": 3000000, \"campaignId\": \"00000000-0000-0000-0000-000000000004\", \"deliveryDate\": \"2026-11-25\", \"destinationName\": \"Cooperativa\", \"destinationOrganizationId\": \"00000000-0000-0000-0000-000000000010\"}",
+    "sha256": "b95639ddaa59bd6d917c25f936f95f92447e60ebfed6f4c3fcc850970cb67e9b"
+  },
+  {
+    "name": "v2-exact-shares",
+    "payloadVersion": 2,
+    "payload": "{\"netGrams\":3000000,\"notes\":\"Mágina 🌿\\nReparto\",\"id\":\"00000000-0000-0000-0000-000000000002\",\"farmId\":\"00000000-0000-0000-0000-000000000003\",\"campaignId\":\"00000000-0000-0000-0000-000000000004\",\"deliveryDate\":\"2026-11-25\",\"destinationName\":\"Cooperativa\",\"destinationOrganizationId\":\"00000000-0000-0000-0000-000000000010\",\"source\":\"MANUAL\",\"parcels\":[{\"id\":\"00000000-0000-0000-0000-000000000005\",\"parcelId\":\"00000000-0000-0000-0000-000000000007\",\"campaignParcelId\":\"00000000-0000-0000-0000-000000000009\",\"parcelNameAtDelivery\":\"Parcela histórica A\",\"weightGrams\":1500000,\"allocationMode\":\"EXACT\"},{\"id\":\"00000000-0000-0000-0000-000000000006\",\"parcelId\":\"00000000-0000-0000-0000-000000000008\",\"campaignParcelId\":null,\"parcelNameAtDelivery\":\"Parcela B\",\"weightGrams\":1500000,\"allocationMode\":\"EXACT\"}]}",
+    "postgresText": "{\"id\": \"00000000-0000-0000-0000-000000000002\", \"notes\": \"Mágina 🌿\\nReparto\", \"farmId\": \"00000000-0000-0000-0000-000000000003\", \"source\": \"MANUAL\", \"parcels\": [{\"id\": \"00000000-0000-0000-0000-000000000005\", \"parcelId\": \"00000000-0000-0000-0000-000000000007\", \"weightGrams\": 1500000, \"allocationMode\": \"EXACT\", \"campaignParcelId\": \"00000000-0000-0000-0000-000000000009\", \"parcelNameAtDelivery\": \"Parcela histórica A\"}, {\"id\": \"00000000-0000-0000-0000-000000000006\", \"parcelId\": \"00000000-0000-0000-0000-000000000008\", \"weightGrams\": 1500000, \"allocationMode\": \"EXACT\", \"campaignParcelId\": null, \"parcelNameAtDelivery\": \"Parcela B\"}], \"netGrams\": 3000000, \"campaignId\": \"00000000-0000-0000-0000-000000000004\", \"deliveryDate\": \"2026-11-25\", \"destinationName\": \"Cooperativa\", \"destinationOrganizationId\": \"00000000-0000-0000-0000-000000000010\"}",
+    "sha256": "164479708b23362d1c3abeb7538332e4c55c15a770ccf83d18f6ce5da418a8e3"
+  },
+  {
+    "name": "v2-reordered-keys",
+    "payloadVersion": 2,
+    "payload": "{\n \"parcels\": [\n  {\n   \"allocationMode\": \"EXACT\",\n   \"weightGrams\": 1000000,\n   \"parcelNameAtDelivery\": \"Parcela hist\\u00f3rica A\",\n   \"campaignParcelId\": \"00000000-0000-0000-0000-000000000009\",\n   \"parcelId\": \"00000000-0000-0000-0000-000000000007\",\n   \"id\": \"00000000-0000-0000-0000-000000000005\"\n  },\n  {\n   \"allocationMode\": \"UNALLOCATED\",\n   \"weightGrams\": null,\n   \"parcelNameAtDelivery\": \"Parcela B\",\n   \"campaignParcelId\": null,\n   \"parcelId\": \"00000000-0000-0000-0000-000000000008\",\n   \"id\": \"00000000-0000-0000-0000-000000000006\"\n  }\n ],\n \"source\": \"MANUAL\",\n \"destinationOrganizationId\": \"00000000-0000-0000-0000-000000000010\",\n \"destinationName\": \"Cooperativa\",\n \"deliveryDate\": \"2026-11-25\",\n \"campaignId\": \"00000000-0000-0000-0000-000000000004\",\n \"farmId\": \"00000000-0000-0000-0000-000000000003\",\n \"id\": \"00000000-0000-0000-0000-000000000002\",\n \"notes\": \"M\\u00e1gina \\ud83c\\udf3f\\nReparto\",\n \"netGrams\": 3000000\n}",
+    "postgresText": "{\"id\": \"00000000-0000-0000-0000-000000000002\", \"notes\": \"Mágina 🌿\\nReparto\", \"farmId\": \"00000000-0000-0000-0000-000000000003\", \"source\": \"MANUAL\", \"parcels\": [{\"id\": \"00000000-0000-0000-0000-000000000005\", \"parcelId\": \"00000000-0000-0000-0000-000000000007\", \"weightGrams\": 1000000, \"allocationMode\": \"EXACT\", \"campaignParcelId\": \"00000000-0000-0000-0000-000000000009\", \"parcelNameAtDelivery\": \"Parcela histórica A\"}, {\"id\": \"00000000-0000-0000-0000-000000000006\", \"parcelId\": \"00000000-0000-0000-0000-000000000008\", \"weightGrams\": null, \"allocationMode\": \"UNALLOCATED\", \"campaignParcelId\": null, \"parcelNameAtDelivery\": \"Parcela B\"}], \"netGrams\": 3000000, \"campaignId\": \"00000000-0000-0000-0000-000000000004\", \"deliveryDate\": \"2026-11-25\", \"destinationName\": \"Cooperativa\", \"destinationOrganizationId\": \"00000000-0000-0000-0000-000000000010\"}",
+    "sha256": "b95639ddaa59bd6d917c25f936f95f92447e60ebfed6f4c3fcc850970cb67e9b"
   }
 ]

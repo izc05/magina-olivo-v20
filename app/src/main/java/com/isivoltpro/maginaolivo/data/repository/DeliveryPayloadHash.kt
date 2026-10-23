@@ -2,39 +2,58 @@ package com.isivoltpro.maginaolivo.data.repository
 
 import java.security.MessageDigest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-/** PostgreSQL JSONB text hashing for the flat string/Long snapshot emitted by DeliveryWriter.
- * Unsupported input fails closed. This does not validate a session or authorize dispatch.
- */
-internal fun deliveryPayloadHash(payload: String): String? = try {
-    if (payload.length > 65_536) null else {
-        val value = Json.parseToJsonElement(payload) as? JsonObject
-        val textFields = setOf("id", "farmId", "campaignId", "deliveryDate", "destinationName",
-            "deliveryNumber", "ticketNumber", "source", "notes", "harvestId", "deliveryTime", "harvestOrigin")
-        val integerFields = setOf("netGrams", "grossGrams", "tareGrams", "baseVersion")
-        if (value == null || value.isEmpty() || value.keys.any { it !in textFields && it !in integerFields }) null
-        else {
-            // All supported keys are ASCII: JSONB orders by UTF-8 byte length, then bytes.
-            val fields = value.entries.sortedWith(compareBy({ it.key.length }, { it.key }))
-            val rendered = fields.map { (key, element) ->
-                val primitive = element as? JsonPrimitive ?: error("Non-scalar payload")
-                val scalar = if (key in textFields) {
-                    check(primitive.isString)
-                    pgQuoted(primitive.content)
-                } else {
-                    check(!primitive.isString && Regex("-?(0|[1-9][0-9]*)").matches(primitive.content))
-                    primitive.content.toLong().toString()
+/** Restricted JSONB byte contract for DeliveryWriter snapshots, not upload authorization. */
+internal fun deliveryPayloadHash(payload: String, payloadVersion: Int = 1): String? = try {
+    check(payloadVersion in 1..2 && payload.length <= 65_536)
+    val value = Json.parseToJsonElement(payload) as? JsonObject ?: error("Object required")
+    val text = setOf("id", "farmId", "campaignId", "deliveryDate", "destinationName",
+        "deliveryNumber", "ticketNumber", "source", "notes", "harvestId", "deliveryTime", "harvestOrigin") +
+        if (payloadVersion == 2) setOf("destinationOrganizationId") else emptySet()
+    val integers = setOf("netGrams", "grossGrams", "tareGrams", "baseVersion")
+    val allowed = text + integers + if (payloadVersion == 2) setOf("parcels") else emptySet()
+    check(value.isNotEmpty() && value.keys.all { it in allowed })
+    if (payloadVersion == 2) check("parcels" in value)
+    val rendered = pgObject(value) { key, element ->
+        if (key == "parcels") {
+            val parcels = element as? JsonArray ?: error("Array required")
+            check(parcels.size in 1..1000)
+            parcels.joinToString(", ", "[", "]") { child ->
+                val share = child as? JsonObject ?: error("Parcel object required")
+                val strings = setOf("id", "parcelId", "campaignParcelId", "parcelNameAtDelivery", "allocationMode")
+                check(share.keys == strings + "weightGrams")
+                pgObject(share) { name, scalar ->
+                    pgScalar(scalar, name in strings, name in setOf("campaignParcelId", "weightGrams"))
                 }
-                pgQuoted(key) + ": " + scalar
-            }.joinToString(", ", "{", "}")
-            MessageDigest.getInstance("SHA-256").digest(rendered.toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it.toInt() and 255) }
-        }
+            }
+        } else pgScalar(element, key in text, false)
     }
+    MessageDigest.getInstance("SHA-256").digest(rendered.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it.toInt() and 255) }
 } catch (_: IllegalArgumentException) { null
 } catch (_: IllegalStateException) { null }
+
+private fun pgObject(value: JsonObject, render: (String, kotlinx.serialization.json.JsonElement) -> String): String =
+    // Supported keys are ASCII: byte length then byte order equals length then lexical order.
+    value.entries.sortedWith(compareBy({ it.key.length }, { it.key })).joinToString(", ", "{", "}") {
+        pgQuoted(it.key) + ": " + render(it.key, it.value)
+    }
+
+private fun pgScalar(value: kotlinx.serialization.json.JsonElement, text: Boolean, nullable: Boolean): String {
+    if (nullable && value == JsonNull) return "null"
+    val primitive = value as? JsonPrimitive ?: error("Scalar required")
+    return if (text) {
+        check(primitive.isString)
+        pgQuoted(primitive.content)
+    } else {
+        check(!primitive.isString && Regex("-?(0|[1-9][0-9]*)").matches(primitive.content))
+        primitive.content.toLong().toString()
+    }
+}
 
 private fun pgQuoted(value: String): String = buildString {
     append('"')

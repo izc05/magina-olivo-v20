@@ -4,6 +4,9 @@ import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.time.Instant
 import java.util.UUID
 import org.junit.Assert.assertEquals
@@ -52,6 +55,22 @@ class DeliveryRecoveryReceiptTest {
         assertNull(verifiedRecoveredDeliveryReceipt(op.copy(payloadJson = payload.replace("2500000", "2500001")), ack))
         assertNull(verifiedRecoveredDeliveryReceipt(op, ack.copy(payloadHash = "0".repeat(64))))
         assertNull(verifiedRecoveredDeliveryReceipt(op.copy(payloadJson = """{"notes":null}"""), ack))
+    }
+
+    @Test fun v2ReceiptRequiresMatchingVersionAndSharedParcelHash() {
+        val fixture = checkNotNull(javaClass.getResourceAsStream("/g2-delivery-payload-hash-vectors.json"))
+            .bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val row = kotlinx.serialization.json.Json.parseToJsonElement(fixture).jsonArray[6].jsonObject
+        val payload = row.getValue("payload").jsonPrimitive.content
+        val op = operation().copy(payloadVersion = 2, payloadJson = payload)
+        val ack = receipt().copy(payloadVersion = 2, payloadHash = row.getValue("sha256").jsonPrimitive.content)
+        val verified = verifiedRecoveredDeliveryReceipt(op, ack)
+        assertNotNull(verified)
+        assertEquals(payload, verified!!.payloadJson)
+        assertNull(verifiedRecoveredDeliveryReceipt(op, ack.copy(payloadVersion = 1)))
+        assertNull(verifiedRecoveredDeliveryReceipt(op.copy(payloadVersion = 1), ack))
+        assertNull(verifiedRecoveredDeliveryReceipt(op.copy(payloadJson = payload.replace("1000000", "1000001")), ack))
+        assertNull(verifiedRecoveredDeliveryReceipt(op, ack.copy(payloadVersion = 3)))
     }
 
     @Test fun matchingReceiptPreservesExactSnapshot() {

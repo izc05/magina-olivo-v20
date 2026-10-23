@@ -34,12 +34,13 @@ internal data class RecoveredDeliveryReceipt(
     val accountId: String,
     val remoteVersion: Long,
     val payloadHash: String,
+    val payloadVersion: Int = 1,
 )
 
 internal fun verifiedRecoveredDeliveryReceipt(
     operation: com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity,
     recovered: RecoveredDeliveryReceipt,
-    hashMatches: (String, String) -> Boolean = { payload, expected -> deliveryPayloadHash(payload) == expected },
+    hashMatches: (String, String) -> Boolean = { payload, expected -> deliveryPayloadHash(payload, operation.payloadVersion) == expected },
 ): DeliverySyncReceipt? {
     // This is a pure binding guard, NOT an authenticated-server-ACK verifier.
     // Callers must establish a trusted server response. The default uses the restricted
@@ -47,7 +48,8 @@ internal fun verifiedRecoveredDeliveryReceipt(
     val payload = operation.payloadJson ?: return null
     val farm = operation.farmId ?: return null
     if (recovered.accountId.isBlank() || recovered.remoteVersion < 1L ||
-        payload.isBlank() || operation.payloadVersion != 1 ||
+        payload.isBlank() || operation.payloadVersion !in 1..2 ||
+        operation.payloadVersion != recovered.payloadVersion ||
         (operation.baseRemoteVersion != null && operation.baseRemoteVersion < 1L) ||
         (operation.operation == OutboxOperation.CREATE && operation.baseRemoteVersion != null) ||
         (operation.operation == OutboxOperation.UPDATE &&
