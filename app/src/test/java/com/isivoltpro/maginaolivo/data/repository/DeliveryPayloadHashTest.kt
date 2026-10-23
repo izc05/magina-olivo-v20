@@ -1,12 +1,30 @@
 package com.isivoltpro.maginaolivo.data.repository
 
 import java.security.MessageDigest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class DeliveryPayloadHashTest {
+    @Test fun matchesTheExactVectorsAlsoExecutedByNativePostgres() {
+        val fixture = checkNotNull(javaClass.getResourceAsStream("/g2-delivery-payload-hash-vectors.json"))
+            .bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val vectors = Json.parseToJsonElement(fixture).jsonArray
+        assertEquals(6, vectors.size)
+        for (entry in vectors) {
+            val row = entry.jsonObject
+            val name = row.getValue("name").jsonPrimitive.content
+            val expected = row.getValue("sha256").jsonPrimitive.content
+            assertEquals(name, expected, sha(row.getValue("postgresText").jsonPrimitive.content))
+            assertEquals(name, expected, deliveryPayloadHash(row.getValue("payload").jsonPrimitive.content))
+        }
+    }
+
     private fun sha(text: String) = MessageDigest.getInstance("SHA-256")
         .digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it.toInt() and 255) }
 

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "order-unicode",
+    "payload": "{\"netGrams\":2500000,\"notes\":\"Mágina\",\"id\":\"x\"}",
+    "postgresText": "{\"id\": \"x\", \"notes\": \"Mágina\", \"netGrams\": 2500000}",
+    "sha256": "0bfbfddbfc532eca8c68abd37a0d9b5e01dfd8df30b68ea4429b7f198225302b"
+  },
+  {
+    "name": "escaped-unicode",
+    "payload": "{ \"id\":\"x\", \"notes\":\"M\\u00e1gina\", \"netGrams\":2500000 }",
+    "postgresText": "{\"id\": \"x\", \"notes\": \"Mágina\", \"netGrams\": 2500000}",
+    "sha256": "0bfbfddbfc532eca8c68abd37a0d9b5e01dfd8df30b68ea4429b7f198225302b"
+  },
+  {
+    "name": "long-max",
+    "payload": "{\"tareGrams\":0,\"grossGrams\":9223372036854775807,\"netGrams\":9223372036854775807,\"source\":\"MANUAL\"}",
+    "postgresText": "{\"source\": \"MANUAL\", \"netGrams\": 9223372036854775807, \"tareGrams\": 0, \"grossGrams\": 9223372036854775807}",
+    "sha256": "cedefa8318782b549a3a53e8c6621dca6bae59ba2421304d885e6bb30f5da0a7"
+  },
+  {
+    "name": "controls",
+    "payload": "{\"notes\":\"Línea\\n\\t\\b\\f\\r\\u0001\\\"\\\\/🌿\"}",
+    "postgresText": "{\"notes\": \"Línea\\n\\t\\b\\f\\r\\u0001\\\"\\\\/🌿\"}",
+    "sha256": "a47aba359cf09bbcb79e66e059f43b345e62e862e1eb6b892799d6de9d22cdc0"
+  },
+  {
+    "name": "equal-length-keys",
+    "payload": "{\"source\":\"MANUAL\",\"farmId\":\"f\",\"id\":\"x\"}",
+    "postgresText": "{\"id\": \"x\", \"farmId\": \"f\", \"source\": \"MANUAL\"}",
+    "sha256": "28d09a2ae85b4282df94fd5ee3a2c2fde0ea8253bb855732a11a5f68234963cd"
+  },
+  {
+    "name": "negative-zero",
+    "payload": "{\"netGrams\":-0}",
+    "postgresText": "{\"netGrams\": 0}",
+    "sha256": "20ee621b79f3ee50d6e38fdf202c48555c02e0c93eec9fcf191af2c86db1ab0e"
+  }
+]
