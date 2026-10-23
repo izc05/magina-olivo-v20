@@ -27,7 +27,9 @@ internal suspend fun MaginaOlivoDatabase.enqueueCollapsed(
     payloadJson: String? = null,
     farmId: UUID? = null,
     baseRemoteVersion: Long? = null,
+    payloadVersion: Int = 1,
 ) {
+    require(payloadVersion >= 1)
     val dao = syncOutboxDao()
     val existing = dao.listForEntity(entityType, entityId)
     val pendingExisting = existing.firstOrNull { it.status == com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING }
@@ -50,6 +52,7 @@ internal suspend fun MaginaOlivoDatabase.enqueueCollapsed(
     val isIdenticalPending = pendingExisting != null &&
         pendingExisting.operation == operation &&
         pendingExisting.payloadJson == payloadJson &&
+        pendingExisting.payloadVersion == payloadVersion &&
         pendingExisting.accountId == accountId &&
         pendingExisting.baseRemoteVersion == baseRemoteVersion &&
         pendingExisting.farmId == farmId
@@ -64,7 +67,7 @@ internal suspend fun MaginaOlivoDatabase.enqueueCollapsed(
             entityType = entityType,
             entityId = entityId,
             operation = operation,
-            payloadVersion = 1,
+            payloadVersion = payloadVersion,
             baseRemoteVersion = baseRemoteVersion,
             createdAt = createdAt,
             updatedAt = now,

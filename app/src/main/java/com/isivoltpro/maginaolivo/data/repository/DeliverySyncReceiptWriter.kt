@@ -47,7 +47,7 @@ internal fun verifiedRecoveredDeliveryReceipt(
     val payload = operation.payloadJson ?: return null
     val farm = operation.farmId ?: return null
     if (recovered.accountId.isBlank() || recovered.remoteVersion < 1L ||
-        payload.isBlank() || operation.payloadVersion < 1 ||
+        payload.isBlank() || operation.payloadVersion != 1 ||
         (operation.baseRemoteVersion != null && operation.baseRemoteVersion < 1L) ||
         (operation.operation == OutboxOperation.CREATE && operation.baseRemoteVersion != null) ||
         (operation.operation == OutboxOperation.UPDATE &&
@@ -127,7 +127,7 @@ internal suspend fun MaginaOlivoDatabase.applyConfirmedDeliveryReceipt(
     val siblings = outbox.listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId)
         .any { it.id != op.id && it.status != OutboxStatus.CONFIRMED }
     val snapshotStillCurrent = current.metadata.deletedAt == null &&
-        buildDeliveryPayloadJson(current, op.baseRemoteVersion) == op.payloadJson
+        buildDeliveryPayloadJson(current, op.baseRemoteVersion, deliveryDao().listParcels(current.id)) == op.payloadJson
     val remoteNotSuperseded = (current.metadata.remoteVersion ?: 0L) <= receipt.remoteVersion
 
     if (outbox.markConfirmed(op.id, at.toEpochMilli()) != 1) {

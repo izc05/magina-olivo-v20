@@ -20,6 +20,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import org.json.JSONArray
 import org.json.JSONObject
 
 internal class InvalidDelivery(val field: String, val code: String) : RuntimeException("$field:$code")
@@ -67,7 +68,7 @@ internal class DeliveryWriter(
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
-        val payloadJson = buildDeliveryPayloadJson(row, baseRemoteVersion = null)
+        val payloadJson = buildDeliveryPayloadJson(row, baseRemoteVersion = null, shares = database.deliveryDao().listParcels(row.id))
         database.enqueueCollapsed(
             idGenerator = idGenerator,
             entityType = SyncEntityType.DELIVERY,
@@ -75,6 +76,7 @@ internal class DeliveryWriter(
             requested = OutboxOperation.CREATE,
             now = now,
             payloadJson = payloadJson,
+            payloadVersion = 2,
             farmId = row.farmId,
             baseRemoteVersion = null,
         )
@@ -118,7 +120,7 @@ internal class DeliveryWriter(
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
-        val payloadJson = buildDeliveryPayloadJson(row, baseRemoteVersion = current.metadata.remoteVersion)
+        val payloadJson = buildDeliveryPayloadJson(row, baseRemoteVersion = current.metadata.remoteVersion, shares = database.deliveryDao().listParcels(row.id))
         database.enqueueCollapsed(
             idGenerator = idGenerator,
             entityType = SyncEntityType.DELIVERY,
@@ -126,6 +128,7 @@ internal class DeliveryWriter(
             requested = OutboxOperation.UPDATE,
             now = now,
             payloadJson = payloadJson,
+            payloadVersion = 2,
             farmId = row.farmId,
             baseRemoteVersion = current.metadata.remoteVersion,
         )
@@ -229,12 +232,13 @@ internal class DeliveryWriter(
 }
 
 /** Exactly the same snapshot bytes are used for enqueue and ACK matching. */
-internal fun buildDeliveryPayloadJson(row: DeliveryEntity, baseRemoteVersion: Long?): String {
+internal fun buildDeliveryPayloadJson(row: DeliveryEntity, baseRemoteVersion: Long?, shares: List<DeliveryParcelEntity>): String {
     val json = JSONObject()
     json.put("id", row.id.toString())
     json.put("farmId", row.farmId.toString())
     json.put("campaignId", row.campaignId.toString())
     json.put("deliveryDate", row.deliveryDate.toString())
+    row.destinationOrganizationId?.let { json.put("destinationOrganizationId", it.toString()) }
     json.put("destinationName", row.destinationName)
     json.put("netGrams", row.netGrams)
     row.grossGrams?.let { json.put("grossGrams", it) }
@@ -246,6 +250,19 @@ internal fun buildDeliveryPayloadJson(row: DeliveryEntity, baseRemoteVersion: Lo
     row.harvestId?.let { json.put("harvestId", it.toString()) }
     row.deliveryTime?.let { json.put("deliveryTime", it) }
     row.origin?.let { json.put("harvestOrigin", it) }
+    val parcels = JSONArray()
+    shares.sortedBy { it.parcelId.toString() }.forEach { share ->
+        check(share.deliveryId == row.id && share.workspaceId == row.workspaceId)
+        parcels.put(JSONObject().apply {
+            put("id", share.id.toString())
+            put("parcelId", share.parcelId.toString())
+            put("campaignParcelId", share.campaignParcelId?.toString() ?: JSONObject.NULL)
+            put("parcelNameAtDelivery", share.parcelNameAtDelivery)
+            put("weightGrams", share.weightGrams ?: JSONObject.NULL)
+            put("allocationMode", share.allocationMode)
+        })
+    }
+    json.put("parcels", parcels)
     baseRemoteVersion?.let { json.put("baseVersion", it) }
     return json.toString()
 }

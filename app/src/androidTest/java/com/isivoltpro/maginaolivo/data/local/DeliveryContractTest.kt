@@ -429,6 +429,44 @@ class DeliveryContractTest {
         assertNull(deliveries.observe(id).first())
     }
 
+    @Test
+    fun parcelOnlyEditChangesImmutableSnapshotAndOperationId() = runBlocking {
+        val id = ok(deliveries.create(draft(3_000_000, north to 1_000_000L, south to 2_000_000L)))
+        val before = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertEquals(2, before.payloadVersion)
+        val snapshot = org.json.JSONObject(before.payloadJson!!)
+        val parcels = snapshot.getJSONArray("parcels")
+        assertEquals(2, parcels.length())
+        val ids = (0 until parcels.length()).map { parcels.getJSONObject(it).getString("parcelId") }
+        assertEquals(listOf(north, south).map { it.toString() }.sorted(), ids)
+        val historic = db.deliveryDao().listParcels(id).associateBy { it.parcelId.toString() }
+        for (index in 0 until parcels.length()) {
+            val share = parcels.getJSONObject(index)
+            val local = historic.getValue(share.getString("parcelId"))
+            assertEquals(local.id.toString(), share.getString("id"))
+            assertEquals(local.parcelNameAtDelivery, share.getString("parcelNameAtDelivery"))
+            assertEquals(local.allocationMode, share.getString("allocationMode"))
+            assertEquals(local.weightGrams, share.getLong("weightGrams"))
+        }
+        ok(deliveries.update(id, draft(3_000_000, north to 1_500_000L, south to 1_500_000L)))
+        val after = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertTrue(before.id != after.id)
+        assertTrue(before.payloadJson != after.payloadJson)
+        assertEquals(3_000_000L, org.json.JSONObject(after.payloadJson!!).getLong("netGrams"))
+        val revised = org.json.JSONObject(after.payloadJson!!).getJSONArray("parcels")
+        assertEquals(listOf(1_500_000L, 1_500_000L),
+            (0 until revised.length()).map { revised.getJSONObject(it).getLong("weightGrams") })
+    }
+
+    @Test
+    fun unallocatedParcelSnapshotKeepsUnknownWeightAsNull() = runBlocking {
+        val id = ok(deliveries.create(draft(3_000_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        val share = org.json.JSONObject(op.payloadJson!!).getJSONArray("parcels").getJSONObject(0)
+        assertTrue(share.isNull("weightGrams"))
+        assertEquals("UNALLOCATED", share.getString("allocationMode"))
+    }
+
     // ------------------------------------------------------------ OCR cannot auto-confirm
 
     @Test

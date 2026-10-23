@@ -109,6 +109,7 @@ class DeliveryRecoveryReceiptTest {
         assertNotNull(verifiedRecoveredDeliveryReceipt(update.copy(baseRemoteVersion = 6), receipt()) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(payloadJson = " "), receipt()) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(payloadVersion = 0), receipt()) { _, _ -> true })
+        assertNull(verifiedRecoveredDeliveryReceipt(operation().copy(payloadVersion = 2), receipt()) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(update.copy(baseRemoteVersion = -1), receipt()) { _, _ -> true })
         assertNull(verifiedRecoveredDeliveryReceipt(update.copy(baseRemoteVersion = 0), receipt()) { _, _ -> true })
     }
