@@ -39,11 +39,11 @@ internal data class RecoveredDeliveryReceipt(
 internal fun verifiedRecoveredDeliveryReceipt(
     operation: com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity,
     recovered: RecoveredDeliveryReceipt,
-    hashMatches: (String, String) -> Boolean,
+    hashMatches: (String, String) -> Boolean = { payload, expected -> deliveryPayloadHash(payload) == expected },
 ): DeliverySyncReceipt? {
     // This is a pure binding guard, NOT an authenticated-server-ACK verifier.
-    // Callers must establish a trusted server response and use a tested JSONB-compatible
-    // hash algorithm; a permissive callback must never be wired into production.
+    // Callers must establish a trusted server response. The default uses the restricted
+    // JSONB-compatible DeliveryWriter hash; injected predicates are for isolated guard tests.
     val payload = operation.payloadJson ?: return null
     val farm = operation.farmId ?: return null
     if (recovered.accountId.isBlank() || recovered.remoteVersion < 1L ||

@@ -39,6 +39,21 @@ class DeliveryRecoveryReceiptTest {
         payloadHash = "a".repeat(64),
     )
 
+    @Test fun defaultVerifierUsesTheSharedPostgresHashAndPreservesOriginalBytes() {
+        val payload = """{"netGrams":2500000,"notes":"Mágina","id":"x"}"""
+        val op = operation().copy(payloadJson = payload)
+        // Exact immutable digest independently checked in disposable PostgreSQL.
+        val ack = receipt().copy(payloadHash = "0bfbfddbfc532eca8c68abd37a0d9b5e01dfd8df30b68ea4429b7f198225302b")
+        val verified = verifiedRecoveredDeliveryReceipt(op, ack)
+        assertNotNull(verified)
+        assertEquals(payload, verified!!.payloadJson)
+        assertEquals(op.id, verified.operationId)
+        assertEquals(op.accountId, verified.accountId)
+        assertNull(verifiedRecoveredDeliveryReceipt(op.copy(payloadJson = payload.replace("2500000", "2500001")), ack))
+        assertNull(verifiedRecoveredDeliveryReceipt(op, ack.copy(payloadHash = "0".repeat(64))))
+        assertNull(verifiedRecoveredDeliveryReceipt(op.copy(payloadJson = """{"notes":null}"""), ack))
+    }
+
     @Test fun matchingReceiptPreservesExactSnapshot() {
         val verified = verifiedRecoveredDeliveryReceipt(operation(), receipt()) { payload, hash ->
             payload == snapshot && hash == "a".repeat(64)
