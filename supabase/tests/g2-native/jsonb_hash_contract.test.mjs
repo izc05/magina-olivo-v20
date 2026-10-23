@@ -64,7 +64,7 @@ test('shared Android delivery vectors match real PostgreSQL text and hash exactl
   const vectors = JSON.parse(readFileSync(new URL(
     '../../../app/src/test/resources/g2-delivery-payload-hash-vectors.json', import.meta.url
   ), 'utf8'));
-  assert.equal(vectors.length, 6);
+  assert.equal(vectors.length, 9);
   for (const vector of vectors) {
     const normalized = execFileSync('docker', args, {
       input: 'SELECT json_build_object(\'text\', (' + quote(vector.payload) + ')::jsonb::text)::text;',
