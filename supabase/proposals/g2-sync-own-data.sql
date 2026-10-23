@@ -760,3 +760,76 @@ GRANT EXECUTE ON FUNCTION public.sync_own_expense(UUID, JSONB) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.check_sync_operations(UUID[]) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.check_sync_operations(UUID[]) TO authenticated;
+
+-- First resumable bootstrap step. Creation only: never upsert or adopt an existing UUID.
+CREATE FUNCTION magina_g2_private.create_workspace(p_operation_id UUID, p_workspace JSONB)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE
+    actor UUID:=auth.uid(); claims JSONB:=auth.jwt(); field TEXT; workspace UUID;
+    payload_hash TEXT; saved magina_g2_private.sync_operations%ROWTYPE; replay BOOLEAN:=false;
+BEGIN
+    IF actor IS NULL OR claims IS NULL OR claims->>'role' IS DISTINCT FROM 'authenticated'
+       OR claims->>'sub' IS DISTINCT FROM actor::text
+       OR coalesce(claims->>'is_anonymous','false')<>'false'
+       OR jsonb_typeof(claims->'exp') IS DISTINCT FROM 'number'
+       OR (claims->>'exp') !~ '^[0-9]+$' THEN
+        RAISE EXCEPTION 'workspace denied' USING ERRCODE='42501';
+    END IF;
+    IF (claims->>'exp')::numeric<=extract(epoch FROM now()) THEN
+        RAISE EXCEPTION 'workspace denied' USING ERRCODE='42501';
+    END IF;
+    IF p_operation_id IS NULL OR p_workspace IS NULL OR jsonb_typeof(p_workspace)<>'object'
+       OR (SELECT count(*) FROM jsonb_object_keys(p_workspace))<>6
+       OR NOT p_workspace ?& ARRAY['id','name','countryCode','timezone','locale','currency'] THEN
+        RAISE EXCEPTION 'workspace invalid' USING ERRCODE='22023';
+    END IF;
+    FOREACH field IN ARRAY ARRAY['id','name','countryCode','timezone','locale','currency'] LOOP
+        IF jsonb_typeof(p_workspace->field) IS DISTINCT FROM 'string' THEN
+            RAISE EXCEPTION 'workspace invalid' USING ERRCODE='22023';
+        END IF;
+    END LOOP;
+    BEGIN
+        workspace:=(p_workspace->>'id')::uuid;
+    EXCEPTION WHEN invalid_text_representation THEN
+        RAISE EXCEPTION 'workspace invalid' USING ERRCODE='22023';
+    END;
+    IF length(p_workspace->>'name') NOT BETWEEN 1 AND 200 OR btrim(p_workspace->>'name')=''
+       OR (p_workspace->>'countryCode') !~ '^[A-Z]{2}$'
+       OR (p_workspace->>'currency') !~ '^[A-Z]{3}$'
+       OR length(p_workspace->>'locale')>35 OR (p_workspace->>'locale') !~ '^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$'
+       OR length(p_workspace->>'timezone')>64
+       OR NOT EXISTS(SELECT 1 FROM pg_catalog.pg_timezone_names WHERE name=p_workspace->>'timezone') THEN
+        RAISE EXCEPTION 'workspace invalid' USING ERRCODE='22023';
+    END IF;
+    payload_hash:=encode(sha256(convert_to(p_workspace::text,'UTF8')),'hex');
+    -- Same account/operation lock as the delivery/expense RPCs, including cross-entity collisions.
+    PERFORM pg_advisory_xact_lock(hashtextextended(actor::text||p_operation_id::text,0));
+    SELECT * INTO saved FROM magina_g2_private.sync_operations
+        WHERE account_id=actor AND operation_id=p_operation_id;
+    IF FOUND THEN
+        IF saved.entity_type<>'WORKSPACE' OR saved.entity_id<>workspace OR saved.payload_hash<>payload_hash THEN
+            RAISE EXCEPTION 'workspace conflict' USING ERRCODE='23505';
+        END IF;
+        -- Replaying a receipt does not restore permission after deletion or ownership change.
+        PERFORM 1 FROM public.workspaces WHERE id=workspace AND owner_user_id=actor AND deleted_at IS NULL FOR SHARE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'workspace denied' USING ERRCODE='42501'; END IF;
+        replay:=true;
+    ELSE
+        INSERT INTO public.workspaces(id,owner_user_id,name,country_code,timezone,locale,currency)
+        VALUES(workspace,actor,p_workspace->>'name',p_workspace->>'countryCode',
+            p_workspace->>'timezone',p_workspace->>'locale',p_workspace->>'currency')
+        ON CONFLICT(id) DO NOTHING;
+        IF NOT FOUND THEN RAISE EXCEPTION 'workspace conflict' USING ERRCODE='23505'; END IF;
+        INSERT INTO magina_g2_private.sync_operations(account_id,operation_id,entity_type,entity_id,payload_hash,result_version)
+        VALUES(actor,p_operation_id,'WORKSPACE',workspace,payload_hash,1) RETURNING * INTO saved;
+    END IF;
+    RETURN jsonb_build_object('success',true,'operation_id',p_operation_id,'entity_id',workspace,
+        'status',saved.status,'remote_version',saved.result_version,'payload_version',saved.payload_version,'idempotent',replay);
+END $$;
+REVOKE ALL ON FUNCTION magina_g2_private.create_workspace(UUID,JSONB) FROM PUBLIC,anon,authenticated;
+CREATE FUNCTION public.create_own_workspace(p_operation_id UUID,p_workspace JSONB)
+RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path='' AS $$
+    SELECT magina_g2_private.create_workspace(p_operation_id,p_workspace);
+$$;
+REVOKE ALL ON FUNCTION public.create_own_workspace(UUID,JSONB) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.create_own_workspace(UUID,JSONB) TO authenticated;

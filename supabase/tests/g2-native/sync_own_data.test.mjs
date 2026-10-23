@@ -796,7 +796,14 @@ async function clientBootstrapFixture() {
   };
   // Every agricultural row below is created through ordinary authenticated REST,
   // never SQL or the service-role key. Identifiers are persisted fixture input.
-  await create('workspaces', {id:workspace, owner_user_id:actor.id, name:'Client-created workspace'});
+  const workspaceBody={p_operation_id:randomUUID(),p_workspace:{id:workspace,name:'Client-created workspace',
+    countryCode:'ES',timezone:'Europe/Madrid',locale:'es-ES',currency:'EUR'}};
+  const firstWorkspace=await http('/rest/v1/rpc/create_own_workspace',{token,body:workspaceBody});
+  assert.equal(firstWorkspace.status,200,JSON.stringify(firstWorkspace.data));
+  const workspaceReplay=await http('/rest/v1/rpc/create_own_workspace',{token,body:workspaceBody});
+  assert.equal(workspaceReplay.status,200);
+  assert.equal(workspaceReplay.data.idempotent,true);
+  assert.equal(workspaceReplay.data.entity_id,workspace);
   const request = {payloadVersion:1, operationId:randomUUID(), farmId:farm,
     localWorkspaceId:randomUUID(), consentId:randomUUID(), consentTextVersion:2,
     manifestSha256:'a'.repeat(64), aggregateVersion:1};
@@ -885,6 +892,78 @@ test('reservation prevents another account materializing or claiming the selecte
     body:{id:farm,workspace_id:workspace,creator_user_id:actors.A.id,
       owner_id:actors.A.id,name:'Reserved owner farm'}});
   assert.equal(ownerInsert.status,201,JSON.stringify(ownerInsert.data));
+});
+
+test('workspace bootstrap survives replay, preserves later edits and serializes concurrent creation',async()=>{
+  const payload={id:randomUUID(),name:'Resumable workspace',countryCode:'ES',timezone:'Europe/Madrid',locale:'es-ES',currency:'EUR'};
+  const operation=randomUUID();
+  const create=(op=operation,value=payload,token=actors.A.token)=>http('/rest/v1/rpc/create_own_workspace',{
+    token,body:{p_operation_id:op,p_workspace:value}
+  });
+  const concurrent=await Promise.all([create(),create(),create()]);
+  concurrent.forEach(result=>assert.equal(result.status,200,JSON.stringify(result.data)));
+  assert.equal(concurrent.filter(result=>result.data.idempotent===false).length,1);
+  assert.equal(sql(`SELECT count(*) FROM public.workspaces WHERE id=${quote(payload.id)}::uuid;`),'1');
+  assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE account_id=${quote(actors.A.id)}::uuid AND operation_id=${quote(operation)}::uuid;`),'1');
+  const edited=await http(`/rest/v1/workspaces?id=eq.${payload.id}`,{token:actors.A.token,method:'PATCH',
+    body:{name:'Later workspace name',version:2}});
+  assert.equal(edited.status,204,JSON.stringify(edited.data));
+  const replay=await create();
+  assert.equal(replay.status,200);
+  assert.equal(replay.data.remote_version,1);
+  assert.equal(sql(`SELECT name FROM public.workspaces WHERE id=${quote(payload.id)}::uuid;`),'Later workspace name');
+  const recovery=await http('/rest/v1/rpc/check_sync_operations',{
+    token:actors.A.token,body:{p_operation_ids:[operation]}
+  });
+  assert.equal(recovery.status,200);
+  const receipt=recovery.data.confirmed_receipts[0];
+  assert.equal(receipt.entity_type,'WORKSPACE');
+  assert.equal(receipt.entity_id,payload.id);
+  assert.equal(receipt.remote_version,1);
+  assert.equal((await create(operation,{...payload,name:'Changed operation'})).status,409);
+  assert.equal((await create(randomUUID(),payload)).status,409);
+  assert.equal((await create(randomUUID(),payload,actors.B.token)).status,409);
+  const crossEntityId=randomUUID();
+  const crossEntity=await http('/rest/v1/rpc/sync_own_delivery',{
+    token:actors.A.token,body:{p_operation_id:operation,p_delivery:{id:crossEntityId,
+      farmId:actors.A.farm,campaignId:actors.A.campaign,deliveryDate:'2026-11-25',
+      destinationName:'Operation ID collision',netGrams:1000000}}
+  });
+  assert.equal(crossEntity.status,409);
+  assert.equal(sql(`SELECT count(*) FROM public.deliveries WHERE id=${quote(crossEntityId)}::uuid;`),'0');
+  // Two different operations racing for a fresh UUID cannot adopt each other's row.
+  const second={...payload,id:randomUUID()};
+  const contenders=await Promise.all([create(randomUUID(),second),create(randomUUID(),second)]);
+  assert.deepEqual(contenders.map(x=>x.status).sort(),[200,409]);
+  assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_id=${quote(second.id)}::uuid;`),'1');
+  const denied=await http('/rest/v1/rpc/check_sync_operations',{
+    token:actors.B.token,body:{p_operation_ids:[operation]}
+  });
+  assert.deepEqual(denied.data.confirmed_receipts,[]);
+  sql(`UPDATE public.workspaces SET deleted_at=now() WHERE id=${quote(payload.id)}::uuid;`);
+  assert.equal((await create()).status,403);
+});
+
+test('workspace bootstrap never adopts own legacy IDs and rejects anonymous or malformed requests',async()=>{
+  const payload={id:actors.A.workspace,name:'ephemeral workspace',countryCode:'ES',timezone:'Europe/Madrid',locale:'es-ES',currency:'EUR'};
+  const create=(value,token=actors.A.token)=>http('/rest/v1/rpc/create_own_workspace',{
+    token,body:{p_operation_id:randomUUID(),p_workspace:value}
+  });
+  assert.equal((await create(payload)).status,409);
+  const id=randomUUID();
+  for(const value of [{...payload,id,ownerUserId:actors.B.id},{...payload,id,name:{}},
+    {...payload,id,timezone:'Invalid/Timezone'},{...payload,id,currency:null}])
+    assert.equal((await create(value)).status,400);
+  const anonymous=await http('/auth/v1/signup',{body:{}});
+  assert.equal(anonymous.status,200);
+  assert.ok(anonymous.data.access_token);
+  assert.equal((await create({...payload,id},anonymous.data.access_token)).status,403);
+  const unauthenticated=await http('/rest/v1/rpc/create_own_workspace',{
+    body:{p_operation_id:randomUUID(),p_workspace:{...payload,id}}
+  });
+  assert.ok([401,403].includes(unauthenticated.status));
+  assert.equal(sql(`SELECT count(*) FROM public.workspaces WHERE id=${quote(id)}::uuid;`),'0');
+  assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_id=${quote(id)}::uuid;`),'0');
 });
 
 test('v2 persists and restores historical parcel shares with idempotent versioned receipts',async()=>{
