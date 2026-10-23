@@ -58,3 +58,20 @@ test('distinct semantic JSON values are not accepted as identical hashes', () =>
   assert.notEqual(serverHash('{"netGrams":1000}'), serverHash('{"netGrams":1001}'));
   assert.notEqual(serverHash('{"deleted":false}'), serverHash('{"deleted":true}'));
 });
+
+
+test('shared Android delivery vectors match real PostgreSQL text and hash exactly', () => {
+  const vectors = JSON.parse(readFileSync(new URL(
+    '../../../app/src/test/resources/g2-delivery-payload-hash-vectors.json', import.meta.url
+  ), 'utf8'));
+  assert.equal(vectors.length, 6);
+  for (const vector of vectors) {
+    const normalized = execFileSync('docker', args, {
+      input: 'SELECT json_build_object(\'text\', (' + quote(vector.payload) + ')::jsonb::text)::text;',
+      encoding: 'utf8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe']
+    }).trim();
+    assert.equal(JSON.parse(normalized).text, vector.postgresText, vector.name);
+    assert.equal(rawHash(vector.postgresText), vector.sha256, vector.name);
+    assert.equal(serverHash(vector.payload), vector.sha256, vector.name);
+  }
+});
