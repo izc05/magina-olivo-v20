@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID, createHash, createHmac } from 'node:crypto';
 import { validateTarget } from './safety.mjs';
 
 const work = process.env.G2_NATIVE_WORK;
@@ -68,7 +68,9 @@ before(async () => {
   const baselineDDL = migrations.map(name =>
     readFileSync(new URL(`../../migrations/${name}`, import.meta.url), 'utf8')
   ).join('\n');
-  const proposalDDL = readFileSync(new URL('../../proposals/g2-sync-own-data.sql', import.meta.url), 'utf8');
+  const proposalDDL = ['g1c-reservations.sql', 'g2-sync-own-data.sql'].map(name =>
+    readFileSync(new URL(`../../proposals/${name}`, import.meta.url), 'utf8')
+  ).join('\n');
 
   sql('BEGIN;\n' + baselineDDL + '\n' + proposalDDL + '\nCOMMIT; NOTIFY pgrst, \'reload schema\';');
 
@@ -771,6 +773,119 @@ async function sendComplete(operationId,payload,token=actors.A.token) {
 async function readComplete(id,token=actors.A.token) {
   return http('/rest/v1/rpc/get_own_delivery_v2',{token,body:{p_delivery_id:id}});
 }
+
+// Same issuer fixture as the G1c native suite. GoTrue creates the real account;
+// only the HTTP-local issuer is replaced and signed with the DISPOSABLE key.
+// This proves gateway verification + SQL authorization, not production HTTPS Auth.
+function reservationGatewayToken(actor) {
+  const claims = JSON.parse(Buffer.from(actor.token.split('.')[1], 'base64url'));
+  assert.ok(claims.iss.startsWith('http://'), 'Review local Auth issuer fixture');
+  const part = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const body = `${part({alg:'HS256',typ:'JWT'})}.${part({
+    ...claims, iss:'https://g1c-native.example.test/auth/v1'
+  })}`;
+  return body + '.' + createHmac('sha256', status.JWT_SECRET).update(body).digest('base64url');
+}
+
+async function clientBootstrapFixture() {
+  const actor = actors.A, token = reservationGatewayToken(actor);
+  const workspace = randomUUID(), farm = randomUUID(), campaign = randomUUID(), parcel = randomUUID();
+  const create = async (table, body) => {
+    const result = await http(`/rest/v1/${table}`, {token, body});
+    assert.equal(result.status, 201, `${table}: ${JSON.stringify(result.data)}`);
+  };
+  // Every agricultural row below is created through ordinary authenticated REST,
+  // never SQL or the service-role key. Identifiers are persisted fixture input.
+  await create('workspaces', {id:workspace, owner_user_id:actor.id, name:'Client-created workspace'});
+  const request = {payloadVersion:1, operationId:randomUUID(), farmId:farm,
+    localWorkspaceId:randomUUID(), consentId:randomUUID(), consentTextVersion:2,
+    manifestSha256:'a'.repeat(64), aggregateVersion:1};
+  const reserve = () => http('/rest/v1/rpc/reserve_local_farm_g1c', {
+    token, body:{p_request:request, p_remote_workspace:workspace}
+  });
+  const reservation = await reserve();
+  assert.equal(reservation.status, 200, JSON.stringify(reservation.data));
+  assert.equal(reservation.data.actorId, actor.id);
+  assert.equal(reservation.data.farmId, farm);
+  assert.equal(reservation.data.remoteWorkspaceId, workspace);
+  await create('farms', {id:farm, workspace_id:workspace, creator_user_id:actor.id,
+    owner_id:actor.id, name:'Client-created farm'});
+  // A lost reservation ACK can be recovered even after the farm was materialized.
+  assert.deepEqual((await reserve()).data, reservation.data);
+  await create('campaigns', {id:campaign, workspace_id:workspace, farm_id:farm,
+    name:'Client-created campaign', start_date:'2026-01-01'});
+  await create('parcels', {id:parcel, workspace_id:workspace, display_name:'Client-created parcel'});
+  await create('farm_parcel_memberships', {id:randomUUID(), workspace_id:workspace,
+    farm_id:farm, parcel_id:parcel, valid_from:'2026-01-01T00:00:00Z'});
+  const payload = {id:randomUUID(), farmId:farm, campaignId:campaign,
+    deliveryDate:'2026-11-25', destinationName:'Synthetic destination', netGrams:3000000,
+    source:'MANUAL', parcels:[{id:randomUUID(), parcelId:parcel, campaignParcelId:null,
+      parcelNameAtDelivery:'Historical client parcel', weightGrams:null, allocationMode:'UNALLOCATED'}]};
+  return {workspace, farm, campaign, parcel, token, request, reservation, payload};
+}
+
+test('authenticated REST bootstrap links G1c reservation to complete G2 delivery and recovery', async () => {
+  const fixture = await clientBootstrapFixture(), operation = randomUUID();
+  const {payload, token} = fixture;
+  const result = await sendComplete(operation, payload, token);
+  assert.equal(result.status, 200, JSON.stringify(result.data));
+  assert.equal(result.data.remote_version, 1);
+  const replay = await sendComplete(operation, payload, token);
+  assert.equal(replay.status, 200);
+  assert.equal(replay.data.idempotent, true);
+  assert.equal(replay.data.remote_version, 1);
+  const restored = await readComplete(payload.id, token);
+  assert.equal(restored.status, 200);
+  assert.equal(restored.data.delivery.farm_id, fixture.farm);
+  assert.equal(restored.data.delivery.campaign_id, fixture.campaign);
+  assert.equal(restored.data.parcels.length, 1);
+  assert.equal(restored.data.parcels[0].id, payload.parcels[0].id);
+  assert.equal(restored.data.parcels[0].weight_grams, null);
+  assert.equal(restored.data.parcels[0].parcel_name_at_delivery, 'Historical client parcel');
+  const recovery = await http('/rest/v1/rpc/check_sync_operations', {
+    token, body:{p_operation_ids:[operation]}
+  });
+  assert.equal(recovery.status, 200);
+  const receipt = recovery.data.confirmed_receipts.find(x => x.operation_id === operation);
+  assert.ok(receipt);
+  assert.equal(receipt.payload_version, 2);
+  assert.equal(receipt.remote_version, 1);
+  for (const [table,id] of [['workspaces',fixture.workspace],['farms',fixture.farm],
+    ['campaigns',fixture.campaign],['parcels',fixture.parcel],['deliveries',payload.id]]) {
+    const foreign = await http(`/rest/v1/${table}?id=eq.${id}`, {token:actors.B.token, method:'GET'});
+    assert.equal(foreign.status, 200);
+    assert.deepEqual(foreign.data, [], table);
+  }
+  assert.equal((await readComplete(payload.id,actors.B.token)).status,403);
+});
+
+test('reservation prevents another account materializing or claiming the selected farm', async () => {
+  const workspace = randomUUID(), farm = randomUUID(), token = reservationGatewayToken(actors.A);
+  const created = await http('/rest/v1/workspaces', {token,
+    body:{id:workspace,owner_user_id:actors.A.id,name:'Reservation-only fixture'}});
+  assert.equal(created.status,201,JSON.stringify(created.data));
+  const request = {payloadVersion:1,operationId:randomUUID(),farmId:farm,
+    localWorkspaceId:randomUUID(),consentId:randomUUID(),consentTextVersion:2,
+    manifestSha256:'b'.repeat(64),aggregateVersion:1};
+  const first = await http('/rest/v1/rpc/reserve_local_farm_g1c', {
+    token,body:{p_request:request,p_remote_workspace:workspace}
+  });
+  assert.equal(first.status,200,JSON.stringify(first.data));
+  const foreignToken = reservationGatewayToken(actors.B);
+  const claim = await http('/rest/v1/rpc/reserve_local_farm_g1c', {
+    token:foreignToken,body:{p_request:{...request,operationId:randomUUID()},p_remote_workspace:actors.B.workspace}
+  });
+  assert.equal(claim.status,409);
+  const foreignInsert = await http('/rest/v1/farms', {token:foreignToken,
+    body:{id:farm,workspace_id:actors.B.workspace,creator_user_id:actors.B.id,
+      owner_id:actors.B.id,name:'Must not be created'}});
+  assert.equal(foreignInsert.status,409,JSON.stringify(foreignInsert.data));
+  assert.equal(sql(`SELECT count(*) FROM public.farms WHERE id=${quote(farm)}::uuid;`),'0');
+  const ownerInsert = await http('/rest/v1/farms', {token,
+    body:{id:farm,workspace_id:workspace,creator_user_id:actors.A.id,
+      owner_id:actors.A.id,name:'Reserved owner farm'}});
+  assert.equal(ownerInsert.status,201,JSON.stringify(ownerInsert.data));
+});
 
 test('v2 persists and restores historical parcel shares with idempotent versioned receipts',async()=>{
   const {payload}=completeDeliveryFixture(), firstId=randomUUID();
