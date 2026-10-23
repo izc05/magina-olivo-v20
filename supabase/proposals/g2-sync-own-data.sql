@@ -121,6 +121,14 @@ BEGIN
         RAISE EXCEPTION 'sync invalid: missing operation or payload' USING ERRCODE = '22023';
     END IF;
 
+    -- This RPC is the v1 header-only contract. A v2 aggregate must never be
+    -- acknowledged while its parcel allocations/organization binding are discarded.
+    IF p_delivery ? 'parcels' OR p_delivery ? 'destinationOrganizationId'
+       OR p_delivery ? 'payloadVersion' THEN
+        RAISE EXCEPTION 'sync unsupported: complete delivery snapshot requires a versioned aggregate contract'
+            USING ERRCODE = '22023';
+    END IF;
+
     -- Extract and validate required delivery fields
     BEGIN
         v_delivery_id := (p_delivery->>'id')::uuid;

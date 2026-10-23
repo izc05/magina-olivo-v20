@@ -700,3 +700,36 @@ test('recovery hash vectors use PostgreSQL JSONB text and UTF-8, not original JS
     assert.notEqual(result.hash, originalHash, name + ': compact raw bytes must differ');
   }
 });
+
+
+test('v1 RPC rejects complete v2 snapshots without partial delivery or false ACK', async () => {
+  for (const extra of [
+    { parcels: [] },
+    { parcels: [{ id: randomUUID(), parcelId: randomUUID(), campaignParcelId: null,
+      parcelNameAtDelivery: 'Parcela histórica', weightGrams: null, allocationMode: 'UNALLOCATED' }] },
+    { destinationOrganizationId: randomUUID() },
+    { payloadVersion: 2 }
+  ]) {
+    const operationId = randomUUID();
+    const deliveryId = randomUUID();
+    const payload = {
+      id: deliveryId, farmId: actors.A.farm, campaignId: actors.A.campaign,
+      deliveryDate: '2026-11-25', destinationName: 'Cooperativa sintética', netGrams: 3000000,
+      ...extra
+    };
+    const result = await http('/rest/v1/rpc/sync_own_delivery', {
+      token: actors.A.token, body: { p_operation_id: operationId, p_delivery: payload }
+    });
+    assert.equal(result.status, 400, JSON.stringify(result.data));
+    assert.match(JSON.stringify(result.data), /sync unsupported/);
+    assert.equal(sql("SELECT count(*) FROM public.deliveries WHERE id=" + quote(deliveryId) + "::uuid;"), '0');
+    assert.equal(sql("SELECT count(*) FROM magina_g2_private.sync_operations WHERE operation_id=" +
+      quote(operationId) + "::uuid;"), '0');
+    const recovery = await http('/rest/v1/rpc/check_sync_operations', {
+      token: actors.A.token, body: { p_operation_ids: [operationId] }
+    });
+    assert.equal(recovery.status, 200);
+    assert.deepEqual(recovery.data.confirmed_operations, []);
+    assert.deepEqual(recovery.data.confirmed_receipts, []);
+  }
+});
