@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { validateTarget } from './safety.mjs';
 
 const work = process.env.G2_NATIVE_WORK;
@@ -674,3 +674,29 @@ test('concurrency: race between distinct operations on same version results in e
   assert.equal(finalGrams.trim(), expectedGrams);
 });
 
+
+
+// Freeze PostgreSQL JSONB bytes before implementing Kotlin recovery hashing.
+test('recovery hash vectors use PostgreSQL JSONB text and UTF-8, not original JSON bytes', () => {
+  const vectors = [
+    ['key order and spaces', '{"b":2,"a":1}', '{"a": 1, "b": 2}'],
+    ['UTF-8 key byte length', '{"é":2,"b":1}', '{"b": 1, "é": 2}'],
+    ['Unicode and escapes', '{"notes":"M\\u00e1gina\\nOlivo","id":"x"}',
+      '{"id": "x", "notes": "Mágina\\nOlivo"}'],
+    ['exponent normalization and decimal scale', '{"n":1e2,"d":1.00}',
+      '{"d": 1.00, "n": 100}'],
+    ['nested objects arrays and null', '{"z":[null,{"b":2,"a":1}],"a":null}',
+      '{"a": null, "z": [null, {"a": 1, "b": 2}]}'],
+  ];
+  for (const [name, input, expectedText] of vectors) {
+    const result = JSON.parse(sql(
+      "SELECT json_build_object('text', " + quote(input) + "::jsonb::text, " +
+      "'hash', encode(sha256(convert_to(" + quote(input) + "::jsonb::text, 'UTF8')), 'hex'))::text;"
+    ));
+    assert.equal(result.text, expectedText, name);
+    const expectedHash = createHash('sha256').update(expectedText, 'utf8').digest('hex');
+    const originalHash = createHash('sha256').update(input, 'utf8').digest('hex');
+    assert.equal(result.hash, expectedHash, name);
+    assert.notEqual(result.hash, originalHash, name + ': compact raw bytes must differ');
+  }
+});
