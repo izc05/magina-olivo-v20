@@ -733,3 +733,126 @@ test('v1 RPC rejects complete v2 snapshots without partial delivery or false ACK
     assert.deepEqual(recovery.data.confirmed_receipts, []);
   }
 });
+
+
+function completeDeliveryFixture() {
+  const workspace = randomUUID(), farm = randomUUID(), campaign = randomUUID();
+  const parcelA = randomUUID(), parcelB = randomUUID();
+  sql("INSERT INTO public.workspaces(id,owner_user_id,name) VALUES ("+
+    quote(workspace)+","+quote(actors.A.id)+",'v2 fixture');"+
+    "INSERT INTO public.farms(id,workspace_id,creator_user_id,owner_id,name) VALUES ("+
+    [farm,workspace,actors.A.id,actors.A.id].map(quote).join(',')+",'v2 farm');"+
+    "INSERT INTO public.campaigns(id,workspace_id,farm_id,name,start_date) VALUES ("+
+    [campaign,workspace,farm].map(quote).join(',')+",'v2 campaign','2026-01-01');");
+  for (const parcel of [parcelA,parcelB]) {
+    sql("INSERT INTO public.parcels(id,workspace_id,display_name) VALUES ("+
+      [parcel,workspace,'Current parcel name'].map(quote).join(',')+");"+
+      "INSERT INTO public.farm_parcel_memberships(workspace_id,farm_id,parcel_id,valid_from) VALUES ("+
+      [workspace,farm,parcel].map(quote).join(',')+",'2026-01-01');");
+  }
+  const payload = {
+    id: randomUUID(), farmId: farm, campaignId: campaign, deliveryDate:'2026-11-25',
+    destinationName:'Synthetic cooperative', destinationOrganizationId:randomUUID(),
+    netGrams:3000000, source:'MANUAL',
+    parcels:[
+      {id:randomUUID(),parcelId:parcelA,campaignParcelId:randomUUID(),
+        parcelNameAtDelivery:'Historical A',weightGrams:1000000,allocationMode:'EXACT'},
+      {id:randomUUID(),parcelId:parcelB,campaignParcelId:null,
+        parcelNameAtDelivery:'Historical B',weightGrams:null,allocationMode:'UNALLOCATED'}
+    ].sort((a,b)=>a.parcelId.localeCompare(b.parcelId))
+  };
+  return {payload,workspace,farm};
+}
+async function sendComplete(operationId,payload,token=actors.A.token) {
+  return http('/rest/v1/rpc/sync_own_delivery_v2',{
+    token,body:{p_operation_id:operationId,p_delivery:payload}
+  });
+}
+async function readComplete(id,token=actors.A.token) {
+  return http('/rest/v1/rpc/get_own_delivery_v2',{token,body:{p_delivery_id:id}});
+}
+
+test('v2 persists and restores historical parcel shares with idempotent versioned receipts',async()=>{
+  const {payload}=completeDeliveryFixture(), firstId=randomUUID();
+  const wrongActor=await sendComplete(randomUUID(),payload,actors.B.token);
+  assert.equal(wrongActor.status,403,JSON.stringify(wrongActor.data));
+  const first=await sendComplete(firstId,payload);
+  assert.equal(first.status,200,JSON.stringify(first.data));
+  assert.equal(first.data.payload_version,2);
+  assert.equal(first.data.remote_version,1);
+  const restored=await readComplete(payload.id);
+  assert.equal(restored.status,200,JSON.stringify(restored.data));
+  assert.equal(restored.data.delivery.destination_organization_id,payload.destinationOrganizationId);
+  assert.equal(restored.data.delivery.snapshot_format,2);
+  for(const original of payload.parcels) {
+    const child=restored.data.parcels.find(x=>x.parcel_id===original.parcelId);
+    assert.equal(child.id,original.id);
+    assert.equal(child.campaign_parcel_id,original.campaignParcelId);
+    assert.equal(child.parcel_name_at_delivery,original.parcelNameAtDelivery);
+    assert.equal(child.weight_grams,original.weightGrams);
+    assert.equal(child.allocation_mode,original.allocationMode);
+  }
+  const next={...payload,baseVersion:1,parcels:payload.parcels.map(x=>({
+    ...x,weightGrams:1500000,allocationMode:'EXACT'
+  }))};
+  const secondId=randomUUID(),second=await sendComplete(secondId,next);
+  assert.equal(second.status,200,JSON.stringify(second.data));
+  assert.equal(second.data.remote_version,2);
+  const replay=await sendComplete(firstId,payload);
+  assert.equal(replay.status,200);
+  assert.equal(replay.data.idempotent,true);
+  assert.equal(replay.data.remote_version,1);
+  const current=await readComplete(payload.id);
+  assert.equal(current.data.delivery.version,2);
+  assert.deepEqual(current.data.parcels.map(x=>x.weight_grams),[1500000,1500000]);
+  const recovery=await http('/rest/v1/rpc/check_sync_operations',{
+    token:actors.A.token,body:{p_operation_ids:[firstId,secondId]}
+  });
+  assert.equal(recovery.status,200);
+  for(const [id,version] of [[firstId,1],[secondId,2]]) {
+    const receipt=recovery.data.confirmed_receipts.find(x=>x.operation_id===id);
+    assert.equal(receipt.remote_version,version);
+    assert.equal(receipt.payload_version,2);
+  }
+  assert.equal((await readComplete(payload.id,actors.B.token)).status,403);
+  const foreign=await http('/rest/v1/delivery_parcels?delivery_id=eq.'+payload.id,{
+    token:actors.B.token,method:'GET'
+  });
+  assert.equal(foreign.status,200);
+  assert.deepEqual(foreign.data,[]);
+  const downgrade=await http('/rest/v1/rpc/sync_own_delivery',{
+    token:actors.A.token,body:{p_operation_id:randomUUID(),p_delivery:{
+      id:payload.id,farmId:payload.farmId,campaignId:payload.campaignId,
+      deliveryDate:payload.deliveryDate,destinationName:payload.destinationName,
+      netGrams:payload.netGrams,baseVersion:2
+    }}
+  });
+  assert.equal(downgrade.status,409,JSON.stringify(downgrade.data));
+});
+
+test('v2 rejects invalid parcel snapshots atomically and forbids rewriting history',async()=>{
+  const {payload}=completeDeliveryFixture();
+  const bad=[
+    {...payload,parcels:[]},
+    {...payload,netGrams:0},
+    {...payload,netGrams:"3000000"},
+    {...payload,destinationName:{name:'Cooperative'}},
+    {...payload,notes:123},
+    {...payload,parcels:[payload.parcels[0],payload.parcels[0]]},
+    {...payload,parcels:payload.parcels.map(x=>({...x,weightGrams:1,allocationMode:'EXACT'}))},
+    {...payload,parcels:payload.parcels.map(x=>({...x,weightGrams:0,allocationMode:'EXACT'}))},
+    {...payload,parcels:[{...payload.parcels[0],parcelId:randomUUID()}]},
+    {...payload,parcels:[{...payload.parcels[0],unsupported:'discard me'}]}
+  ];
+  for(const candidate of bad) {
+    const operation=randomUUID(),id=randomUUID();
+    const result=await sendComplete(operation,{...candidate,id});
+    assert.ok([400,403].includes(result.status),JSON.stringify(result.data));
+    assert.equal(sql("SELECT count(*) FROM public.deliveries WHERE id="+quote(id)+"::uuid;"),'0');
+    assert.equal(sql("SELECT count(*) FROM magina_g2_private.sync_operations WHERE operation_id="+quote(operation)+"::uuid;"),'0');
+  }
+  assert.equal((await sendComplete(randomUUID(),payload)).status,200);
+  const changed={...payload,baseVersion:1,parcels:payload.parcels.map(x=>({...x,parcelNameAtDelivery:'Rewrite history'}))};
+  assert.equal((await sendComplete(randomUUID(),changed)).status,409);
+  assert.equal((await readComplete(payload.id)).data.delivery.version,1);
+});

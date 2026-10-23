@@ -67,8 +67,37 @@ AS $$
     );
 $$;
 
+
+-- Complete v2 parcel snapshots. Proposal only: created exclusively in disposable tests.
+ALTER TABLE public.deliveries ADD COLUMN IF NOT EXISTS snapshot_format INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE magina_g2_private.sync_operations ADD COLUMN IF NOT EXISTS payload_version INTEGER NOT NULL DEFAULT 1;
+CREATE TABLE IF NOT EXISTS public.delivery_parcels (
+    id UUID PRIMARY KEY,
+    workspace_id UUID NOT NULL,
+    delivery_id UUID NOT NULL,
+    parcel_id UUID NOT NULL,
+    campaign_parcel_id UUID,
+    parcel_name_at_delivery TEXT NOT NULL,
+    weight_grams BIGINT,
+    allocation_mode TEXT NOT NULL,
+    UNIQUE(delivery_id, parcel_id),
+    FOREIGN KEY(delivery_id, workspace_id) REFERENCES public.deliveries(id, workspace_id),
+    FOREIGN KEY(parcel_id, workspace_id) REFERENCES public.parcels(id, workspace_id),
+    CHECK ((allocation_mode='EXACT' AND weight_grams IS NOT NULL AND weight_grams>0) OR
+           (allocation_mode='UNALLOCATED' AND weight_grams IS NULL))
+);
+ALTER TABLE public.delivery_parcels ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.delivery_parcels FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.delivery_parcels TO authenticated;
+DROP POLICY IF EXISTS delivery_parcels_read ON public.delivery_parcels;
+CREATE POLICY delivery_parcels_read ON public.delivery_parcels FOR SELECT TO authenticated
+USING (coalesce((auth.jwt()->>'is_anonymous')::boolean, false)=false AND EXISTS (
+    SELECT 1 FROM public.deliveries d WHERE d.id=delivery_id AND d.workspace_id=delivery_parcels.workspace_id
+    AND d.deleted_at IS NULL AND public.has_farm_capability(d.farm_id,'view_deliveries')
+));
+
 -- 3. Idempotent RPC: Sync Own Delivery (Pesada de aceituna)
-CREATE OR REPLACE FUNCTION public.sync_own_delivery(p_operation_id UUID, p_delivery JSONB)
+CREATE OR REPLACE FUNCTION magina_g2_private.sync_delivery(p_operation_id UUID, p_delivery JSONB, p_snapshot_version INTEGER)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -93,6 +122,14 @@ DECLARE
     v_delivery_time TEXT;
     v_harvest_origin TEXT;
     v_workspace UUID;
+    v_share JSONB;
+    v_parcel UUID;
+    v_child_ids UUID[] := ARRAY[]::UUID[];
+    v_parcel_ids UUID[] := ARRAY[]::UUID[];
+    v_known_grams NUMERIC := 0;
+    v_unknown_count INTEGER := 0;
+    v_destination_org UUID;
+    v_expected_workspace UUID;
     v_payload_hash TEXT;
     v_result_version BIGINT;
     v_saved magina_g2_private.sync_operations%ROWTYPE;
@@ -123,8 +160,11 @@ BEGIN
 
     -- This RPC is the v1 header-only contract. A v2 aggregate must never be
     -- acknowledged while its parcel allocations/organization binding are discarded.
-    IF p_delivery ? 'parcels' OR p_delivery ? 'destinationOrganizationId'
-       OR p_delivery ? 'payloadVersion' THEN
+    IF p_snapshot_version NOT IN (1, 2) THEN
+        RAISE EXCEPTION 'sync unsupported: snapshot version' USING ERRCODE = '22023';
+    END IF;
+    IF p_snapshot_version = 1 AND (p_delivery ? 'parcels' OR p_delivery ? 'destinationOrganizationId'
+       OR p_delivery ? 'payloadVersion') THEN
         RAISE EXCEPTION 'sync unsupported: complete delivery snapshot requires a versioned aggregate contract'
             USING ERRCODE = '22023';
     END IF;
@@ -177,14 +217,22 @@ BEGIN
             'entity_id', v_saved.entity_id,
             'status', v_saved.status,
             'remote_version', v_saved.result_version,
+            'payload_version', v_saved.payload_version,
             'idempotent', true
         );
     END IF;
 
     -- Validate that the farm belongs to the actor (Own-data sync: must be owner/creator of farm)
+    -- Lock workspace before farm, then require the farm to retain that workspace.
+    SELECT workspace_id INTO v_expected_workspace FROM public.farms WHERE id=v_farm_id;
+    PERFORM 1 FROM public.workspaces
+      WHERE id=v_expected_workspace AND deleted_at IS NULL FOR SHARE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'sync denied: actor does not own farm' USING ERRCODE='42501';
+    END IF;
     SELECT workspace_id INTO v_workspace
     FROM public.farms
-    WHERE id = v_farm_id
+    WHERE id = v_farm_id AND workspace_id=v_expected_workspace
       AND (
           creator_user_id = actor
           OR owner_id = actor
@@ -192,7 +240,7 @@ BEGIN
               SELECT id FROM public.workspaces WHERE owner_user_id = actor AND deleted_at IS NULL
           ))
       )
-      AND deleted_at IS NULL;
+      AND deleted_at IS NULL FOR SHARE;
 
     IF v_workspace IS NULL THEN
         RAISE EXCEPTION 'sync denied: actor does not own farm' USING ERRCODE = '42501';
@@ -200,10 +248,102 @@ BEGIN
 
     -- Validate campaign linkage to farm and workspace
     PERFORM 1 FROM public.campaigns
-    WHERE id = v_campaign_id AND farm_id = v_farm_id AND workspace_id = v_workspace AND deleted_at IS NULL;
+    WHERE id = v_campaign_id AND farm_id = v_farm_id AND workspace_id = v_workspace AND deleted_at IS NULL FOR SHARE;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'sync invalid: campaign does not belong to farm' USING ERRCODE = '22023';
+    END IF;
+
+    IF p_snapshot_version = 2 THEN
+        IF jsonb_typeof(p_delivery->'id') IS DISTINCT FROM 'string'
+           OR jsonb_typeof(p_delivery->'farmId') IS DISTINCT FROM 'string'
+           OR jsonb_typeof(p_delivery->'campaignId') IS DISTINCT FROM 'string'
+           OR jsonb_typeof(p_delivery->'deliveryDate') IS DISTINCT FROM 'string'
+           OR jsonb_typeof(p_delivery->'destinationName') IS DISTINCT FROM 'string'
+           OR length(btrim(p_delivery->>'destinationName')) NOT BETWEEN 1 AND 512
+           OR jsonb_typeof(p_delivery->'netGrams') IS DISTINCT FROM 'number'
+           OR (p_delivery->>'netGrams') !~ '^[0-9]+$'
+           OR v_net_grams<=0 THEN
+            RAISE EXCEPTION 'sync invalid: v2 required header types or weight' USING ERRCODE='22023';
+        END IF;
+        IF EXISTS (SELECT 1 FROM jsonb_each(p_delivery) AS f(key,value)
+            WHERE key IN ('destinationOrganizationId','deliveryNumber','ticketNumber','source','notes',
+                'harvestId','deliveryTime','harvestOrigin')
+              AND jsonb_typeof(value) NOT IN ('string','null')) THEN
+            RAISE EXCEPTION 'sync invalid: v2 optional text type' USING ERRCODE='22023';
+        END IF;
+        IF EXISTS (SELECT 1 FROM jsonb_each(p_delivery) AS f(key,value)
+            WHERE key IN ('grossGrams','tareGrams','baseVersion')
+              AND jsonb_typeof(value)<>'null'
+              AND (jsonb_typeof(value)<>'number' OR value::text !~ '^[0-9]+$')) THEN
+            RAISE EXCEPTION 'sync invalid: v2 optional integer type' USING ERRCODE='22023';
+        END IF;
+        IF (v_gross_grams IS NOT NULL AND v_gross_grams<=0)
+           OR (v_tare_grams IS NOT NULL AND v_tare_grams<0)
+           OR (v_gross_grams IS NOT NULL AND v_tare_grams IS NOT NULL
+               AND v_gross_grams::numeric-v_tare_grams::numeric<>v_net_grams)
+           OR v_source NOT IN ('MANUAL','TICKET_OCR')
+           OR (v_harvest_origin IS NOT NULL AND v_harvest_origin NOT IN ('TREE','GROUND')) THEN
+            RAISE EXCEPTION 'sync invalid: v2 ticket arithmetic or source' USING ERRCODE='22023';
+        END IF;
+        IF jsonb_typeof(p_delivery->'parcels') IS DISTINCT FROM 'array'
+           OR jsonb_array_length(p_delivery->'parcels') NOT BETWEEN 1 AND 1000 THEN
+            RAISE EXCEPTION 'sync invalid: parcels array required and bounded' USING ERRCODE='22023';
+        END IF;
+        IF EXISTS (SELECT 1 FROM jsonb_object_keys(p_delivery) AS k(key)
+            WHERE key NOT IN ('id','farmId','campaignId','deliveryDate','destinationName',
+                'destinationOrganizationId','netGrams','grossGrams','tareGrams','deliveryNumber',
+                'ticketNumber','source','notes','harvestId','deliveryTime','harvestOrigin','baseVersion','parcels')) THEN
+            RAISE EXCEPTION 'sync invalid: unsupported delivery field' USING ERRCODE='22023';
+        END IF;
+        v_destination_org := (p_delivery->>'destinationOrganizationId')::uuid;
+        FOR v_share IN SELECT value FROM jsonb_array_elements(p_delivery->'parcels') LOOP
+            IF jsonb_typeof(v_share) IS DISTINCT FROM 'object'
+               OR NOT (v_share ?& ARRAY['id','parcelId','campaignParcelId','parcelNameAtDelivery','weightGrams','allocationMode'])
+               OR EXISTS (SELECT 1 FROM jsonb_object_keys(v_share) AS k(key)
+                    WHERE key NOT IN ('id','parcelId','campaignParcelId','parcelNameAtDelivery','weightGrams','allocationMode'))
+               OR jsonb_typeof(v_share->'id') IS DISTINCT FROM 'string'
+               OR jsonb_typeof(v_share->'parcelId') IS DISTINCT FROM 'string'
+               OR jsonb_typeof(v_share->'parcelNameAtDelivery') IS DISTINCT FROM 'string'
+               OR length(v_share->>'parcelNameAtDelivery') NOT BETWEEN 1 AND 512
+               OR jsonb_typeof(v_share->'allocationMode') IS DISTINCT FROM 'string'
+               OR jsonb_typeof(v_share->'campaignParcelId') NOT IN ('string','null') THEN
+                RAISE EXCEPTION 'sync invalid: parcel snapshot shape' USING ERRCODE='22023';
+            END IF;
+            v_parcel := (v_share->>'parcelId')::uuid;
+            IF v_parcel = ANY(v_parcel_ids) OR (v_share->>'id')::uuid = ANY(v_child_ids) THEN
+                RAISE EXCEPTION 'sync invalid: duplicate parcel snapshot' USING ERRCODE='22023';
+            END IF;
+            v_parcel_ids := array_append(v_parcel_ids, v_parcel);
+            v_child_ids := array_append(v_child_ids, (v_share->>'id')::uuid);
+            PERFORM 1 FROM public.parcels p JOIN public.farm_parcel_memberships m
+              ON m.parcel_id=p.id AND m.workspace_id=p.workspace_id
+              WHERE p.id=v_parcel AND p.workspace_id=v_workspace AND m.farm_id=v_farm_id
+                AND p.deleted_at IS NULL AND m.deleted_at IS NULL
+                AND m.valid_from < (v_delivery_date + 1)::timestamptz
+                AND (m.valid_until IS NULL OR m.valid_until > v_delivery_date::timestamptz)
+              FOR SHARE OF p,m;
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'sync denied: parcel does not belong to farm' USING ERRCODE='42501';
+            END IF;
+            PERFORM (v_share->>'campaignParcelId')::uuid;
+            IF v_share->>'allocationMode' = 'UNALLOCATED'
+               AND jsonb_typeof(v_share->'weightGrams') = 'null' THEN
+                v_unknown_count := v_unknown_count + 1;
+            ELSIF v_share->>'allocationMode' = 'EXACT'
+               AND jsonb_typeof(v_share->'weightGrams') = 'number'
+               AND (v_share->>'weightGrams') ~ '^[0-9]+$'
+               AND (v_share->>'weightGrams')::numeric > 0
+               AND (v_share->>'weightGrams')::numeric <= 9223372036854775807 THEN
+                v_known_grams := v_known_grams + (v_share->>'weightGrams')::numeric;
+            ELSE
+                RAISE EXCEPTION 'sync invalid: parcel weight or allocation mode' USING ERRCODE='22023';
+            END IF;
+        END LOOP;
+        IF v_known_grams > v_net_grams OR
+           (cardinality(v_parcel_ids)>0 AND v_unknown_count=0 AND v_known_grams<>v_net_grams) THEN
+            RAISE EXCEPTION 'sync invalid: parcel weights do not reconcile' USING ERRCODE='22023';
+        END IF;
     END IF;
 
     -- Apply delivery upsert with row-level locking and stale update protection
@@ -213,6 +353,20 @@ BEGIN
     FOR UPDATE;
 
     IF FOUND THEN
+        IF v_existing_delivery.snapshot_format > p_snapshot_version THEN
+            RAISE EXCEPTION 'sync conflict: snapshot downgrade forbidden' USING ERRCODE='23505';
+        END IF;
+        IF p_snapshot_version=2 AND EXISTS (
+            SELECT 1 FROM public.delivery_parcels old
+            JOIN jsonb_array_elements(p_delivery->'parcels') AS incoming(value)
+              ON old.parcel_id=(incoming.value->>'parcelId')::uuid
+            WHERE old.delivery_id=v_delivery_id AND (
+                old.id<>(incoming.value->>'id')::uuid OR
+                old.parcel_name_at_delivery IS DISTINCT FROM incoming.value->>'parcelNameAtDelivery' OR
+                old.campaign_parcel_id IS DISTINCT FROM (incoming.value->>'campaignParcelId')::uuid)
+        ) THEN
+            RAISE EXCEPTION 'sync conflict: historical parcel binding mismatch' USING ERRCODE='23505';
+        END IF;
         IF v_existing_delivery.farm_id <> v_farm_id OR v_existing_delivery.workspace_id <> v_workspace THEN
             RAISE EXCEPTION 'sync conflict: delivery immutable binding mismatch' USING ERRCODE = '23505';
         END IF;
@@ -242,7 +396,9 @@ BEGIN
             notes = v_notes,
             harvest_id = v_harvest_id,
             delivery_time = v_delivery_time,
-            harvest_origin = v_harvest_origin
+            harvest_origin = v_harvest_origin,
+            destination_organization_id = CASE WHEN p_snapshot_version=2 THEN v_destination_org ELSE destination_organization_id END,
+            snapshot_format = p_snapshot_version
         WHERE id = v_delivery_id AND workspace_id = v_workspace AND version = v_existing_delivery.version;
 
         IF NOT FOUND THEN
@@ -253,13 +409,23 @@ BEGIN
             id, workspace_id, farm_id, campaign_id, delivery_date, destination_name,
             net_grams, gross_grams, tare_grams, delivery_number, ticket_number,
             source, notes, harvest_id, delivery_time, harvest_origin,
-            recorded_by_user_id, created_at, updated_at, version
+            recorded_by_user_id, created_at, updated_at, version, destination_organization_id, snapshot_format
         ) VALUES (
             v_delivery_id, v_workspace, v_farm_id, v_campaign_id, v_delivery_date, v_destination_name,
             v_net_grams, v_gross_grams, v_tare_grams, v_delivery_number, v_ticket_number,
             v_source, v_notes, v_harvest_id, v_delivery_time, v_harvest_origin,
-            actor, now(), now(), 1
+            actor, now(), now(), 1, v_destination_org, p_snapshot_version
         );
+    END IF;
+
+    IF p_snapshot_version=2 THEN
+        DELETE FROM public.delivery_parcels WHERE delivery_id=v_delivery_id;
+        INSERT INTO public.delivery_parcels(id, workspace_id, delivery_id, parcel_id,
+            campaign_parcel_id, parcel_name_at_delivery, weight_grams, allocation_mode)
+        SELECT (value->>'id')::uuid, v_workspace, v_delivery_id, (value->>'parcelId')::uuid,
+            (value->>'campaignParcelId')::uuid, value->>'parcelNameAtDelivery',
+            (value->>'weightGrams')::bigint, value->>'allocationMode'
+        FROM jsonb_array_elements(p_delivery->'parcels');
     END IF;
 
     -- Capture the version committed by this operation; later retries must return this exact value.
@@ -270,9 +436,9 @@ BEGIN
 
     -- Record idempotent operation
     INSERT INTO magina_g2_private.sync_operations(
-        account_id, operation_id, entity_type, entity_id, payload_hash, status, result_version
+        account_id, operation_id, entity_type, entity_id, payload_hash, status, result_version, payload_version
     ) VALUES (
-        actor, p_operation_id, 'DELIVERY', v_delivery_id, v_payload_hash, 'APPLIED', v_result_version
+        actor, p_operation_id, 'DELIVERY', v_delivery_id, v_payload_hash, 'APPLIED', v_result_version, p_snapshot_version
     );
 
     RETURN jsonb_build_object(
@@ -281,10 +447,51 @@ BEGIN
         'entity_id', v_delivery_id,
         'status', 'APPLIED',
         'remote_version', v_result_version,
+        'payload_version', p_snapshot_version,
         'idempotent', false
     );
 END;
 $$;
+
+-- Public endpoints retain explicit versions; the shared implementation is not exposed.
+CREATE OR REPLACE FUNCTION public.sync_own_delivery(p_operation_id UUID, p_delivery JSONB)
+RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path=''
+AS $$ SELECT magina_g2_private.sync_delivery(p_operation_id,p_delivery,1); $$;
+CREATE OR REPLACE FUNCTION public.sync_own_delivery_v2(p_operation_id UUID, p_delivery JSONB)
+RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path=''
+AS $$ SELECT magina_g2_private.sync_delivery(p_operation_id,p_delivery,2); $$;
+REVOKE ALL ON FUNCTION magina_g2_private.sync_delivery(UUID,JSONB,INTEGER) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.sync_own_delivery_v2(UUID,JSONB) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sync_own_delivery_v2(UUID,JSONB) TO authenticated;
+
+-- One SQL snapshot returns header and historical allocations coherently.
+CREATE OR REPLACE FUNCTION public.get_own_delivery_v2(p_delivery_id UUID)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE actor UUID := auth.uid(); claims JSONB := current_setting('request.jwt.claims',true)::jsonb; result JSONB;
+BEGIN
+    IF actor IS NULL OR claims->>'role' IS DISTINCT FROM 'authenticated'
+       OR claims->>'sub' IS DISTINCT FROM actor::text
+       OR coalesce(claims->>'is_anonymous','false')<>'false'
+       OR jsonb_typeof(claims->'exp') IS DISTINCT FROM 'number'
+       OR (claims->>'exp') !~ '^[0-9]+$'
+       OR (claims->>'exp')::numeric<=extract(epoch FROM now()) THEN
+        RAISE EXCEPTION 'sync denied: invalid identity' USING ERRCODE='42501';
+    END IF;
+    SELECT jsonb_build_object('payload_version',2,'delivery',to_jsonb(d),'parcels',
+        coalesce((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.parcel_id)
+                  FROM public.delivery_parcels p WHERE p.delivery_id=d.id),'[]'::jsonb))
+    INTO result
+    FROM public.deliveries d JOIN public.farms f ON f.id=d.farm_id AND f.workspace_id=d.workspace_id
+    WHERE d.id=p_delivery_id AND d.deleted_at IS NULL AND d.snapshot_format=2 AND f.deleted_at IS NULL
+      AND (f.owner_id=actor OR f.creator_user_id=actor OR EXISTS (
+          SELECT 1 FROM public.workspaces w WHERE w.id=f.workspace_id AND w.owner_user_id=actor AND w.deleted_at IS NULL));
+    IF result IS NULL THEN
+        RAISE EXCEPTION 'sync denied: snapshot unavailable' USING ERRCODE='42501';
+    END IF;
+    RETURN result;
+END; $$;
+REVOKE ALL ON FUNCTION public.get_own_delivery_v2(UUID) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_own_delivery_v2(UUID) TO authenticated;
 
 -- 4. Idempotent RPC: Sync Own Expense (Gastos contables con protección económica)
 CREATE OR REPLACE FUNCTION public.sync_own_expense(p_operation_id UUID, p_expense JSONB)
@@ -527,6 +734,7 @@ BEGIN
                 'entity_id', entity_id,
                 'entity_type', entity_type,
                 'remote_version', result_version,
+                'payload_version', payload_version,
                 'payload_hash', payload_hash
             ) ORDER BY operation_id
         ), '[]'::jsonb)
