@@ -1,11 +1,56 @@
-# Olive Farm App — Current Work State
+# Mágina Olivo — Current Work State
 
-**Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-10-10
+**Baseline contractual:** `RC1.2-BASELINE-2026-09-18` (no se altera)  
+**Última revisión documental:** 2026-10-23  
+**Snapshot comprobado de `main`:** `3224ac97489537c5b1b1812dab52df133de5b9d3` (volver a comprobar antes de cada integración)
 
-This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
+Este documento identifica la continuidad vigente para ChatGPT, Codex, Claude y Antigravity. La baseline y los contratos aprobados siguen siendo normativos. **La ejecución vigente aparece primero; el registro cronológico anterior se conserva debajo como historial, no como cola activa.**
 
-## Current owner execution queue — #711 / #696
+## Cola efectiva de trabajo — cierre Android 1.0 (23/10/2026)
+
+**Objetivo:** terminar la app Android offline-first y sincronización voluntaria de datos propios de forma recuperable; después cerrar los detalles de riego, perfil y preparación Google Play. Mantener la web V3 y otras ampliaciones fuera de la línea productiva.
+
+### Estado realmente integrado en `main`
+
+- Núcleo agrícola offline-first, mapas/Catastro, campañas, pesadas, jornales, gastos, avisos e interfaz Android desarrollados en fases previas. La aceptación final en dispositivo físico **Gate 21 sigue ABIERTA**.
+- Registro/login/recuperación de cuenta trabajados e integrados con pruebas anteriores; **no equivalen a sincronización G2 activa**.
+- Copia local protegida y flujo de consentimiento previos de G1. En `main` Room continúa en **versión 26**; Room 27 pertenece a la propuesta G2.3 no fusionada.
+- El último `main` observado corresponde a #764 (`3224ac97`); **no existe APK 1.0 final aceptada**.
+
+### PRs de trabajo activas (todas DRAFT; no confundir propuesta con integrado)
+
+| PR | Entrega propuesta | Estado comprobado y límite |
+| --- | --- | --- |
+| [#765](https://github.com/izc05/magina-olivo-v20/pull/765) G2.1 | Contratos Supabase de datos propios, idempotencia, snapshots y pruebas nativas | Abierta; CI Android, seguridad DEV y emulador SUCCESS en SHA `2235464b`. Sin despliegue persistente ni conexión real Android |
+| [#766](https://github.com/izc05/magina-olivo-v20/pull/766) G2.3 | Outbox Room persistente, migración 26→27, consentimiento por finca | Abierta; CI Android y emulador SUCCESS en SHA `f3826459`. Sin transporte HTTP |
+| [#768](https://github.com/izc05/magina-olivo-v20/pull/768) G2.4 | ACK/snapshots de pesadas, diario de bootstrap y lector transaccional Room | Abierta; CI Android y emulador SUCCESS en SHA `2e3f14a9`, verificado el 23/10. Las ocho pruebas instrumentadas nuevas deben verificarse en los resultados reales del SHA; sin cliente HTTP |
+| [#769](https://github.com/izc05/magina-olivo-v20/pull/769) cierre 1.0 | Especificación y planes para riego, perfil con foto privada, ayuda/privacidad/Google Play | Abierta; **solo cuatro Markdown**. No representa código implementado |
+
+**Continuación técnica inmediata:** cerrar la captura completa de snapshots Room, codecs/huellas y el puente seguro al diario G2.4; después integrar dependencias G2.3/G2.1 cuidadosamente, probar transporte autenticado, consentimiento justo antes del envío, worker/reintentos, recuperación y restauración. #768 declara ascendencia de #766; revisar diffs y bases para no duplicar commits. Validar CI/evidencia sobre **el SHA final** y compatibilidad entre ramas antes de autorizar cualquier merge.
+
+**Secuencia de producto tras G2:** ejecutar los planes de #769 en bloques independientes: (1) riego tipado, reloj/aviso, comunidad/gotero/caudal, cuota anual real por finca como gasto sin prorrateo automático; (2) perfil por cuenta con foto privada y ajustes, separándolo de `profile_settings` por workspace; (3) ayuda veraz, privacidad/eliminación, permisos Android y expediente Google Play. Revisar realmente cada función existente antes de implementarla.
+
+### Criterios de salida para 1.0
+
+1. Sincronización integrada en una rama candidata y ensayada extremo a extremo: local → servidor → nueva instalación; conexiones interrumpidas, duplicados, revocación, cambio de cuenta, adjuntos y conflictos tratados explícitamente. Si alguna categoría se excluye, la interfaz debe declararlo sin prometer copia completa.
+2. Migraciones Room sin pérdida de fincas, parcelas, fotos, pesadas, gastos ni campañas; QA sobre actualización de datos existentes.
+3. Funciones de riego/perfil aceptadas con pruebas reales; actualizar `HelpScreens` que todavía afirma que no existen cuentas.
+4. Definir titular, soporte, URLs, tipo de cuenta Google Play, política de privacidad, eliminación de cuenta/datos y justificación de permisos efectivos (incluidos ubicación/avisos cuando corresponda).
+5. Gate 21 físico documentado, controles CI verdes en el SHA exacto y **APK candidata únicamente después de autorización y consolidación en `main`**.
+
+### Límites y disciplina para agentes
+
+- **No fusionar** PRs sin autorización del propietario. **No** desplegar Supabase de producción, publicar releases ni generar APK candidata por iniciativa propia.
+- Una sola línea de cambios productivos; no sobrescribir trabajo simultáneo. Conservar historial/adjuntos y evitar migraciones destructivas.
+- **Fuera del bloqueo 1.0:** Web V3, CRM, publicidad, IoT/automatización de riego, colaboraciones ampliadas, limpieza masiva de PRs/issues, partición cosmética de archivos grandes. Los issues CUE/REAFA requieren su propia validación administrativa; no afirmar conexión/homologación oficial sin evidencia.
+- GitHub está **público** a 23/10 y no hay archivo `LICENSE` en la raíz: decisión sobre visibilidad/licencias pendiente del propietario; ninguna transformación de permisos o historial está autorizada aquí.
+- El historial inferior documenta decisiones pasadas; si contradice esta cola, **esta cola vigente prevalece para la continuidad**, sin sustituir normas de seguridad o baseline.
+
+---
+
+## Historial de ejecución (referencia; instrucciones de reanudación anteriores supersedidas)
+
+## Historical owner execution queue — #711 / #696 (2026-10-09)
 
 The owner's 9 October continuation in [#711](https://github.com/izc05/magina-olivo-v20/issues/711)
 and priorities in [#696](https://github.com/izc05/magina-olivo-v20/issues/696) supersede the older
