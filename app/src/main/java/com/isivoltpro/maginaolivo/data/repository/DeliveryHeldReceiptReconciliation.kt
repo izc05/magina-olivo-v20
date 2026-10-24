@@ -71,7 +71,7 @@ private suspend fun MaginaOlivoDatabase.reconcileInTransaction(
     at: Instant,
 ): HeldReconciliationOutcome {
     if (!authority.farmerConfirmed) return HeldReconciliationOutcome.NOT_CONFIRMED
-    authority.lease.requireHeld()
+    authority.lease.requireOpen()
     val outbox = syncOutboxDao()
     val heldDao = deliveryHeldReceiptDao()
     val op = outbox.findById(operationId) ?: return HeldReconciliationOutcome.REJECTED

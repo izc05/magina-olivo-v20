@@ -5,6 +5,13 @@ import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -66,6 +73,83 @@ class DeliveryDispatchLeaseTest {
             assertNotEquals(first.substringBeforeLast(":"), it.claimMarker().substringBeforeLast(":"))
             assertFalse(it.canRecover(first))
         }
+    }
+
+    @Test fun closeDuringPendingHttpKeepsOwnershipUntilTheResultIsPersisted() = runTest {
+        val directory = temporary.newFolder()
+        val lease = checkNotNull(DeliveryDispatchLease.tryAcquire(directory))
+        val oldMarker = lease.claimMarker()
+        val http = CompletableDeferred<String>()
+        var persistedUnderLease = false
+        val request = async {
+            lease.withActiveRequest {
+                val ack = http.await()
+                lease.requireHeld() // persisting the result still runs under the same ownership
+                persistedUnderLease = true
+                ack
+            }
+        }
+        testScheduler.runCurrent()
+        lease.close()
+        assertNull("No new epoch while the request is running", DeliveryDispatchLease.tryAcquire(directory))
+        lease.requireHeld()
+        assertThrows(IllegalStateException::class.java) { lease.requireOpen() }
+        val refused = runCatching { lease.withActiveRequest { "second" } }.exceptionOrNull()
+        assertTrue("A closing lease accepts no new request", refused is IllegalStateException)
+        http.complete("ACK-7")
+        assertEquals("ACK-7", request.await())
+        assertTrue(persistedUnderLease)
+        assertThrows(IllegalStateException::class.java) { lease.requireHeld() }
+        checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { next ->
+            assertTrue("The next epoch recovers the finished request's claim", next.canRecover(oldMarker))
+        }
+    }
+
+    @Test fun cancelledRequestKeepsOwnershipUntilItsCancellationSettles() = runTest {
+        val directory = temporary.newFolder()
+        val lease = checkNotNull(DeliveryDispatchLease.tryAcquire(directory))
+        val cleanup = CompletableDeferred<Unit>()
+        var cleaned = false
+        val request = launch {
+            lease.withActiveRequest {
+                try { awaitCancellation() }
+                finally { withContext(NonCancellable) { cleanup.await(); cleaned = true } }
+            }
+        }
+        testScheduler.runCurrent()
+        request.cancel()
+        lease.close()
+        testScheduler.runCurrent()
+        assertFalse(request.isCompleted)
+        assertNull("Cancellation still running: ownership must not be handed over", DeliveryDispatchLease.tryAcquire(directory))
+        cleanup.complete(Unit)
+        request.join()
+        assertTrue(cleaned)
+        checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { it.requireOpen() }
+    }
+
+    @Test fun concurrentRequestsReleaseOnlyAfterTheLastOne() = runTest {
+        val directory = temporary.newFolder()
+        val lease = checkNotNull(DeliveryDispatchLease.tryAcquire(directory))
+        val first = CompletableDeferred<Unit>(); val second = CompletableDeferred<Unit>()
+        val a = launch { lease.withActiveRequest { first.await() } }
+        val b = launch { lease.withActiveRequest { second.await() } }
+        testScheduler.runCurrent()
+        lease.close(); lease.close()
+        first.complete(Unit); a.join()
+        assertNull(DeliveryDispatchLease.tryAcquire(directory))
+        second.complete(Unit); b.join()
+        checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { it.requireOpen() }
+    }
+
+    @Test fun failedRequestStillReleasesOnceClosed() = runTest {
+        val directory = temporary.newFolder()
+        val lease = checkNotNull(DeliveryDispatchLease.tryAcquire(directory))
+        val failure = runCatching { lease.withActiveRequest { error("connection reset") } }.exceptionOrNull()
+        assertTrue(failure is IllegalStateException)
+        lease.requireOpen()
+        lease.close()
+        checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { it.requireOpen() }
     }
 
     @Test fun killedJvmReleasesTheLockButLiveSlowJvmCannotBeReplaced() {

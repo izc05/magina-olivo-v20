@@ -15,6 +15,11 @@ import java.util.UUID
  *
  * The lock file must never be deleted/renamed to recover it. OS process death releases
  * the lock; file age does not. This does not authorize HTTP or reset PROCESSING rows.
+ *
+ * Every request runs inside [withActiveRequest]. [close] while one is still running (HTTP,
+ * its cancellation, or the persistence of its result) only stops new work: the OS lock is
+ * released when the last request has finished, so no new epoch can recover an operation
+ * whose previous request is still executing.
  */
 internal class DeliveryDispatchLease private constructor(
     private val path: String,
@@ -22,11 +27,41 @@ internal class DeliveryDispatchLease private constructor(
     private val lock: FileLock,
 ) : Closeable {
     private var closed = false
+    private var closing = false
+    private var activeRequests = 0
     private val acquisitionId = UUID.randomUUID()
 
-    fun requireHeld() = synchronized(guard) {
-        check(!closed && lock.isValid && file.channel.isOpen) { "Delivery dispatch ownership was released" }
+    /** Still the OS owner; true while a closing lease finishes its running requests. */
+    fun requireHeld() = synchronized(guard) { requireHeldLocked() }
+
+    /** Owner that may start NEW work: claims, recoveries and requests. */
+    fun requireOpen() = synchronized(guard) {
+        check(!closing) { "Delivery dispatch ownership is closing" }
+        requireHeldLocked()
     }
+
+    /**
+     * Runs one request and everything that belongs to it (cancellation handling, receipt
+     * persistence). Ownership cannot be released before [block] has returned or thrown.
+     */
+    suspend fun <T> withActiveRequest(block: suspend () -> T): T {
+        synchronized(guard) {
+            check(!closing) { "Delivery dispatch ownership is closing" }
+            requireHeldLocked()
+            activeRequests++
+        }
+        try {
+            return block()
+        } finally {
+            synchronized(guard) {
+                activeRequests--
+                if (closing && activeRequests == 0) releaseLocked()
+            }
+        }
+    }
+
+    private fun requireHeldLocked() =
+        check(!closed && lock.isValid && file.channel.isOpen) { "Delivery dispatch ownership was released" }
 
     /** Each acquisition has a new epoch, even when it uses the same canonical directory. */
     fun claimMarker(): String {
@@ -46,7 +81,15 @@ internal class DeliveryDispatchLease private constructor(
                 .matches(previousMarker.removePrefix(namespace)) && previousMarker != claimMarker()
     }
 
+    /** Stops new work now; releases the OS lock now or when the last running request ends. */
     override fun close() = synchronized(guard) {
+        if (!closing) {
+            closing = true
+            if (activeRequests == 0) releaseLocked()
+        }
+    }
+
+    private fun releaseLocked() {
         if (!closed) {
             closed = true
             try {

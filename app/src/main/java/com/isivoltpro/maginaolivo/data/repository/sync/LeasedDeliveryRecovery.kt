@@ -18,6 +18,7 @@ internal suspend fun MaginaOlivoDatabase.claimDeliveryRecoveryWithLease(
     isAuthorized: (String, UUID) -> Boolean,
     at: Instant,
 ): Boolean = withTransaction {
+    lease.requireOpen()
     val marker = lease.claimMarker()
     if (accountId.isBlank() || !isAuthorized(accountId, farmId)) return@withTransaction false
     val dao = syncOutboxDao()
@@ -44,6 +45,7 @@ internal suspend fun MaginaOlivoDatabase.recoverAbandonedDeliveryClaim(
     isAuthorized: (String, UUID) -> Boolean,
     at: Instant,
 ): Boolean = withTransaction {
+    lease.requireOpen()
     val marker = lease.claimMarker()
     if (accountId.isBlank() || !isAuthorized(accountId, farmId)) return@withTransaction false
     val dao = syncOutboxDao()

@@ -1076,6 +1076,43 @@ class DeliveryContractTest {
     }
 
     @Test
+    fun g24LeaseIsNotHandedOverWhileTheRequestRunsAndItsResultIsKept() = runBlocking {
+        val (receipt, payload) = failedWithNewerEdit()
+        val directory = File(context.noBackupFilesDir, "g24-inflight-${UUID.randomUUID()}")
+        linkedFixtureCleanup.add { directory.deleteRecursively() }
+        val lease = checkNotNull(DeliveryDispatchLease.tryAcquire(directory))
+        assertTrue(db.claimDeliveryRecoveryWithLease(lease, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val http = kotlinx.coroutines.CompletableDeferred<Long>()
+        val request = launch(Dispatchers.Default) {
+            lease.withActiveRequest {
+                started.complete(Unit)
+                val version = http.await()
+                db.applyConfirmedDeliveryReceipt(receipt.copy(remoteVersion = version), now)
+            }
+        }
+        started.await()
+        lease.close() // e.g. the worker is stopped while the request is still on the wire
+        assertNull("No new epoch while the old request runs", DeliveryDispatchLease.tryAcquire(directory))
+        assertTrue("A closing lease starts no new claim", runCatching {
+            db.claimDeliveryRecoveryWithLease(lease, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now)
+        }.exceptionOrNull() is IllegalStateException)
+        assertEquals(OutboxStatus.PROCESSING, db.syncOutboxDao().findById(receipt.operationId)!!.status)
+        http.complete(7L)
+        request.join()
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(receipt.operationId)!!.status)
+        checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { next ->
+            assertFalse("A finished request is not recovered again",
+                db.recoverAbandonedDeliveryClaim(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+        }
+        val kept = db.syncOutboxDao().findById(receipt.operationId)!!
+        assertEquals(OutboxStatus.CONFIRMED, kept.status)
+        assertEquals(payload, kept.payloadJson)
+        assertEquals(3_300_000L, db.deliveryDao().findById(receipt.deliveryId)!!.netGrams)
+        assertEquals(7L, db.deliveryDao().findById(receipt.deliveryId)!!.metadata.remoteVersion)
+    }
+
+    @Test
     fun g24LeaseCannotAdoptLegacyUnmarkedProcessing() = runBlocking {
         val (receipt, _) = failedWithNewerEdit()
         assertEquals(1, db.syncOutboxDao().claimFailedDeliveryForRecovery(receipt.operationId, receipt.accountId, farmId, now.toEpochMilli()))
