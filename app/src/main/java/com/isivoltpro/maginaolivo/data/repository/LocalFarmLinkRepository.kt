@@ -28,8 +28,9 @@ class LocalFarmLinkRepository(
 
     override suspend fun <T> withAccount(farmId: UUID, action: suspend (String?) -> T): T =
         account.withLocalWriteIdentity { userId -> withContext(Dispatchers.IO) {
-            // The account mutex remains held through the local Room write; consent and
-            // revocation use that same mutex before entering Room, preserving lock order.
+            // The account's LOCAL identity lock stays held through the Room write; consent,
+            // revocation and logout take that same lock before Room (same lock order). Auth HTTP
+            // never holds it, so a stuck refresh or login cannot delay saving field data.
             val bound = userId?.takeIf { isFarmConsented(farmId, it) }?.toString()
             action(bound)
         } }

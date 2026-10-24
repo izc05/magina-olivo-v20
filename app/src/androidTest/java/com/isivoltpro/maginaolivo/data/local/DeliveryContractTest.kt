@@ -74,6 +74,7 @@ import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -1122,6 +1123,68 @@ class DeliveryContractTest {
         assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(previous.id)!!.status)
         assertNull(db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, delivery).single { it.status == OutboxStatus.PENDING }.accountId)
         assertEquals(2_500_000L, db.deliveryDao().findById(delivery)!!.netGrams)
+    }
+
+    /**
+     * G2.4 block 1: with a very poor signal the Auth refresh never returns, yet a Pesada saves at
+     * once with the cached local identity, and a consent revocation also completes without
+     * waiting. Edits after revocation stay local (no account) and nothing is lost or duplicated.
+     */
+    @Test
+    fun g24PesadaSavesAndConsentRevokesWhileAuthRefreshIsStuck() = runBlocking {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val delegate = SimulatedAccountAuthApi()
+        val api = object : AccountAuthApi by delegate {
+            override val simulated = false
+            // Close to expiry, so resume(online) must refresh before anything else.
+            override suspend fun signIn(email: String, password: String) =
+                delegate.signIn(email, password).let {
+                    com.isivoltpro.maginaolivo.feature.account.AuthSession(
+                        it.userId, it.email, it.accessToken, it.refreshToken, java.time.Instant.now().plusSeconds(20),
+                    )
+                }
+            override suspend fun refresh(session: com.isivoltpro.maginaolivo.feature.account.AuthSession) =
+                gate.await().let { delegate.refresh(session) }
+        }
+        val account = AccountRepository(api, MemoryAccountSessionStore())
+        account.login("slow@example.test", "password42", true)
+        val userId = account.state.value.userId!!
+        val file = File(context.noBackupFilesDir, "g24-slow-${UUID.randomUUID()}.json")
+        val store = AndroidFarmLinkLedger(file)
+        val links = LocalFarmLinkRepository(context, db, account, "fixture-project", store)
+        linkedFixtureCleanup.add {
+            store.read()?.consents?.forEach {
+                File(context.noBackupFilesDir, "account-link-backups/${it.backupId}").deleteRecursively()
+            }
+            listOf(file, File(file.path + ".bak"), File(file.path + ".new")).forEach { it.delete() }
+        }
+        links.consent(userId, links.choices().filter { it.id == farmId }, true)
+        deliveries = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, writeScope = links) { ZoneOffset.UTC }
+        val id = ok(deliveries.create(draft(2_000_000, north to null)))
+
+        val stuck = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default)
+            .launch { account.resume(true) }
+        kotlinx.coroutines.delay(200)
+        assertFalse("The refresh must still be waiting for the server", stuck.isCompleted)
+
+        kotlinx.coroutines.withTimeout(5_000) { ok(deliveries.update(id, draft(2_400_000, north to null))) }
+        val bound = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id)
+        assertEquals("Collapsed into one CREATE, never duplicated", 1, bound.size)
+        assertEquals(userId.toString(), bound.single().accountId)
+        assertEquals(2_400_000L, db.deliveryDao().findById(id)!!.netGrams)
+
+        kotlinx.coroutines.withTimeout(5_000) { links.revokeConsentForFarm(farmId) }
+        kotlinx.coroutines.withTimeout(5_000) { ok(deliveries.update(id, draft(2_600_000, north to null))) }
+        val after = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id)
+        assertEquals(OutboxStatus.BLOCKED, after.single { it.id == bound.single().id }.status)
+        assertNull("After revocation the edit stays local, without account", after.single { it.status == OutboxStatus.PENDING }.accountId)
+        assertEquals(2_600_000L, db.deliveryDao().findById(id)!!.netGrams)
+        assertFalse(stuck.isCompleted)
+
+        gate.complete(Unit); stuck.join()
+        assertEquals(userId, account.state.value.userId)
+        assertEquals(2_600_000L, db.deliveryDao().findById(id)!!.netGrams)
+        assertEquals(2, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).size)
     }
 
     private suspend fun configureConsentedWrites(consent: Boolean = true): Pair<AccountRepository, LocalFarmLinkRepository> {
