@@ -114,6 +114,7 @@ before(async () => {
   sql('DROP POLICY g0_test_legacy_public_read ON storage.objects;');
   sql(`BEGIN; ${hardening} COMMIT; NOTIFY pgrst, 'reload schema';`);
   sql(`BEGIN; ${readFileSync(new URL('../migrations/20261016041601_g0_aggregate_identity_guards.sql', import.meta.url), 'utf8')} COMMIT;`);
+  sql(`BEGIN; ${readFileSync(new URL('../migrations/20261024125046_g0_function_security_hardening.sql', import.meta.url), 'utf8')} COMMIT; NOTIFY pgrst, 'reload schema';`);
   writeFileSync(`${evidence}/${baseline}-runtime.txt`, sql(`SELECT version(); SELECT 'baseline=${baseline}'; SELECT bucket_id, count(*) FROM storage.objects GROUP BY bucket_id;`));
 
   let ready = false;
@@ -141,6 +142,27 @@ before(async () => {
     owner_user_id: users.A.id, exploiter_user_id: users.B.id, terms_notes: 'Original native terms', cost_responsibilities: { fuel: 'exploiter' } });
   agreement = await insert('campaign_harvest_share_agreements', 'A', { farm_id: farm.id, campaign_id: campaign.id,
     contract_id: contract.id, owner_user_id: users.A.id, exploiter_user_id: users.B.id, owner_percentage: 30, exploiter_percentage: 70, version: 1 });
+});
+
+test('Native G0 privileged RPCs deny anonymous callers and retain authenticated access', async () => {
+  const calls = [
+    ['accept_farm_contract', {p_contract_id:contract.id}],
+    ['accept_harvest_share_agreement', {p_agreement_id:agreement.id}],
+    ['claim_farm_invitation', {token_plaintext:'synthetic-invalid-token'}],
+    ['confirm_farm_invitation', {p_invitation_id:randomUUID()}],
+    ['has_farm_capability', {f_id:farm.id,req_cap:'view_farm'}],
+    ['user_accessible_farm_ids', {}],
+  ];
+  for (const [name, body] of calls) {
+    const denied = await request(`/rest/v1/rpc/${name}`, {method:'POST',body});
+    assert.ok([401,403].includes(denied.status), `${name} anonymous status ${denied.status}`);
+  }
+  assert.equal(await rpc('has_farm_capability','A',{f_id:farm.id,req_cap:'view_farm'}),true);
+  assert.equal(sql(`SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.proname IN ('check_farm_principal_immutability',
+      'deny_delivery_hard_delete','check_contract_acceptance_integrity',
+      'check_share_agreement_acceptance_integrity')
+      AND p.proconfig @> ARRAY['search_path=pg_catalog, public'];`).trim(),'4');
 });
 
 test('Native hardening blocks inherited policies and private buckets deny anonymous downloads', async () => {
