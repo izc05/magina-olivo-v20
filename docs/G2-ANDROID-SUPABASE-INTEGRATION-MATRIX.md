@@ -1,6 +1,12 @@
 # G2.1 ↔ G2.4 — matriz de integración Android / Supabase
 
-**Estado 2026-10-24:** propuesta para revisión en #765 y #773. Ninguna RPC G1c/G2.1 está desplegada en un Supabase persistente ni conectada al emisor Android. Gate 21 físico sigue abierto. Esta matriz no autoriza HTTP agrícola, un worker, despliegue ni merge.
+**Contrato de integración 2026-10-24:** #773 (HEAD `696d5d22`) está apilada sobre #765. Esta es la única matriz para acordar el adaptador G2.4 con Claude; cualquier discrepancia se registra aquí y se resuelve antes de conectar componentes. Ninguna RPC G1c/G2.1 está desplegada en un Supabase persistente ni conectada al emisor Android. Gate 21 físico sigue abierto. Esta matriz no autoriza HTTP agrícola, un worker, despliegue ni merge.
+
+## Identidad y límite de autoridad
+
+- El cliente envía `apikey` pública y `Authorization: Bearer <access_token>` de la sesión verificada. El servidor toma la cuenta de `auth.uid()` y los claims verificados por el gateway; ningún UUID, email, finca, `actorId` o `issuer` enviado en JSON concede acceso. Una sesión anónima, caducada, cambiada o sin consentimiento vigente bloquea el envío y la aplicación local del ACK.
+- El sujeto del diario Android es el par exacto `issuer|userId`. La reserva G1c recibe `p_request` con `payloadVersion=1`, `operationId`, `farmId`, `localWorkspaceId`, `consentId`, `consentTextVersion`, `manifestSha256` y `aggregateVersion`; `p_remote_workspace` es el UUID del espacio remoto ya creado. La respuesta tiene `issuer`, `actorId`, `operationId`, `farmId`, `payloadHash`, `remoteWorkspaceId` y `receiptId`. El hash usa los campos UTF-8 prefijados por su longitud de 4 bytes según `ReservationRequest.payloadHash()`.
+- El consentimiento y la reserva no son una autorización general para importar datos. Android comprueba el consentimiento actual por finca antes de cada envío, tras cada espera de red y antes de aplicar un recibo. Logout o cambio de cuenta dejan la operación pendiente para su sujeto original.
 
 ## Secuencia remota ya contratada
 
@@ -25,6 +31,10 @@ Todas las llamadas van por HTTPS a `/rest/v1/rpc/<nombre>` con la clave pública
 3. Para un ACK retenido después de revocación, el agricultor debe confirmar la reconciliación, renovar consentimiento y mantener `DeliveryDispatchLease` durante consulta y aplicación. Comparar el recibo histórico con `delivery.version` y `head_payload_hash`; `null` o discrepancia son conflicto, no sincronización confirmada.
 4. `23505` se traduce en conflicto HTTP 409; `42501` deniega acceso (403 con JWT válido); `22023` rechaza payload (400). Una respuesta HTTP por sí sola no reemplaza la escritura duradera del recibo local.
 
+**Adaptación exacta para la primera Pesada:** `RemoteDeliveryState.operationReceipt` proviene exclusivamente de `check_sync_operations([operationId]).confirmed_receipts`; `headVersion` proviene de `get_own_delivery_v2(deliveryId).delivery.version` y `headPayloadHash` de `head_payload_hash`. El recibo incluye `payload_version=2` y SHA-256 del `p_delivery::text` de PostgreSQL JSONB, que Android reproduce con `deliveryPayloadHash`; no se calcula sobre el JSON de lectura. Si el HEAD es `null`, tiene otra versión/hash, o el actor/issuer/consentimiento difieren, Android mantiene bloqueo/conflicto y no marca la pesada como sincronizada.
+
+**Primer ensayo conjunto:** dos instalaciones DEV con la misma cuenta de pruebas y una pesada identificable, sin adjunto. A crea offline finca/parcela/campaña/pesada, confirma reserva y envía en orden; se corta la respuesta de la pesada tras commit; A recupera el recibo por el mismo UUID, compara HEAD y conserva kilos/parcelas; B lee el agregado usando el UUID conocido del guion de prueba, sin duplicados. Repetir con otra cuenta debe negar lectura y ACK. Fotografías y pull general quedan como gates distintos: el RPC de lectura por UUID permite este ensayo dirigido, pero aún no constituye un mecanismo de descubrimiento o sincronización bidireccional completa.
+
 ## Casos para la integración conjunta con Claude
 
 | Caso | Backend efímero | Android G2.4 | Gate conjunto pendiente |
@@ -37,8 +47,8 @@ Todas las llamadas van por HTTPS a `/rest/v1/rpc/<nombre>` con la clave pública
 
 ## Dependencias que bloquean activación
 
-- Integrar y revisar G0/#772 y G1c/G2.1 en orden; #765 y #773 siguen DRAFT. Las propuestas se cargan en un Supabase **efímero** durante CI, no en DEV persistente.
-- Revalidar el issuer HTTPS y la firma de JWT contra Auth DEV real; el gateway sintético nativo no lo sustituye.
+- #772 endurece G0 (seis funciones dejan de ejecutarse como `anon` y cuatro triggers fijan `search_path`) y ya se aplicó a `magina-olivo-dev` con autorización separada. Su PR sigue DRAFT; hay que incluir ese endurecimiento en la base aprobada antes de G1c/G2.1 y repetir permisos/orden de migraciones. #765 y #773 también siguen DRAFT. Las propuestas G1c/G2.1 se cargan solo en Supabase **efímero** durante CI, no en DEV persistente.
+- Antes de la primera llamada Android a la reserva, contrastar el `iss` literal del JWT de Auth DEV firmado por el gateway con el issuer HTTPS que devuelve G1c y con el sujeto persistido en Android; comprobar firma, expiración, cambio de cuenta y rechazo del token de otro proyecto mediante la ruta HTTP real. El issuer HTTPS de la suite nativa es sintético y no acredita esta validación. Una discrepancia impide conectar; no se normaliza silenciosamente en el cliente.
 - Claude debe conectar sesión verificada, consentimiento vigente, captura Room/diario, transporte, lease, ACK y aplicación transaccional. Este documento no modifica su rama Android.
 - Falta sincronización completa de hijos Room, pull/cursor, borrados y adjuntos. No marcar una cuenta o finca como «sincronizada» por la sola creación remota.
 - Gate 21 físico y Gate G2 extremo a extremo siguen pendientes; producción permanece intacta.
