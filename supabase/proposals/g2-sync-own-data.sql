@@ -495,7 +495,12 @@ BEGIN
        OR (claims->>'exp')::numeric<=extract(epoch FROM now()) THEN
         RAISE EXCEPTION 'sync denied: invalid identity' USING ERRCODE='42501';
     END IF;
-    SELECT jsonb_build_object('payload_version',2,'delivery',to_jsonb(d),'parcels',
+    SELECT jsonb_build_object('payload_version',2,'delivery',to_jsonb(d),
+        'head_payload_hash',(SELECT CASE WHEN count(*)=1 THEN min(o.payload_hash) ELSE NULL END
+            FROM magina_g2_private.sync_operations o
+            WHERE o.account_id=actor AND o.entity_type='DELIVERY' AND o.entity_id=d.id
+              AND o.result_version=d.version AND o.payload_version=2 AND o.status='APPLIED'),
+        'parcels',
         coalesce((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.parcel_id)
                   FROM public.delivery_parcels p WHERE p.delivery_id=d.id),'[]'::jsonb))
     INTO result

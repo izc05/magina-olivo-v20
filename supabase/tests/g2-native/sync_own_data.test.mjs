@@ -299,6 +299,36 @@ test('economic data protection: sync_own_expense succeeds for owner and isolates
   assert.equal(resB.data.length, 0);
 });
 
+test('real Auth rejects a same-workspace parcel from another farm on an expense', async () => {
+  const actor=actors.A, otherFarm=randomUUID(), wrongParcel=randomUUID(), ownParcel=randomUUID();
+  sql(`INSERT INTO public.farms(id,workspace_id,creator_user_id,owner_id,name)
+       VALUES (${quote(otherFarm)},${quote(actor.workspace)},${quote(actor.id)},${quote(actor.id)},'Other fixture farm');
+       INSERT INTO public.parcels(id,workspace_id,display_name)
+       VALUES (${quote(wrongParcel)},${quote(actor.workspace)},'Wrong farm parcel'),
+              (${quote(ownParcel)},${quote(actor.workspace)},'Own farm parcel');
+       INSERT INTO public.farm_parcel_memberships(workspace_id,farm_id,parcel_id,valid_from)
+       VALUES (${quote(actor.workspace)},${quote(otherFarm)},${quote(wrongParcel)},'2026-01-01'),
+              (${quote(actor.workspace)},${quote(actor.farm)},${quote(ownParcel)},'2026-01-01');`);
+  const operation=randomUUID(),expense={id:randomUUID(),farmId:actor.farm,parcelId:wrongParcel,
+    expenseDate:'2026-11-10',concept:'Synthetic fertilizer',category:'FERTILIZANTES',amountMinor:1000,currency:'EUR'};
+  const send=(op,payload,token=actor.token)=>http('/rest/v1/rpc/sync_own_expense',{
+    token,body:{p_operation_id:op,p_expense:payload}
+  });
+  const denied=await send(operation,expense);
+  assert.equal(denied.status,403,JSON.stringify(denied.data));
+  assert.equal(sql(`SELECT count(*) FROM public.expenses WHERE id=${quote(expense.id)};`),'0');
+  const recovery=await http('/rest/v1/rpc/check_sync_operations',{
+    token:actor.token,body:{p_operation_ids:[operation]}
+  });
+  assert.equal(recovery.status,200);
+  assert.deepEqual(recovery.data.confirmed_receipts,[]);
+  const allowed=await send(randomUUID(),{...expense,id:randomUUID(),parcelId:ownParcel});
+  assert.equal(allowed.status,200,JSON.stringify(allowed.data));
+  assert.equal(allowed.data.remote_version,1);
+  assert.equal((await send(randomUUID(),{...expense,id:randomUUID(),parcelId:ownParcel},actors.B.token)).status,403);
+  assert.ok([401,403].includes((await send(randomUUID(),{...expense,id:randomUUID(),parcelId:ownParcel},status.ANON_KEY)).status));
+});
+
 test('immediate revocation: grant revocation blocks access instantly', async () => {
   // Actor A grants Actor B capability to view deliveries
   const grantId = randomUUID();
@@ -875,6 +905,8 @@ test('authenticated REST bootstrap links G1c reservation to complete G2 delivery
   assert.ok(receipt);
   assert.equal(receipt.payload_version, 2);
   assert.equal(receipt.remote_version, 1);
+  assert.equal(restored.data.delivery.version,1);
+  assert.equal(restored.data.head_payload_hash,receipt.payload_hash);
   for (const [table,id] of [['workspaces',fixture.workspace],['farms',fixture.farm],
     ['campaigns',fixture.campaign],['parcels',fixture.parcel],['deliveries',payload.id]]) {
     const foreign = await http(`/rest/v1/${table}?id=eq.${id}`, {token:actors.B.token, method:'GET'});
@@ -882,6 +914,45 @@ test('authenticated REST bootstrap links G1c reservation to complete G2 delivery
     assert.deepEqual(foreign.data, [], table);
   }
   assert.equal((await readComplete(payload.id,actors.B.token)).status,403);
+});
+
+test('lost client response recovers the immutable ACK and distinguishes current delivery HEAD',async()=>{
+  const {payload,token}=await clientBootstrapFixture(), first=randomUUID();
+  // Model a response lost after server commit: the caller retains only its durable operation ID.
+  assert.equal((await sendComplete(first,payload,token)).status,200);
+  const find=async(ids)=>http('/rest/v1/rpc/check_sync_operations',{
+    token,body:{p_operation_ids:ids}
+  });
+  const recovered=await find([first]);
+  assert.equal(recovered.status,200);
+  const firstReceipt=recovered.data.confirmed_receipts[0];
+  assert.equal(firstReceipt.operation_id,first);
+  assert.equal(firstReceipt.remote_version,1);
+  const replay=await sendComplete(first,payload,token);
+  assert.equal(replay.status,200);
+  assert.equal(replay.data.idempotent,true);
+  const firstHead=await readComplete(payload.id,token);
+  assert.equal(firstHead.status,200);
+  assert.equal(firstHead.data.delivery.version,1);
+  assert.equal(firstHead.data.head_payload_hash,firstReceipt.payload_hash);
+  const second=randomUUID(),next={...payload,netGrams:3100000,baseVersion:1};
+  const updated=await sendComplete(second,next,token);
+  assert.equal(updated.status,200,JSON.stringify(updated.data));
+  assert.equal(updated.data.remote_version,2);
+  const receipts=await find([first,second]);
+  assert.equal(receipts.status,200);
+  const current=receipts.data.confirmed_receipts.find(x=>x.operation_id===second);
+  assert.equal(receipts.data.confirmed_receipts.find(x=>x.operation_id===first).remote_version,1);
+  const head=await readComplete(payload.id,token);
+  assert.equal(head.status,200);
+  assert.equal(head.data.delivery.version,2);
+  assert.equal(head.data.delivery.net_grams,3100000);
+  assert.equal(head.data.head_payload_hash,current.payload_hash);
+  assert.notEqual(head.data.head_payload_hash,firstReceipt.payload_hash);
+  assert.equal((await readComplete(payload.id,actors.B.token)).status,403);
+  assert.deepEqual((await http('/rest/v1/rpc/check_sync_operations',{
+    token:actors.B.token,body:{p_operation_ids:[first,second]}
+  })).data.confirmed_receipts,[]);
 });
 
 test('reservation prevents another account materializing or claiming the selected farm', async () => {

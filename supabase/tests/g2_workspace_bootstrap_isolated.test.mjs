@@ -122,6 +122,41 @@ test('empty membership cannot authorize delivery while one nanosecond remains a 
   } finally {await db.close();}
 });
 
+test('delivery HEAD exposes only the current authenticated operation hash',async()=>{
+  const {db,actor}=await fixture();
+  try {
+    const farm=await reservedFarm(db,actor);await farmCall(db,actor,randomUUID(),farm,farm.payload);
+    const parcel=parcelPayload(farm.payload.workspaceId,farm.payload.id);
+    await parcelCall(db,actor,randomUUID(),parcel);
+    const campaign={id:randomUUID(),workspaceId:parcel.workspaceId,farmId:farm.payload.id,name:'HEAD campaign',
+      startDate:'2026-01-01',endDate:null,status:'ACTIVE',notes:null,parcels:[{id:randomUUID(),
+        parcelId:parcel.id,farmIdAtStart:farm.payload.id,farmNameAtStart:'Farm',parcelNameAtStart:'Parcel',
+        managedAreaM2AtStart:null,cadastralReferenceAtStart:null,geometryGeoJsonSnapshot:null}]};
+    await campaignCall(db,actor,randomUUID(),campaign);
+    const delivery={id:randomUUID(),farmId:farm.payload.id,campaignId:campaign.id,deliveryDate:'2026-11-25',
+      destinationName:'Synthetic cooperative',netGrams:1000,source:'MANUAL',parcels:[{id:randomUUID(),
+        parcelId:parcel.id,campaignParcelId:campaign.parcels[0].id,parcelNameAtDelivery:'Parcel',
+        weightGrams:null,allocationMode:'UNALLOCATED'}]};
+    const send=async(operation,payload)=>asActor(db,actor,async()=>(await db.query(
+      'SELECT public.sync_own_delivery_v2($1::uuid,$2::jsonb) AS receipt',[operation,JSON.stringify(payload)])).rows[0].receipt);
+    const read=async(who)=>asActor(db,who,async()=>(await db.query(
+      'SELECT public.get_own_delivery_v2($1::uuid) AS snapshot',[delivery.id])).rows[0].snapshot);
+    const first=randomUUID();await send(first,delivery);
+    const firstHash=(await db.query('SELECT payload_hash FROM magina_g2_private.sync_operations WHERE operation_id=$1',[first])).rows[0].payload_hash;
+    assert.equal((await read(actor)).head_payload_hash,firstHash);
+    const second=randomUUID();await send(second,{...delivery,netGrams:1200,baseVersion:1});
+    const secondHash=(await db.query('SELECT payload_hash FROM magina_g2_private.sync_operations WHERE operation_id=$1',[second])).rows[0].payload_hash;
+    const head=await read(actor);
+    assert.equal(head.delivery.version,2);
+    assert.equal(head.head_payload_hash,secondHash);
+    assert.notEqual(head.head_payload_hash,firstHash);
+    const foreign=randomUUID();await db.query('INSERT INTO auth.users(id) VALUES($1)',[foreign]);
+    await assert.rejects(read(foreign),e=>e.code==='42501');
+    await db.query('UPDATE public.deliveries SET version=3 WHERE id=$1',[delivery.id]);
+    assert.equal((await read(actor)).head_payload_hash,null);
+  } finally {await db.close();}
+});
+
 test('workspace creation rejects anonymous or invalid claims and malformed payload without writes',async()=>{
   const {db,actor}=await fixture();
   try {
