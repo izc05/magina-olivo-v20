@@ -23,6 +23,8 @@ def query_for(method):
 
 CLAIM = query_for('claimFailedDeliveryForRecovery')
 READY = query_for('listReadyForAccount')
+MARK = query_for('markDeliveryLeaseClaim')
+RECOVER = query_for('recoverDeliveryLeaseClaim')
 PARAMS = dict(operationId='old', accountId='A', farmId='F', nowEpochMillis=100)
 
 
@@ -38,6 +40,8 @@ def fixture(db):
         ('new', 'DELIVERY', 'D', 'A', 'F', 'CREATE', 2, '{"netGrams":3300000}',
          'PENDING', 0, None, None, 1, 1),
     ])
+    db.execute('ALTER TABLE sync_outbox ADD COLUMN last_error_code TEXT')
+    db.execute('ALTER TABLE sync_outbox ADD COLUMN last_error_message TEXT')
     db.commit()
 
 
@@ -111,6 +115,23 @@ class RecoverySQLTest(unittest.TestCase):
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
                 outcomes = list(pool.map(lambda _: worker(), range(2)))
             self.assertEqual([0, 1], sorted(outcomes))
+
+    def test_recovery_requires_matching_durable_namespace_and_preserves_request(self):
+        self.assertEqual(1, self.claim())
+        scoped = dict(PARAMS, claimMarker='DELIVERY_LEASE_V1:scope-A')
+        self.assertEqual(1, self.db.execute(MARK, scoped).rowcount)
+        self.assertEqual(0, self.db.execute(RECOVER, dict(scoped, claimMarker='DELIVERY_LEASE_V1:scope-B')).rowcount)
+        self.assertEqual(0, self.db.execute(RECOVER, dict(scoped, accountId='B')).rowcount)
+        self.assertEqual(1, self.db.execute(RECOVER, scoped).rowcount)
+        self.assertEqual(0, self.db.execute(RECOVER, scoped).rowcount)
+        self.assertEqual(('old', '{"netGrams":2850000}', 'FAILED', 2, 'OUTCOME_UNKNOWN'),
+                         self.db.execute('SELECT id,payload_json,status,attempt_count,last_error_code FROM sync_outbox WHERE id="old"').fetchone())
+        self.assertEqual(1, self.claim())
+
+    def test_unmarked_processing_is_not_adopted_by_new_protocol(self):
+        self.assertEqual(1, self.claim())
+        self.assertEqual(0, self.db.execute(RECOVER, dict(PARAMS, claimMarker='DELIVERY_LEASE_V1:scope-A')).rowcount)
+        self.assertEqual('PROCESSING', self.db.execute('SELECT status FROM sync_outbox WHERE id="old"').fetchone()[0])
 
 
 if __name__ == '__main__':

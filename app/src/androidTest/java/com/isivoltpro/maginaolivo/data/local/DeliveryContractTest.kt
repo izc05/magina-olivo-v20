@@ -25,6 +25,9 @@ import com.isivoltpro.maginaolivo.data.repository.applyConfirmedDeliveryReceipt
 import com.isivoltpro.maginaolivo.data.repository.rebaseConfirmedDeliveryEdit
 import com.isivoltpro.maginaolivo.data.repository.DeliveryRebaseOutcome
 import com.isivoltpro.maginaolivo.data.repository.deliveryPayloadHash
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
+import com.isivoltpro.maginaolivo.data.repository.sync.claimDeliveryRecoveryWithLease
+import com.isivoltpro.maginaolivo.data.repository.sync.recoverAbandonedDeliveryClaim
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
@@ -1018,6 +1021,47 @@ class DeliveryContractTest {
         ))
         assertTrue(db.syncOutboxDao().listReadyForAccount(receipt.accountId, now.toEpochMilli()).isEmpty())
         assertEquals(now, db.deliveryDao().findById(receipt.deliveryId)!!.metadata.deletedAt)
+    }
+
+    @Test
+    fun g24LeaseHandoffRecoversSameOperationAndRejectsWrongNamespaceOrRevocation() = runBlocking {
+        val (receipt, payload) = failedWithNewerEdit()
+        val directory = File(context.noBackupFilesDir, "g24-lease-${UUID.randomUUID()}")
+        val otherDirectory = File(context.noBackupFilesDir, "g24-other-${UUID.randomUUID()}")
+        try {
+            checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { lease ->
+                assertTrue(db.claimDeliveryRecoveryWithLease(lease, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                assertNull(DeliveryDispatchLease.tryAcquire(directory))
+                checkNotNull(DeliveryDispatchLease.tryAcquire(otherDirectory)).use { wrong ->
+                    assertFalse(db.recoverAbandonedDeliveryClaim(wrong, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                }
+            }
+            checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { next ->
+                assertFalse(db.recoverAbandonedDeliveryClaim(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> false }, now))
+                assertTrue(db.recoverAbandonedDeliveryClaim(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                assertFalse(db.recoverAbandonedDeliveryClaim(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                val recovered = db.syncOutboxDao().findById(receipt.operationId)!!
+                assertEquals(OutboxStatus.FAILED, recovered.status)
+                assertEquals("OUTCOME_UNKNOWN", recovered.lastErrorCode)
+                assertEquals(payload, recovered.payloadJson)
+                assertEquals(2, recovered.attemptCount)
+                assertEquals(3_300_000L, db.deliveryDao().findById(receipt.deliveryId)!!.netGrams)
+                assertTrue(db.claimDeliveryRecoveryWithLease(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+            }
+        } finally { directory.deleteRecursively(); otherDirectory.deleteRecursively() }
+    }
+
+    @Test
+    fun g24LeaseCannotAdoptLegacyUnmarkedProcessing() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        assertEquals(1, db.syncOutboxDao().claimFailedDeliveryForRecovery(receipt.operationId, receipt.accountId, farmId, now.toEpochMilli()))
+        val directory = File(context.noBackupFilesDir, "g24-legacy-${UUID.randomUUID()}")
+        try {
+            checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use {
+                assertFalse(db.recoverAbandonedDeliveryClaim(it, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                assertEquals(OutboxStatus.PROCESSING, db.syncOutboxDao().findById(receipt.operationId)!!.status)
+            }
+        } finally { directory.deleteRecursively() }
     }
 
     private suspend fun failedWithNewerEdit(): Pair<DeliverySyncReceipt, String> {

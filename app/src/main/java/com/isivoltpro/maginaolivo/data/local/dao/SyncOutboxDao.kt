@@ -135,6 +135,29 @@ interface SyncOutboxDao {
 
     @Query(
         """
+        UPDATE sync_outbox SET last_error_code = :claimMarker, last_error_message = NULL
+        WHERE id = :operationId AND account_id = :accountId AND farm_id = :farmId
+          AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE') AND status = 'PROCESSING'
+        """,
+    )
+    suspend fun markDeliveryLeaseClaim(operationId: UUID, accountId: String, farmId: UUID, claimMarker: String): Int
+
+    /** Only a new owner of the SAME OS lock can resolve this protocol's interrupted claim. */
+    @Query(
+        """
+        UPDATE sync_outbox SET status = 'FAILED', next_attempt_at = NULL,
+            last_error_code = 'OUTCOME_UNKNOWN', last_error_message = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND account_id = :accountId AND farm_id = :farmId
+          AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE')
+          AND status = 'PROCESSING' AND last_error_code = :claimMarker
+        """,
+    )
+    suspend fun recoverDeliveryLeaseClaim(
+        operationId: UUID, accountId: String, farmId: UUID, claimMarker: String, nowEpochMillis: Long,
+    ): Int
+
+    @Query(
+        """
         SELECT * FROM sync_outbox
         WHERE farm_id = :farmId
           AND status IN ('PENDING', 'FAILED')
