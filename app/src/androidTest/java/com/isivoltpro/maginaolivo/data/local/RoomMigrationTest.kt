@@ -197,13 +197,13 @@ class RoomMigrationTest {
     }
 
     @Test
-    fun everySupportedVersionUpgradesTo26KeepingItsWorkspace() {
+    fun everySupportedVersionUpgradesToTheLatestKeepingItsWorkspace() {
         for (version in 1 until MaginaOlivoDatabase.VERSION) {
             context.deleteDatabase(TEST_DATABASE)
             migrationHelper.createDatabase(TEST_DATABASE, version).use { database ->
                 database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Historical farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,7,'PENDING')")
             }
-            migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 26, true, *DatabaseMigrations.all).use { database ->
+            migrationHelper.runMigrationsAndValidate(TEST_DATABASE, MaginaOlivoDatabase.VERSION, true, *DatabaseMigrations.all).use { database ->
                 database.query("SELECT name, version, sync_status FROM workspaces WHERE id='w'").use { cursor ->
                     assertTrue("Missing workspace upgrading v$version", cursor.moveToFirst())
                     assertEquals("Historical farm", cursor.getString(0))
