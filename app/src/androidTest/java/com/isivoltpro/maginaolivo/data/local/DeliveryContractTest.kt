@@ -34,6 +34,9 @@ import com.isivoltpro.maginaolivo.feature.account.SimulatedAccountAuthApi
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.claimDeliveryRecoveryWithLease
 import com.isivoltpro.maginaolivo.data.repository.sync.recoverAbandonedDeliveryClaim
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryReceiptIntent
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryReceiptJournal
+import com.isivoltpro.maginaolivo.account.reservation.ReservationActor
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
@@ -1211,16 +1214,30 @@ class DeliveryContractTest {
         val (_, links) = configureConsentedWrites()
         val id = ok(deliveries.create(draft(2_800_000, north to null)))
         val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        val directory = File(context.noBackupFilesDir, "g24-receipt-${UUID.randomUUID()}")
+        linkedFixtureCleanup.add { directory.deleteRecursively() }
+        val file = File(directory, "operation.receipt")
+        // Synthetic server destination, fixed BEFORE the simulated request/revocation.
+        val intent = DeliveryReceiptIntent(
+            ReservationActor("fixture-project", UUID.fromString(op.accountId!!)), workspaceId,
+            UUID.randomUUID(), links.state.value.ledger!!.consents.single().operationId,
+            farmId, op.id, id, op.payloadVersion, deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!,
+            op.baseRemoteVersion,
+        )
+        DeliveryReceiptJournal(file).prepare(intent)
         db.openHelper.writableDatabase.execSQL(
             "UPDATE sync_outbox SET status='PROCESSING', attempt_count=1 WHERE id=?", arrayOf(op.id.toString()),
         )
         val before = db.deliveryDao().findById(id)!!
         links.revokeConsentForFarm(farmId)
+        DeliveryReceiptJournal(file).record(intent, 7L)
         val ack = DeliverySyncReceipt(op.id, id, farmId, op.accountId!!, op.payloadJson!!, 7L)
         assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(ack, now))
         assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
         assertEquals(before, db.deliveryDao().findById(id))
         assertTrue(db.syncOutboxDao().listReadyForAccount(op.accountId!!, now.toEpochMilli()).isEmpty())
+        assertEquals(7L, DeliveryReceiptJournal(file).load()!!.remoteVersion)
+        assertEquals(intent, DeliveryReceiptJournal(file).load()!!.intent)
     }
 
     private fun <T> ok(result: AppResult<T>): T = when (result) {
