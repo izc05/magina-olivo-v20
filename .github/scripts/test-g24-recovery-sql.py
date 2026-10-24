@@ -13,18 +13,31 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 DAO = ROOT / 'app/src/main/java/com/isivoltpro/maginaolivo/data/local/dao/SyncOutboxDao.kt'
+HELD_DAO = ROOT / 'app/src/main/java/com/isivoltpro/maginaolivo/data/local/dao/DeliveryHeldReceiptDao.kt'
+MIGRATIONS = ROOT / 'app/src/main/java/com/isivoltpro/maginaolivo/data/local/DatabaseMigrations.kt'
 
 
-def query_for(method):
-    source = DAO.read_text()
-    prefix = source[:source.index('fun ' + method)]
+def query_for(method, dao=DAO):
+    source = dao.read_text()
+    prefix = source[:source.index('fun ' + method + '(')]
     return re.findall(r'@Query\(\s*"""(.*?)"""', prefix, re.S)[-1]
+
+
+def migration_27_28():
+    source = MIGRATIONS.read_text()
+    body = source[source.index('MIGRATION_27_28 ='):]
+    body = body[:body.index('val all')]
+    return re.findall(r'db\.execSQL\("(.*?)"\)', body)
 
 
 CLAIM = query_for('claimFailedDeliveryForRecovery')
 READY = query_for('listReadyForAccount')
 MARK = query_for('markDeliveryLeaseClaim')
 RECOVER = query_for('recoverDeliveryLeaseClaim')
+OBSERVE = query_for('observeReady')
+RELEASE = query_for('releaseHeldDeliveryForReceipt')
+REOPEN = query_for('reopenBlockedDeliveryWithoutReceipt')
+MARK_CONFLICT = query_for('markConflict', HELD_DAO)
 PARAMS = dict(operationId='old', accountId='A', farmId='F', nowEpochMillis=100)
 
 
@@ -42,7 +55,15 @@ def fixture(db):
     ])
     db.execute('ALTER TABLE sync_outbox ADD COLUMN last_error_code TEXT')
     db.execute('ALTER TABLE sync_outbox ADD COLUMN last_error_message TEXT')
+    for statement in migration_27_28():
+        db.execute(statement)
     db.commit()
+
+
+def hold(db, operation='old', delivery='D', state='HELD'):
+    db.execute('''INSERT INTO delivery_held_receipts (operation_id, delivery_id, account_id, farm_id,
+        remote_version, payload_hash, payload_version, revocation_operation_id, state, received_at)
+        VALUES (?, ?, 'A', 'F', 1, ?, 2, 'R', ?, 50)''', (operation, delivery, 'a' * 64, state))
 
 
 class RecoverySQLTest(unittest.TestCase):
@@ -142,6 +163,81 @@ class RecoverySQLTest(unittest.TestCase):
         self.assertEqual(0, self.db.execute(RECOVER, dict(PARAMS, previousMarker=marker, currentMarker=marker, namespacePrefix=prefix)).rowcount)
         self.assertEqual(0, self.claim())
         self.assertEqual(('PROCESSING', 2), self.db.execute('SELECT status,attempt_count FROM sync_outbox WHERE id="old"').fetchone())
+
+
+class HeldReceiptSQLTest(unittest.TestCase):
+    """G2.4 block 2: a late ACK held after revocation freezes its Delivery."""
+
+    def setUp(self):
+        self.db = sqlite3.connect(':memory:')
+        fixture(self.db)
+        self.db.execute('DELETE FROM sync_outbox WHERE id="new"')
+
+    def tearDown(self):
+        self.db.close()
+
+    def test_held_receipt_blocks_ready_claim_and_observe_for_whole_delivery(self):
+        self.db.execute('INSERT INTO sync_outbox (id, entity_type, entity_id, account_id, farm_id, operation, payload_version, payload_json, status, attempt_count, created_at, updated_at) '
+                        'VALUES ("edit", "DELIVERY", "D", "A", "F", "UPDATE", 2, "{}", "PENDING", 0, 20, 20)')
+        self.db.execute('UPDATE sync_outbox SET status="CONFIRMED" WHERE id="old"')
+        self.assertEqual(['edit'], [r[0] for r in self.db.execute(READY, PARAMS)])
+        hold(self.db)
+        self.assertEqual([], list(self.db.execute(READY, PARAMS)))
+        self.assertEqual([], list(self.db.execute(OBSERVE, dict(nowEpochMillis=100))))
+        self.db.execute('UPDATE delivery_held_receipts SET state="RECONCILED"')
+        self.assertEqual(['edit'], [r[0] for r in self.db.execute(READY, PARAMS)])
+
+    def test_held_receipt_prevents_failed_recovery_claim(self):
+        hold(self.db, operation='other-op')
+        self.assertEqual(0, self.claim())
+        self.db.execute('UPDATE delivery_held_receipts SET state="CONFLICT"')
+        self.assertEqual(0, self.claim())
+
+    def test_held_receipt_of_another_delivery_does_not_block(self):
+        hold(self.db, operation='x', delivery='OTHER')
+        self.assertEqual(1, self.claim())
+
+    def test_release_requires_blocked_operation_with_held_receipt(self):
+        self.db.execute('UPDATE sync_outbox SET status="BLOCKED" WHERE id="old"')
+        release = dict(operationId='old', accountId='A', farmId='F', nowEpochMillis=100)
+        self.assertEqual(0, self.db.execute(RELEASE, release).rowcount)
+        hold(self.db)
+        self.assertEqual(0, self.db.execute(RELEASE, dict(release, accountId='B')).rowcount)
+        self.assertEqual(1, self.db.execute(RELEASE, release).rowcount)
+        self.assertEqual(0, self.db.execute(RELEASE, release).rowcount)
+
+    def test_conflict_never_replaces_original_receipt(self):
+        hold(self.db)
+        args = dict(operationId='old', remoteVersion=9, payloadHash='b' * 64)
+        self.assertEqual(1, self.db.execute(MARK_CONFLICT, args).rowcount)
+        self.assertEqual(0, self.db.execute(MARK_CONFLICT, dict(args, remoteVersion=10)).rowcount)
+        self.assertEqual((1, 'a' * 64, 'CONFLICT', 9, 'b' * 64), self.db.execute(
+            'SELECT remote_version, payload_hash, state, conflict_remote_version, conflict_payload_hash FROM delivery_held_receipts').fetchone())
+
+    def test_blocked_without_receipt_reopens_same_uuid_and_payload(self):
+        args = dict(operationId='old', accountId='A', farmId='F', nowEpochMillis=100)
+        self.db.execute('UPDATE sync_outbox SET status="BLOCKED" WHERE id="old"')
+        self.assertEqual(0, self.db.execute(REOPEN, dict(args, accountId='B')).rowcount)
+        self.assertEqual(1, self.db.execute(REOPEN, args).rowcount)
+        self.assertEqual(('old', '{"netGrams":2850000}', 'FAILED', 1, 'OUTCOME_UNKNOWN'), self.db.execute(
+            'SELECT id, payload_json, status, attempt_count, last_error_code FROM sync_outbox').fetchone())
+        self.db.execute('UPDATE sync_outbox SET status="BLOCKED", attempt_count=0 WHERE id="old"')
+        self.assertEqual(1, self.db.execute(REOPEN, args).rowcount)
+        self.assertEqual(('PENDING', None), self.db.execute('SELECT status, last_error_code FROM sync_outbox').fetchone())
+
+    def test_blocked_with_receipt_or_without_account_is_not_reopened(self):
+        args = dict(operationId='old', accountId='A', farmId='F', nowEpochMillis=100)
+        self.db.execute('UPDATE sync_outbox SET status="BLOCKED" WHERE id="old"')
+        hold(self.db)
+        self.assertEqual(0, self.db.execute(REOPEN, args).rowcount)
+        self.db.execute('DELETE FROM delivery_held_receipts')
+        self.db.execute('UPDATE sync_outbox SET last_error_code="RECEIPT_CONFLICT"')
+        self.assertEqual(0, self.db.execute(REOPEN, args).rowcount)
+        self.db.execute('UPDATE sync_outbox SET last_error_code=NULL, account_id=NULL')
+        self.assertEqual(0, self.db.execute(REOPEN, args).rowcount)
+
+    def claim(self, **overrides):
+        return self.db.execute(CLAIM, dict(PARAMS, **overrides)).rowcount
 
 
 if __name__ == '__main__':

@@ -28,6 +28,12 @@ interface SyncOutboxDao {
                 AND sibling.id != sync_outbox.id
                 AND sibling.status IN ('PENDING', 'FAILED', 'PROCESSING', 'BLOCKED')
           )
+          -- G2.4: a late ACK held after revocation freezes its whole Delivery until reconciled.
+          AND NOT EXISTS (
+              SELECT 1 FROM delivery_held_receipts held
+              WHERE sync_outbox.entity_type = 'DELIVERY' AND held.delivery_id = sync_outbox.entity_id
+                AND held.state != 'RECONCILED'
+          )
         ORDER BY created_at, id
         """,
     )
@@ -94,6 +100,12 @@ interface SyncOutboxDao {
                 AND sibling.id != sync_outbox.id
                 AND sibling.status IN ('PENDING', 'FAILED', 'PROCESSING', 'BLOCKED')
           )
+          -- G2.4: a late ACK held after revocation freezes its whole Delivery until reconciled.
+          AND NOT EXISTS (
+              SELECT 1 FROM delivery_held_receipts held
+              WHERE sync_outbox.entity_type = 'DELIVERY' AND held.delivery_id = sync_outbox.entity_id
+                AND held.state != 'RECONCILED'
+          )
         ORDER BY created_at, id
         """,
     )
@@ -123,6 +135,10 @@ interface SyncOutboxDao {
                 AND (sibling.status != 'PENDING' OR sibling.attempt_count != 0
                      OR sibling.account_id IS NULL OR sibling.account_id != :accountId
                      OR sibling.farm_id IS NULL OR sibling.farm_id != :farmId)
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM delivery_held_receipts held
+              WHERE held.delivery_id = sync_outbox.entity_id AND held.state != 'RECONCILED'
           )
         """,
     )
@@ -219,6 +235,52 @@ interface SyncOutboxDao {
         """,
     )
     suspend fun deleteUnattemptedRebaseSnapshots(deliveryId: UUID, accountId: String, farmId: UUID): Int
+
+    /** Annotates a revoked operation with why it stays frozen; it remains BLOCKED. */
+    @Query(
+        """
+        UPDATE sync_outbox SET last_error_code = :errorCode, last_error_message = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'DELIVERY' AND status = 'BLOCKED'
+        """,
+    )
+    suspend fun annotateBlockedDelivery(operationId: UUID, errorCode: String, nowEpochMillis: Long): Int
+
+    /**
+     * Reconciliation only: lets a HELD receipt be applied by the normal receipt path inside the
+     * same transaction. Nothing else may move a BLOCKED Delivery operation back.
+     */
+    @Query(
+        """
+        UPDATE sync_outbox SET status = 'PROCESSING', updated_at = :nowEpochMillis
+        WHERE id = :operationId AND account_id = :accountId AND farm_id = :farmId
+          AND entity_type = 'DELIVERY' AND status = 'BLOCKED'
+          AND EXISTS (
+              SELECT 1 FROM delivery_held_receipts held
+              WHERE held.operation_id = sync_outbox.id AND held.state = 'HELD'
+          )
+        """,
+    )
+    suspend fun releaseHeldDeliveryForReceipt(operationId: UUID, accountId: String, farmId: UUID, nowEpochMillis: Long): Int
+
+    /**
+     * Reconciliation of a BLOCKED Delivery whose server result is not known: the SAME UUID,
+     * bytes and base version become eligible again. An attempted one is OUTCOME_UNKNOWN, so
+     * the server's idempotency decides; a never-attempted one is simply pending again.
+     */
+    @Query(
+        """
+        UPDATE sync_outbox
+        SET status = CASE WHEN attempt_count = 0 THEN 'PENDING' ELSE 'FAILED' END,
+            last_error_code = CASE WHEN attempt_count = 0 THEN NULL ELSE 'OUTCOME_UNKNOWN' END,
+            last_error_message = NULL, next_attempt_at = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND account_id = :accountId AND farm_id = :farmId
+          AND account_id != '' AND payload_json IS NOT NULL AND payload_json != ''
+          AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE') AND status = 'BLOCKED'
+          AND (last_error_code IS NULL OR last_error_code != 'RECEIPT_CONFLICT')
+          AND NOT EXISTS (SELECT 1 FROM delivery_held_receipts held WHERE held.operation_id = sync_outbox.id)
+        """,
+    )
+    suspend fun reopenBlockedDeliveryWithoutReceipt(operationId: UUID, accountId: String, farmId: UUID, nowEpochMillis: Long): Int
 
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE status IN ('PENDING', 'PROCESSING', 'FAILED')")
     suspend fun countActive(): Int

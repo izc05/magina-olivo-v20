@@ -25,6 +25,10 @@ import com.isivoltpro.maginaolivo.data.repository.applyConfirmedDeliveryReceipt
 import com.isivoltpro.maginaolivo.data.repository.rebaseConfirmedDeliveryEdit
 import com.isivoltpro.maginaolivo.data.repository.DeliveryRebaseOutcome
 import com.isivoltpro.maginaolivo.data.repository.deliveryPayloadHash
+import com.isivoltpro.maginaolivo.data.repository.AuthenticatedDeliveryAck
+import com.isivoltpro.maginaolivo.data.repository.HeldReceiptOutcome
+import com.isivoltpro.maginaolivo.data.repository.retainAckAfterRevocation
+import com.isivoltpro.maginaolivo.data.local.entity.DeliveryHeldReceiptEntity
 import com.isivoltpro.maginaolivo.data.repository.AndroidFarmLinkLedger
 import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
 import com.isivoltpro.maginaolivo.feature.account.AccountAuthApi
@@ -771,7 +775,7 @@ class DeliveryContractTest {
     /** Rows of [table]; live rows only for tables with a metadata tail. */
     private fun count(table: String): Int =
         db.openHelper.readableDatabase.query(
-            if (table == "sync_outbox") "SELECT COUNT(*) FROM $table" else "SELECT COUNT(*) FROM $table WHERE deleted_at IS NULL",
+            if (table in setOf("sync_outbox", "delivery_held_receipts")) "SELECT COUNT(*) FROM $table" else "SELECT COUNT(*) FROM $table WHERE deleted_at IS NULL",
         ).use { cursor ->
             cursor.moveToFirst()
             cursor.getInt(0)
@@ -1238,6 +1242,116 @@ class DeliveryContractTest {
         assertTrue(db.syncOutboxDao().listReadyForAccount(op.accountId!!, now.toEpochMilli()).isEmpty())
         assertEquals(7L, DeliveryReceiptJournal(file).load()!!.remoteVersion)
         assertEquals(intent, DeliveryReceiptJournal(file).load()!!.intent)
+    }
+
+    /** A request in flight (attempted, PROCESSING) when the farmer revokes the farm's consent. */
+    private suspend fun inFlightThenRevoked(): Triple<LocalFarmLinkRepository, com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity, AuthenticatedDeliveryAck> {
+        val (_, links) = configureConsentedWrites()
+        val id = ok(deliveries.create(draft(2_800_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='PROCESSING', attempt_count=1 WHERE id=?", arrayOf(op.id.toString()),
+        )
+        links.revokeConsentForFarm(farmId)
+        val ack = AuthenticatedDeliveryAck(op.id, id, farmId, op.accountId!!, op.accountId!!, 7L,
+            deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!, op.payloadVersion)
+        return Triple(links, db.syncOutboxDao().findById(op.id)!!, ack)
+    }
+
+    private fun LocalFarmLinkRepository.lastRevocation() = state.value.ledger!!.revocations.last().operationId
+
+    @Test
+    fun g24LateAckAfterRevocationIsHeldOnceWithoutTouchingTheDelivery() = runBlocking {
+        val (links, op, ack) = inFlightThenRevoked()
+        val before = db.deliveryDao().findById(ack.deliveryId)!!
+        val revocation = links.lastRevocation()
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, revocation, now))
+        assertEquals(HeldReceiptOutcome.ALREADY_HELD, db.retainAckAfterRevocation(ack, revocation, now.plusSeconds(5)))
+        val receipt = db.deliveryHeldReceiptDao().findByOperation(op.id)!!
+        assertEquals(DeliveryHeldReceiptEntity.HELD, receipt.state)
+        assertEquals(7L, receipt.remoteVersion)
+        assertEquals(revocation, receipt.revocationOperationId)
+        assertEquals(now, receipt.receivedAt)
+        val blocked = db.syncOutboxDao().findById(op.id)!!
+        assertEquals(OutboxStatus.BLOCKED, blocked.status)
+        assertEquals("REVOKED_ACK_HELD", blocked.lastErrorCode)
+        assertEquals(op.payloadJson, blocked.payloadJson)
+        // Kilos, field data, remoteVersion and syncStatus are exactly as before.
+        assertEquals(before, db.deliveryDao().findById(ack.deliveryId))
+        assertEquals(1, count("delivery_held_receipts"))
+    }
+
+    @Test
+    fun g24HeldAckFreezesLaterEditsOfThatDeliveryAcrossRestart() = runBlocking {
+        val (links, op, ack) = inFlightThenRevoked()
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        ok(deliveries.update(ack.deliveryId, draft(3_100_000, north to null)))
+        // Make the newer local snapshot look dispatch-capable: the held receipt alone must stop it.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET account_id=?, status='FAILED' WHERE entity_id=? AND id != ?",
+            arrayOf(ack.accountId, ack.deliveryId.toString(), op.id.toString()),
+        )
+        db.openHelper.writableDatabase.execSQL("UPDATE sync_outbox SET status='CONFIRMED' WHERE id=?", arrayOf(op.id.toString()))
+        val edit = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, ack.deliveryId).single { it.id != op.id }
+        assertTrue(db.syncOutboxDao().listReadyForAccount(ack.accountId, now.toEpochMilli()).isEmpty())
+        assertTrue(db.syncOutboxDao().observeReady(now.toEpochMilli()).first().none { it.id == edit.id })
+        assertEquals(0, db.syncOutboxDao().claimFailedDeliveryForRecovery(edit.id, ack.accountId, farmId, now.toEpochMilli()))
+        db.close(); open()
+        assertEquals(DeliveryHeldReceiptEntity.HELD, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
+        assertTrue(db.syncOutboxDao().listReadyForAccount(ack.accountId, now.toEpochMilli()).isEmpty())
+        assertEquals(3_100_000L, db.deliveryDao().findById(ack.deliveryId)!!.netGrams)
+    }
+
+    @Test
+    fun g24IncompatibleAckIsAConflictAndNeverReplacesTheHeldReceipt() = runBlocking {
+        val (links, op, ack) = inFlightThenRevoked()
+        val revocation = links.lastRevocation()
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, revocation, now))
+        assertEquals(HeldReceiptOutcome.RECEIPT_CONFLICT, db.retainAckAfterRevocation(ack.copy(remoteVersion = 9L), revocation, now))
+        assertEquals(HeldReceiptOutcome.RECEIPT_CONFLICT, db.retainAckAfterRevocation(ack.copy(remoteVersion = 11L), revocation, now))
+        // Once in conflict, even the original ACK cannot quietly clear it.
+        assertEquals(HeldReceiptOutcome.RECEIPT_CONFLICT, db.retainAckAfterRevocation(ack, revocation, now))
+        val receipt = db.deliveryHeldReceiptDao().findByOperation(op.id)!!
+        assertEquals(DeliveryHeldReceiptEntity.CONFLICT, receipt.state)
+        assertEquals(7L, receipt.remoteVersion)
+        assertEquals(ack.payloadHash, receipt.payloadHash)
+        assertEquals(9L, receipt.conflictRemoteVersion)
+        assertEquals("RECEIPT_CONFLICT", db.syncOutboxDao().findById(op.id)!!.lastErrorCode)
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+    }
+
+    @Test
+    fun g24HeldAckRejectsWrongOriginBindingOrBytes() = runBlocking {
+        val (links, op, ack) = inFlightThenRevoked()
+        val revocation = links.lastRevocation()
+        val before = db.deliveryDao().findById(ack.deliveryId)!!
+        listOf(
+            ack.copy(transportSubject = UUID.randomUUID().toString()),
+            ack.copy(transportSubject = ""),
+            UUID.randomUUID().toString().let { other -> ack.copy(accountId = other, transportSubject = other) },
+            ack.copy(farmId = UUID.randomUUID()),
+            ack.copy(deliveryId = UUID.randomUUID()),
+            ack.copy(operationId = UUID.randomUUID()),
+            ack.copy(payloadVersion = if (op.payloadVersion == 2) 1 else 2),
+            ack.copy(remoteVersion = 0L),
+            ack.copy(payloadHash = "not-a-hash"),
+        ).forEach { assertEquals(it.toString(), HeldReceiptOutcome.REJECTED, db.retainAckAfterRevocation(it, revocation, now)) }
+        assertEquals(HeldReceiptOutcome.RECEIPT_CONFLICT, db.retainAckAfterRevocation(ack.copy(payloadHash = "0".repeat(64)), revocation, now))
+        assertEquals(0, count("delivery_held_receipts"))
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(before, db.deliveryDao().findById(ack.deliveryId))
+    }
+
+    @Test
+    fun g24AckForAConsentedOperationIsNotHeld() = runBlocking {
+        val (_, _) = configureConsentedWrites()
+        val id = ok(deliveries.create(draft(2_800_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        val ack = AuthenticatedDeliveryAck(op.id, id, farmId, op.accountId!!, op.accountId!!, 1L,
+            deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!, op.payloadVersion)
+        assertEquals(HeldReceiptOutcome.REJECTED, db.retainAckAfterRevocation(ack, UUID.randomUUID(), now))
+        assertEquals(0, count("delivery_held_receipts"))
+        assertEquals(OutboxStatus.PENDING, db.syncOutboxDao().findById(op.id)!!.status)
     }
 
     private fun <T> ok(result: AppResult<T>): T = when (result) {
