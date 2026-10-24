@@ -1,12 +1,12 @@
 # Mágina Olivo — Current Work State
 
 **Baseline contractual:** `RC1.2-BASELINE-2026-09-18` (no se altera)  
-**Última revisión documental:** 2026-10-23  
+**Última revisión documental:** 2026-10-24  
 **Snapshot comprobado de `main`:** `3224ac97489537c5b1b1812dab52df133de5b9d3` (volver a comprobar antes de cada integración)
 
 Este documento identifica la continuidad vigente para ChatGPT, Codex, Claude y Antigravity. La baseline y los contratos aprobados siguen siendo normativos. **La ejecución vigente aparece primero; el registro cronológico anterior se conserva debajo como historial, no como cola activa.**
 
-## Cola efectiva de trabajo — cierre Android 1.0 (23/10/2026)
+## Cola efectiva de trabajo — cierre Android 1.0 (24/10/2026)
 
 **Objetivo:** terminar la app Android offline-first y sincronización voluntaria de datos propios de forma recuperable; después cerrar los detalles de riego, perfil y preparación Google Play. Mantener la web V3 y otras ampliaciones fuera de la línea productiva.
 
@@ -23,10 +23,40 @@ Este documento identifica la continuidad vigente para ChatGPT, Codex, Claude y A
 | --- | --- | --- |
 | [#765](https://github.com/izc05/magina-olivo-v20/pull/765) G2.1 | Contratos Supabase de datos propios, idempotencia, snapshots y pruebas nativas | Abierta; CI Android, seguridad DEV y emulador SUCCESS en SHA `2235464b`. Sin despliegue persistente ni conexión real Android |
 | [#766](https://github.com/izc05/magina-olivo-v20/pull/766) G2.3 | Outbox Room persistente, migración 26→27, consentimiento por finca | Abierta; CI Android y emulador SUCCESS en SHA `f3826459`. Sin transporte HTTP |
-| [#768](https://github.com/izc05/magina-olivo-v20/pull/768) G2.4 | ACK/snapshots de pesadas, diario de bootstrap y lector transaccional Room | Abierta; CI Android y emulador SUCCESS en SHA `2e3f14a9`, verificado el 23/10. Las ocho pruebas instrumentadas nuevas deben verificarse en los resultados reales del SHA; sin cliente HTTP |
+| [#768](https://github.com/izc05/magina-olivo-v20/pull/768) G2.4 | ACK/snapshots de pesadas, diario de bootstrap y lector transaccional Room | Abierta; CI Android y emulador SUCCESS en SHA `2e3f14a9`, verificado el 23/10. Ocho pruebas del lector Room ejecutadas en ambos trabajos según revisión de logs enlazada abajo. Dos bloqueos P1 de cola/ACK siguen abiertos; sin cliente HTTP |
 | [#769](https://github.com/izc05/magina-olivo-v20/pull/769) cierre 1.0 | Especificación y planes para riego, perfil con foto privada, ayuda/privacidad/Google Play | Abierta; **solo cuatro Markdown**. No representa código implementado |
 
-**Continuación técnica inmediata:** cerrar la captura completa de snapshots Room, codecs/huellas y el puente seguro al diario G2.4; después integrar dependencias G2.3/G2.1 cuidadosamente, probar transporte autenticado, consentimiento justo antes del envío, worker/reintentos, recuperación y restauración. #768 declara ascendencia de #766; revisar diffs y bases para no duplicar commits. Validar CI/evidencia sobre **el SHA final** y compatibilidad entre ramas antes de autorizar cualquier merge.
+### Dirección de cierre — coordinación del 24/10/2026
+
+**Trabajo activo único: recuperación de cola y rebase G2.4 (#768).** No iniciar otra implementación productiva de riego, perfil, web o transporte hasta cerrar este bloque. La petición del propietario de coordinar, cerrar y avanzar se atiende con entregables verificables; esta tabla no afirma que se haya lanzado un agente ni que exista trabajo automático en segundo plano.
+
+| Orden | Entrega | Condición de cierre |
+| --- | --- | --- |
+| C1 — ACTIVO | Recuperar FAILED con edición posterior y ACK tardío con rebase | Regresiones Room ejecutadas; UUID/payload emitidos conservados; versión real del recibo; edición posterior elegible; revocación/cuenta distinta bloqueadas; sin borrado remoto no soportado |
+| C2 — PENDIENTE C1 | Codecs/huellas completos y puente captura Room → diario | Snapshots completos e inmutables, comparación con contratos de #765, reapertura sin pérdida y evidencia del SHA final |
+| C3 — PENDIENTE C2 | Vinculación explícita, transporte y coordinador de reintentos | Auth/issuer/cuenta y consentimiento fresco antes de enviar; una reclamación válida por agregado; resolución del resultado incierto; sin asumir que timeout significa fallo remoto |
+| C4 — PENDIENTE C3 | Integración G2 y recuperación entre instalaciones | Compatibilidad Android/SQL y migración verificadas; recorrido local → servidor → nueva instalación; duplicados, conflictos, interrupciones y alcance de adjuntos/gastos/borrados declarados |
+| C5 — PENDIENTE G2 | Riego → perfil → ayuda/privacidad/Play | Ejecutar #769 en ese orden, con persistencia y aceptación real de cada bloque |
+| C6 — PENDIENTE C5 | Gate 21 y candidata | Actualización sin pérdida, recorrido agrícola físico documentado y CI del commit integrado final; respetar autorización de candidata/publicación |
+
+**Evidencia cerrada, sin confundirla con el cierre de G2:**
+- HEAD remoto de #768: `2e3f14a9bb5252e78830d7407a00aabd1b281cc6`. Android CI [40018495931](https://github.com/izc05/magina-olivo-v20/actions/runs/40018495931) y Evidence [40018495988](https://github.com/izc05/magina-olivo-v20/actions/runs/40018495988) SUCCESS. La [revisión de logs](https://github.com/izc05/magina-olivo-v20/pull/768#issuecomment-6374833177) identifica `BootstrapSnapshotReaderTest:........` en ambos trabajos. No atribuir estos verdes a un parche posterior.
+- #768 incluye la ascendencia exacta de #766. No duplicar integración ni cerrar #766 como integrada antes de que su contenido alcance realmente `main`.
+- Reproducción independiente ejecutada el 24/10 sobre los SELECT extraídos del `SyncOutboxDao.kt` remoto: SQLite devuelve la FAILED aislada; después de insertar una PENDING de la misma pesada, tanto `observeReady` como `listReadyForAccount` devuelven lista vacía. También se comprobó que un hermano PROCESSING sigue bloqueando el despacho. Esto confirma el atasco SQL; no constituye compilación Android, prueba Room ni corrección.
+
+**Entrega concreta para C1:**
+1. Comparar el parche externo con el HEAD remoto; no mezclarlo con los reconciliadores locales `a5b103c` sin diff y base comprobados. Esos cambios locales no están disponibles en esta revisión.
+2. Reproducir con pruebas ejecutadas FAILED → editar → ACK perdido, FAILED → editar → reintento idéntico y PROCESSING → editar parcelas/kilos → ACK antiguo.
+3. Construir el UPDATE posterior con la versión del recibo verificado (caso obligatorio: versión 7), nunca constante 1 ni versión actual de otro intento. Si otro cliente avanzó a 8, mantener conflicto y evitar sobrescritura.
+4. Resolver exclusividad de recuperación ante petición lenta: no liberar PROCESSING solo por antigüedad mientras el emisor pueda seguir activo. Definir propietario/lease o protocolo de resolución de resultado incierto y probar relevo concurrente.
+5. Mantener DELETE/UPLOAD_ATTACHMENT fuera del despacho no soportado; no interpretar genéricamente `attempt_count > 0` como prueba de emisión, porque `recordUploadFailure` también incrementa ese contador.
+6. Probar cambio de cuenta, consentimiento revocado, filas legacy sin cuenta/finca, concurrencia y reapertura tras muerte real del proceso. Una excepción transaccional no acredita process death.
+7. Publicar el SHA candidato y verificar foundation, gate3-emulator y gate3-evidence de ese SHA, con las regresiones incluidas en la suite. Solo entonces evaluar integración.
+
+Referencia de bloqueos y evaluación del parche: [revisión G2.4](https://github.com/izc05/magina-olivo-v20/pull/768#issuecomment-6375400220).
+
+**Regla de seguimiento:** cada entrega debe registrar commit/PR, archivos, pruebas realmente ejecutadas, resultado, bloqueos y siguiente acción. Separar preparado localmente, publicado, validado e integrado. No repetir una suite verde sin cambio o duda nueva; no presentar cierre documental como funcionalidad implementada.
+
 
 **Secuencia de producto tras G2:** ejecutar los planes de #769 en bloques independientes: (1) riego tipado, reloj/aviso, comunidad/gotero/caudal, cuota anual real por finca como gasto sin prorrateo automático; (2) perfil por cuenta con foto privada y ajustes, separándolo de `profile_settings` por workspace; (3) ayuda veraz, privacidad/eliminación, permisos Android y expediente Google Play. Revisar realmente cada función existente antes de implementarla.
 
