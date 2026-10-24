@@ -53,6 +53,20 @@ interface DeliveryDispatchPrepareDao {
     suspend fun settle(operationId: UUID, outcome: String, nowEpochMillis: Long): Int
 
     /**
+     * The claim marker follows the CURRENT holder, so it is the one column that is meant to
+     * change: a retry after a crash runs under a new acquisition. Recovery matches the outbox
+     * claim against this value, so leaving a dead sender's epoch here strands the operation.
+     * Only an in-flight row adopts a marker; a settled one keeps the epoch that produced it.
+     */
+    @Query(
+        """
+        UPDATE delivery_dispatch_prepare SET lease_marker = :marker
+        WHERE operation_id = :operationId AND settled_at IS NULL
+        """,
+    )
+    suspend fun adoptLeaseMarker(operationId: UUID, marker: String): Int
+
+    /**
      * Puts an operation whose outcome was never known back in flight, so the SAME intent UUID,
      * bytes and base version can be retried. Only an OUTCOME_UNKNOWN row reopens: a terminal
      * outcome stays terminal and an in-flight row is never stolen from a live sender.

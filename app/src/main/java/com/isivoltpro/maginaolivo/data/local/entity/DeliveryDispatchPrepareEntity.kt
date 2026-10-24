@@ -15,9 +15,12 @@ import java.util.UUID
  * cannot be matched against a row here is never applied, so no transport can confirm an
  * operation this device did not durably prepare.
  *
- * Every column except [settledAt]/[settledOutcome] is immutable once written. The row is
- * evidence: it never carries kilos or field data, and it never authorizes a request by
- * itself — consent and identity are re-checked at correlation time.
+ * The identity of the prepared scope is immutable once written. Three columns are not part of
+ * that identity and do change: [settledAt]/[settledOutcome] record the outcome, and
+ * [leaseMarker] follows the CURRENT holder, because a retry after a crash runs under a new
+ * acquisition and recovery matches the live epoch against it. The row is evidence: it never
+ * carries kilos or field data, and it never authorizes a request by itself — consent and
+ * identity are re-checked at correlation time.
  */
 @Entity(
     tableName = "delivery_dispatch_prepare",

@@ -2200,6 +2200,122 @@ class DeliveryContractTest {
         assertEquals("El intento no se reclama", OutboxStatus.PENDING, db.syncOutboxDao().findById(op.id)!!.status)
     }
 
+    /**
+     * P1 de la revision final: DOS cierres consecutivos, tres generaciones de lease A->B->C.
+     *
+     * El re-PREPARE reclamaba el outbox con la marca de B pero dejaba `lease_marker` en A, asi
+     * que la recuperacion de C buscaba por A, no actualizaba ninguna fila y el intento quedaba
+     * `PROCESSING` bajo B para siempre: ni elegible ni reintentable. El PREPARE y el outbox
+     * deben conservar el marcador de la ULTIMA adquisicion real.
+     */
+    @Test
+    fun g24ParityTwoConsecutiveCrashesKeepTheLatestLeaseMarkerAndStayRecoverable() = runBlocking {
+        val (links, id, op, identity, ack) = preparable()
+        val ledger = links.state.value.ledger
+        val directory = dir("abc-recovery")
+
+        // Lease A: prepara y desaparece.
+        val markerA = leaseIn(directory).use { a ->
+            val marker = a.claimMarker()
+            assertEquals(PrepareOutcome.PREPARED, db.prepareDeliveryDispatch(a, op.id, identity, ledger, now))
+            assertEquals(marker, db.deliveryDispatchPrepareDao().findByOperation(op.id)!!.leaseMarker)
+            assertEquals(marker, db.syncOutboxDao().findById(op.id)!!.lastErrorCode)
+            marker
+        }
+
+        // Lease B: recupera lo de A, reintenta el MISMO intento y desaparece tambien.
+        val markerB = leaseIn(directory).use { b ->
+            val marker = b.claimMarker()
+            assertEquals(1, db.settleAbandonedPreparedDispatches(b, op.accountId!!, farmId, now.plusSeconds(30)))
+            assertEquals(
+                PrepareOutcome.ALREADY_PREPARED,
+                db.prepareDeliveryDispatch(b, op.id, identity, ledger, now.plusSeconds(40)),
+            )
+            val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+            assertEquals("El PREPARE debe llevar el marcador del titular actual", marker, record.leaseMarker)
+            assertNotEquals("Ya no es el emisor difunto", markerA, record.leaseMarker)
+            assertEquals(marker, db.syncOutboxDao().findById(op.id)!!.lastErrorCode)
+            marker
+        }
+        assertNotEquals("Cada adquisicion es una epoca distinta", markerA, markerB)
+
+        // Lease C: segundo cierre consecutivo. Debe recuperar igual que el primero.
+        leaseIn(directory).use { c ->
+            assertEquals(1, db.settleAbandonedPreparedDispatches(c, op.accountId!!, farmId, now.plusSeconds(70)))
+            val recovered = db.syncOutboxDao().findById(op.id)!!
+            assertEquals(OutboxStatus.FAILED, recovered.status)
+            assertEquals("OUTCOME_UNKNOWN", recovered.lastErrorCode)
+            assertEquals("Mismo payload tras dos cierres", op.payloadJson, recovered.payloadJson)
+            assertEquals(op.baseRemoteVersion, recovered.baseRemoteVersion)
+            assertTrue(
+                "El mismo UUID vuelve a estar disponible",
+                db.syncOutboxDao().listReadyForAccount(op.accountId!!, now.plusSeconds(90).toEpochMilli())
+                    .any { it.id == op.id },
+            )
+            // Identidad y consentimiento congelados: dos cierres no los tocan.
+            val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+            assertEquals(DeliveryDispatchPrepareEntity.SETTLED_UNKNOWN, record.settledOutcome)
+            assertEquals(id, record.deliveryId)
+            assertEquals(farmId, record.farmId)
+            assertEquals(op.accountId, record.accountId)
+            assertEquals(links.subject(UUID.fromString(op.accountId!!)), record.subject)
+            assertEquals(ledger!!.consents.single().operationId, record.consentOperationId)
+            assertEquals(ledger.consents.single().textVersion, record.consentTextVersion)
+            assertEquals(deliveryPayloadHash(op.payloadJson!!, op.payloadVersion), record.payloadHash)
+            assertEquals(op.baseRemoteVersion, record.baseRemoteVersion)
+            assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+        }
+
+        // Y el ACK tardio de ese mismo intento sigue aplicandose, exactamente una vez.
+        assertEquals(
+            AckCorrelationOutcome.APPLIED_SYNCED,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, ledger, now.plusSeconds(120)),
+        )
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(op.id)!!.status)
+        val after = db.deliveryDao().findById(id)!!
+        assertEquals(2_800_000L, after.netGrams)
+        assertEquals(7L, after.metadata.remoteVersion)
+        assertEquals(1, db.deliveryDao().observeAllForWorkspace(workspaceId).first().size)
+        assertEquals(
+            AckCorrelationOutcome.ALREADY_SETTLED,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, ledger, now.plusSeconds(150)),
+        )
+    }
+
+    /**
+     * Corolario: la recuperacion no pisa un estado que SI tiene resultado. Un intento bloqueado
+     * por revocacion con su recibo retenido no se convierte en OUTCOME_UNKNOWN.
+     */
+    @Test
+    fun g24ParityRecoveryNeverOverwritesABlockedOperationThatAlreadyHasItsReceipt() = runBlocking {
+        val (links, id, op, identity, ack) = preparable()
+        val ledger = links.state.value.ledger
+        val directory = dir("abc-blocked")
+        leaseIn(directory).use { a ->
+            assertEquals(PrepareOutcome.PREPARED, db.prepareDeliveryDispatch(a, op.id, identity, ledger, now))
+        }
+        // Llega el ACK despues de revocar: queda retenido y la operacion BLOCKED.
+        links.revokeConsentForFarm(farmId)
+        assertEquals(
+            AckCorrelationOutcome.HELD_AFTER_REVOCATION,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, links.state.value.ledger, now.plusSeconds(10)),
+        )
+        val before = db.syncOutboxDao().findById(op.id)!!
+        leaseIn(directory).use { c ->
+            // Nada que recuperar: su resultado no es desconocido, esta retenido como evidencia.
+            assertEquals(0, db.settleAbandonedPreparedDispatches(c, op.accountId!!, farmId, now.plusSeconds(40)))
+        }
+        val still = db.syncOutboxDao().findById(op.id)!!
+        assertEquals(OutboxStatus.BLOCKED, still.status)
+        assertEquals(before.lastErrorCode, still.lastErrorCode)
+        assertEquals(
+            DeliveryDispatchPrepareEntity.SETTLED_HELD,
+            db.deliveryDispatchPrepareDao().findByOperation(op.id)!!.settledOutcome,
+        )
+        assertEquals(DeliveryHeldReceiptEntity.HELD, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
+        assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+    }
+
     private companion object {
         const val DB = "delivery-contract-test.db"
 

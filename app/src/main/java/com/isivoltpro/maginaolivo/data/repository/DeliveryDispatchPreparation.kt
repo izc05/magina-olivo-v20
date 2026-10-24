@@ -195,6 +195,7 @@ internal suspend fun MaginaOlivoDatabase.prepareDeliveryDispatch(
         }
         // Already claimed under THIS lease: idempotent, and the claim is not touched again.
         if (op.status == OutboxStatus.PROCESSING && op.lastErrorCode == marker) {
+            check(prepareDao.adoptLeaseMarker(op.id, marker) == 1)
             lease.requireHeld()
             return@withTransaction PrepareOutcome.ALREADY_PREPARED
         }
@@ -202,6 +203,9 @@ internal suspend fun MaginaOlivoDatabase.prepareDeliveryDispatch(
             return@withTransaction PrepareOutcome.REJECTED
         }
         check(outbox.markDeliveryLeaseClaim(op.id, identity.accountId, farm, marker) == 1)
+        // In the SAME transaction as the outbox claim: the record names the current holder, so a
+        // later recovery matches the live epoch instead of a dead sender's.
+        check(prepareDao.adoptLeaseMarker(op.id, marker) == 1)
         lease.requireHeld()
         return@withTransaction PrepareOutcome.ALREADY_PREPARED
     }
@@ -326,22 +330,30 @@ internal suspend fun MaginaOlivoDatabase.settleAbandonedPreparedDispatches(
     var settled = 0
     for (row in prepareDao.listUnsettled(accountId, farmId)) {
         if (!lease.canRecover(row.leaseMarker)) continue
+        val op = outbox.findById(row.operationId) ?: continue
+        // Only an operation still PROCESSING under that dead epoch has an unknown outcome.
+        // BLOCKED (a revocation) and CONFIRMED (an applied receipt) DO have an outcome, reached
+        // by consent or by an authenticated ACK: recovery never overwrites either of those.
+        if (op.status != OutboxStatus.PROCESSING) continue
         // Annotating the PREPARE is not enough: the intent itself is still PROCESSING under the
         // marker of a sender that no longer exists, which no dispatcher would ever pick up again.
         // This returns it to FAILED/OUTCOME_UNKNOWN with the SAME UUID, bytes and base version,
         // so it is eligible once more and the server's idempotency decides what happened.
-        outbox.recoverDeliveryLeaseClaim(
-            operationId = row.operationId,
-            accountId = accountId,
-            farmId = farmId,
-            previousMarker = row.leaseMarker,
-            currentMarker = lease.claimMarker(),
-            namespacePrefix = lease.recoveryNamespace(),
-            nowEpochMillis = at.toEpochMilli(),
-        )
-        if (prepareDao.settle(row.operationId, DeliveryDispatchPrepareEntity.SETTLED_UNKNOWN, at.toEpochMilli()) == 1) {
-            settled++
-        }
+        // Exactly one row must move: a zero here would mean the record's epoch no longer matches
+        // the live claim, which is precisely how an operation used to get stranded.
+        check(
+            outbox.recoverDeliveryLeaseClaim(
+                operationId = row.operationId,
+                accountId = accountId,
+                farmId = farmId,
+                previousMarker = row.leaseMarker,
+                currentMarker = lease.claimMarker(),
+                namespacePrefix = lease.recoveryNamespace(),
+                nowEpochMillis = at.toEpochMilli(),
+            ) == 1,
+        ) { "Stale dispatch epoch for operation ${row.operationId}" }
+        check(prepareDao.settle(row.operationId, DeliveryDispatchPrepareEntity.SETTLED_UNKNOWN, at.toEpochMilli()) == 1)
+        settled++
     }
     lease.requireHeld()
     settled
