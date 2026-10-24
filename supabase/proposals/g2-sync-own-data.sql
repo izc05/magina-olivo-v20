@@ -635,11 +635,27 @@ BEGIN
 
     -- Validate parcel linkage if provided
     IF v_parcel_id IS NOT NULL THEN
-        PERFORM 1 FROM public.parcels
-        WHERE id = v_parcel_id AND workspace_id = v_workspace AND deleted_at IS NULL;
+        PERFORM 1 FROM public.parcels p
+        JOIN public.farm_parcel_memberships m
+          ON m.parcel_id = p.id AND m.workspace_id = p.workspace_id
+        WHERE p.id = v_parcel_id AND p.workspace_id = v_workspace AND p.deleted_at IS NULL
+          AND m.farm_id = v_farm_id AND m.deleted_at IS NULL
+          AND (CASE WHEN m.valid_from_exact IS NULL THEN extract(epoch FROM m.valid_from)*1000000000
+                    ELSE magina_g2_private.instant_key(m.valid_from_exact) END)
+              < extract(epoch FROM (v_expense_date+1)::timestamptz)*1000000000
+          AND (m.valid_until IS NULL OR
+               (CASE WHEN m.valid_until_exact IS NULL THEN extract(epoch FROM m.valid_until)*1000000000
+                     ELSE magina_g2_private.instant_key(m.valid_until_exact) END)
+               > extract(epoch FROM v_expense_date::timestamptz)*1000000000)
+          AND (m.valid_until IS NULL OR
+               (CASE WHEN m.valid_until_exact IS NULL THEN extract(epoch FROM m.valid_until)*1000000000
+                     ELSE magina_g2_private.instant_key(m.valid_until_exact) END)
+               > (CASE WHEN m.valid_from_exact IS NULL THEN extract(epoch FROM m.valid_from)*1000000000
+                       ELSE magina_g2_private.instant_key(m.valid_from_exact) END))
+        FOR SHARE OF p,m;
 
         IF NOT FOUND THEN
-            RAISE EXCEPTION 'sync invalid: parcel does not belong to workspace' USING ERRCODE = '22023';
+            RAISE EXCEPTION 'sync denied: parcel does not belong to farm on expense date' USING ERRCODE = '42501';
         END IF;
     END IF;
 

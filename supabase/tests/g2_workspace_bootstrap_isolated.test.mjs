@@ -190,6 +190,35 @@ test('reserved farm creation rejects mismatched reservation, actor, issuer or pa
   } finally {await db.close();}
 });
 
+test('expense sync rejects a parcel belonging only to another farm in the same workspace',async()=>{
+  const {db,actor}=await fixture();
+  try {
+    const farm=await reservedFarm(db,actor);await farmCall(db,actor,randomUUID(),farm,farm.payload);
+    const otherFarm=randomUUID(),parcel=randomUUID(),expenseId=randomUUID(),operation=randomUUID();
+    await db.query('INSERT INTO public.farms(id,workspace_id,creator_user_id,owner_id,name) VALUES($1,$2,$3,$3,$4)',
+      [otherFarm,farm.payload.workspaceId,actor,'Other farm']);
+    await db.query('INSERT INTO public.parcels(id,workspace_id,display_name) VALUES($1,$2,$3)',
+      [parcel,farm.payload.workspaceId,'Other farm parcel']);
+    await db.query('INSERT INTO public.farm_parcel_memberships(workspace_id,farm_id,parcel_id,valid_from) VALUES($1,$2,$3,$4)',
+      [farm.payload.workspaceId,otherFarm,parcel,'2026-01-01']);
+    const payload={id:expenseId,farmId:farm.payload.id,parcelId:parcel,expenseDate:'2026-11-10',
+      concept:'Synthetic fertilizer',category:'FERTILIZANTES',amountMinor:1000,currency:'EUR'};
+    await assert.rejects(asActor(db,actor,()=>db.query(
+      'SELECT public.sync_own_expense($1::uuid,$2::jsonb)',[operation,JSON.stringify(payload)])),e=>e.code==='42501');
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.expenses WHERE id=$1',[expenseId])).rows[0].n,0);
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM magina_g2_private.sync_operations WHERE operation_id=$1',[operation])).rows[0].n,0);
+    const ownParcel=randomUUID(),ownExpense=randomUUID(),ownOperation=randomUUID();
+    await db.query('INSERT INTO public.parcels(id,workspace_id,display_name) VALUES($1,$2,$3)',
+      [ownParcel,farm.payload.workspaceId,'Own farm parcel']);
+    await db.query('INSERT INTO public.farm_parcel_memberships(workspace_id,farm_id,parcel_id,valid_from) VALUES($1,$2,$3,$4)',
+      [farm.payload.workspaceId,farm.payload.id,ownParcel,'2026-01-01']);
+    const ownPayload={...payload,id:ownExpense,parcelId:ownParcel};
+    await asActor(db,actor,()=>db.query('SELECT public.sync_own_expense($1::uuid,$2::jsonb)',
+      [ownOperation,JSON.stringify(ownPayload)]));
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.expenses WHERE id=$1',[ownExpense])).rows[0].n,1);
+  } finally {await db.close();}
+});
+
 async function campaignFixture(db,actor) {
   const farm=await reservedFarm(db,actor);await farmCall(db,actor,randomUUID(),farm,farm.payload);
   const parcel=randomUUID();
