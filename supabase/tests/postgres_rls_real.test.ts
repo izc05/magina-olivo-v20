@@ -83,6 +83,7 @@ before(async () => {
     "utf8"
   );
   await db.exec(mockEnv);
+  await db.exec(`CREATE ROLE anon NOSUPERUSER NOCREATEDB NOCREATEROLE;`);
 
   // 2. Run pure production migrations in order
   const mig1 = readFileSync(
@@ -103,6 +104,7 @@ before(async () => {
   await db.exec(mig3);
   await db.exec(readFileSync(join(rootDir, 'supabase/migrations/20261016041222_g0_legacy_storage_parcel_hardening.sql'), 'utf8'));
   await db.exec(readFileSync(join(rootDir, 'supabase/migrations/20261016041601_g0_aggregate_identity_guards.sql'), 'utf8'));
+  await db.exec(readFileSync(join(rootDir, 'supabase/migrations/20261024125046_g0_function_security_hardening.sql'), 'utf8'));
 
   // 3. Grant privileges to authenticated role
   await db.exec(`
@@ -156,6 +158,31 @@ before(async () => {
      RETURNING id;`
   );
   campaignId = campRes.rows[0].id;
+});
+
+test('G0 privileged RPCs reject anonymous execution and trigger paths are fixed', async () => {
+  const routines = [
+    'accept_farm_contract(uuid)',
+    'accept_harvest_share_agreement(uuid)',
+    'claim_farm_invitation(text)',
+    'confirm_farm_invitation(uuid)',
+    'has_farm_capability(uuid,text)',
+    'user_accessible_farm_ids()',
+  ];
+  for (const routine of routines) {
+    const privilege = await db.query(`SELECT has_function_privilege('anon', 'public.${routine}', 'EXECUTE') AS anon_exec,
+      has_function_privilege('authenticated', 'public.${routine}', 'EXECUTE') AS auth_exec`);
+    assert.equal(privilege.rows[0].anon_exec, false, routine);
+    assert.equal(privilege.rows[0].auth_exec, true, routine);
+  }
+  const paths = await db.query(`SELECT proname, proconfig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND proname IN ('check_farm_principal_immutability',
+      'deny_delivery_hard_delete', 'check_contract_acceptance_integrity',
+      'check_share_agreement_acceptance_integrity')`);
+  assert.equal(paths.rows.length, 4);
+  for (const routine of paths.rows) {
+    assert.deepEqual(routine.proconfig, ['search_path=pg_catalog, public'], routine.proname);
+  }
 });
 
 test("RLS 1: User A (Owner) sees farm; User D (Intruder) sees nothing", async () => {
