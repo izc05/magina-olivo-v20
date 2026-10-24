@@ -78,7 +78,9 @@ class DeliveryDispatchLeaseTest {
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
             while (!marker.isFile && process.isAlive && System.nanoTime() < deadline) Thread.sleep(10)
             assertTrue("Child did not reach lock checkpoint: ${File(directory, "child.log").readText()}", marker.isFile)
-            assertEquals(process.pid().toString(), marker.readText())
+            // Android's compile-time Process stub lacks pid(); the host test JVM is JDK17.
+            val childPid = java.lang.Process::class.java.getMethod("pid").invoke(process) as Long
+            assertEquals(childPid.toString(), marker.readText())
             assertTrue(process.isAlive)
             assertNull(DeliveryDispatchLease.tryAcquire(directory))
             process.destroyForcibly()
