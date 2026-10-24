@@ -2059,6 +2059,147 @@ class DeliveryContractTest {
             cursor.getString(0)
         }
 
+    // ---------------------------------------------------------------------------------------
+    // Revision independiente de #774@7bde446e. Dos hallazgos, cada uno con su prueba.
+    // ---------------------------------------------------------------------------------------
+
+    /**
+     * P1: OUTCOME_UNKNOWN no puede ser terminal. Significa "no sabemos si el servidor lo
+     * aplico", asi que el MISMO intento debe seguir pudiendo recibir su ACK tardio, una sola
+     * vez, y el outbox debe volver a ser reintentable con el mismo UUID, bytes y baseVersion.
+     */
+    @Test
+    fun g24ParityAnUnknownOutcomeStillAcceptsItsLateAckExactlyOnce() = runBlocking {
+        val (links, id, op, identity, ack) = preparable()
+        val ledger = links.state.value.ledger
+        val directory = dir("unknown-late-ack")
+        leaseIn(directory).use { first ->
+            assertEquals(PrepareOutcome.PREPARED, db.prepareDeliveryDispatch(first, op.id, identity, ledger, now))
+        }
+        // El emisor desaparece sin liquidar; otro vuelve a adquirir el MISMO lock.
+        leaseIn(directory).use { second ->
+            assertEquals(1, db.settleAbandonedPreparedDispatches(second, op.accountId!!, farmId, now.plusSeconds(30)))
+        }
+        // El intento sigue siendo el mismo y vuelve a ser elegible: nada se reescribe.
+        val recovered = db.syncOutboxDao().findById(op.id)!!
+        assertEquals(OutboxStatus.FAILED, recovered.status)
+        assertEquals("OUTCOME_UNKNOWN", recovered.lastErrorCode)
+        assertEquals(op.payloadJson, recovered.payloadJson)
+        assertEquals(op.baseRemoteVersion, recovered.baseRemoteVersion)
+        assertTrue(
+            "El mismo UUID vuelve a estar disponible para el servidor",
+            db.syncOutboxDao().listReadyForAccount(op.accountId!!, now.plusSeconds(60).toEpochMilli())
+                .any { it.id == op.id },
+        )
+        // El ACK que el servidor si habia emitido llega tarde: debe aplicarse, una sola vez.
+        assertEquals(
+            AckCorrelationOutcome.APPLIED_SYNCED,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, ledger, now.plusSeconds(90)),
+        )
+        val after = db.deliveryDao().findById(id)!!
+        assertEquals(2_800_000L, after.netGrams)
+        assertEquals(7L, after.metadata.remoteVersion)
+        assertEquals(SyncStatus.SYNCED, after.metadata.syncStatus)
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+        assertEquals(
+            DeliveryDispatchPrepareEntity.SETTLED_CONFIRMED,
+            db.deliveryDispatchPrepareDao().findByOperation(op.id)!!.settledOutcome,
+        )
+        // Sin duplicados: una devolucion repetida ya no cambia nada.
+        assertEquals(
+            AckCorrelationOutcome.ALREADY_SETTLED,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, ledger, now.plusSeconds(120)),
+        )
+        assertEquals(1, db.deliveryDao().observeAllForWorkspace(workspaceId).first().size)
+    }
+
+    /** P1: y si no llega ACK, el MISMO intento se puede reintentar sin duplicar el PREPARE. */
+    @Test
+    fun g24ParityAnUnknownOutcomeCanBeRetriedWithTheSameOperationAndBytes() = runBlocking {
+        val (links, id, op, identity, _) = preparable()
+        val ledger = links.state.value.ledger
+        val directory = dir("unknown-retry")
+        leaseIn(directory).use { first ->
+            assertEquals(PrepareOutcome.PREPARED, db.prepareDeliveryDispatch(first, op.id, identity, ledger, now))
+        }
+        leaseIn(directory).use { second ->
+            assertEquals(1, db.settleAbandonedPreparedDispatches(second, op.accountId!!, farmId, now.plusSeconds(30)))
+            // Reintento del MISMO intento bajo un lease vivo: se reanuda, no se bloquea.
+            assertEquals(
+                PrepareOutcome.ALREADY_PREPARED,
+                db.prepareDeliveryDispatch(second, op.id, identity, ledger, now.plusSeconds(40)),
+            )
+            val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+            assertEquals("Vuelve a estar en vuelo", null, record.settledAt)
+            assertEquals(null, record.settledOutcome)
+            assertEquals(deliveryPayloadHash(op.payloadJson!!, op.payloadVersion), record.payloadHash)
+            assertEquals(op.baseRemoteVersion, record.baseRemoteVersion)
+            assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+            val claimed = db.syncOutboxDao().findById(op.id)!!
+            assertEquals(OutboxStatus.PROCESSING, claimed.status)
+            assertEquals(second.claimMarker(), claimed.lastErrorCode)
+            assertEquals(op.payloadJson, claimed.payloadJson)
+        }
+    }
+
+    /**
+     * P1/P2: el re-PREPARE compara TODOS los campos congelados. `remoteWorkspaceId` y
+     * `consentTextVersion` se omitian, asi que un destino remoto distinto o una version de
+     * texto distinta pasaban por "el mismo" y reclamaban el intento.
+     */
+    @Test
+    fun g24ParityRePrepareRejectsAChangedRemoteWorkspaceOrConsentTextVersion() = runBlocking {
+        val (links, id, op, identity, _) = preparable()
+        val ledger = links.state.value.ledger
+        val remoteA = UUID.fromString("90000000-0000-0000-0000-00000000000a")
+        val remoteB = UUID.fromString("90000000-0000-0000-0000-00000000000b")
+        leaseIn(dir("immutable-remote")).use { lease ->
+            assertEquals(
+                PrepareOutcome.PREPARED,
+                db.prepareDeliveryDispatch(lease, op.id, identity.copy(remoteWorkspaceId = remoteA), ledger, now),
+            )
+            // Mismo intento, otro destino remoto: no es la misma evidencia.
+            assertEquals(
+                PrepareOutcome.PREPARE_CONFLICT,
+                db.prepareDeliveryDispatch(lease, op.id, identity.copy(remoteWorkspaceId = remoteB), ledger, now),
+            )
+            assertEquals(remoteA, db.deliveryDispatchPrepareDao().findByOperation(op.id)!!.remoteWorkspaceId)
+            assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+        }
+    }
+
+    /** P1/P2: la misma regla para consentTextVersion, con el mismo consentOperationId. */
+    @Test
+    fun g24ParityRePrepareRejectsADifferentConsentTextVersion() = runBlocking {
+        val (links, id, op, identity, _) = preparable()
+        val ledger = links.state.value.ledger
+        val consent = ledger!!.consents.single()
+        // Registro previo identico salvo la version del texto del consentimiento.
+        db.deliveryDispatchPrepareDao().insert(
+            DeliveryDispatchPrepareEntity(
+                operationId = op.id, deliveryId = id, farmId = farmId, accountId = op.accountId!!,
+                issuer = "fixture-project", subject = links.subject(UUID.fromString(op.accountId!!)),
+                localWorkspaceId = workspaceId, remoteWorkspaceId = null,
+                consentOperationId = consent.operationId,
+                consentTextVersion = consent.textVersion + 1,
+                payloadVersion = op.payloadVersion,
+                payloadHash = deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!,
+                baseRemoteVersion = op.baseRemoteVersion, leaseMarker = "previo", preparedAt = now,
+            ),
+        )
+        leaseIn(dir("immutable-text")).use { lease ->
+            assertEquals(
+                PrepareOutcome.PREPARE_CONFLICT,
+                db.prepareDeliveryDispatch(lease, op.id, identity, ledger, now),
+            )
+        }
+        val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+        assertEquals("El original no se reemplaza", consent.textVersion + 1, record.consentTextVersion)
+        assertEquals("previo", record.leaseMarker)
+        assertEquals("El intento no se reclama", OutboxStatus.PENDING, db.syncOutboxDao().findById(op.id)!!.status)
+    }
+
     private companion object {
         const val DB = "delivery-contract-test.db"
 

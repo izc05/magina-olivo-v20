@@ -38,14 +38,30 @@ interface DeliveryDispatchPrepareDao {
     suspend fun countUnsettled(): Int
 
     /**
-     * Terminal annotation. Only an unsettled row can settle, so an outcome is recorded once
-     * and a late duplicate callback can never rewrite history.
+     * Records the outcome. A row is settleable while its outcome is still unresolved: either
+     * never settled, or settled as OUTCOME_UNKNOWN, which states only that this device does
+     * not know what the server did. A terminal outcome (CONFIRMED, HELD, CONFLICT) is final,
+     * so a late duplicate callback can never rewrite history.
      */
     @Query(
         """
         UPDATE delivery_dispatch_prepare SET settled_at = :nowEpochMillis, settled_outcome = :outcome
-        WHERE operation_id = :operationId AND settled_at IS NULL
+        WHERE operation_id = :operationId
+          AND (settled_at IS NULL OR settled_outcome = 'OUTCOME_UNKNOWN')
         """,
     )
     suspend fun settle(operationId: UUID, outcome: String, nowEpochMillis: Long): Int
+
+    /**
+     * Puts an operation whose outcome was never known back in flight, so the SAME intent UUID,
+     * bytes and base version can be retried. Only an OUTCOME_UNKNOWN row reopens: a terminal
+     * outcome stays terminal and an in-flight row is never stolen from a live sender.
+     */
+    @Query(
+        """
+        UPDATE delivery_dispatch_prepare SET settled_at = NULL, settled_outcome = NULL
+        WHERE operation_id = :operationId AND settled_outcome = 'OUTCOME_UNKNOWN'
+        """,
+    )
+    suspend fun reopenUnknownSettlement(operationId: UUID): Int
 }

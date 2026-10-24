@@ -171,16 +171,28 @@ internal suspend fun MaginaOlivoDatabase.prepareDeliveryDispatch(
     )
 
     prepareDao.findByOperation(op.id)?.let { existing ->
+        // EVERY frozen column is compared. Only leaseMarker and preparedAt may differ, because
+        // a retry legitimately runs under another acquisition. Omitting one of the others let a
+        // different remote destination or consent text pass as "the same evidence".
         val same = existing.deliveryId == record.deliveryId && existing.farmId == record.farmId &&
             existing.accountId == record.accountId && existing.issuer == record.issuer &&
             existing.subject == record.subject &&
             existing.localWorkspaceId == record.localWorkspaceId &&
+            existing.remoteWorkspaceId == record.remoteWorkspaceId &&
             existing.consentOperationId == record.consentOperationId &&
+            existing.consentTextVersion == record.consentTextVersion &&
             existing.payloadVersion == record.payloadVersion &&
             existing.payloadHash == record.payloadHash &&
             existing.baseRemoteVersion == record.baseRemoteVersion
         if (!same) return@withTransaction PrepareOutcome.PREPARE_CONFLICT
-        if (existing.settledAt != null) return@withTransaction PrepareOutcome.PREPARE_CONFLICT
+        // A terminal outcome is final. OUTCOME_UNKNOWN is not an outcome: it records that this
+        // device never learned what the server did, so the SAME intent goes back in flight.
+        if (existing.settledAt != null) {
+            if (existing.settledOutcome != DeliveryDispatchPrepareEntity.SETTLED_UNKNOWN) {
+                return@withTransaction PrepareOutcome.PREPARE_CONFLICT
+            }
+            check(prepareDao.reopenUnknownSettlement(op.id) == 1)
+        }
         // Already claimed under THIS lease: idempotent, and the claim is not touched again.
         if (op.status == OutboxStatus.PROCESSING && op.lastErrorCode == marker) {
             lease.requireHeld()
@@ -222,7 +234,14 @@ internal suspend fun MaginaOlivoDatabase.correlateAuthenticatedDeliveryAck(
     val prepareDao = deliveryDispatchPrepareDao()
     val prepared = prepareDao.findByOperation(ack.operationId)
         ?: return@withTransaction AckCorrelationOutcome.NOT_PREPARED
-    if (prepared.settledAt != null) return@withTransaction AckCorrelationOutcome.ALREADY_SETTLED
+    // A terminal outcome is final. OUTCOME_UNKNOWN is not: the server may well have applied the
+    // operation, so its authenticated receipt must still be able to arrive late and be applied
+    // once. Refusing it here would discard a confirmation this device had no other way to learn.
+    if (prepared.settledAt != null &&
+        prepared.settledOutcome != DeliveryDispatchPrepareEntity.SETTLED_UNKNOWN
+    ) {
+        return@withTransaction AckCorrelationOutcome.ALREADY_SETTLED
+    }
 
     // Mono-titular rule preserved: the authenticated sender is the account owner.
     if (ack.transportSubject.isBlank() || ack.transportSubject != ack.accountId ||
@@ -303,9 +322,23 @@ internal suspend fun MaginaOlivoDatabase.settleAbandonedPreparedDispatches(
     lease.requireOpen()
     if (accountId.isBlank()) return@withTransaction 0
     val prepareDao = deliveryDispatchPrepareDao()
+    val outbox = syncOutboxDao()
     var settled = 0
     for (row in prepareDao.listUnsettled(accountId, farmId)) {
         if (!lease.canRecover(row.leaseMarker)) continue
+        // Annotating the PREPARE is not enough: the intent itself is still PROCESSING under the
+        // marker of a sender that no longer exists, which no dispatcher would ever pick up again.
+        // This returns it to FAILED/OUTCOME_UNKNOWN with the SAME UUID, bytes and base version,
+        // so it is eligible once more and the server's idempotency decides what happened.
+        outbox.recoverDeliveryLeaseClaim(
+            operationId = row.operationId,
+            accountId = accountId,
+            farmId = farmId,
+            previousMarker = row.leaseMarker,
+            currentMarker = lease.claimMarker(),
+            namespacePrefix = lease.recoveryNamespace(),
+            nowEpochMillis = at.toEpochMilli(),
+        )
         if (prepareDao.settle(row.operationId, DeliveryDispatchPrepareEntity.SETTLED_UNKNOWN, at.toEpochMilli()) == 1) {
             settled++
         }
