@@ -63,7 +63,13 @@ internal suspend fun MaginaOlivoDatabase.retainAckAfterRevocation(
             existing.farmId == ack.farmId && existing.remoteVersion == ack.remoteVersion &&
             existing.payloadHash == ack.payloadHash && existing.payloadVersion == ack.payloadVersion
         if (same && existing.state != DeliveryHeldReceiptEntity.CONFLICT) return@withTransaction HeldReceiptOutcome.ALREADY_HELD
-        if (!same) held.markConflict(op.id, ack.remoteVersion, ack.payloadHash)
+        if (!same) {
+            // P1: the result is asserted. A row already in CONFLICT keeps its FIRST
+            // incompatible receipt, so 0 affected rows is correct only in that case; a
+            // silent 0 on a HELD row would mean the conflict was never recorded.
+            val marked = held.markConflict(op.id, ack.remoteVersion, ack.payloadHash)
+            check(marked == 1 || existing.state == DeliveryHeldReceiptEntity.CONFLICT)
+        }
         outbox.annotateBlockedDelivery(op.id, RECEIPT_CONFLICT, millis)
         return@withTransaction HeldReceiptOutcome.RECEIPT_CONFLICT
     }

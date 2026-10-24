@@ -25,6 +25,14 @@ internal data class RemoteDeliveryState(
 internal enum class HeldReconciliationOutcome {
     SYNCED, NEEDS_REBASE, REBASED, REOPENED,
     NOT_CONFIRMED, NOT_AUTHORIZED, REMOTE_CONFLICT, RECEIPT_CONFLICT, REJECTED,
+
+    /**
+     * P1: the operation was quarantined for rebase AND then revoked, and no authenticated
+     * receipt exists for it. Reopening it would re-send a snapshot whose base version is
+     * known stale, so it stays BLOCKED — but it is reported as its own terminal state
+     * instead of a generic rejection, so it is never a silent dead end.
+     */
+    NEEDS_REBASE_WITHOUT_RECEIPT,
 }
 
 /** Everything a reconciliation needs that is NOT in Room; each part is checked again here. */
@@ -80,8 +88,7 @@ private suspend fun MaginaOlivoDatabase.reconcileInTransaction(
     val payload = op.payloadJson ?: return HeldReconciliationOutcome.REJECTED
     if (op.status != OutboxStatus.BLOCKED || op.entityType != SyncEntityType.DELIVERY ||
         op.operation !in setOf(OutboxOperation.CREATE, OutboxOperation.UPDATE) ||
-        account.isBlank() || op.accountId != account || payload.isBlank() ||
-        op.lastErrorCode == "NEEDS_REBASE"
+        account.isBlank() || op.accountId != account || payload.isBlank()
     ) return HeldReconciliationOutcome.REJECTED
     val ledger = authority.ledger
     if (ledger == null || ledger.subject != authority.subject || farm !in ledger.activeFarmIds) {
@@ -91,6 +98,13 @@ private suspend fun MaginaOlivoDatabase.reconcileInTransaction(
     val millis = at.toEpochMilli()
 
     val held = heldDao.findByOperation(op.id)
+    // P1: NEEDS_REBASE + revocation. With an authenticated receipt the server outcome is
+    // known, so the normal held path applies it and the rebase below rebuilds the base
+    // version. Without one, the snapshot's base version is known stale: it stays BLOCKED
+    // under its own terminal outcome instead of being reopened or silently rejected.
+    if (op.lastErrorCode == "NEEDS_REBASE" && held == null) {
+        return HeldReconciliationOutcome.NEEDS_REBASE_WITHOUT_RECEIPT
+    }
     val receipt: DeliverySyncReceipt
     if (held != null) {
         when (held.state) {

@@ -515,13 +515,46 @@ object DatabaseMigrations {
         }
     }
 
+    /**
+     * G2.4: additive. The durable PREPARE record written before any request may leave the
+     * device. No existing row is read or changed; an upgrade simply starts with no prepared
+     * operations, so nothing can be correlated until it is prepared again.
+     */
+    val MIGRATION_28_29 = object : Migration(28, 29) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `delivery_dispatch_prepare` (" +
+                    "`operation_id` TEXT NOT NULL, `delivery_id` TEXT NOT NULL, `farm_id` TEXT NOT NULL, " +
+                    "`account_id` TEXT NOT NULL, `issuer` TEXT NOT NULL, `subject` TEXT NOT NULL, " +
+                    "`local_workspace_id` TEXT NOT NULL, `remote_workspace_id` TEXT, " +
+                    "`consent_operation_id` TEXT NOT NULL, `consent_text_version` INTEGER NOT NULL, " +
+                    "`payload_version` INTEGER NOT NULL, `payload_hash` TEXT NOT NULL, " +
+                    "`base_remote_version` INTEGER, `lease_marker` TEXT NOT NULL, " +
+                    "`prepared_at` INTEGER NOT NULL, `settled_at` INTEGER, `settled_outcome` TEXT, " +
+                    "PRIMARY KEY(`operation_id`))",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_delivery_dispatch_prepare_delivery_id` " +
+                    "ON `delivery_dispatch_prepare` (`delivery_id`)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_delivery_dispatch_prepare_account_id_farm_id` " +
+                    "ON `delivery_dispatch_prepare` (`account_id`, `farm_id`)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_delivery_dispatch_prepare_settled_at` " +
+                    "ON `delivery_dispatch_prepare` (`settled_at`)",
+            )
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
             MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
             MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
-            MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28,
+            MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29,
         )
 
     private val schemaVersion11Statements =

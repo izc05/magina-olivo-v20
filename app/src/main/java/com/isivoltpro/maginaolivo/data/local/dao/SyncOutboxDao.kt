@@ -282,6 +282,38 @@ interface SyncOutboxDao {
     )
     suspend fun reopenBlockedDeliveryWithoutReceipt(operationId: UUID, accountId: String, farmId: UUID, nowEpochMillis: Long): Int
 
+    /**
+     * G2.4: claims a Delivery intent for dispatch at PREPARE time. Same guards as recovery,
+     * but it starts from PENDING or FAILED, never from PROCESSING: a slow request still owns
+     * its operation. The UUID, bytes and base version are preserved.
+     */
+    @Query(
+        """
+        UPDATE sync_outbox
+        SET status = 'PROCESSING', updated_at = :nowEpochMillis
+        WHERE id = :operationId AND account_id = :accountId AND farm_id = :farmId
+          AND account_id != '' AND payload_json IS NOT NULL AND payload_json != ''
+          AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE')
+          AND payload_version IN (1, 2) AND status IN ('PENDING', 'FAILED')
+          AND NOT EXISTS (
+              SELECT 1 FROM sync_outbox sibling
+              WHERE sibling.entity_type = sync_outbox.entity_type
+                AND sibling.entity_id = sync_outbox.entity_id AND sibling.id != sync_outbox.id
+                AND sibling.status IN ('PENDING', 'FAILED', 'PROCESSING', 'BLOCKED')
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM delivery_held_receipts held
+              WHERE held.delivery_id = sync_outbox.entity_id AND held.state != 'RECONCILED'
+          )
+        """,
+    )
+    suspend fun claimPreparedDeliveryForDispatch(
+        operationId: UUID,
+        accountId: String,
+        farmId: UUID,
+        nowEpochMillis: Long,
+    ): Int
+
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE status IN ('PENDING', 'PROCESSING', 'FAILED')")
     suspend fun countActive(): Int
 }
