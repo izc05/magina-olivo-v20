@@ -159,6 +159,7 @@ data class AppCompositionRoot(
                 defaults.idGenerator,
                 defaults.dispatchers,
                 workspaceRepository = workspaceRepository,
+                writeScope = farmLinks,
             )
             val machineRepository = OfflineFirstMachineRepository(
                 database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,

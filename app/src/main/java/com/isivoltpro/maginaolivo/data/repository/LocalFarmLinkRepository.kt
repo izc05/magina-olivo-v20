@@ -22,9 +22,17 @@ class LocalFarmLinkRepository(
     private val account: AccountRepository,
     private val issuer: String,
     private val store: FarmLinkLedgerStore = AndroidFarmLinkLedger.forContext(context),
-) {
+) : DeliveryWriteScope {
     private val mutable = MutableStateFlow(load())
     val state: StateFlow<FarmLinkLocalState> = mutable
+
+    override suspend fun <T> withAccount(farmId: UUID, action: suspend (String?) -> T): T =
+        account.withLocalWriteIdentity { userId -> withContext(Dispatchers.IO) {
+            // The account mutex remains held through the local Room write; consent and
+            // revocation use that same mutex before entering Room, preserving lock order.
+            val bound = userId?.takeIf { isFarmConsented(farmId, it) }?.toString()
+            action(bound)
+        } }
     private fun load() = try { FarmLinkLocalState(store.read()) } catch (_: IOException) { FarmLinkLocalState(unreadable=true) }
     fun subject(userId: UUID) = "$issuer|$userId"
     fun accessAllowed(userId: UUID? = account.state.value.userId): Boolean {

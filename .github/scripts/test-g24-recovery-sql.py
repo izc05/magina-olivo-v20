@@ -118,9 +118,10 @@ class RecoverySQLTest(unittest.TestCase):
 
     def test_recovery_requires_matching_durable_namespace_and_preserves_request(self):
         self.assertEqual(1, self.claim())
-        scoped = dict(PARAMS, claimMarker='DELIVERY_LEASE_V1:scope-A')
-        self.assertEqual(1, self.db.execute(MARK, scoped).rowcount)
-        self.assertEqual(0, self.db.execute(RECOVER, dict(scoped, claimMarker='DELIVERY_LEASE_V1:scope-B')).rowcount)
+        scoped = dict(PARAMS, previousMarker='DELIVERY_LEASE_V2:scope-A:old', currentMarker='DELIVERY_LEASE_V2:scope-A:new', namespacePrefix='DELIVERY_LEASE_V2:scope-A:')
+        self.assertEqual(1, self.db.execute(MARK, dict(scoped, claimMarker=scoped['previousMarker'])).rowcount)
+        self.assertEqual(0, self.db.execute(RECOVER, dict(scoped, currentMarker=scoped['previousMarker'])).rowcount)
+        self.assertEqual(0, self.db.execute(RECOVER, dict(scoped, namespacePrefix='DELIVERY_LEASE_V2:scope-B:')).rowcount)
         self.assertEqual(0, self.db.execute(RECOVER, dict(scoped, accountId='B')).rowcount)
         self.assertEqual(1, self.db.execute(RECOVER, scoped).rowcount)
         self.assertEqual(0, self.db.execute(RECOVER, scoped).rowcount)
@@ -130,8 +131,17 @@ class RecoverySQLTest(unittest.TestCase):
 
     def test_unmarked_processing_is_not_adopted_by_new_protocol(self):
         self.assertEqual(1, self.claim())
-        self.assertEqual(0, self.db.execute(RECOVER, dict(PARAMS, claimMarker='DELIVERY_LEASE_V1:scope-A')).rowcount)
+        self.assertEqual(0, self.db.execute(RECOVER, dict(PARAMS, previousMarker='DELIVERY_LEASE_V1:scope-A', currentMarker='DELIVERY_LEASE_V2:scope-A:new', namespacePrefix='DELIVERY_LEASE_V2:scope-A:')).rowcount)
         self.assertEqual('PROCESSING', self.db.execute('SELECT status FROM sync_outbox WHERE id="old"').fetchone()[0])
+
+    def test_same_owner_cannot_recover_or_reclaim_its_live_request(self):
+        self.assertEqual(1, self.claim())
+        prefix = 'DELIVERY_LEASE_V2:' + 'a' * 64 + ':'
+        marker = prefix + '00000000-0000-0000-0000-000000000001'
+        self.assertEqual(1, self.db.execute(MARK, dict(PARAMS, claimMarker=marker)).rowcount)
+        self.assertEqual(0, self.db.execute(RECOVER, dict(PARAMS, previousMarker=marker, currentMarker=marker, namespacePrefix=prefix)).rowcount)
+        self.assertEqual(0, self.claim())
+        self.assertEqual(('PROCESSING', 2), self.db.execute('SELECT status,attempt_count FROM sync_outbox WHERE id="old"').fetchone())
 
 
 if __name__ == '__main__':

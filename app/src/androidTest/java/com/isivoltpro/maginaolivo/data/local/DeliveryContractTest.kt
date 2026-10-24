@@ -25,6 +25,12 @@ import com.isivoltpro.maginaolivo.data.repository.applyConfirmedDeliveryReceipt
 import com.isivoltpro.maginaolivo.data.repository.rebaseConfirmedDeliveryEdit
 import com.isivoltpro.maginaolivo.data.repository.DeliveryRebaseOutcome
 import com.isivoltpro.maginaolivo.data.repository.deliveryPayloadHash
+import com.isivoltpro.maginaolivo.data.repository.AndroidFarmLinkLedger
+import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
+import com.isivoltpro.maginaolivo.feature.account.AccountAuthApi
+import com.isivoltpro.maginaolivo.feature.account.AccountRepository
+import com.isivoltpro.maginaolivo.feature.account.MemoryAccountSessionStore
+import com.isivoltpro.maginaolivo.feature.account.SimulatedAccountAuthApi
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.claimDeliveryRecoveryWithLease
 import com.isivoltpro.maginaolivo.data.repository.sync.recoverAbandonedDeliveryClaim
@@ -105,6 +111,7 @@ class DeliveryContractTest {
     private lateinit var attachments: OfflineFirstAttachmentRepository
     private lateinit var documents: OfflineFirstDocumentOcrRepository
     private val engine = FakeEngine()
+    private val linkedFixtureCleanup = mutableListOf<() -> Unit>()
 
     @Before
     fun before() = runBlocking {
@@ -117,6 +124,8 @@ class DeliveryContractTest {
 
     @After
     fun after() {
+        linkedFixtureCleanup.forEach { it() }
+        linkedFixtureCleanup.clear()
         db.close()
         context.deleteDatabase(DB)
         sources.deleteRecursively()
@@ -1001,8 +1010,8 @@ class DeliveryContractTest {
             receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
         ))
         db.openHelper.writableDatabase.execSQL(
-            "UPDATE sync_outbox SET account_id='account-A', attempt_count=1 WHERE entity_id=? AND status='BLOCKED'",
-            arrayOf(receipt.deliveryId.toString()),
+            "UPDATE sync_outbox SET account_id=?, attempt_count=1 WHERE entity_id=? AND status='BLOCKED'",
+            arrayOf(receipt.accountId, receipt.deliveryId.toString()),
         )
         assertEquals(DeliveryRebaseOutcome.REJECTED, db.rebaseConfirmedDeliveryEdit(
             receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
@@ -1031,6 +1040,10 @@ class DeliveryContractTest {
         try {
             checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { lease ->
                 assertTrue(db.claimDeliveryRecoveryWithLease(lease, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                assertFalse("The current owner must not recover its own live request", db.recoverAbandonedDeliveryClaim(
+                    lease, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now,
+                ))
+                assertEquals(OutboxStatus.PROCESSING, db.syncOutboxDao().findById(receipt.operationId)!!.status)
                 assertNull(DeliveryDispatchLease.tryAcquire(directory))
                 checkNotNull(DeliveryDispatchLease.tryAcquire(otherDirectory)).use { wrong ->
                     assertFalse(db.recoverAbandonedDeliveryClaim(wrong, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
@@ -1065,20 +1078,86 @@ class DeliveryContractTest {
     }
 
     private suspend fun failedWithNewerEdit(): Pair<DeliverySyncReceipt, String> {
+        val (account, _) = configureConsentedWrites()
+        val accountId = account.state.value.userId!!.toString()
         val deliveryId = ok(deliveries.create(draft(2_850_000, north to null)))
         val dao = db.syncOutboxDao()
         val original = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
-        // Explicit synthetic binding: production adoption remains a separate consent-gated step.
+        assertEquals(accountId, original.accountId)
+        // Only simulate the failed network outcome; account binding uses production writers.
         db.openHelper.writableDatabase.execSQL(
-            "UPDATE sync_outbox SET status='FAILED', attempt_count=1, account_id='account-A' WHERE id=?",
+            "UPDATE sync_outbox SET status='FAILED', attempt_count=1 WHERE id=?",
             arrayOf(original.id.toString()),
         )
         ok(deliveries.update(deliveryId, draft(3_300_000, north to null)))
+        assertEquals(accountId, dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single { it.status == OutboxStatus.PENDING }.accountId)
+        return DeliverySyncReceipt(original.id, deliveryId, farmId, accountId, original.payloadJson!!, 7L) to original.payloadJson!!
+    }
+
+    @Test
+    fun g24AccountBindingUsesConsentAndDoesNotAdoptLegacyOrLoggedOutEdits() = runBlocking {
+        val (account, links) = configureConsentedWrites(consent = false)
+        val legacy = ok(deliveries.create(draft(2_000_000, north to null)))
+        assertNull(db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, legacy).single().accountId)
+        val userId = account.state.value.userId!!
+        links.consent(userId, links.choices().filter { it.id == farmId }, true)
+        val bound = ok(deliveries.create(draft(2_100_000, north to null)))
+        assertEquals(userId.toString(), db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, bound).single().accountId)
+        assertNull("Consent must not adopt a historical local operation", db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, legacy).single().accountId)
+        account.logout(false)
+        ok(deliveries.update(bound, draft(2_200_000, north to null)))
+        assertNull(db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, bound).single().accountId)
+        account.login("b@example.test", "password42", true)
+        val other = ok(deliveries.create(draft(2_300_000, north to null)))
+        assertNull("Account B must not inherit A's consent", db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, other).single().accountId)
+    }
+
+    @Test
+    fun g24EditsAfterRevocationStayUnboundAndKeepOldIntentBlocked() = runBlocking {
+        val (_, links) = configureConsentedWrites()
+        val delivery = ok(deliveries.create(draft(2_000_000, north to null)))
+        val previous = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, delivery).single()
+        links.revokeConsentForFarm(farmId)
+        ok(deliveries.update(delivery, draft(2_500_000, north to null)))
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(previous.id)!!.status)
+        assertNull(db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, delivery).single { it.status == OutboxStatus.PENDING }.accountId)
+        assertEquals(2_500_000L, db.deliveryDao().findById(delivery)!!.netGrams)
+    }
+
+    private suspend fun configureConsentedWrites(consent: Boolean = true): Pair<AccountRepository, LocalFarmLinkRepository> {
+        val file = File(context.noBackupFilesDir, "g24-write-${UUID.randomUUID()}.json")
+        val store = AndroidFarmLinkLedger(file)
+        // Fake Auth transport, real account repository, ledger/backup, consent and writers.
+        val api = object : AccountAuthApi by SimulatedAccountAuthApi() { override val simulated = false }
+        val account = AccountRepository(api, MemoryAccountSessionStore())
+        account.login("a@example.test", "password42", true)
+        val links = LocalFarmLinkRepository(context, db, account, "fixture-project", store)
+        linkedFixtureCleanup.add {
+            store.read()?.consents?.forEach {
+                File(context.noBackupFilesDir, "account-link-backups/${it.backupId}").deleteRecursively()
+            }
+            listOf(file, File(file.path + ".bak"), File(file.path + ".new")).forEach { it.delete() }
+        }
+        if (consent) links.consent(account.state.value.userId!!, links.choices().filter { it.id == farmId }, true)
+        deliveries = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, writeScope = links) { ZoneOffset.UTC }
+        return account to links
+    }
+
+    @Test
+    fun g24AckAfterRevocationStaysBlockedWithoutChangingLocalKilosOrVersion() = runBlocking {
+        val (_, links) = configureConsentedWrites()
+        val id = ok(deliveries.create(draft(2_800_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
         db.openHelper.writableDatabase.execSQL(
-            "UPDATE sync_outbox SET account_id='account-A' WHERE entity_id=? AND status='PENDING'",
-            arrayOf(deliveryId.toString()),
+            "UPDATE sync_outbox SET status='PROCESSING', attempt_count=1 WHERE id=?", arrayOf(op.id.toString()),
         )
-        return DeliverySyncReceipt(original.id, deliveryId, farmId, "account-A", original.payloadJson!!, 7L) to original.payloadJson!!
+        val before = db.deliveryDao().findById(id)!!
+        links.revokeConsentForFarm(farmId)
+        val ack = DeliverySyncReceipt(op.id, id, farmId, op.accountId!!, op.payloadJson!!, 7L)
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(ack, now))
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(before, db.deliveryDao().findById(id))
+        assertTrue(db.syncOutboxDao().listReadyForAccount(op.accountId!!, now.toEpochMilli()).isEmpty())
     }
 
     private fun <T> ok(result: AppResult<T>): T = when (result) {

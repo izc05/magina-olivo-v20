@@ -6,6 +6,7 @@ import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.channels.FileLock
 import java.security.MessageDigest
+import java.util.UUID
 
 /**
  * Nonblocking, process-lifetime ownership for the future Delivery sender. Every sender
@@ -21,16 +22,28 @@ internal class DeliveryDispatchLease private constructor(
     private val lock: FileLock,
 ) : Closeable {
     private var closed = false
+    private val acquisitionId = UUID.randomUUID()
 
     fun requireHeld() = synchronized(guard) {
         check(!closed && lock.isValid && file.channel.isOpen) { "Delivery dispatch ownership was released" }
     }
 
-    /** Durable namespace binding; a lease from another directory cannot reclaim this work. */
+    /** Each acquisition has a new epoch, even when it uses the same canonical directory. */
     fun claimMarker(): String {
+        return recoveryNamespace() + acquisitionId
+    }
+
+    fun recoveryNamespace(): String {
         requireHeld()
-        return "DELIVERY_LEASE_V1:" + MessageDigest.getInstance("SHA-256")
-            .digest(path.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it.toInt() and 255) }
+        return "DELIVERY_LEASE_V2:" + MessageDigest.getInstance("SHA-256")
+            .digest(path.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it.toInt() and 255) } + ":"
+    }
+
+    fun canRecover(previousMarker: String?): Boolean {
+        val namespace = recoveryNamespace()
+        return previousMarker != null && previousMarker.startsWith(namespace) &&
+            Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                .matches(previousMarker.removePrefix(namespace)) && previousMarker != claimMarker()
     }
 
     override fun close() = synchronized(guard) {

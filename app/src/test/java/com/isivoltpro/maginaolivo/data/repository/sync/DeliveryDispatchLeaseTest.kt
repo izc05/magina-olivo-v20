@@ -54,12 +54,17 @@ class DeliveryDispatchLeaseTest {
 
     @Test fun durableMarkerBindsTheCanonicalNamespace() {
         val directory = temporary.newFolder()
-        val first = checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { it.claimMarker() }
+        val first = checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use {
+            it.claimMarker().also { marker -> assertFalse(it.canRecover(marker)) }
+        }
         checkNotNull(DeliveryDispatchLease.tryAcquire(File(directory, "."))).use {
-            assertEquals(first, it.claimMarker())
+            assertNotEquals("A reacquisition must have a different owner epoch", first, it.claimMarker())
+            assertEquals(first.substringBeforeLast(":"), it.claimMarker().substringBeforeLast(":"))
+            assertTrue(it.canRecover(first))
         }
         checkNotNull(DeliveryDispatchLease.tryAcquire(temporary.newFolder())).use {
-            assertNotEquals(first, it.claimMarker())
+            assertNotEquals(first.substringBeforeLast(":"), it.claimMarker().substringBeforeLast(":"))
+            assertFalse(it.canRecover(first))
         }
     }
 

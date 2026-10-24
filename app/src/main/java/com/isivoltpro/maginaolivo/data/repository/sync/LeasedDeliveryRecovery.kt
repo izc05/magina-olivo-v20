@@ -46,7 +46,12 @@ internal suspend fun MaginaOlivoDatabase.recoverAbandonedDeliveryClaim(
 ): Boolean = withTransaction {
     val marker = lease.claimMarker()
     if (accountId.isBlank() || !isAuthorized(accountId, farmId)) return@withTransaction false
-    val changed = syncOutboxDao().recoverDeliveryLeaseClaim(operationId, accountId, farmId, marker, at.toEpochMilli())
+    val dao = syncOutboxDao()
+    val previous = dao.findById(operationId)?.lastErrorCode
+    if (!lease.canRecover(previous)) return@withTransaction false
+    val changed = dao.recoverDeliveryLeaseClaim(
+        operationId, accountId, farmId, previous!!, marker, lease.recoveryNamespace(), at.toEpochMilli(),
+    )
     lease.requireHeld()
     changed == 1
 }

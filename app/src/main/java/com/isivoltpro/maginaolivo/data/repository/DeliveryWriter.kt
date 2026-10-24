@@ -38,7 +38,7 @@ internal class DeliveryWriter(
 ) {
     private val jornadas = JornadaLedger(database, idGenerator)
 
-    suspend fun insert(draft: DeliveryDraft, source: DeliverySource, today: LocalDate, now: Instant): DeliveryEntity {
+    suspend fun insert(draft: DeliveryDraft, source: DeliverySource, today: LocalDate, now: Instant, accountId: String? = null): DeliveryEntity {
         DeliveryRules.validateNew(draft, today)?.let { throw InvalidDelivery(it.field, it.code) }
         val farm = database.farmDao().findById(draft.farmId) ?: throw InvalidDelivery("farmId", "not_found")
         if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) throw DeliveryConflict("archived_farm")
@@ -75,6 +75,7 @@ internal class DeliveryWriter(
             entityId = row.id,
             requested = OutboxOperation.CREATE,
             now = now,
+            accountId = accountId,
             payloadJson = payloadJson,
             payloadVersion = 2,
             farmId = row.farmId,
@@ -84,7 +85,7 @@ internal class DeliveryWriter(
         return row
     }
 
-    suspend fun rewrite(current: DeliveryEntity, draft: DeliveryDraft, today: LocalDate, now: Instant) {
+    suspend fun rewrite(current: DeliveryEntity, draft: DeliveryDraft, today: LocalDate, now: Instant, accountId: String? = null) {
         DeliveryRules.validate(draft, today)?.let { throw InvalidDelivery(it.field, it.code) }
         if (current.farmId != draft.farmId) throw InvalidDelivery("farmId", "cannot_change")
         val campaign = runningCampaign(current)
@@ -127,6 +128,7 @@ internal class DeliveryWriter(
             entityId = row.id,
             requested = OutboxOperation.UPDATE,
             now = now,
+            accountId = accountId,
             payloadJson = payloadJson,
             payloadVersion = 2,
             farmId = row.farmId,

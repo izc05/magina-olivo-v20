@@ -31,6 +31,14 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
         action(if(api?.simulated==true) null else current().session?.userId)
     }
 
+    /** Local attribution only, not fresh Auth or permission to send. Do not retry the action. */
+    internal suspend fun <T> withLocalWriteIdentity(action: suspend (java.util.UUID?) -> T): T = mutex.withLock {
+        val id = try { if (api == null || api.simulated) null else current().session?.userId }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { null }
+        action(id)
+    }
+
     suspend fun resume(online: Boolean) {
         if(api==null) { mutable.value=mutable.value.copy(online=online);return }
         operation(online,false) {

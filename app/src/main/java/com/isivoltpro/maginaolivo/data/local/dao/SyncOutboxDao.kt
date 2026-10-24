@@ -149,11 +149,14 @@ interface SyncOutboxDao {
             last_error_code = 'OUTCOME_UNKNOWN', last_error_message = NULL, updated_at = :nowEpochMillis
         WHERE id = :operationId AND account_id = :accountId AND farm_id = :farmId
           AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE')
-          AND status = 'PROCESSING' AND last_error_code = :claimMarker
+          AND status = 'PROCESSING' AND last_error_code = :previousMarker
+          AND :previousMarker != :currentMarker
+          AND substr(last_error_code, 1, length(:namespacePrefix)) = :namespacePrefix
         """,
     )
     suspend fun recoverDeliveryLeaseClaim(
-        operationId: UUID, accountId: String, farmId: UUID, claimMarker: String, nowEpochMillis: Long,
+        operationId: UUID, accountId: String, farmId: UUID, previousMarker: String,
+        currentMarker: String, namespacePrefix: String, nowEpochMillis: Long,
     ): Int
 
     @Query(

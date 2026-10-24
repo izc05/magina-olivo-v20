@@ -51,6 +51,7 @@ class OfflineFirstDeliveryRepository(
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
     private val workspaceRepository: WorkspaceRepository? = null,
+    private val writeScope: DeliveryWriteScope = LocalOnlyDeliveryWriteScope,
     /** Test override only; production derives the calendar from the persisted Workspace. */
     private val zoneId: (() -> ZoneId)? = null,
 ) : DeliveryRepository {
@@ -121,26 +122,30 @@ class OfflineFirstDeliveryRepository(
         }.flowOn(dispatchers.io)
 
     override suspend fun create(draft: DeliveryDraft): AppResult<UUID> =
-        inTransaction("create_delivery") {
-            val active = when (val result = workspaceScope.resolve()) {
-                is AppResult.Failure -> return@inTransaction result
-                is AppResult.Success -> result.value
+        writeScope.withAccount(draft.farmId) { accountId ->
+            inTransaction("create_delivery") {
+                val active = when (val result = workspaceScope.resolve()) {
+                    is AppResult.Failure -> return@inTransaction result
+                    is AppResult.Success -> result.value
+                }
+                val workspaceId = database.farmDao().findById(draft.farmId)?.workspaceId
+                    ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+                if (workspaceId != active) return@inTransaction contextMismatch()
+                AppResult.Success(
+                    writer.insert(draft, DeliverySource.MANUAL, today(workspaceId), clock.nowInstant(), accountId).id,
+                )
             }
-            val workspaceId = database.farmDao().findById(draft.farmId)?.workspaceId
-                ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
-            if (workspaceId != active) return@inTransaction contextMismatch()
-            AppResult.Success(
-                writer.insert(draft, DeliverySource.MANUAL, today(workspaceId), clock.nowInstant()).id,
-            )
         }
 
     override suspend fun update(id: UUID, draft: DeliveryDraft): AppResult<Unit> =
-        inTransaction("update_delivery") {
-            val current = database.deliveryDao().findById(id)?.takeIf { it.metadata.deletedAt == null }
-                ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
-            workspaceScope.mismatch(current.workspaceId)?.let { return@inTransaction it }
-            writer.rewrite(current, draft, today(current.workspaceId), clock.nowInstant())
-            AppResult.Success(Unit)
+        writeScope.withAccount(draft.farmId) { accountId ->
+            inTransaction("update_delivery") {
+                val current = database.deliveryDao().findById(id)?.takeIf { it.metadata.deletedAt == null }
+                    ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
+                workspaceScope.mismatch(current.workspaceId)?.let { return@inTransaction it }
+                writer.rewrite(current, draft, today(current.workspaceId), clock.nowInstant(), accountId)
+                AppResult.Success(Unit)
+            }
         }
 
     override suspend fun delete(id: UUID): AppResult<Unit> =
