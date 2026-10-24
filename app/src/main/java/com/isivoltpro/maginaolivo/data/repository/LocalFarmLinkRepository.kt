@@ -22,9 +22,18 @@ class LocalFarmLinkRepository(
     private val account: AccountRepository,
     private val issuer: String,
     private val store: FarmLinkLedgerStore = AndroidFarmLinkLedger.forContext(context),
-) {
+) : DeliveryWriteScope {
     private val mutable = MutableStateFlow(load())
     val state: StateFlow<FarmLinkLocalState> = mutable
+
+    override suspend fun <T> withAccount(farmId: UUID, action: suspend (String?) -> T): T =
+        account.withLocalWriteIdentity { userId -> withContext(Dispatchers.IO) {
+            // The account's LOCAL identity lock stays held through the Room write; consent,
+            // revocation and logout take that same lock before Room (same lock order). Auth HTTP
+            // never holds it, so a stuck refresh or login cannot delay saving field data.
+            val bound = userId?.takeIf { isFarmConsented(farmId, it) }?.toString()
+            action(bound)
+        } }
     private fun load() = try { FarmLinkLocalState(store.read()) } catch (_: IOException) { FarmLinkLocalState(unreadable=true) }
     fun subject(userId: UUID) = "$issuer|$userId"
     fun accessAllowed(userId: UUID? = account.state.value.userId): Boolean {
@@ -68,4 +77,87 @@ class LocalFarmLinkRepository(
         }
         return values
     }
+
+    /**
+     * G2.3: Returns true if the farm has active G1b consent under the currently logged-in account.
+     * Operations belonging to unconsented farms will remain local only and are not eligible for dispatch.
+     */
+    fun isFarmConsented(farmId: UUID, userId: UUID? = account.state.value.userId): Boolean {
+        // A caller must not obtain A's consent by supplying A's old userId after
+        // logout/account switch. The identity argument is a consistency assertion,
+        // never an authorization override.
+        if (userId == null || userId != account.state.value.userId) return false
+        // Authorization must use the latest on-disk ledger, not a potentially stale StateFlow
+        // snapshot held by another repository instance in this Android process.
+        // A corrupt or unreadable ledger fails closed.
+        mutable.value = load()
+        if (!accessAllowed(userId)) return false
+        val ledger = mutable.value.ledger ?: return false
+        return farmId in ledger.activeFarmIds
+    }
+
+    /**
+     * G2.4: explicit renewed consent for one revoked farm, appended AFTER its revocation in the
+     * durable ledger. It only restores eligibility for new work: operations blocked by the
+     * revocation stay BLOCKED until their own explicit, authenticated reconciliation.
+     */
+    suspend fun reconsentFarm(expectedUserId: UUID, farmId: UUID, accepted: Boolean): FarmLinkLedger = account.withLocalIdentity { userId -> withContext(Dispatchers.IO) {
+        if (userId != expectedUserId) throw IOException("La cuenta ha cambiado. Revisa de nuevo la selección.")
+        if (!accepted) throw IOException("Confirma tu consentimiento para volver a vincular la finca.")
+        val old = reloadAndRequire(userId) ?: throw IOException("No hay consentimiento local para esta finca.")
+        val revocation = old.latestRevocation(farmId) ?: throw IOException("La finca no tiene una revocación vigente.")
+        val next = store.reconsent(FarmLinkReconsent(UUID.randomUUID(), subject(userId), farmId, revocation.operationId, Instant.now()))
+        mutable.value = FarmLinkLocalState(next)
+        next
+    } }
+
+    /** Fresh durable ledger for an explicit reconciliation; null when missing, unreadable or another account's. */
+    internal fun ledgerFor(userId: UUID): FarmLinkLedger? {
+        mutable.value = load()
+        if (!accessAllowed(userId)) return null
+        return mutable.value.ledger
+    }
+
+    /**
+     * G2.4: the farmer's explicit "reconcile this Pesada". The server confirms the identity and
+     * [lookup] reads the operation's server record and head with that session (no local lock
+     * held); the Room decision then runs under the local identity lock against the fresh ledger.
+     */
+    internal suspend fun reconcileBlockedDelivery(
+        operationId: UUID,
+        farmerConfirmed: Boolean,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        lookup: suspend (com.isivoltpro.maginaolivo.feature.account.AuthSession) -> RemoteDeliveryState,
+        ids: com.isivoltpro.maginaolivo.core.id.IdGenerator,
+        at: Instant = Instant.now(),
+    ): HeldReconciliationOutcome {
+        if (!farmerConfirmed) return HeldReconciliationOutcome.NOT_CONFIRMED
+        return account.withServerVerifiedIdentity(lookup) { userId, remote -> withContext(Dispatchers.IO) {
+            database.reconcileBlockedDelivery(
+                operationId,
+                HeldReconciliationAuthority(farmerConfirmed, userId.toString(), subject(userId), ledgerFor(userId), lease),
+                remote, ids, at,
+            )
+        } }
+    }
+
+    /**
+     * G2.3: Revokes local consent eligibility for a farm, transitioning its pending outbox operations
+     * to BLOCKED status in Room so they cannot be dispatched.
+     */
+    suspend fun revokeConsentForFarm(farmId: UUID) = account.withLocalIdentity { userId -> withContext(Dispatchers.IO) {
+        val old = reloadAndRequire(userId) ?: throw IOException("No hay consentimiento local para revocar.")
+        if (farmId !in old.farmIds) throw IOException("La finca no tiene consentimiento para esta cuenta.")
+        // Persist the denial first. If Room fails, a later dispatch must still recheck this
+        // durable ledger; the operation remains blocked from authorization after process death.
+        val next = store.revoke(FarmLinkRevocation(UUID.randomUUID(), subject(userId), farmId, Instant.now()))
+        mutable.value = FarmLinkLocalState(next)
+        database.withTransaction {
+            database.syncOutboxDao().updateStatusForFarm(
+                farmId = farmId,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED,
+                nowEpochMillis = System.currentTimeMillis(),
+            )
+        }
+    } }
 }

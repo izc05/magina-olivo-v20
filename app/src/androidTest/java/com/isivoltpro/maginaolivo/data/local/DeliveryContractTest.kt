@@ -19,6 +19,33 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
+import com.isivoltpro.maginaolivo.data.repository.DeliverySyncReceipt
+import com.isivoltpro.maginaolivo.data.repository.DeliveryReceiptOutcome
+import com.isivoltpro.maginaolivo.data.repository.applyConfirmedDeliveryReceipt
+import com.isivoltpro.maginaolivo.data.repository.rebaseConfirmedDeliveryEdit
+import com.isivoltpro.maginaolivo.data.repository.DeliveryRebaseOutcome
+import com.isivoltpro.maginaolivo.data.repository.deliveryPayloadHash
+import com.isivoltpro.maginaolivo.data.repository.AuthenticatedDeliveryAck
+import com.isivoltpro.maginaolivo.data.repository.HeldReceiptOutcome
+import com.isivoltpro.maginaolivo.data.repository.retainAckAfterRevocation
+import com.isivoltpro.maginaolivo.data.repository.HeldReconciliationOutcome
+import com.isivoltpro.maginaolivo.data.repository.RecoveredDeliveryReceipt
+import com.isivoltpro.maginaolivo.data.repository.RemoteDeliveryState
+import com.isivoltpro.maginaolivo.data.local.entity.DeliveryHeldReceiptEntity
+import com.isivoltpro.maginaolivo.data.repository.AndroidFarmLinkLedger
+import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
+import com.isivoltpro.maginaolivo.feature.account.AccountAuthApi
+import com.isivoltpro.maginaolivo.feature.account.AccountRepository
+import com.isivoltpro.maginaolivo.feature.account.MemoryAccountSessionStore
+import com.isivoltpro.maginaolivo.feature.account.SimulatedAccountAuthApi
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
+import com.isivoltpro.maginaolivo.data.repository.sync.claimDeliveryRecoveryWithLease
+import com.isivoltpro.maginaolivo.data.repository.sync.recoverAbandonedDeliveryClaim
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryReceiptIntent
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryReceiptJournal
+import com.isivoltpro.maginaolivo.account.reservation.ReservationActor
+import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
+import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
 import com.isivoltpro.maginaolivo.data.repository.JsonProposalCodec
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstAttachmentRepository
@@ -57,8 +84,10 @@ import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -93,6 +122,7 @@ class DeliveryContractTest {
     private lateinit var attachments: OfflineFirstAttachmentRepository
     private lateinit var documents: OfflineFirstDocumentOcrRepository
     private val engine = FakeEngine()
+    private val linkedFixtureCleanup = mutableListOf<() -> Unit>()
 
     @Before
     fun before() = runBlocking {
@@ -105,6 +135,8 @@ class DeliveryContractTest {
 
     @After
     fun after() {
+        linkedFixtureCleanup.forEach { it() }
+        linkedFixtureCleanup.clear()
         db.close()
         context.deleteDatabase(DB)
         sources.deleteRecursively()
@@ -401,6 +433,66 @@ class DeliveryContractTest {
         )
     }
 
+    @Test
+    fun deletedDeliveryKeepsFarmScopeSoRevocationBlocksItsLocalIntent() = runBlocking {
+        val id = ok(deliveries.create(draft(3_000_000, south to null)))
+        assertEquals(farmId, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single().farmId)
+        ok(deliveries.delete(id))
+        val deletion = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertEquals(OutboxOperation.DELETE, deletion.operation)
+        assertEquals(farmId, deletion.farmId)
+        // Preserve local-only behavior: farm scope is not upload authorization.
+        assertNull(deletion.accountId)
+        assertNull(deletion.payloadJson)
+        db.syncOutboxDao().updateStatusForFarm(
+            farmId,
+            com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED,
+            now.toEpochMilli(),
+        )
+        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED,
+            db.syncOutboxDao().findById(deletion.id)!!.status)
+        assertTrue(db.syncOutboxDao().listPendingForFarm(farmId).none { it.id == deletion.id })
+        assertNull(deliveries.observe(id).first())
+    }
+
+    @Test
+    fun parcelOnlyEditChangesImmutableSnapshotAndOperationId() = runBlocking {
+        val id = ok(deliveries.create(draft(3_000_000, north to 1_000_000L, south to 2_000_000L)))
+        val before = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertEquals(2, before.payloadVersion)
+        val snapshot = org.json.JSONObject(before.payloadJson!!)
+        val parcels = snapshot.getJSONArray("parcels")
+        assertEquals(2, parcels.length())
+        val ids = (0 until parcels.length()).map { parcels.getJSONObject(it).getString("parcelId") }
+        assertEquals(listOf(north, south).map { it.toString() }.sorted(), ids)
+        val historic = db.deliveryDao().listParcels(id).associateBy { it.parcelId.toString() }
+        for (index in 0 until parcels.length()) {
+            val share = parcels.getJSONObject(index)
+            val local = historic.getValue(share.getString("parcelId"))
+            assertEquals(local.id.toString(), share.getString("id"))
+            assertEquals(local.parcelNameAtDelivery, share.getString("parcelNameAtDelivery"))
+            assertEquals(local.allocationMode, share.getString("allocationMode"))
+            assertEquals(local.weightGrams, share.getLong("weightGrams"))
+        }
+        ok(deliveries.update(id, draft(3_000_000, north to 1_500_000L, south to 1_500_000L)))
+        val after = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertTrue(before.id != after.id)
+        assertTrue(before.payloadJson != after.payloadJson)
+        assertEquals(3_000_000L, org.json.JSONObject(after.payloadJson!!).getLong("netGrams"))
+        val revised = org.json.JSONObject(after.payloadJson!!).getJSONArray("parcels")
+        assertEquals(listOf(1_500_000L, 1_500_000L),
+            (0 until revised.length()).map { revised.getJSONObject(it).getLong("weightGrams") })
+    }
+
+    @Test
+    fun unallocatedParcelSnapshotKeepsUnknownWeightAsNull() = runBlocking {
+        val id = ok(deliveries.create(draft(3_000_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        val share = org.json.JSONObject(op.payloadJson!!).getJSONArray("parcels").getJSONObject(0)
+        assertTrue(share.isNull("weightGrams"))
+        assertEquals("UNALLOCATED", share.getString("allocationMode"))
+    }
+
     // ------------------------------------------------------------ OCR cannot auto-confirm
 
     @Test
@@ -686,11 +778,757 @@ class DeliveryContractTest {
     /** Rows of [table]; live rows only for tables with a metadata tail. */
     private fun count(table: String): Int =
         db.openHelper.readableDatabase.query(
-            if (table == "sync_outbox") "SELECT COUNT(*) FROM $table" else "SELECT COUNT(*) FROM $table WHERE deleted_at IS NULL",
+            if (table in setOf("sync_outbox", "delivery_held_receipts")) "SELECT COUNT(*) FROM $table" else "SELECT COUNT(*) FROM $table WHERE deleted_at IS NULL",
         ).use { cursor ->
             cursor.moveToFirst()
             cursor.getInt(0)
         }
+
+    @Test
+    fun g23DeliveryWriterCapturesCanonicalJsonAndStrictRemoteVersion() = runBlocking {
+        val id = ok(deliveries.create(draft(2_850_000, north to null)))
+        val outboxRows = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id)
+        assertEquals(1, outboxRows.size)
+        val createOp = outboxRows.single()
+        assertEquals(OutboxOperation.CREATE, createOp.operation)
+        assertEquals(farmId, createOp.farmId)
+        assertNull(createOp.baseRemoteVersion)
+        assertNotNull(createOp.payloadJson)
+
+        val createPayload = org.json.JSONObject(createOp.payloadJson!!)
+        assertEquals(id.toString(), createPayload.getString("id"))
+        assertEquals(farmId.toString(), createPayload.getString("farmId"))
+        assertEquals(campaignId.toString(), createPayload.getString("campaignId"))
+        assertEquals("2026-11-18", createPayload.getString("deliveryDate"))
+        assertEquals(2_850_000L, createPayload.getLong("netGrams"))
+        assertEquals("MANUAL", createPayload.getString("source"))
+        assertFalse(createPayload.has("baseVersion"))
+
+        // Simulate local rewrite without server remoteVersion (remoteVersion remains null)
+        ok(deliveries.update(id, draft(3_100_000, north to null)))
+        val afterFirstUpdate = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertEquals(OutboxOperation.CREATE, afterFirstUpdate.operation) // collapsed create + update remains CREATE
+        assertNull(afterFirstUpdate.baseRemoteVersion)
+        val firstUpdatePayload = org.json.JSONObject(afterFirstUpdate.payloadJson!!)
+        assertEquals(3_100_000L, firstUpdatePayload.getLong("netGrams"))
+        assertFalse(firstUpdatePayload.has("baseVersion"))
+
+        // Simulate delivery having been confirmed remotely with remoteVersion = 5
+        val currentDelivery = db.deliveryDao().findById(id)!!
+        db.deliveryDao().upsert(currentDelivery.copy(metadata = currentDelivery.metadata.copy(remoteVersion = 5L, syncStatus = com.isivoltpro.maginaolivo.data.local.model.SyncStatus.SYNCED)))
+        // Mark previous outbox operation as already dispatched / removed
+        db.syncOutboxDao().deletePendingForEntity(SyncEntityType.DELIVERY, id)
+
+        // Now perform rewrite on synced delivery
+        ok(deliveries.update(id, draft(3_250_000, north to null)))
+        val updateOp = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertEquals(OutboxOperation.UPDATE, updateOp.operation)
+        assertEquals(5L, updateOp.baseRemoteVersion) // Strict remoteVersion: must be 5L, NOT local version!
+        val updatePayload = org.json.JSONObject(updateOp.payloadJson!!)
+        assertEquals(5L, updatePayload.getLong("baseVersion"))
+        assertEquals(3_250_000L, updatePayload.getLong("netGrams"))
+
+        // Verify UUID behavior:
+        // Editing again creates a new operation ID to prevent in-flight tampering
+        val prevOpId = updateOp.id
+        ok(deliveries.update(id, draft(3_300_000, north to null)))
+        val secondUpdateOp = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        assertTrue("Expected new operation UUID on payload edit", secondUpdateOp.id != prevOpId)
+        assertEquals(3_300_000L, org.json.JSONObject(secondUpdateOp.payloadJson!!).getLong("netGrams"))
+    }
+
+    @Test
+    fun g24ConfirmedReceiptUpdatesOnlyRemoteMetadataAndPreservesIdempotency() = runBlocking {
+        val deliveryId = ok(deliveries.create(draft(2_850_000, north to null)))
+        val accountId = UUID.randomUUID().toString()
+        val dao = db.syncOutboxDao()
+        val created = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
+        // Network adoption is explicitly out of scope: simulate an intent bound to
+        // a verified account without granting that binding automatically in production.
+        dao.deletePendingForEntity(SyncEntityType.DELIVERY, deliveryId)
+        val bound = created.copy(accountId = accountId)
+        dao.insert(bound)
+        val before = db.deliveryDao().findById(deliveryId)!!
+        val receipt = DeliverySyncReceipt(
+            operationId = bound.id,
+            deliveryId = deliveryId,
+            farmId = farmId,
+            accountId = accountId,
+            payloadJson = bound.payloadJson!!,
+            remoteVersion = 1L,
+        )
+
+        assertEquals(DeliveryReceiptOutcome.SYNCED, db.applyConfirmedDeliveryReceipt(receipt, now.plusSeconds(10)))
+        val synced = db.deliveryDao().findById(deliveryId)!!
+        assertEquals(before.netGrams, synced.netGrams)
+        assertEquals(before.metadata.version, synced.metadata.version)
+        assertEquals(before.metadata.updatedAt, synced.metadata.updatedAt)
+        assertEquals(1L, synced.metadata.remoteVersion)
+        assertEquals(SyncStatus.SYNCED, synced.metadata.syncStatus)
+        assertEquals(OutboxStatus.CONFIRMED, dao.findById(bound.id)!!.status)
+        assertTrue(dao.listReadyForAccount(accountId, now.plusSeconds(11).toEpochMilli()).isEmpty())
+
+        assertEquals(DeliveryReceiptOutcome.ALREADY_CONFIRMED, db.applyConfirmedDeliveryReceipt(receipt, now.plusSeconds(12)))
+        ok(deliveries.update(deliveryId, draft(3_000_000, north to null)))
+        val changed = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single { it.status == OutboxStatus.PENDING }
+        assertEquals(OutboxOperation.UPDATE, changed.operation)
+        assertEquals(1L, changed.baseRemoteVersion)
+        assertEquals(1L, org.json.JSONObject(changed.payloadJson!!).getLong("baseVersion"))
+    }
+
+    @Test
+    fun g24LateConfirmationQuarantinesNewerSnapshotWithoutLosingKilos() = runBlocking {
+        val deliveryId = ok(deliveries.create(draft(2_850_000, north to null)))
+        val accountId = UUID.randomUUID().toString()
+        val dao = db.syncOutboxDao()
+        val original = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
+        dao.deletePendingForEntity(SyncEntityType.DELIVERY, deliveryId)
+        dao.insert(original.copy(accountId = accountId))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='PROCESSING' WHERE id=?",
+            arrayOf(original.id.toString()),
+        )
+
+        ok(deliveries.update(deliveryId, draft(3_300_000, north to null)))
+        val latestBefore = db.deliveryDao().findById(deliveryId)!!
+        val newer = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single { it.status == OutboxStatus.PENDING }
+        assertEquals(OutboxOperation.CREATE, newer.operation)
+
+        val receipt = DeliverySyncReceipt(
+            operationId = original.id,
+            deliveryId = deliveryId,
+            farmId = farmId,
+            accountId = accountId,
+            payloadJson = original.payloadJson!!,
+            remoteVersion = 1L,
+        )
+        assertEquals(DeliveryReceiptOutcome.NEEDS_REBASE, db.applyConfirmedDeliveryReceipt(receipt, now.plusSeconds(20)))
+        assertEquals(OutboxStatus.CONFIRMED, dao.findById(original.id)!!.status)
+        assertEquals(OutboxStatus.BLOCKED, dao.findById(newer.id)!!.status)
+        val local = db.deliveryDao().findById(deliveryId)!!
+        assertEquals(3_300_000L, local.netGrams)
+        assertEquals(latestBefore.metadata.version, local.metadata.version)
+        assertEquals(latestBefore.metadata.updatedAt, local.metadata.updatedAt)
+        assertEquals(1L, local.metadata.remoteVersion)
+        assertEquals(SyncStatus.CONFLICT, local.metadata.syncStatus)
+        assertTrue(dao.listReadyForAccount(accountId, now.plusSeconds(21).toEpochMilli()).isEmpty())
+        assertEquals(DeliveryReceiptOutcome.ALREADY_CONFIRMED, db.applyConfirmedDeliveryReceipt(receipt, now.plusSeconds(22)))
+        assertEquals(3_300_000L, db.deliveryDao().findById(deliveryId)!!.netGrams)
+    }
+
+    @Test
+    fun g24RejectsWrongAccountFarmAndPayloadWithoutMutatingLocalData() = runBlocking {
+        val deliveryId = ok(deliveries.create(draft(2_850_000, north to null)))
+        val accountId = UUID.randomUUID().toString()
+        val dao = db.syncOutboxDao()
+        val initial = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
+        dao.deletePendingForEntity(SyncEntityType.DELIVERY, deliveryId)
+        val bound = initial.copy(accountId = accountId)
+        dao.insert(bound)
+        val valid = DeliverySyncReceipt(
+            operationId = initial.id, deliveryId = deliveryId, farmId = farmId,
+            accountId = accountId, payloadJson = initial.payloadJson!!, remoteVersion = 1L,
+        )
+        val before = db.deliveryDao().findById(deliveryId)!!
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(valid.copy(accountId = UUID.randomUUID().toString()), now))
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(valid.copy(farmId = UUID.randomUUID()), now))
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(valid.copy(payloadJson = "{}"), now))
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(valid.copy(remoteVersion = 0L), now))
+        assertEquals(before, db.deliveryDao().findById(deliveryId))
+        assertEquals(OutboxStatus.PENDING, dao.findById(initial.id)!!.status)
+    }
+
+    @Test
+    fun g24FailedThenEditedRecoversOldIntentAndSyncsLatestKilosExactlyOnce() = runBlocking {
+        val (receipt, oldPayload) = failedWithNewerEdit()
+        val dao = db.syncOutboxDao()
+        assertTrue(dao.listReadyForAccount(receipt.accountId, now.toEpochMilli()).isEmpty())
+        assertEquals(0, dao.claimFailedDeliveryForRecovery(receipt.operationId, "other", farmId, now.toEpochMilli()))
+        assertEquals(1, dao.claimFailedDeliveryForRecovery(receipt.operationId, receipt.accountId, farmId, now.toEpochMilli()))
+        assertEquals(0, dao.claimFailedDeliveryForRecovery(receipt.operationId, receipt.accountId, farmId, now.toEpochMilli()))
+        assertEquals(oldPayload, dao.findById(receipt.operationId)!!.payloadJson)
+        assertEquals(DeliveryReceiptOutcome.NEEDS_REBASE, db.applyConfirmedDeliveryReceipt(receipt, now))
+        val hash = deliveryPayloadHash(receipt.payloadJson, 2)!!
+        assertEquals(DeliveryRebaseOutcome.REBASED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
+        ))
+        val next = dao.listReadyForAccount(receipt.accountId, now.toEpochMilli()).single()
+        assertEquals(OutboxOperation.UPDATE, next.operation)
+        assertEquals(7L, next.baseRemoteVersion)
+        assertTrue(next.id != receipt.operationId)
+        assertEquals(3_300_000L, org.json.JSONObject(next.payloadJson!!).getLong("netGrams"))
+        assertEquals(DeliveryRebaseOutcome.ALREADY_REBASED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
+        ))
+        assertEquals(next.id, dao.listReadyForAccount(receipt.accountId, now.toEpochMilli()).single().id)
+        assertEquals(DeliveryReceiptOutcome.SYNCED, db.applyConfirmedDeliveryReceipt(
+            receipt.copy(operationId = next.id, payloadJson = next.payloadJson!!, remoteVersion = 8L), now,
+        ))
+        assertEquals(3_300_000L, db.deliveryDao().findById(receipt.deliveryId)!!.netGrams)
+        assertEquals(SyncStatus.SYNCED, db.deliveryDao().findById(receipt.deliveryId)!!.metadata.syncStatus)
+        assertEquals(2, dao.listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId).size)
+        assertTrue(dao.listReadyForAccount(receipt.accountId, now.toEpochMilli()).isEmpty())
+    }
+
+    @Test
+    fun g24ConcurrentRemoteEditPreventsRebaseAtVersionSeven() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.applyConfirmedDeliveryReceipt(receipt, now)
+        val before = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId)
+        assertEquals(DeliveryRebaseOutcome.REMOTE_CONFLICT, db.rebaseConfirmedDeliveryEdit(
+            receipt, 8L, deliveryPayloadHash(receipt.payloadJson, 2)!!, { _, _ -> true }, RandomIds, now,
+        ))
+        assertEquals(before, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId))
+        assertEquals(3_300_000L, db.deliveryDao().findById(receipt.deliveryId)!!.netGrams)
+    }
+
+    @Test
+    fun g24RevokedConsentAndAlteredHashCannotUnlockEdits() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.applyConfirmedDeliveryReceipt(receipt, now)
+        val before = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId)
+        assertEquals(DeliveryRebaseOutcome.NOT_AUTHORIZED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, deliveryPayloadHash(receipt.payloadJson, 2)!!, { _, _ -> false }, RandomIds, now,
+        ))
+        assertEquals(DeliveryRebaseOutcome.REMOTE_CONFLICT, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, "0".repeat(64), { _, _ -> true }, RandomIds, now,
+        ))
+        assertEquals(before, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId))
+    }
+
+    @Test
+    fun g24RecoveryClaimCannotBypassBlockedSibling() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='BLOCKED' WHERE entity_id=? AND id!=?",
+            arrayOf(receipt.deliveryId.toString(), receipt.operationId.toString()),
+        )
+        assertEquals(0, db.syncOutboxDao().claimFailedDeliveryForRecovery(
+            receipt.operationId, receipt.accountId, farmId, now.toEpochMilli(),
+        ))
+    }
+
+    @Test
+    fun g24RebaseRejectsAccountlessOrPreviouslyAttemptedEdits() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.applyConfirmedDeliveryReceipt(receipt, now)
+        val hash = deliveryPayloadHash(receipt.payloadJson, 2)!!
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET account_id=NULL WHERE entity_id=? AND status='BLOCKED'",
+            arrayOf(receipt.deliveryId.toString()),
+        )
+        assertEquals(DeliveryRebaseOutcome.REJECTED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
+        ))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET account_id=?, attempt_count=1 WHERE entity_id=? AND status='BLOCKED'",
+            arrayOf(receipt.accountId, receipt.deliveryId.toString()),
+        )
+        assertEquals(DeliveryRebaseOutcome.REJECTED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
+        ))
+        assertEquals(2, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId).size)
+    }
+
+    @Test
+    fun g24RebaseDoesNotMakeADeletedDeliveryDispatchable() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.applyConfirmedDeliveryReceipt(receipt, now)
+        val local = db.deliveryDao().findById(receipt.deliveryId)!!
+        db.deliveryDao().upsert(local.copy(metadata = local.metadata.copy(deletedAt = now)))
+        assertEquals(DeliveryRebaseOutcome.REJECTED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, deliveryPayloadHash(receipt.payloadJson, 2)!!, { _, _ -> true }, RandomIds, now,
+        ))
+        assertTrue(db.syncOutboxDao().listReadyForAccount(receipt.accountId, now.toEpochMilli()).isEmpty())
+        assertEquals(now, db.deliveryDao().findById(receipt.deliveryId)!!.metadata.deletedAt)
+    }
+
+    @Test
+    fun g24LeaseHandoffRecoversSameOperationAndRejectsWrongNamespaceOrRevocation() = runBlocking {
+        val (receipt, payload) = failedWithNewerEdit()
+        val directory = File(context.noBackupFilesDir, "g24-lease-${UUID.randomUUID()}")
+        val otherDirectory = File(context.noBackupFilesDir, "g24-other-${UUID.randomUUID()}")
+        try {
+            checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { lease ->
+                assertTrue(db.claimDeliveryRecoveryWithLease(lease, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                assertFalse("The current owner must not recover its own live request", db.recoverAbandonedDeliveryClaim(
+                    lease, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now,
+                ))
+                assertEquals(OutboxStatus.PROCESSING, db.syncOutboxDao().findById(receipt.operationId)!!.status)
+                assertNull(DeliveryDispatchLease.tryAcquire(directory))
+                checkNotNull(DeliveryDispatchLease.tryAcquire(otherDirectory)).use { wrong ->
+                    assertFalse(db.recoverAbandonedDeliveryClaim(wrong, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                }
+            }
+            checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { next ->
+                assertFalse(db.recoverAbandonedDeliveryClaim(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> false }, now))
+                assertTrue(db.recoverAbandonedDeliveryClaim(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                assertFalse(db.recoverAbandonedDeliveryClaim(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                val recovered = db.syncOutboxDao().findById(receipt.operationId)!!
+                assertEquals(OutboxStatus.FAILED, recovered.status)
+                assertEquals("OUTCOME_UNKNOWN", recovered.lastErrorCode)
+                assertEquals(payload, recovered.payloadJson)
+                assertEquals(2, recovered.attemptCount)
+                assertEquals(3_300_000L, db.deliveryDao().findById(receipt.deliveryId)!!.netGrams)
+                assertTrue(db.claimDeliveryRecoveryWithLease(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+            }
+        } finally { directory.deleteRecursively(); otherDirectory.deleteRecursively() }
+    }
+
+    @Test
+    fun g24LeaseIsNotHandedOverWhileTheRequestRunsAndItsResultIsKept() = runBlocking {
+        val (receipt, payload) = failedWithNewerEdit()
+        val directory = File(context.noBackupFilesDir, "g24-inflight-${UUID.randomUUID()}")
+        linkedFixtureCleanup.add { directory.deleteRecursively() }
+        val lease = checkNotNull(DeliveryDispatchLease.tryAcquire(directory))
+        assertTrue(db.claimDeliveryRecoveryWithLease(lease, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val http = kotlinx.coroutines.CompletableDeferred<Long>()
+        val request = launch(Dispatchers.Default) {
+            lease.withActiveRequest {
+                started.complete(Unit)
+                val version = http.await()
+                db.applyConfirmedDeliveryReceipt(receipt.copy(remoteVersion = version), now)
+            }
+        }
+        started.await()
+        lease.close() // e.g. the worker is stopped while the request is still on the wire
+        assertNull("No new epoch while the old request runs", DeliveryDispatchLease.tryAcquire(directory))
+        assertTrue("A closing lease starts no new claim", runCatching {
+            db.claimDeliveryRecoveryWithLease(lease, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now)
+        }.exceptionOrNull() is IllegalStateException)
+        assertEquals(OutboxStatus.PROCESSING, db.syncOutboxDao().findById(receipt.operationId)!!.status)
+        http.complete(7L)
+        request.join()
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(receipt.operationId)!!.status)
+        checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use { next ->
+            assertFalse("A finished request is not recovered again",
+                db.recoverAbandonedDeliveryClaim(next, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+        }
+        val kept = db.syncOutboxDao().findById(receipt.operationId)!!
+        assertEquals(OutboxStatus.CONFIRMED, kept.status)
+        assertEquals(payload, kept.payloadJson)
+        assertEquals(3_300_000L, db.deliveryDao().findById(receipt.deliveryId)!!.netGrams)
+        assertEquals(7L, db.deliveryDao().findById(receipt.deliveryId)!!.metadata.remoteVersion)
+    }
+
+    @Test
+    fun g24LeaseCannotAdoptLegacyUnmarkedProcessing() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        assertEquals(1, db.syncOutboxDao().claimFailedDeliveryForRecovery(receipt.operationId, receipt.accountId, farmId, now.toEpochMilli()))
+        val directory = File(context.noBackupFilesDir, "g24-legacy-${UUID.randomUUID()}")
+        try {
+            checkNotNull(DeliveryDispatchLease.tryAcquire(directory)).use {
+                assertFalse(db.recoverAbandonedDeliveryClaim(it, receipt.operationId, receipt.accountId, farmId, { _, _ -> true }, now))
+                assertEquals(OutboxStatus.PROCESSING, db.syncOutboxDao().findById(receipt.operationId)!!.status)
+            }
+        } finally { directory.deleteRecursively() }
+    }
+
+    private suspend fun failedWithNewerEdit(): Pair<DeliverySyncReceipt, String> {
+        val (account, _) = configureConsentedWrites()
+        val accountId = account.state.value.userId!!.toString()
+        val deliveryId = ok(deliveries.create(draft(2_850_000, north to null)))
+        val dao = db.syncOutboxDao()
+        val original = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
+        assertEquals(accountId, original.accountId)
+        // Only simulate the failed network outcome; account binding uses production writers.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='FAILED', attempt_count=1 WHERE id=?",
+            arrayOf(original.id.toString()),
+        )
+        ok(deliveries.update(deliveryId, draft(3_300_000, north to null)))
+        assertEquals(accountId, dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single { it.status == OutboxStatus.PENDING }.accountId)
+        return DeliverySyncReceipt(original.id, deliveryId, farmId, accountId, original.payloadJson!!, 7L) to original.payloadJson!!
+    }
+
+    @Test
+    fun g24AccountBindingUsesConsentAndDoesNotAdoptLegacyOrLoggedOutEdits() = runBlocking {
+        val (account, links) = configureConsentedWrites(consent = false)
+        val legacy = ok(deliveries.create(draft(2_000_000, north to null)))
+        assertNull(db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, legacy).single().accountId)
+        val userId = account.state.value.userId!!
+        links.consent(userId, links.choices().filter { it.id == farmId }, true)
+        val bound = ok(deliveries.create(draft(2_100_000, north to null)))
+        assertEquals(userId.toString(), db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, bound).single().accountId)
+        assertNull("Consent must not adopt a historical local operation", db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, legacy).single().accountId)
+        account.logout(false)
+        ok(deliveries.update(bound, draft(2_200_000, north to null)))
+        assertNull(db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, bound).single().accountId)
+        account.login("b@example.test", "password42", true)
+        val other = ok(deliveries.create(draft(2_300_000, north to null)))
+        assertNull("Account B must not inherit A's consent", db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, other).single().accountId)
+    }
+
+    @Test
+    fun g24EditsAfterRevocationStayUnboundAndKeepOldIntentBlocked() = runBlocking {
+        val (_, links) = configureConsentedWrites()
+        val delivery = ok(deliveries.create(draft(2_000_000, north to null)))
+        val previous = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, delivery).single()
+        links.revokeConsentForFarm(farmId)
+        ok(deliveries.update(delivery, draft(2_500_000, north to null)))
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(previous.id)!!.status)
+        assertNull(db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, delivery).single { it.status == OutboxStatus.PENDING }.accountId)
+        assertEquals(2_500_000L, db.deliveryDao().findById(delivery)!!.netGrams)
+    }
+
+    /**
+     * G2.4 block 1: with a very poor signal the Auth refresh never returns, yet a Pesada saves at
+     * once with the cached local identity, and a consent revocation also completes without
+     * waiting. Edits after revocation stay local (no account) and nothing is lost or duplicated.
+     */
+    @Test
+    fun g24PesadaSavesAndConsentRevokesWhileAuthRefreshIsStuck() = runBlocking {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val delegate = SimulatedAccountAuthApi()
+        val api = object : AccountAuthApi by delegate {
+            override val simulated = false
+            // Close to expiry, so resume(online) must refresh before anything else.
+            override suspend fun signIn(email: String, password: String) =
+                delegate.signIn(email, password).let {
+                    com.isivoltpro.maginaolivo.feature.account.AuthSession(
+                        it.userId, it.email, it.accessToken, it.refreshToken, java.time.Instant.now().plusSeconds(20),
+                    )
+                }
+            override suspend fun refresh(session: com.isivoltpro.maginaolivo.feature.account.AuthSession) =
+                gate.await().let { delegate.refresh(session) }
+        }
+        val account = AccountRepository(api, MemoryAccountSessionStore())
+        account.login("slow@example.test", "password42", true)
+        val userId = account.state.value.userId!!
+        val file = File(context.noBackupFilesDir, "g24-slow-${UUID.randomUUID()}.json")
+        val store = AndroidFarmLinkLedger(file)
+        val links = LocalFarmLinkRepository(context, db, account, "fixture-project", store)
+        linkedFixtureCleanup.add {
+            store.read()?.consents?.forEach {
+                File(context.noBackupFilesDir, "account-link-backups/${it.backupId}").deleteRecursively()
+            }
+            listOf(file, File(file.path + ".bak"), File(file.path + ".new")).forEach { it.delete() }
+        }
+        links.consent(userId, links.choices().filter { it.id == farmId }, true)
+        deliveries = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, writeScope = links) { ZoneOffset.UTC }
+        val id = ok(deliveries.create(draft(2_000_000, north to null)))
+
+        val stuck = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default)
+            .launch { account.resume(true) }
+        kotlinx.coroutines.delay(200)
+        assertFalse("The refresh must still be waiting for the server", stuck.isCompleted)
+
+        kotlinx.coroutines.withTimeout(5_000) { ok(deliveries.update(id, draft(2_400_000, north to null))) }
+        val bound = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id)
+        assertEquals("Collapsed into one CREATE, never duplicated", 1, bound.size)
+        assertEquals(userId.toString(), bound.single().accountId)
+        assertEquals(2_400_000L, db.deliveryDao().findById(id)!!.netGrams)
+
+        kotlinx.coroutines.withTimeout(5_000) { links.revokeConsentForFarm(farmId) }
+        kotlinx.coroutines.withTimeout(5_000) { ok(deliveries.update(id, draft(2_600_000, north to null))) }
+        val after = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id)
+        assertEquals(OutboxStatus.BLOCKED, after.single { it.id == bound.single().id }.status)
+        assertNull("After revocation the edit stays local, without account", after.single { it.status == OutboxStatus.PENDING }.accountId)
+        assertEquals(2_600_000L, db.deliveryDao().findById(id)!!.netGrams)
+        assertFalse(stuck.isCompleted)
+
+        gate.complete(Unit); stuck.join()
+        assertEquals(userId, account.state.value.userId)
+        assertEquals(2_600_000L, db.deliveryDao().findById(id)!!.netGrams)
+        assertEquals(2, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).size)
+    }
+
+    private suspend fun configureConsentedWrites(consent: Boolean = true): Pair<AccountRepository, LocalFarmLinkRepository> {
+        val file = File(context.noBackupFilesDir, "g24-write-${UUID.randomUUID()}.json")
+        val store = AndroidFarmLinkLedger(file)
+        // Fake Auth transport, real account repository, ledger/backup, consent and writers.
+        val api = object : AccountAuthApi by SimulatedAccountAuthApi() { override val simulated = false }
+        val account = AccountRepository(api, MemoryAccountSessionStore())
+        account.login("a@example.test", "password42", true)
+        val links = LocalFarmLinkRepository(context, db, account, "fixture-project", store)
+        linkedFixtureCleanup.add {
+            store.read()?.consents?.forEach {
+                File(context.noBackupFilesDir, "account-link-backups/${it.backupId}").deleteRecursively()
+            }
+            listOf(file, File(file.path + ".bak"), File(file.path + ".new")).forEach { it.delete() }
+        }
+        if (consent) links.consent(account.state.value.userId!!, links.choices().filter { it.id == farmId }, true)
+        deliveries = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, writeScope = links) { ZoneOffset.UTC }
+        return account to links
+    }
+
+    @Test
+    fun g24AckAfterRevocationStaysBlockedWithoutChangingLocalKilosOrVersion() = runBlocking {
+        val (_, links) = configureConsentedWrites()
+        val id = ok(deliveries.create(draft(2_800_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        val directory = File(context.noBackupFilesDir, "g24-receipt-${UUID.randomUUID()}")
+        linkedFixtureCleanup.add { directory.deleteRecursively() }
+        val file = File(directory, "operation.receipt")
+        // Synthetic server destination, fixed BEFORE the simulated request/revocation.
+        val intent = DeliveryReceiptIntent(
+            ReservationActor("fixture-project", UUID.fromString(op.accountId!!)), workspaceId,
+            UUID.randomUUID(), links.state.value.ledger!!.consents.single().operationId,
+            farmId, op.id, id, op.payloadVersion, deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!,
+            op.baseRemoteVersion,
+        )
+        DeliveryReceiptJournal(file).prepare(intent)
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='PROCESSING', attempt_count=1 WHERE id=?", arrayOf(op.id.toString()),
+        )
+        val before = db.deliveryDao().findById(id)!!
+        links.revokeConsentForFarm(farmId)
+        DeliveryReceiptJournal(file).record(intent, 7L)
+        val ack = DeliverySyncReceipt(op.id, id, farmId, op.accountId!!, op.payloadJson!!, 7L)
+        assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(ack, now))
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(before, db.deliveryDao().findById(id))
+        assertTrue(db.syncOutboxDao().listReadyForAccount(op.accountId!!, now.toEpochMilli()).isEmpty())
+        assertEquals(7L, DeliveryReceiptJournal(file).load()!!.remoteVersion)
+        assertEquals(intent, DeliveryReceiptJournal(file).load()!!.intent)
+    }
+
+    /** A request in flight (attempted, PROCESSING) when the farmer revokes the farm's consent. */
+    private data class HeldFixture(
+        val links: LocalFarmLinkRepository,
+        val op: com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity,
+        val ack: AuthenticatedDeliveryAck,
+        val account: AccountRepository,
+    )
+
+    private suspend fun inFlightThenRevoked(): HeldFixture {
+        val (account, links) = configureConsentedWrites()
+        val id = ok(deliveries.create(draft(2_800_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='PROCESSING', attempt_count=1 WHERE id=?", arrayOf(op.id.toString()),
+        )
+        links.revokeConsentForFarm(farmId)
+        val ack = AuthenticatedDeliveryAck(op.id, id, farmId, op.accountId!!, op.accountId!!, 7L,
+            deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!, op.payloadVersion)
+        return HeldFixture(links, db.syncOutboxDao().findById(op.id)!!, ack, account)
+    }
+
+    private fun LocalFarmLinkRepository.lastRevocation() = state.value.ledger!!.revocations.last().operationId
+
+    @Test
+    fun g24LateAckAfterRevocationIsHeldOnceWithoutTouchingTheDelivery() = runBlocking {
+        val (links, op, ack) = inFlightThenRevoked()
+        val before = db.deliveryDao().findById(ack.deliveryId)!!
+        val revocation = links.lastRevocation()
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, revocation, now))
+        assertEquals(HeldReceiptOutcome.ALREADY_HELD, db.retainAckAfterRevocation(ack, revocation, now.plusSeconds(5)))
+        val receipt = db.deliveryHeldReceiptDao().findByOperation(op.id)!!
+        assertEquals(DeliveryHeldReceiptEntity.HELD, receipt.state)
+        assertEquals(7L, receipt.remoteVersion)
+        assertEquals(revocation, receipt.revocationOperationId)
+        assertEquals(now, receipt.receivedAt)
+        val blocked = db.syncOutboxDao().findById(op.id)!!
+        assertEquals(OutboxStatus.BLOCKED, blocked.status)
+        assertEquals("REVOKED_ACK_HELD", blocked.lastErrorCode)
+        assertEquals(op.payloadJson, blocked.payloadJson)
+        // Kilos, field data, remoteVersion and syncStatus are exactly as before.
+        assertEquals(before, db.deliveryDao().findById(ack.deliveryId))
+        assertEquals(1, count("delivery_held_receipts"))
+    }
+
+    @Test
+    fun g24HeldAckFreezesLaterEditsOfThatDeliveryAcrossRestart() = runBlocking {
+        val (links, op, ack) = inFlightThenRevoked()
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        ok(deliveries.update(ack.deliveryId, draft(3_100_000, north to null)))
+        // Make the newer local snapshot look dispatch-capable: the held receipt alone must stop it.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET account_id=?, status='FAILED' WHERE entity_id=? AND id != ?",
+            arrayOf(ack.accountId, ack.deliveryId.toString(), op.id.toString()),
+        )
+        db.openHelper.writableDatabase.execSQL("UPDATE sync_outbox SET status='CONFIRMED' WHERE id=?", arrayOf(op.id.toString()))
+        val edit = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, ack.deliveryId).single { it.id != op.id }
+        assertTrue(db.syncOutboxDao().listReadyForAccount(ack.accountId, now.toEpochMilli()).isEmpty())
+        assertTrue(db.syncOutboxDao().observeReady(now.toEpochMilli()).first().none { it.id == edit.id })
+        assertEquals(0, db.syncOutboxDao().claimFailedDeliveryForRecovery(edit.id, ack.accountId, farmId, now.toEpochMilli()))
+        db.close(); open()
+        assertEquals(DeliveryHeldReceiptEntity.HELD, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
+        assertTrue(db.syncOutboxDao().listReadyForAccount(ack.accountId, now.toEpochMilli()).isEmpty())
+        assertEquals(3_100_000L, db.deliveryDao().findById(ack.deliveryId)!!.netGrams)
+    }
+
+    @Test
+    fun g24IncompatibleAckIsAConflictAndNeverReplacesTheHeldReceipt() = runBlocking {
+        val (links, op, ack) = inFlightThenRevoked()
+        val revocation = links.lastRevocation()
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, revocation, now))
+        assertEquals(HeldReceiptOutcome.RECEIPT_CONFLICT, db.retainAckAfterRevocation(ack.copy(remoteVersion = 9L), revocation, now))
+        assertEquals(HeldReceiptOutcome.RECEIPT_CONFLICT, db.retainAckAfterRevocation(ack.copy(remoteVersion = 11L), revocation, now))
+        // Once in conflict, even the original ACK cannot quietly clear it.
+        assertEquals(HeldReceiptOutcome.RECEIPT_CONFLICT, db.retainAckAfterRevocation(ack, revocation, now))
+        val receipt = db.deliveryHeldReceiptDao().findByOperation(op.id)!!
+        assertEquals(DeliveryHeldReceiptEntity.CONFLICT, receipt.state)
+        assertEquals(7L, receipt.remoteVersion)
+        assertEquals(ack.payloadHash, receipt.payloadHash)
+        assertEquals(9L, receipt.conflictRemoteVersion)
+        assertEquals("RECEIPT_CONFLICT", db.syncOutboxDao().findById(op.id)!!.lastErrorCode)
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+    }
+
+    @Test
+    fun g24HeldAckRejectsWrongOriginBindingOrBytes() = runBlocking {
+        val (links, op, ack) = inFlightThenRevoked()
+        val revocation = links.lastRevocation()
+        val before = db.deliveryDao().findById(ack.deliveryId)!!
+        listOf(
+            ack.copy(transportSubject = UUID.randomUUID().toString()),
+            ack.copy(transportSubject = ""),
+            UUID.randomUUID().toString().let { other -> ack.copy(accountId = other, transportSubject = other) },
+            ack.copy(farmId = UUID.randomUUID()),
+            ack.copy(deliveryId = UUID.randomUUID()),
+            ack.copy(operationId = UUID.randomUUID()),
+            ack.copy(payloadVersion = if (op.payloadVersion == 2) 1 else 2),
+            ack.copy(remoteVersion = 0L),
+            ack.copy(payloadHash = "not-a-hash"),
+        ).forEach { assertEquals(it.toString(), HeldReceiptOutcome.REJECTED, db.retainAckAfterRevocation(it, revocation, now)) }
+        assertEquals(HeldReceiptOutcome.RECEIPT_CONFLICT, db.retainAckAfterRevocation(ack.copy(payloadHash = "0".repeat(64)), revocation, now))
+        assertEquals(0, count("delivery_held_receipts"))
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(before, db.deliveryDao().findById(ack.deliveryId))
+    }
+
+    @Test
+    fun g24AckForAConsentedOperationIsNotHeld() = runBlocking {
+        val (_, _) = configureConsentedWrites()
+        val id = ok(deliveries.create(draft(2_800_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        val ack = AuthenticatedDeliveryAck(op.id, id, farmId, op.accountId!!, op.accountId!!, 1L,
+            deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!, op.payloadVersion)
+        assertEquals(HeldReceiptOutcome.REJECTED, db.retainAckAfterRevocation(ack, UUID.randomUUID(), now))
+        assertEquals(0, count("delivery_held_receipts"))
+        assertEquals(OutboxStatus.PENDING, db.syncOutboxDao().findById(op.id)!!.status)
+    }
+
+    private fun lease(name: String): DeliveryDispatchLease {
+        val directory = File(context.noBackupFilesDir, "g24-$name-${UUID.randomUUID()}")
+        linkedFixtureCleanup.add { directory.deleteRecursively() }
+        return checkNotNull(DeliveryDispatchLease.tryAcquire(directory))
+    }
+
+    private suspend fun HeldFixture.reconcile(
+        lease: DeliveryDispatchLease, head: RemoteDeliveryState, confirmed: Boolean = true,
+    ) = links.reconcileBlockedDelivery(op.id, confirmed, lease, { head }, RandomIds, now)
+
+    private fun HeldFixture.headAtReceipt() = RemoteDeliveryState(null, ack.remoteVersion, ack.payloadHash)
+
+    @Test
+    fun g24HeldAckReconcilesOnlyAfterConfirmationRenewedConsentAndAnUnchangedHead() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        val before = db.deliveryDao().findById(ack.deliveryId)!!
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        lease("reconcile").use { lease ->
+            assertEquals(HeldReconciliationOutcome.NOT_CONFIRMED, fixture.reconcile(lease, fixture.headAtReceipt(), confirmed = false))
+            assertEquals("No renewed consent yet", HeldReconciliationOutcome.NOT_AUTHORIZED, fixture.reconcile(lease, fixture.headAtReceipt()))
+            links.reconsentFarm(account.state.value.userId!!, farmId, true)
+            // Another device moved the server row on: the old receipt must not be applied.
+            assertEquals(HeldReconciliationOutcome.REMOTE_CONFLICT,
+                fixture.reconcile(lease, RemoteDeliveryState(null, 8L, "b".repeat(64))))
+            assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+            assertEquals(DeliveryHeldReceiptEntity.HELD, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
+            assertEquals(before, db.deliveryDao().findById(ack.deliveryId))
+            assertEquals(HeldReconciliationOutcome.SYNCED, fixture.reconcile(lease, fixture.headAtReceipt()))
+        }
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(DeliveryHeldReceiptEntity.RECONCILED, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
+        val after = db.deliveryDao().findById(ack.deliveryId)!!
+        assertEquals(2_800_000L, after.netGrams)
+        assertEquals(7L, after.metadata.remoteVersion)
+        assertEquals(SyncStatus.SYNCED, after.metadata.syncStatus)
+        assertEquals(op.payloadJson, db.syncOutboxDao().findById(op.id)!!.payloadJson)
+    }
+
+    @Test
+    fun g24RenewalFollowedByAnotherRevocationDoesNotReconcile() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        links.revokeConsentForFarm(farmId)
+        lease("revoked-again").use { lease ->
+            assertEquals(HeldReconciliationOutcome.NOT_AUTHORIZED, fixture.reconcile(lease, fixture.headAtReceipt()))
+        }
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(3, links.state.value.ledger!!.let { it.revocations.size + it.reconsents.size })
+    }
+
+    @Test
+    fun g24ReconciliationNeverAdoptsAccountLessEditsMadeAfterRevocation() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        ok(deliveries.update(ack.deliveryId, draft(3_100_000, north to null)))
+        val edit = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, ack.deliveryId).single { it.id != op.id }
+        assertNull(edit.accountId)
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        lease("unbound").use { lease ->
+            assertEquals(HeldReconciliationOutcome.NEEDS_REBASE, fixture.reconcile(lease, fixture.headAtReceipt()))
+        }
+        val frozen = db.syncOutboxDao().findById(edit.id)!!
+        assertNull("The account-less edit is not adopted", frozen.accountId)
+        assertEquals(OutboxStatus.BLOCKED, frozen.status)
+        assertEquals(edit.payloadJson, frozen.payloadJson)
+        assertEquals(3_100_000L, db.deliveryDao().findById(ack.deliveryId)!!.netGrams)
+        assertTrue(db.syncOutboxDao().listReadyForAccount(ack.accountId, now.toEpochMilli()).isEmpty())
+    }
+
+    @Test
+    fun g24BlockedWithoutReceiptKeepsTheSameOperationWhenTheServerResultIsUnknown() = runBlocking {
+        // ACK lost: the request may or may not have reached the server before revocation.
+        val fixture = inFlightThenRevoked()
+        val (links, op, _, account) = fixture
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        lease("unknown").use { lease ->
+            assertEquals(HeldReconciliationOutcome.REOPENED, fixture.reconcile(lease, RemoteDeliveryState(null, null, null)))
+        }
+        val reopened = db.syncOutboxDao().findById(op.id)!!
+        assertEquals(OutboxStatus.FAILED, reopened.status)
+        assertEquals("OUTCOME_UNKNOWN", reopened.lastErrorCode)
+        assertEquals(op.payloadJson, reopened.payloadJson)
+        assertEquals(op.baseRemoteVersion, reopened.baseRemoteVersion)
+        assertEquals(1, reopened.attemptCount)
+        assertEquals(listOf(op.id), db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, op.entityId).map { it.id })
+    }
+
+    @Test
+    fun g24BlockedWithoutReceiptAppliesAVerifiedServerRecordOfTheSameOperation() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        val record = RecoveredDeliveryReceipt(op.id, op.entityId, ack.accountId, 7L, ack.payloadHash, op.payloadVersion)
+        lease("server-record").use { lease ->
+            assertEquals("A different payload for this UUID is a conflict", HeldReconciliationOutcome.RECEIPT_CONFLICT,
+                fixture.reconcile(lease, RemoteDeliveryState(record.copy(payloadHash = "c".repeat(64)), 7L, "c".repeat(64))))
+            assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+            assertEquals(HeldReconciliationOutcome.REMOTE_CONFLICT, fixture.reconcile(lease, RemoteDeliveryState(record, 9L, "d".repeat(64))))
+            assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+            assertEquals(HeldReconciliationOutcome.SYNCED, fixture.reconcile(lease, RemoteDeliveryState(record, 7L, ack.payloadHash)))
+        }
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(7L, db.deliveryDao().findById(op.entityId)!!.metadata.remoteVersion)
+        assertEquals(2_800_000L, db.deliveryDao().findById(op.entityId)!!.netGrams)
+    }
+
+    @Test
+    fun g24ReconciliationNeedsTheLeaseAndTheSameAccountThroughout() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        val released = lease("released").also { it.close() }
+        assertTrue(runCatching { fixture.reconcile(released, fixture.headAtReceipt()) }.exceptionOrNull() is IllegalStateException)
+        lease("logout").use { lease ->
+            // The farmer signs out while the server lookup is in flight: nothing is committed.
+            val failure = runCatching {
+                links.reconcileBlockedDelivery(op.id, true, lease, { account.logout(false); fixture.headAtReceipt() }, RandomIds, now)
+            }.exceptionOrNull()
+            assertTrue(failure is com.isivoltpro.maginaolivo.feature.account.AuthFailure)
+        }
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(DeliveryHeldReceiptEntity.HELD, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
+    }
 
     private fun <T> ok(result: AppResult<T>): T = when (result) {
         is AppResult.Success -> result.value

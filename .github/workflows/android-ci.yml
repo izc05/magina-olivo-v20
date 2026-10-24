@@ -50,6 +50,9 @@ jobs:
       - name: Verify pinned Gradle runner
         run: gradle --version
 
+      - name: Verify G2.4 recovery SQL invariants
+        run: python3 .github/scripts/test-g24-recovery-sql.py
+
       - name: Lint, unit test, compile instrumented tests and build all environments
         shell: bash
         # CR-006: the public anon key for the weather Edge Functions goes into the APK artifact.

@@ -12,10 +12,13 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** Explicit private-file adapter only; no Context factory, credentials, app consumer or access grant. */
 class DurableReservationJournal(private val file: File, private val beforeCommit: () -> Unit = {}) {
-    fun prepare(scope: ReservationScope, request: ReservationRequest): ReservationRecovery = locked {
+    fun prepare(scope: ReservationScope, request: ReservationRequest, remoteWorkspaceId: UUID? = null): ReservationRecovery = locked {
         val records=read()
-        records[scope]?.let { require(it.request==request) { "Immutable reservation operation" };return@locked it }
-        val pending=ReservationRecovery(scope,request)
+        records[scope]?.let {
+            require(it.request==request && it.expectedRemoteWorkspaceId==remoteWorkspaceId) { "Immutable reservation operation" }
+            return@locked it
+        }
+        val pending=ReservationRecovery(scope,request,expectedRemoteWorkspaceId=remoteWorkspaceId)
         require(records.size<MAX_RECORDS)
         records[scope]=pending
         commit(records.values)
@@ -60,7 +63,8 @@ class DurableReservationJournal(private val file: File, private val beforeCommit
             if(file.length() !in 1..MAX_BYTES.toLong()) throw IOException("journal_size_invalid")
             val data=file.readBytes()
             return DataInputStream(ByteArrayInputStream(data)).use { input ->
-                check(input.readInt()==MAGIC && input.readInt()==1)
+                check(input.readInt()==MAGIC)
+                val format=input.readInt();check(format in 1..2)
                 val size=input.readInt();check(size in 1..MAX_BYTES && size==data.size-44)
                 val expected=ByteArray(32).also(input::readFully)
                 val body=ByteArray(size).also(input::readFully)
@@ -72,9 +76,10 @@ class DurableReservationJournal(private val file: File, private val beforeCommit
                         val scope=content.scope()
                         val request=ReservationRequest(scope.operationId,content.uuid(),content.uuid(),content.uuid(),
                             content.readInt(),content.text(),content.readLong())
+                        val target=if(format>=2 && content.readBoolean()) content.uuid() else null
                         val status=ReservationStatus.valueOf(content.text())
                         val receipt=if(content.readBoolean()) ReservationReceipt(content.scope(),content.uuid(),content.text(),content.uuid(),content.uuid()) else null
-                        val recovery=ReservationRecovery(scope,request,status,receipt)
+                        val recovery=ReservationRecovery(scope,request,status,receipt,target)
                         check(result.put(scope,recovery)==null)
                     }
                     check(content.read()==-1)
@@ -92,6 +97,8 @@ class DurableReservationJournal(private val file: File, private val beforeCommit
                 output.scope(recovery.scope)
                 recovery.request.let { r -> output.uuid(r.farmId);output.uuid(r.localWorkspaceId);output.uuid(r.consentId)
                     output.writeInt(r.consentTextVersion);output.text(r.manifestSha256);output.writeLong(r.aggregateVersion) }
+                output.writeBoolean(recovery.expectedRemoteWorkspaceId!=null)
+                recovery.expectedRemoteWorkspaceId?.let { output.uuid(it) }
                 output.text(recovery.status.name)
                 output.writeBoolean(recovery.receipt!=null)
                 recovery.receipt?.let { r -> output.scope(r.scope);output.uuid(r.farmId);output.text(r.payloadHash)
@@ -103,7 +110,7 @@ class DurableReservationJournal(private val file: File, private val beforeCommit
         try {
             FileOutputStream(temporary).use { stream ->
                 val output=DataOutputStream(stream)
-                output.writeInt(MAGIC);output.writeInt(1);output.writeInt(body.size);output.write(digest(body));output.write(body)
+                output.writeInt(MAGIC);output.writeInt(2);output.writeInt(body.size);output.write(digest(body));output.write(body)
                 output.flush();stream.fd.sync()
             }
             beforeCommit()
