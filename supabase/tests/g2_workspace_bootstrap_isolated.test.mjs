@@ -122,6 +122,41 @@ test('empty membership cannot authorize delivery while one nanosecond remains a 
   } finally {await db.close();}
 });
 
+test('delivery HEAD exposes only the current authenticated operation hash',async()=>{
+  const {db,actor}=await fixture();
+  try {
+    const farm=await reservedFarm(db,actor);await farmCall(db,actor,randomUUID(),farm,farm.payload);
+    const parcel=parcelPayload(farm.payload.workspaceId,farm.payload.id);
+    await parcelCall(db,actor,randomUUID(),parcel);
+    const campaign={id:randomUUID(),workspaceId:parcel.workspaceId,farmId:farm.payload.id,name:'HEAD campaign',
+      startDate:'2026-01-01',endDate:null,status:'ACTIVE',notes:null,parcels:[{id:randomUUID(),
+        parcelId:parcel.id,farmIdAtStart:farm.payload.id,farmNameAtStart:'Farm',parcelNameAtStart:'Parcel',
+        managedAreaM2AtStart:null,cadastralReferenceAtStart:null,geometryGeoJsonSnapshot:null}]};
+    await campaignCall(db,actor,randomUUID(),campaign);
+    const delivery={id:randomUUID(),farmId:farm.payload.id,campaignId:campaign.id,deliveryDate:'2026-11-25',
+      destinationName:'Synthetic cooperative',netGrams:1000,source:'MANUAL',parcels:[{id:randomUUID(),
+        parcelId:parcel.id,campaignParcelId:campaign.parcels[0].id,parcelNameAtDelivery:'Parcel',
+        weightGrams:null,allocationMode:'UNALLOCATED'}]};
+    const send=async(operation,payload)=>asActor(db,actor,async()=>(await db.query(
+      'SELECT public.sync_own_delivery_v2($1::uuid,$2::jsonb) AS receipt',[operation,JSON.stringify(payload)])).rows[0].receipt);
+    const read=async(who)=>asActor(db,who,async()=>(await db.query(
+      'SELECT public.get_own_delivery_v2($1::uuid) AS snapshot',[delivery.id])).rows[0].snapshot);
+    const first=randomUUID();await send(first,delivery);
+    const firstHash=(await db.query('SELECT payload_hash FROM magina_g2_private.sync_operations WHERE operation_id=$1',[first])).rows[0].payload_hash;
+    assert.equal((await read(actor)).head_payload_hash,firstHash);
+    const second=randomUUID();await send(second,{...delivery,netGrams:1200,baseVersion:1});
+    const secondHash=(await db.query('SELECT payload_hash FROM magina_g2_private.sync_operations WHERE operation_id=$1',[second])).rows[0].payload_hash;
+    const head=await read(actor);
+    assert.equal(head.delivery.version,2);
+    assert.equal(head.head_payload_hash,secondHash);
+    assert.notEqual(head.head_payload_hash,firstHash);
+    const foreign=randomUUID();await db.query('INSERT INTO auth.users(id) VALUES($1)',[foreign]);
+    await assert.rejects(read(foreign),e=>e.code==='42501');
+    await db.query('UPDATE public.deliveries SET version=3 WHERE id=$1',[delivery.id]);
+    assert.equal((await read(actor)).head_payload_hash,null);
+  } finally {await db.close();}
+});
+
 test('workspace creation rejects anonymous or invalid claims and malformed payload without writes',async()=>{
   const {db,actor}=await fixture();
   try {
@@ -187,6 +222,51 @@ test('reserved farm creation rejects mismatched reservation, actor, issuer or pa
       await assert.rejects(farmCall(db,actor,operation,farm,payload),e=>e.code==='22023');
     assert.equal((await db.query('SELECT count(*)::int AS n FROM public.farms')).rows[0].n,0);
     assert.equal((await db.query("SELECT count(*)::int AS n FROM magina_g2_private.sync_operations WHERE entity_type='FARM'")).rows[0].n,0);
+  } finally {await db.close();}
+});
+
+test('expense sync rejects a parcel belonging only to another farm in the same workspace',async()=>{
+  const {db,actor}=await fixture();
+  try {
+    const farm=await reservedFarm(db,actor);await farmCall(db,actor,randomUUID(),farm,farm.payload);
+    const otherFarm=randomUUID(),parcel=randomUUID(),expenseId=randomUUID(),operation=randomUUID();
+    await db.query('INSERT INTO public.farms(id,workspace_id,creator_user_id,owner_id,name) VALUES($1,$2,$3,$3,$4)',
+      [otherFarm,farm.payload.workspaceId,actor,'Other farm']);
+    await db.query('INSERT INTO public.parcels(id,workspace_id,display_name) VALUES($1,$2,$3)',
+      [parcel,farm.payload.workspaceId,'Other farm parcel']);
+    await db.query('INSERT INTO public.farm_parcel_memberships(workspace_id,farm_id,parcel_id,valid_from) VALUES($1,$2,$3,$4)',
+      [farm.payload.workspaceId,otherFarm,parcel,'2026-01-01']);
+    const payload={id:expenseId,farmId:farm.payload.id,parcelId:parcel,expenseDate:'2026-11-10',
+      concept:'Synthetic fertilizer',category:'FERTILIZANTES',amountMinor:1000,currency:'EUR'};
+    await assert.rejects(asActor(db,actor,()=>db.query(
+      'SELECT public.sync_own_expense($1::uuid,$2::jsonb)',[operation,JSON.stringify(payload)])),e=>e.code==='42501');
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.expenses WHERE id=$1',[expenseId])).rows[0].n,0);
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM magina_g2_private.sync_operations WHERE operation_id=$1',[operation])).rows[0].n,0);
+    const ownParcel=randomUUID(),ownExpense=randomUUID(),ownOperation=randomUUID();
+    await db.query('INSERT INTO public.parcels(id,workspace_id,display_name) VALUES($1,$2,$3)',
+      [ownParcel,farm.payload.workspaceId,'Own farm parcel']);
+    await db.query('INSERT INTO public.farm_parcel_memberships(workspace_id,farm_id,parcel_id,valid_from) VALUES($1,$2,$3,$4)',
+      [farm.payload.workspaceId,farm.payload.id,ownParcel,'2026-01-01']);
+    const ownPayload={...payload,id:ownExpense,parcelId:ownParcel};
+    await asActor(db,actor,()=>db.query('SELECT public.sync_own_expense($1::uuid,$2::jsonb)',
+      [ownOperation,JSON.stringify(ownPayload)]));
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.expenses WHERE id=$1',[ownExpense])).rows[0].n,1);
+    const denyOnDate=async()=>assert.rejects(asActor(db,actor,()=>db.query(
+      'SELECT public.sync_own_expense($1::uuid,$2::jsonb)',
+      [randomUUID(),JSON.stringify({...ownPayload,id:randomUUID()})])),e=>e.code==='42501');
+    await db.query('UPDATE public.farm_parcel_memberships SET valid_from=$2 WHERE parcel_id=$1',
+      [ownParcel,'2026-11-11']);
+    await denyOnDate();
+    await db.query('UPDATE public.farm_parcel_memberships SET valid_from=$2,valid_until=$3 WHERE parcel_id=$1',
+      [ownParcel,'2026-01-01','2026-11-10']);
+    await denyOnDate();
+    await db.query('UPDATE public.farm_parcel_memberships SET valid_until=NULL,deleted_at=now() WHERE parcel_id=$1',
+      [ownParcel]);
+    await denyOnDate();
+    await db.query('UPDATE public.farm_parcel_memberships SET deleted_at=NULL,valid_from=$2,valid_from_exact=$3,valid_until=$4,valid_until_exact=$5 WHERE parcel_id=$1',
+      [ownParcel,'2026-11-10T23:59:59.999999Z','2026-11-10T23:59:59.999999001Z','2026-11-11','2026-11-11T00:00:00.000000000Z']);
+    await asActor(db,actor,()=>db.query('SELECT public.sync_own_expense($1::uuid,$2::jsonb)',
+      [randomUUID(),JSON.stringify({...ownPayload,id:randomUUID()})]));
   } finally {await db.close();}
 });
 
