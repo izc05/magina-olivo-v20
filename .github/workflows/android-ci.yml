@@ -11,6 +11,7 @@ on:
       - main
       - "feat/**"
       - "hotfix/**"
+      - "integration/g2-1.0-review"
 
 permissions:
   contents: read
