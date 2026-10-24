@@ -1,0 +1,151 @@
+name: Web V3
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web-v3.yml"
+  push:
+    branches:
+      - main
+      - "codex/web-*"
+    paths:
+      - "web/**"
+      - ".github/workflows/web-v3.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-v3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install reproducible dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Playwright smoke
+        run: npm run test:e2e
+      - name: Build static Pages preview
+        run: npm run build:pages
+      - name: Verify static routes and noindex
+        shell: bash
+        run: |
+          set -euo pipefail
+          for route in \
+            index.html \
+            funciones/index.html \
+            como-funciona/index.html \
+            novedades/index.html \
+            ayuda/index.html \
+            privacidad/index.html \
+            terminos/index.html \
+            aviso-legal/index.html \
+            descargar/index.html \
+            anunciate/index.html \
+            mi/index.html \
+            mi/fincas/index.html \
+            mi/fincas/demo/index.html \
+            mi/parcelas/index.html \
+            mi/parcelas/demo/index.html \
+            mi/mapa/index.html \
+            mi/campanas/index.html \
+            mi/campanas/demo/index.html \
+            mi/cuaderno/index.html \
+            mi/documentos/index.html \
+            mi/informes/index.html \
+            mi/mercado/index.html \
+            mi/tiempo/index.html \
+            mi/cooperativa/index.html \
+            mi/perfil/index.html \
+            mi/cuenta/index.html; do
+            test -f "out/$route"
+          done
+          test -f out/robots.txt
+          grep -q "Disallow: /" out/robots.txt
+          grep -Eq 'name="robots" content="noindex, ?nofollow"' out/index.html
+      - name: Build and smoke Docker standalone
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="magina-olivo-web-v3:${GITHUB_SHA}"
+          container="magina-web-v3-${GITHUB_RUN_ID}"
+          docker build -t "$image" .
+          docker run -d --rm --name "$container" -p 127.0.0.1:3210:3000 "$image"
+          cleanup() { docker stop "$container" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          ready=0
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3210/api/health >/tmp/web-health.json; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = "1"
+          grep -q '"status":"ok"' /tmp/web-health.json
+          for route in / /funciones /mi /mi/fincas/demo /mi/campanas/demo; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:3210$route")"
+            test "$code" = "200"
+          done
+
+  pages-preview-build:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/codex/web-')
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build:pages
+      - run: touch out/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/out
+
+  pages-preview-deploy:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/codex/web-')
+    needs: pages-preview-build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy preview
+        id: deployment
+        uses: actions/deploy-pages@v4
