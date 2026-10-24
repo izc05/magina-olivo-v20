@@ -534,6 +534,7 @@ DECLARE
     v_notes TEXT;
     v_status TEXT;
     v_workspace UUID;
+    v_expected_workspace UUID;
     v_payload_hash TEXT;
     v_result_version BIGINT;
     v_saved magina_g2_private.sync_operations%ROWTYPE;
@@ -606,10 +607,18 @@ BEGIN
         );
     END IF;
 
+    -- Lock workspace before farm so ownership/deletion cannot change after authorization.
+    SELECT workspace_id INTO v_expected_workspace FROM public.farms WHERE id = v_farm_id;
+    PERFORM 1 FROM public.workspaces
+    WHERE id = v_expected_workspace AND deleted_at IS NULL FOR SHARE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'sync denied: actor does not own farm for economic operations' USING ERRCODE = '42501';
+    END IF;
+
     -- Validate farm ownership (strictly owner/creator of farm)
     SELECT workspace_id INTO v_workspace
     FROM public.farms
-    WHERE id = v_farm_id
+    WHERE id = v_farm_id AND workspace_id = v_expected_workspace
       AND (
           creator_user_id = actor
           OR owner_id = actor
@@ -617,7 +626,7 @@ BEGIN
               SELECT id FROM public.workspaces WHERE owner_user_id = actor AND deleted_at IS NULL
           ))
       )
-      AND deleted_at IS NULL;
+      AND deleted_at IS NULL FOR SHARE;
 
     IF v_workspace IS NULL THEN
         RAISE EXCEPTION 'sync denied: actor does not own farm for economic operations' USING ERRCODE = '42501';
@@ -626,7 +635,7 @@ BEGIN
     -- Validate campaign linkage if provided
     IF v_campaign_id IS NOT NULL THEN
         PERFORM 1 FROM public.campaigns
-        WHERE id = v_campaign_id AND farm_id = v_farm_id AND workspace_id = v_workspace AND deleted_at IS NULL;
+        WHERE id = v_campaign_id AND farm_id = v_farm_id AND workspace_id = v_workspace AND deleted_at IS NULL FOR SHARE;
 
         IF NOT FOUND THEN
             RAISE EXCEPTION 'sync invalid: campaign does not belong to farm' USING ERRCODE = '22023';

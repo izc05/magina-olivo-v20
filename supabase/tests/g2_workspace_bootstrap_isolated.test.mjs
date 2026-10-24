@@ -216,6 +216,22 @@ test('expense sync rejects a parcel belonging only to another farm in the same w
     await asActor(db,actor,()=>db.query('SELECT public.sync_own_expense($1::uuid,$2::jsonb)',
       [ownOperation,JSON.stringify(ownPayload)]));
     assert.equal((await db.query('SELECT count(*)::int AS n FROM public.expenses WHERE id=$1',[ownExpense])).rows[0].n,1);
+    const denyOnDate=async()=>assert.rejects(asActor(db,actor,()=>db.query(
+      'SELECT public.sync_own_expense($1::uuid,$2::jsonb)',
+      [randomUUID(),JSON.stringify({...ownPayload,id:randomUUID()})])),e=>e.code==='42501');
+    await db.query('UPDATE public.farm_parcel_memberships SET valid_from=$2 WHERE parcel_id=$1',
+      [ownParcel,'2026-11-11']);
+    await denyOnDate();
+    await db.query('UPDATE public.farm_parcel_memberships SET valid_from=$2,valid_until=$3 WHERE parcel_id=$1',
+      [ownParcel,'2026-01-01','2026-11-10']);
+    await denyOnDate();
+    await db.query('UPDATE public.farm_parcel_memberships SET valid_until=NULL,deleted_at=now() WHERE parcel_id=$1',
+      [ownParcel]);
+    await denyOnDate();
+    await db.query('UPDATE public.farm_parcel_memberships SET deleted_at=NULL,valid_from=$2,valid_from_exact=$3,valid_until=$4,valid_until_exact=$5 WHERE parcel_id=$1',
+      [ownParcel,'2026-11-10T23:59:59.999999Z','2026-11-10T23:59:59.999999001Z','2026-11-11','2026-11-11T00:00:00.000000000Z']);
+    await asActor(db,actor,()=>db.query('SELECT public.sync_own_expense($1::uuid,$2::jsonb)',
+      [randomUUID(),JSON.stringify({...ownPayload,id:randomUUID()})]));
   } finally {await db.close();}
 });
 
