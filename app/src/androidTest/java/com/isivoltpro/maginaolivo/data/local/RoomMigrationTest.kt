@@ -33,7 +33,47 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(28, MaginaOlivoDatabase.VERSION)
+        assertEquals(29, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration28To29AddsTheDurablePrepareTableAndKeepsHeldReceiptsAndIntentsIntact() {
+        migrationHelper.createDatabase(TEST_DATABASE, 28).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos',NULL,NULL,NULL,'ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','PREPARATION',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, created_at, updated_at, version, sync_status, remote_version) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL',1000,1000,2,'PENDING',4)")
+            database.execSQL("INSERT INTO sync_outbox (id, entity_type, entity_id, operation, payload_version, base_remote_version, status, attempt_count, next_attempt_at, last_error_code, last_error_message, created_at, updated_at, account_id, payload_json, farm_id) VALUES ('op-1','DELIVERY','d','UPDATE',2,4,'BLOCKED',1,NULL,'REVOKED_ACK_HELD',NULL,1000,1000,'account-a','{\"netGrams\":3500000}','f')")
+            database.execSQL("INSERT INTO delivery_held_receipts (operation_id, delivery_id, account_id, farm_id, remote_version, payload_hash, payload_version, revocation_operation_id, state, conflict_remote_version, conflict_payload_hash, received_at, resolved_at) VALUES ('op-1','d','account-a','f',7,'${"a".repeat(64)}',2,'rev-1','HELD',NULL,NULL,2000,NULL)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 29, true, DatabaseMigrations.MIGRATION_28_29).use { database ->
+            database.query("SELECT net_grams, version, sync_status, remote_version FROM deliveries WHERE id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(3500000L, cursor.getLong(0))
+                assertEquals(2L, cursor.getLong(1))
+                assertEquals("PENDING", cursor.getString(2))
+                assertEquals(4L, cursor.getLong(3))
+            }
+            database.query("SELECT status, last_error_code, account_id, payload_json, farm_id, base_remote_version FROM sync_outbox WHERE id='op-1'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("BLOCKED", cursor.getString(0))
+                assertEquals("REVOKED_ACK_HELD", cursor.getString(1))
+                assertEquals("account-a", cursor.getString(2))
+                assertEquals("{\"netGrams\":3500000}", cursor.getString(3))
+                assertEquals("f", cursor.getString(4))
+                assertEquals(4L, cursor.getLong(5))
+            }
+            database.query("SELECT state, remote_version, payload_hash FROM delivery_held_receipts WHERE operation_id='op-1'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("The held receipt survives untouched", "HELD", cursor.getString(0))
+                assertEquals(7L, cursor.getLong(1))
+                assertEquals("a".repeat(64), cursor.getString(2))
+            }
+            database.query("SELECT COUNT(*) FROM delivery_dispatch_prepare").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("No PREPARE is invented for intents enqueued before G2.4", 0, cursor.getInt(0))
+            }
+        }
     }
 
     @Test

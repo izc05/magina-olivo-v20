@@ -28,6 +28,13 @@ import com.isivoltpro.maginaolivo.data.repository.deliveryPayloadHash
 import com.isivoltpro.maginaolivo.data.repository.AuthenticatedDeliveryAck
 import com.isivoltpro.maginaolivo.data.repository.HeldReceiptOutcome
 import com.isivoltpro.maginaolivo.data.repository.retainAckAfterRevocation
+import com.isivoltpro.maginaolivo.data.repository.AckCorrelationOutcome
+import com.isivoltpro.maginaolivo.data.repository.DispatchIdentity
+import com.isivoltpro.maginaolivo.data.repository.PrepareOutcome
+import com.isivoltpro.maginaolivo.data.repository.correlateAuthenticatedDeliveryAck
+import com.isivoltpro.maginaolivo.data.repository.prepareDeliveryDispatch
+import com.isivoltpro.maginaolivo.data.repository.settleAbandonedPreparedDispatches
+import com.isivoltpro.maginaolivo.data.local.entity.DeliveryDispatchPrepareEntity
 import com.isivoltpro.maginaolivo.data.repository.HeldReconciliationOutcome
 import com.isivoltpro.maginaolivo.data.repository.RecoveredDeliveryReceipt
 import com.isivoltpro.maginaolivo.data.repository.RemoteDeliveryState
@@ -1579,6 +1586,287 @@ class DeliveryContractTest {
         override val default: CoroutineDispatcher = Dispatchers.Unconfined
         override val io: CoroutineDispatcher = Dispatchers.Unconfined
         override val main: CoroutineDispatcher = Dispatchers.Unconfined
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // G2.4 WIRING. Every test below must fail if the durable PREPARE record and the ACK
+    // correlation are not actually connected: they assert that an unprepared ACK changes
+    // nothing, instead of exercising the helpers in isolation.
+    // ---------------------------------------------------------------------------------------
+
+    /** A lease on a FIXED directory, so a second acquisition shares its recovery namespace. */
+    private fun leaseIn(directory: File): DeliveryDispatchLease {
+        linkedFixtureCleanup.add { directory.deleteRecursively() }
+        return checkNotNull(DeliveryDispatchLease.tryAcquire(directory))
+    }
+
+    private data class PreparedFixture(
+        val links: LocalFarmLinkRepository,
+        val deliveryId: UUID,
+        val op: com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity,
+        val identity: DispatchIdentity,
+        val ack: AuthenticatedDeliveryAck,
+    )
+
+    private suspend fun preparable(): PreparedFixture {
+        val (account, links) = configureConsentedWrites()
+        val id = ok(deliveries.create(draft(2_800_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        val userId = account.state.value.userId!!
+        val identity = DispatchIdentity(
+            accountId = userId.toString(), issuer = "fixture-project",
+            subject = links.subject(userId), localWorkspaceId = workspaceId,
+        )
+        val ack = AuthenticatedDeliveryAck(
+            op.id, id, farmId, op.accountId!!, op.accountId!!, 7L,
+            deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!, op.payloadVersion,
+        )
+        return PreparedFixture(links, id, op, identity, ack)
+    }
+
+    private fun dir(name: String) = File(context.noBackupFilesDir, "g24-$name-${UUID.randomUUID()}")
+
+    @Test
+    fun g24AnAckWithoutADurablePrepareRecordIsNeverApplied() = runBlocking {
+        val (links, id, op, identity, ack) = preparable()
+        val before = db.deliveryDao().findById(id)!!
+        assertEquals(
+            AckCorrelationOutcome.NOT_PREPARED,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, links.state.value.ledger, now),
+        )
+        assertEquals("No PREPARE, no local change", before, db.deliveryDao().findById(id))
+        assertEquals(0, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+        assertEquals(0, count("delivery_held_receipts"))
+        assertEquals(OutboxStatus.PENDING, db.syncOutboxDao().findById(op.id)!!.status)
+    }
+
+    @Test
+    fun g24PrepareRecordsIdentityConsentAndImmutableBytesAndClaimsTheOperation() = runBlocking {
+        val (links, id, op, identity, _) = preparable()
+        val consent = links.state.value.ledger!!.consents.single()
+        leaseIn(dir("prepare")).use { lease ->
+            assertEquals(
+                PrepareOutcome.PREPARED,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now),
+            )
+            val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+            assertEquals(id, record.deliveryId)
+            assertEquals(farmId, record.farmId)
+            assertEquals(op.accountId, record.accountId)
+            assertEquals("fixture-project", record.issuer)
+            assertEquals(links.subject(UUID.fromString(op.accountId!!)), record.subject)
+            assertEquals(workspaceId, record.localWorkspaceId)
+            assertEquals("Remote workspace is never invented", null, record.remoteWorkspaceId)
+            assertEquals(consent.operationId, record.consentOperationId)
+            assertEquals(consent.textVersion, record.consentTextVersion)
+            assertEquals(op.payloadVersion, record.payloadVersion)
+            assertEquals(deliveryPayloadHash(op.payloadJson!!, op.payloadVersion), record.payloadHash)
+            assertEquals(op.baseRemoteVersion, record.baseRemoteVersion)
+            assertEquals(lease.claimMarker(), record.leaseMarker)
+            assertEquals("Unsettled while the outcome is unknown", null, record.settledAt)
+            val claimed = db.syncOutboxDao().findById(op.id)!!
+            assertEquals(OutboxStatus.PROCESSING, claimed.status)
+            assertEquals(lease.claimMarker(), claimed.lastErrorCode)
+            assertEquals("Bytes and base version preserved", op.payloadJson, claimed.payloadJson)
+            assertEquals(
+                PrepareOutcome.ALREADY_PREPARED,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now.plusSeconds(5)),
+            )
+            assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+        }
+    }
+
+    @Test
+    fun g24PrepareNeverReplacesARecordThatDescribesOtherBytes() = runBlocking {
+        val (links, id, op, identity, _) = preparable()
+        db.deliveryDispatchPrepareDao().insert(
+            DeliveryDispatchPrepareEntity(
+                operationId = op.id, deliveryId = id, farmId = farmId, accountId = op.accountId!!,
+                issuer = "fixture-project", subject = links.subject(UUID.fromString(op.accountId!!)),
+                localWorkspaceId = workspaceId,
+                consentOperationId = links.state.value.ledger!!.consents.single().operationId,
+                consentTextVersion = 2, payloadVersion = op.payloadVersion, payloadHash = "c".repeat(64),
+                baseRemoteVersion = op.baseRemoteVersion, leaseMarker = "foreign", preparedAt = now,
+            ),
+        )
+        leaseIn(dir("conflict")).use { lease ->
+            assertEquals(
+                PrepareOutcome.PREPARE_CONFLICT,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now),
+            )
+        }
+        assertEquals("c".repeat(64), db.deliveryDispatchPrepareDao().findByOperation(op.id)!!.payloadHash)
+        assertEquals(OutboxStatus.PENDING, db.syncOutboxDao().findById(op.id)!!.status)
+    }
+
+    @Test
+    fun g24ARevokedFarmIsNeverPreparedForDispatch() = runBlocking {
+        val (links, id, op, identity, _) = preparable()
+        links.revokeConsentForFarm(farmId)
+        leaseIn(dir("revoked")).use { lease ->
+            assertEquals(
+                PrepareOutcome.NOT_AUTHORIZED,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now),
+            )
+        }
+        assertEquals(0, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+    }
+
+    @Test
+    fun g24AConsentedCorrelatedAckIsAppliedExactlyOnce() = runBlocking {
+        val (links, id, op, identity, ack) = preparable()
+        leaseIn(dir("applied")).use { lease ->
+            assertEquals(
+                PrepareOutcome.PREPARED,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now),
+            )
+        }
+        assertEquals(
+            AckCorrelationOutcome.APPLIED_SYNCED,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, links.state.value.ledger, now),
+        )
+        val after = db.deliveryDao().findById(id)!!
+        assertEquals("Kilos are never rewritten by a receipt", 2_800_000L, after.netGrams)
+        assertEquals(7L, after.metadata.remoteVersion)
+        assertEquals(SyncStatus.SYNCED, after.metadata.syncStatus)
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(op.id)!!.status)
+        val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+        assertEquals(DeliveryDispatchPrepareEntity.SETTLED_CONFIRMED, record.settledOutcome)
+        assertEquals(
+            AckCorrelationOutcome.ALREADY_SETTLED,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, links.state.value.ledger, now.plusSeconds(9)),
+        )
+        assertEquals(record, db.deliveryDispatchPrepareDao().findByOperation(op.id))
+    }
+
+    @Test
+    fun g24ACorrelatedAckForOtherBytesOrAnotherFarmIsAMismatchAndWritesNothing() = runBlocking {
+        val (links, id, op, identity, ack) = preparable()
+        leaseIn(dir("mismatch")).use { lease ->
+            assertEquals(
+                PrepareOutcome.PREPARED,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now),
+            )
+        }
+        val before = db.deliveryDao().findById(id)!!
+        val ledger = links.state.value.ledger
+        assertEquals(
+            AckCorrelationOutcome.PREPARE_MISMATCH,
+            db.correlateAuthenticatedDeliveryAck(ack.copy(payloadHash = "d".repeat(64)), identity, ledger, now),
+        )
+        assertEquals(
+            AckCorrelationOutcome.PREPARE_MISMATCH,
+            db.correlateAuthenticatedDeliveryAck(ack.copy(farmId = UUID.randomUUID()), identity, ledger, now),
+        )
+        assertEquals(
+            AckCorrelationOutcome.PREPARE_MISMATCH,
+            db.correlateAuthenticatedDeliveryAck(ack.copy(transportSubject = "someone-else"), identity, ledger, now),
+        )
+        assertEquals(before, db.deliveryDao().findById(id))
+        assertEquals(
+            "Nothing settled on a mismatch", null,
+            db.deliveryDispatchPrepareDao().findByOperation(op.id)!!.settledAt,
+        )
+        assertEquals(0, count("delivery_held_receipts"))
+    }
+
+    @Test
+    fun g24AnAckAfterRevocationIsCorrelatedThenHeldAndTheDeliveryIsUntouched() = runBlocking {
+        val (links, id, op, identity, ack) = preparable()
+        leaseIn(dir("held-wire")).use { lease ->
+            assertEquals(
+                PrepareOutcome.PREPARED,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now),
+            )
+        }
+        val before = db.deliveryDao().findById(id)!!
+        links.revokeConsentForFarm(farmId)
+        assertEquals(
+            AckCorrelationOutcome.HELD_AFTER_REVOCATION,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, links.state.value.ledger, now),
+        )
+        assertEquals("The Pesada is evidence-only, never rewritten", before, db.deliveryDao().findById(id))
+        val held = db.deliveryHeldReceiptDao().findByOperation(op.id)!!
+        assertEquals(DeliveryHeldReceiptEntity.HELD, held.state)
+        assertEquals(7L, held.remoteVersion)
+        assertEquals(links.lastRevocation(), held.revocationOperationId)
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(
+            DeliveryDispatchPrepareEntity.SETTLED_HELD,
+            db.deliveryDispatchPrepareDao().findByOperation(op.id)!!.settledOutcome,
+        )
+        assertTrue(db.syncOutboxDao().listReadyForAccount(op.accountId!!, now.toEpochMilli()).isEmpty())
+    }
+
+    @Test
+    fun g24PrepareIsRefusedWhileAHeldReceiptFreezesThatDelivery() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        val identity = DispatchIdentity(
+            accountId = op.accountId!!, issuer = "fixture-project",
+            subject = links.subject(account.state.value.userId!!), localWorkspaceId = workspaceId,
+        )
+        leaseIn(dir("frozen")).use { lease ->
+            assertEquals(
+                "Renewed consent alone does not re-prepare a frozen Pesada",
+                PrepareOutcome.REJECTED,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now),
+            )
+        }
+        assertEquals(0, db.deliveryDispatchPrepareDao().listForDelivery(op.entityId).size)
+    }
+
+    @Test
+    fun g24AnInterruptedPreparedDispatchSettlesAsUnknownOnlyForTheSameLockOwner() = runBlocking {
+        val (links, _, op, identity, _) = preparable()
+        val directory = dir("interrupted")
+        leaseIn(directory).use { first ->
+            assertEquals(
+                PrepareOutcome.PREPARED,
+                db.prepareDeliveryDispatch(first, op.id, identity, links.state.value.ledger, now),
+            )
+        }
+        leaseIn(dir("foreign")).use { foreign ->
+            assertEquals(0, db.settleAbandonedPreparedDispatches(foreign, op.accountId!!, farmId, now))
+        }
+        assertEquals(null, db.deliveryDispatchPrepareDao().findByOperation(op.id)!!.settledAt)
+        leaseIn(directory).use { second ->
+            assertEquals(
+                1,
+                db.settleAbandonedPreparedDispatches(second, op.accountId!!, farmId, now.plusSeconds(30)),
+            )
+        }
+        val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+        assertEquals(DeliveryDispatchPrepareEntity.SETTLED_UNKNOWN, record.settledOutcome)
+        assertEquals(
+            "The prepared bytes are kept for the server's idempotency",
+            op.payloadJson, db.syncOutboxDao().findById(op.id)!!.payloadJson,
+        )
+        assertEquals(0, db.deliveryDispatchPrepareDao().countUnsettled())
+    }
+
+    @Test
+    fun g24NeedsRebaseWithARevocationAndNoReceiptIsItsOwnTerminalOutcome() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, _, account) = fixture
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET last_error_code='NEEDS_REBASE' WHERE id=?", arrayOf(op.id.toString()),
+        )
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        lease("needs-rebase").use { lease ->
+            assertEquals(
+                "P1: its own state, never reopened nor silently rejected",
+                HeldReconciliationOutcome.NEEDS_REBASE_WITHOUT_RECEIPT,
+                fixture.reconcile(lease, fixture.headAtReceipt()),
+            )
+        }
+        val still = db.syncOutboxDao().findById(op.id)!!
+        assertEquals(OutboxStatus.BLOCKED, still.status)
+        assertEquals("NEEDS_REBASE", still.lastErrorCode)
+        assertEquals(0, count("delivery_held_receipts"))
     }
 
     private companion object {
