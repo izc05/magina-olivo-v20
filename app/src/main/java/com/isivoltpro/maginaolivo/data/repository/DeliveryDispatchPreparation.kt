@@ -29,6 +29,43 @@ internal enum class PrepareOutcome {
     PREPARED, ALREADY_PREPARED, PREPARE_CONFLICT, NOT_AUTHORIZED, REJECTED,
 }
 
+/**
+ * Parity with the file journal's strict UTF-8 handling: it encoded text with
+ * CodingErrorAction.REPORT, so an unpaired surrogate failed loudly instead of being stored.
+ *
+ * Measured, not assumed: SQLite does NOT corrupt such text — a probe in DeliveryContractTest
+ * round-trips U+D800 unchanged, so there is no silent loss to prevent here. The guard exists
+ * so the canonical store refuses exactly what the journal refused, and so malformed identity
+ * evidence cannot reach a durable row and travel on to a server that may be stricter. Also
+ * caps text at the journal's 8 KiB per-field limit rather than storing something unbounded.
+ */
+private fun wellFormedEvidenceText(value: String): Boolean {
+    if (value.isEmpty()) return false
+    var index = 0
+    var bytes = 0
+    while (index < value.length) {
+        val character = value[index]
+        when {
+            character.isHighSurrogate() -> {
+                if (index + 1 >= value.length || !value[index + 1].isLowSurrogate()) return false
+                bytes += 4
+                index += 2
+            }
+            character.isLowSurrogate() -> return false
+            else -> {
+                bytes += when {
+                    character.code < 0x80 -> 1
+                    character.code < 0x800 -> 2
+                    else -> 3
+                }
+                index++
+            }
+        }
+        if (bytes > 8192) return false
+    }
+    return true
+}
+
 internal enum class AckCorrelationOutcome {
     NOT_PREPARED, PREPARE_MISMATCH, ALREADY_SETTLED,
     APPLIED_SYNCED, APPLIED_NEEDS_REBASE,
@@ -60,7 +97,10 @@ internal suspend fun MaginaOlivoDatabase.prepareDeliveryDispatch(
     val outbox = syncOutboxDao()
     val prepareDao = deliveryDispatchPrepareDao()
 
-    if (identity.accountId.isBlank() || identity.issuer.isBlank() || identity.subject.isBlank()) {
+    if (identity.accountId.isBlank() || identity.issuer.isBlank() || identity.subject.isBlank() ||
+        !wellFormedEvidenceText(identity.accountId) || !wellFormedEvidenceText(identity.issuer) ||
+        !wellFormedEvidenceText(identity.subject)
+    ) {
         return@withTransaction PrepareOutcome.REJECTED
     }
     val op = outbox.findById(operationId) ?: return@withTransaction PrepareOutcome.REJECTED

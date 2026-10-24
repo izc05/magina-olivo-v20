@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo.data.local
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.core.content.FileProvider
+import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.isivoltpro.maginaolivo.core.common.AppError
@@ -89,6 +90,8 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -97,6 +100,7 @@ import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -785,7 +789,7 @@ class DeliveryContractTest {
     /** Rows of [table]; live rows only for tables with a metadata tail. */
     private fun count(table: String): Int =
         db.openHelper.readableDatabase.query(
-            if (table in setOf("sync_outbox", "delivery_held_receipts")) "SELECT COUNT(*) FROM $table" else "SELECT COUNT(*) FROM $table WHERE deleted_at IS NULL",
+            if (table in setOf("sync_outbox", "delivery_held_receipts", "delivery_dispatch_prepare")) "SELECT COUNT(*) FROM $table" else "SELECT COUNT(*) FROM $table WHERE deleted_at IS NULL",
         ).use { cursor ->
             cursor.moveToFirst()
             cursor.getInt(0)
@@ -1868,6 +1872,192 @@ class DeliveryContractTest {
         assertEquals("NEEDS_REBASE", still.lastErrorCode)
         assertEquals(0, count("delivery_held_receipts"))
     }
+
+    // ---------------------------------------------------------------------------------------
+    // G2.4 PARIDAD journal -> Room. Las cuatro garantias que hoy solo estaban probadas contra
+    // el diario de ficheros (DeliveryReceiptJournalTest), ahora contra la tabla canonica.
+    // Sin estas, retirar DeliveryReceiptJournal perderia garantias verificadas.
+    // ---------------------------------------------------------------------------------------
+
+    /** 1) Interrupcion entre registrar el ACK y actualizar el outbox: o todo, o nada. */
+    @Test
+    fun g24ParityAnInterruptionBetweenTheReceiptAndTheOutboxLeavesNoHalfState() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack) = fixture
+        val revocation = links.lastRevocation()
+        val before = db.syncOutboxDao().findById(op.id)!!
+        val died = runCatching {
+            db.withTransaction {
+                assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, revocation, now))
+                // El recibo ya esta escrito y el outbox anotado, pero el proceso muere aqui,
+                // antes de que la transaccion externa confirme.
+                assertEquals(
+                    DeliveryHeldReceiptEntity.HELD,
+                    db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state,
+                )
+                throw java.io.IOException("process died before commit")
+            }
+        }
+        assertTrue(died.isFailure)
+        // Ni recibo huerfano ni anotacion huerfana: exactamente como el rename atomico del diario.
+        assertNull(db.deliveryHeldReceiptDao().findByOperation(op.id))
+        assertEquals(before.lastErrorCode, db.syncOutboxDao().findById(op.id)!!.lastErrorCode)
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals("ok", integrity())
+        // Y nada se perdio: el mismo ACK se puede retener despues.
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, revocation, now))
+        assertEquals(1, count("delivery_held_receipts"))
+    }
+
+    /** 2) Muerte del proceso durante una transaccion y recuperacion al reabrir la base. */
+    @Test
+    fun g24ParityAnAbandonedTransactionIsRolledBackAndACommittedOneSurvivesReopening() = runBlocking {
+        val (links, id, op, identity, _) = preparable()
+        leaseIn(dir("parity-death")).use { lease ->
+            assertEquals(
+                PrepareOutcome.PREPARED,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now),
+            )
+        }
+        // Transaccion abandonada a nivel SQLite: nunca se marca correcta.
+        val raw = db.openHelper.writableDatabase
+        raw.beginTransaction()
+        raw.execSQL(
+            "INSERT INTO delivery_held_receipts (operation_id, delivery_id, account_id, farm_id, remote_version," +
+                " payload_hash, payload_version, revocation_operation_id, state, conflict_remote_version," +
+                " conflict_payload_hash, received_at, resolved_at) VALUES (?,?,?,?,7,?,2,?,'HELD',NULL,NULL,2000,NULL)",
+            arrayOf(
+                UUID.randomUUID().toString(), id.toString(), op.accountId!!, farmId.toString(),
+                "a".repeat(64), UUID.randomUUID().toString(),
+            ),
+        )
+        raw.endTransaction()
+        // Reapertura = recuperacion tras muerte del proceso.
+        db.close()
+        open()
+        assertEquals("ok", integrity())
+        assertEquals("La transaccion abandonada no deja fila", 0, count("delivery_held_receipts"))
+        // El PREPARE confirmado antes de la muerte sigue intacto, con sus bytes inmutables.
+        val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+        assertEquals(id, record.deliveryId)
+        assertEquals(deliveryPayloadHash(op.payloadJson!!, op.payloadVersion), record.payloadHash)
+        assertEquals(op.baseRemoteVersion, record.baseRemoteVersion)
+        assertEquals("Sigue sin liquidar: el resultado era desconocido", null, record.settledAt)
+        assertEquals(op.payloadJson, db.syncOutboxDao().findById(op.id)!!.payloadJson)
+    }
+
+    /**
+     * 3) UTF-8 invalido, corrupcion y truncado: nada se acepta ni se pierde en silencio.
+     *
+     * La sonda documenta el hallazgo real, comparando codigos numericos: SQLite conserva un
+     * surrogate suelto sin alterarlo, asi que NO hay perdida silenciosa en esta ruta. El
+     * rechazo se mantiene por paridad con el diario, que fallaba al codificar ese texto, y
+     * para que evidencia malformada no llegue a una fila duradera.
+     */
+    @Test
+    fun g24ParityMalformedTextCorruptionAndTruncationNeverPassSilently() = runBlocking {
+        val (links, id, op, identity, ack) = preparable()
+        val ledger = links.state.value.ledger
+        // Sonda: que hace realmente SQLite con un surrogate suelto. Se compara por codigo
+        // numerico, no por la cadena impresa, porque una consola puede falsear el caracter.
+        val malformed = "fixture-\uD800"
+        db.openHelper.writableDatabase.execSQL("CREATE TABLE IF NOT EXISTS utf8_probe (v TEXT)")
+        db.openHelper.writableDatabase.execSQL("INSERT INTO utf8_probe (v) VALUES (?)", arrayOf(malformed))
+        val roundTripped = db.openHelper.readableDatabase.query("SELECT v FROM utf8_probe").use { cursor ->
+            cursor.moveToFirst()
+            cursor.getString(0)
+        }
+        val storedCode = roundTripped.last().code
+        assertEquals("Longitud alterada: ${roundTripped.length}", malformed.length, roundTripped.length)
+        assertEquals(
+            "Codigo del ultimo caracter tras el viaje por SQLite: 0x" + storedCode.toString(16),
+            0xD800,
+            storedCode,
+        )
+        leaseIn(dir("parity-utf8")).use { lease ->
+            // (a) Un surrogate suelto en el issuer no es UTF-8 valido. El diario fallaba al
+            // codificarlo; la ruta Room lo rechaza antes de cualquier escritura duradera.
+            assertEquals(
+                PrepareOutcome.REJECTED,
+                db.prepareDeliveryDispatch(lease, op.id, identity.copy(issuer = "fixture-\uD800"), ledger, now),
+            )
+            // (b) Un subject malformado se rechaza por malformado, antes de compararlo.
+            assertEquals(
+                PrepareOutcome.REJECTED,
+                db.prepareDeliveryDispatch(lease, op.id, identity.copy(subject = "x|\uDFFF"), ledger, now),
+            )
+            // (c) Texto desmesurado: se rechaza en lugar de truncarse.
+            assertEquals(
+                PrepareOutcome.REJECTED,
+                db.prepareDeliveryDispatch(lease, op.id, identity.copy(issuer = "a".repeat(9000)), ledger, now),
+            )
+            assertEquals(0, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+            assertEquals(OutboxStatus.PENDING, db.syncOutboxDao().findById(op.id)!!.status)
+            // Con texto valido si se prepara.
+            assertEquals(PrepareOutcome.PREPARED, db.prepareDeliveryDispatch(lease, op.id, identity, ledger, now))
+        }
+        // (d) Hash guardado corrompido/truncado: la correlacion falla cerrada, no acepta.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE delivery_dispatch_prepare SET payload_hash = ? WHERE operation_id = ?",
+            arrayOf("a".repeat(10), op.id.toString()),
+        )
+        db.close()
+        open()
+        val before = db.deliveryDao().findById(id)!!
+        assertEquals(
+            AckCorrelationOutcome.PREPARE_MISMATCH,
+            db.correlateAuthenticatedDeliveryAck(ack, identity, ledger, now),
+        )
+        assertEquals("Nada se aplica sobre evidencia corrupta", before, db.deliveryDao().findById(id))
+        assertEquals(OutboxStatus.PROCESSING, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(0, count("delivery_held_receipts"))
+    }
+
+    /** 4) Concurrencia de dos emisores, lease, interrupcion y recuperacion. */
+    @Test
+    fun g24ParityTwoSendersCannotOwnTheSameDispatchAndRecoveryNeedsTheSameLock() = runBlocking {
+        val (links, _, op, identity, _) = preparable()
+        val ledger = links.state.value.ledger
+        val directory = dir("parity-concurrency")
+        val first = leaseIn(directory)
+        try {
+            // (a) Mientras el primero lo tiene, nadie mas adquiere el MISMO lock del SO.
+            assertNull("Un segundo emisor no puede poseer el mismo lease", DeliveryDispatchLease.tryAcquire(directory))
+            // (b) Dos intentos concurrentes de preparar el mismo intento: uno prepara, el otro
+            // encuentra el registro; nunca dos filas ni dos reclamaciones.
+            val outcomes = listOf(
+                async(Dispatchers.IO) { db.prepareDeliveryDispatch(first, op.id, identity, ledger, now) },
+                async(Dispatchers.IO) { db.prepareDeliveryDispatch(first, op.id, identity, ledger, now) },
+            ).awaitAll()
+            assertEquals(
+                setOf(PrepareOutcome.PREPARED, PrepareOutcome.ALREADY_PREPARED),
+                outcomes.toSet(),
+            )
+            assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(op.entityId).size)
+            assertEquals(1, db.deliveryDispatchPrepareDao().countUnsettled())
+        } finally { first.close() }
+        // (c) Interrupcion: el primero desaparece sin liquidar. Un lease ajeno no puede resolverlo.
+        leaseIn(dir("parity-foreign")).use { foreign ->
+            assertEquals(0, db.settleAbandonedPreparedDispatches(foreign, op.accountId!!, farmId, now))
+        }
+        assertEquals(1, db.deliveryDispatchPrepareDao().countUnsettled())
+        // (d) Recuperacion: solo quien vuelve a adquirir el MISMO lock lo liquida, y como
+        // desconocido, conservando UUID y bytes para que decida la idempotencia del servidor.
+        leaseIn(directory).use { second ->
+            assertEquals(1, db.settleAbandonedPreparedDispatches(second, op.accountId!!, farmId, now.plusSeconds(60)))
+        }
+        val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+        assertEquals(DeliveryDispatchPrepareEntity.SETTLED_UNKNOWN, record.settledOutcome)
+        assertEquals(op.payloadJson, db.syncOutboxDao().findById(op.id)!!.payloadJson)
+        assertEquals(0, db.deliveryDispatchPrepareDao().countUnsettled())
+        assertEquals("ok", integrity())
+    }
+
+    private fun integrity(): String =
+        db.openHelper.readableDatabase.query("PRAGMA integrity_check").use { cursor ->
+            cursor.moveToFirst()
+            cursor.getString(0)
+        }
 
     private companion object {
         const val DB = "delivery-contract-test.db"
