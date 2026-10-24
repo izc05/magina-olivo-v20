@@ -97,6 +97,51 @@ class LocalFarmLinkRepository(
     }
 
     /**
+     * G2.4: explicit renewed consent for one revoked farm, appended AFTER its revocation in the
+     * durable ledger. It only restores eligibility for new work: operations blocked by the
+     * revocation stay BLOCKED until their own explicit, authenticated reconciliation.
+     */
+    suspend fun reconsentFarm(expectedUserId: UUID, farmId: UUID, accepted: Boolean): FarmLinkLedger = account.withLocalIdentity { userId -> withContext(Dispatchers.IO) {
+        if (userId != expectedUserId) throw IOException("La cuenta ha cambiado. Revisa de nuevo la selección.")
+        if (!accepted) throw IOException("Confirma tu consentimiento para volver a vincular la finca.")
+        val old = reloadAndRequire(userId) ?: throw IOException("No hay consentimiento local para esta finca.")
+        val revocation = old.latestRevocation(farmId) ?: throw IOException("La finca no tiene una revocación vigente.")
+        val next = store.reconsent(FarmLinkReconsent(UUID.randomUUID(), subject(userId), farmId, revocation.operationId, Instant.now()))
+        mutable.value = FarmLinkLocalState(next)
+        next
+    } }
+
+    /** Fresh durable ledger for an explicit reconciliation; null when missing, unreadable or another account's. */
+    internal fun ledgerFor(userId: UUID): FarmLinkLedger? {
+        mutable.value = load()
+        if (!accessAllowed(userId)) return null
+        return mutable.value.ledger
+    }
+
+    /**
+     * G2.4: the farmer's explicit "reconcile this Pesada". The server confirms the identity and
+     * [lookup] reads the operation's server record and head with that session (no local lock
+     * held); the Room decision then runs under the local identity lock against the fresh ledger.
+     */
+    internal suspend fun reconcileBlockedDelivery(
+        operationId: UUID,
+        farmerConfirmed: Boolean,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        lookup: suspend (com.isivoltpro.maginaolivo.feature.account.AuthSession) -> RemoteDeliveryState,
+        ids: com.isivoltpro.maginaolivo.core.id.IdGenerator,
+        at: Instant = Instant.now(),
+    ): HeldReconciliationOutcome {
+        if (!farmerConfirmed) return HeldReconciliationOutcome.NOT_CONFIRMED
+        return account.withServerVerifiedIdentity(lookup) { userId, remote -> withContext(Dispatchers.IO) {
+            database.reconcileBlockedDelivery(
+                operationId,
+                HeldReconciliationAuthority(farmerConfirmed, userId.toString(), subject(userId), ledgerFor(userId), lease),
+                remote, ids, at,
+            )
+        } }
+    }
+
+    /**
      * G2.3: Revokes local consent eligibility for a farm, transitioning its pending outbox operations
      * to BLOCKED status in Room so they cannot be dispatched.
      */

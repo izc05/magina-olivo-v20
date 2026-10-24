@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo.feature.account
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -40,7 +41,12 @@ class AccountNetworkIsolationTest {
         override suspend fun refresh(session: AuthSession): AuthSession {
             refreshGate?.await(); refreshFailure?.let { throw it }; return refreshReply
         }
-        override suspend fun user(session: AuthSession) = session.userId to session.email
+        var userGate: CompletableDeferred<Unit>? = null
+        var userOverride: UUID? = null
+        var userCalls = 0
+        override suspend fun user(session: AuthSession): Pair<UUID, String> {
+            userCalls++; userGate?.await(); return (userOverride ?: session.userId) to session.email
+        }
         override suspend fun changePassword(session: AuthSession, password: String) = Unit
         override suspend fun signOut(session: AuthSession) { signOuts++ }
     }
@@ -164,5 +170,50 @@ class AccountNetworkIsolationTest {
         assertEquals(idA, store.read().session!!.userId)
         api.refreshGate!!.complete(Unit); refresh.join()
         assertEquals(idA, store.read().session!!.userId)
+    }
+
+    private fun signedInA(store: MemoryAccountSessionStore) = store.write(AccountRecord(session = session(idA, "a@example.com")))
+
+    @Test fun serverVerifiedIdentityCommitsOnlyForTheConfirmedAccount() = runTest {
+        val api = SlowApi(); val store = MemoryAccountSessionStore().also(::signedInA)
+        val repo = AccountRepository(api, store, { time })
+        val seen = mutableListOf<String>()
+        val result = repo.withServerVerifiedIdentity({ "head-for-" + it.userId }) { id, head -> seen += head; id }
+        assertEquals(idA, result)
+        assertEquals(listOf("head-for-$idA"), seen)
+        assertEquals(1, api.userCalls)
+    }
+
+    @Test fun serverVerifiedIdentityFailsClosedOnAnotherUserExpiryOrSimulation() = runTest {
+        val api = SlowApi().apply { userOverride = idB }
+        val repo = AccountRepository(api, MemoryAccountSessionStore().also(::signedInA), { time })
+        var commits = 0
+        val mismatch = runCatching { repo.withServerVerifiedIdentity({ }) { _, _ -> commits++ } }.exceptionOrNull()
+        assertEquals(AuthFailure.Kind.PROTOCOL, (mismatch as AuthFailure).kind)
+        val expired = AccountRepository(SlowApi(), MemoryAccountSessionStore().also(::expiringA), { time })
+        val stale = runCatching { expired.withServerVerifiedIdentity({ }) { _, _ -> commits++ } }.exceptionOrNull()
+        assertEquals(AuthFailure.Kind.EXPIRED, (stale as AuthFailure).kind)
+        val signedOut = AccountRepository(SlowApi(), MemoryAccountSessionStore(), { time })
+        val none = runCatching { signedOut.withServerVerifiedIdentity({ }) { _, _ -> commits++ } }.exceptionOrNull()
+        assertEquals(AuthFailure.Kind.CREDENTIALS, (none as AuthFailure).kind)
+        val simulated = AccountRepository(SimulatedAccountAuthApi(), MemoryAccountSessionStore().also(::signedInA), { time })
+        val fake = runCatching { simulated.withServerVerifiedIdentity({ }) { _, _ -> commits++ } }.exceptionOrNull()
+        assertEquals(AuthFailure.Kind.PROTOCOL, (fake as AuthFailure).kind)
+        assertEquals(0, commits)
+    }
+
+    @Test fun logoutDuringServerVerificationDiscardsTheCommitAndLocalWritesKeepGoing() = runTest {
+        val api = SlowApi().apply { userGate = CompletableDeferred() }
+        val store = MemoryAccountSessionStore().also(::signedInA)
+        val repo = AccountRepository(api, store, { time })
+        var commits = 0
+        val verify = async { runCatching { repo.withServerVerifiedIdentity({ }) { _, _ -> commits++ } }.exceptionOrNull() }
+        testScheduler.runCurrent()
+        repo.withLocalWriteIdentity { assertEquals("Field work does not wait for the server check", idA, it) }
+        repo.logout(false)
+        api.userGate!!.complete(Unit)
+        assertEquals(AuthFailure.Kind.CREDENTIALS, (verify.await() as AuthFailure).kind)
+        assertEquals(0, commits)
+        assertNull(store.read().session)
     }
 }

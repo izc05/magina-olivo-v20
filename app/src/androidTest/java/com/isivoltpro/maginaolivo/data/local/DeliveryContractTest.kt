@@ -28,6 +28,9 @@ import com.isivoltpro.maginaolivo.data.repository.deliveryPayloadHash
 import com.isivoltpro.maginaolivo.data.repository.AuthenticatedDeliveryAck
 import com.isivoltpro.maginaolivo.data.repository.HeldReceiptOutcome
 import com.isivoltpro.maginaolivo.data.repository.retainAckAfterRevocation
+import com.isivoltpro.maginaolivo.data.repository.HeldReconciliationOutcome
+import com.isivoltpro.maginaolivo.data.repository.RecoveredDeliveryReceipt
+import com.isivoltpro.maginaolivo.data.repository.RemoteDeliveryState
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryHeldReceiptEntity
 import com.isivoltpro.maginaolivo.data.repository.AndroidFarmLinkLedger
 import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
@@ -1245,8 +1248,15 @@ class DeliveryContractTest {
     }
 
     /** A request in flight (attempted, PROCESSING) when the farmer revokes the farm's consent. */
-    private suspend fun inFlightThenRevoked(): Triple<LocalFarmLinkRepository, com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity, AuthenticatedDeliveryAck> {
-        val (_, links) = configureConsentedWrites()
+    private data class HeldFixture(
+        val links: LocalFarmLinkRepository,
+        val op: com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity,
+        val ack: AuthenticatedDeliveryAck,
+        val account: AccountRepository,
+    )
+
+    private suspend fun inFlightThenRevoked(): HeldFixture {
+        val (account, links) = configureConsentedWrites()
         val id = ok(deliveries.create(draft(2_800_000, north to null)))
         val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
         db.openHelper.writableDatabase.execSQL(
@@ -1255,7 +1265,7 @@ class DeliveryContractTest {
         links.revokeConsentForFarm(farmId)
         val ack = AuthenticatedDeliveryAck(op.id, id, farmId, op.accountId!!, op.accountId!!, 7L,
             deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!, op.payloadVersion)
-        return Triple(links, db.syncOutboxDao().findById(op.id)!!, ack)
+        return HeldFixture(links, db.syncOutboxDao().findById(op.id)!!, ack, account)
     }
 
     private fun LocalFarmLinkRepository.lastRevocation() = state.value.ledger!!.revocations.last().operationId
@@ -1352,6 +1362,135 @@ class DeliveryContractTest {
         assertEquals(HeldReceiptOutcome.REJECTED, db.retainAckAfterRevocation(ack, UUID.randomUUID(), now))
         assertEquals(0, count("delivery_held_receipts"))
         assertEquals(OutboxStatus.PENDING, db.syncOutboxDao().findById(op.id)!!.status)
+    }
+
+    private fun lease(name: String): DeliveryDispatchLease {
+        val directory = File(context.noBackupFilesDir, "g24-$name-${UUID.randomUUID()}")
+        linkedFixtureCleanup.add { directory.deleteRecursively() }
+        return checkNotNull(DeliveryDispatchLease.tryAcquire(directory))
+    }
+
+    private suspend fun HeldFixture.reconcile(
+        lease: DeliveryDispatchLease, head: RemoteDeliveryState, confirmed: Boolean = true,
+    ) = links.reconcileBlockedDelivery(op.id, confirmed, lease, { head }, RandomIds, now)
+
+    private fun HeldFixture.headAtReceipt() = RemoteDeliveryState(null, ack.remoteVersion, ack.payloadHash)
+
+    @Test
+    fun g24HeldAckReconcilesOnlyAfterConfirmationRenewedConsentAndAnUnchangedHead() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        val before = db.deliveryDao().findById(ack.deliveryId)!!
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        lease("reconcile").use { lease ->
+            assertEquals(HeldReconciliationOutcome.NOT_CONFIRMED, fixture.reconcile(lease, fixture.headAtReceipt(), confirmed = false))
+            assertEquals("No renewed consent yet", HeldReconciliationOutcome.NOT_AUTHORIZED, fixture.reconcile(lease, fixture.headAtReceipt()))
+            links.reconsentFarm(account.state.value.userId!!, farmId, true)
+            // Another device moved the server row on: the old receipt must not be applied.
+            assertEquals(HeldReconciliationOutcome.REMOTE_CONFLICT,
+                fixture.reconcile(lease, RemoteDeliveryState(null, 8L, "b".repeat(64))))
+            assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+            assertEquals(DeliveryHeldReceiptEntity.HELD, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
+            assertEquals(before, db.deliveryDao().findById(ack.deliveryId))
+            assertEquals(HeldReconciliationOutcome.SYNCED, fixture.reconcile(lease, fixture.headAtReceipt()))
+        }
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(DeliveryHeldReceiptEntity.RECONCILED, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
+        val after = db.deliveryDao().findById(ack.deliveryId)!!
+        assertEquals(2_800_000L, after.netGrams)
+        assertEquals(7L, after.metadata.remoteVersion)
+        assertEquals(SyncStatus.SYNCED, after.metadata.syncStatus)
+        assertEquals(op.payloadJson, db.syncOutboxDao().findById(op.id)!!.payloadJson)
+    }
+
+    @Test
+    fun g24RenewalFollowedByAnotherRevocationDoesNotReconcile() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        links.revokeConsentForFarm(farmId)
+        lease("revoked-again").use { lease ->
+            assertEquals(HeldReconciliationOutcome.NOT_AUTHORIZED, fixture.reconcile(lease, fixture.headAtReceipt()))
+        }
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(3, links.state.value.ledger!!.let { it.revocations.size + it.reconsents.size })
+    }
+
+    @Test
+    fun g24ReconciliationNeverAdoptsAccountLessEditsMadeAfterRevocation() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        ok(deliveries.update(ack.deliveryId, draft(3_100_000, north to null)))
+        val edit = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, ack.deliveryId).single { it.id != op.id }
+        assertNull(edit.accountId)
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        lease("unbound").use { lease ->
+            assertEquals(HeldReconciliationOutcome.NEEDS_REBASE, fixture.reconcile(lease, fixture.headAtReceipt()))
+        }
+        val frozen = db.syncOutboxDao().findById(edit.id)!!
+        assertNull("The account-less edit is not adopted", frozen.accountId)
+        assertEquals(OutboxStatus.BLOCKED, frozen.status)
+        assertEquals(edit.payloadJson, frozen.payloadJson)
+        assertEquals(3_100_000L, db.deliveryDao().findById(ack.deliveryId)!!.netGrams)
+        assertTrue(db.syncOutboxDao().listReadyForAccount(ack.accountId, now.toEpochMilli()).isEmpty())
+    }
+
+    @Test
+    fun g24BlockedWithoutReceiptKeepsTheSameOperationWhenTheServerResultIsUnknown() = runBlocking {
+        // ACK lost: the request may or may not have reached the server before revocation.
+        val fixture = inFlightThenRevoked()
+        val (links, op, _, account) = fixture
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        lease("unknown").use { lease ->
+            assertEquals(HeldReconciliationOutcome.REOPENED, fixture.reconcile(lease, RemoteDeliveryState(null, null, null)))
+        }
+        val reopened = db.syncOutboxDao().findById(op.id)!!
+        assertEquals(OutboxStatus.FAILED, reopened.status)
+        assertEquals("OUTCOME_UNKNOWN", reopened.lastErrorCode)
+        assertEquals(op.payloadJson, reopened.payloadJson)
+        assertEquals(op.baseRemoteVersion, reopened.baseRemoteVersion)
+        assertEquals(1, reopened.attemptCount)
+        assertEquals(listOf(op.id), db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, op.entityId).map { it.id })
+    }
+
+    @Test
+    fun g24BlockedWithoutReceiptAppliesAVerifiedServerRecordOfTheSameOperation() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        val record = RecoveredDeliveryReceipt(op.id, op.entityId, ack.accountId, 7L, ack.payloadHash, op.payloadVersion)
+        lease("server-record").use { lease ->
+            assertEquals("A different payload for this UUID is a conflict", HeldReconciliationOutcome.RECEIPT_CONFLICT,
+                fixture.reconcile(lease, RemoteDeliveryState(record.copy(payloadHash = "c".repeat(64)), 7L, "c".repeat(64))))
+            assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+            assertEquals(HeldReconciliationOutcome.REMOTE_CONFLICT, fixture.reconcile(lease, RemoteDeliveryState(record, 9L, "d".repeat(64))))
+            assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+            assertEquals(HeldReconciliationOutcome.SYNCED, fixture.reconcile(lease, RemoteDeliveryState(record, 7L, ack.payloadHash)))
+        }
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(7L, db.deliveryDao().findById(op.entityId)!!.metadata.remoteVersion)
+        assertEquals(2_800_000L, db.deliveryDao().findById(op.entityId)!!.netGrams)
+    }
+
+    @Test
+    fun g24ReconciliationNeedsTheLeaseAndTheSameAccountThroughout() = runBlocking {
+        val fixture = inFlightThenRevoked()
+        val (links, op, ack, account) = fixture
+        assertEquals(HeldReceiptOutcome.HELD, db.retainAckAfterRevocation(ack, links.lastRevocation(), now))
+        links.reconsentFarm(account.state.value.userId!!, farmId, true)
+        val released = lease("released").also { it.close() }
+        assertTrue(runCatching { fixture.reconcile(released, fixture.headAtReceipt()) }.exceptionOrNull() is IllegalStateException)
+        lease("logout").use { lease ->
+            // The farmer signs out while the server lookup is in flight: nothing is committed.
+            val failure = runCatching {
+                links.reconcileBlockedDelivery(op.id, true, lease, { account.logout(false); fixture.headAtReceipt() }, RandomIds, now)
+            }.exceptionOrNull()
+            assertTrue(failure is com.isivoltpro.maginaolivo.feature.account.AuthFailure)
+        }
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(DeliveryHeldReceiptEntity.HELD, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
     }
 
     private fun <T> ok(result: AppResult<T>): T = when (result) {

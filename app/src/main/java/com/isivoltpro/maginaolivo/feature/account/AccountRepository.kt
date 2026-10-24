@@ -77,6 +77,29 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
         if (requireFresh && !identity.expiresAt.isAfter(now())) throw AuthFailure(AuthFailure.Kind.EXPIRED)
         action(identity.userId)
     }
+    /**
+     * Explicit reconciliation only. The server confirms whom the stored session belongs to, then
+     * [remote] runs authenticated reads with it while no local lock is held, and [commit] runs
+     * under the local identity lock only if no logout or account change happened meanwhile.
+     * Never refreshes or changes the stored identity, and never extends offline attribution.
+     */
+    internal suspend fun <P, T> withServerVerifiedIdentity(
+        remote: suspend (AuthSession) -> P,
+        commit: suspend (java.util.UUID, P) -> T,
+    ): T = network.withLock {
+        val api = requireApi()
+        if (api.simulated) throw AuthFailure(AuthFailure.Kind.PROTOCOL)
+        val (start, session) = local.withLock { generation to current().session }
+        if (session == null) throw AuthFailure(AuthFailure.Kind.CREDENTIALS)
+        if (!session.expiresAt.isAfter(now())) throw AuthFailure(AuthFailure.Kind.EXPIRED)
+        val (id, _) = api.user(session)
+        if (id != session.userId) throw AuthFailure(AuthFailure.Kind.PROTOCOL)
+        val prepared = remote(session)
+        local.withLock {
+            if (generation != start) throw AuthFailure(AuthFailure.Kind.CREDENTIALS)
+            commit(id, prepared)
+        }
+    }
     suspend fun simulateLink(online:Boolean) { if(api?.simulated==true)completeLink("${api.redirectUri}?code=simulated-code",online) }
     suspend fun login(email: String, password: String, online: Boolean) = operation(online,true) { start ->
         val normalized = checkedEmail(email)

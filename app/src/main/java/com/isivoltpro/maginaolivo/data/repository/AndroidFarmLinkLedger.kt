@@ -22,7 +22,7 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
         check(parser.nextClean() == '\u0000')
         val payload = envelope.getString("payload")
         check(hash(payload.toByteArray()) == envelope.getString("sha256"))
-        val json = JSONObject(payload); val format = json.getInt("format"); check(format in 1..2)
+        val json = JSONObject(payload); val format = json.getInt("format"); check(format in 1..3)
         val records = json.getJSONArray("consents")
         val entries = (0 until records.length()).map { index ->
             val value = records.getJSONObject(index)
@@ -37,7 +37,7 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
         check(entries.map { it.subject }.distinct().size == 1)
         check(entries.map { it.operationId }.distinct().size == entries.size)
         check(entries.flatMap { it.farms }.map { it.id }.distinct().size == entries.sumOf { it.farms.size })
-        val revocations = if (format == 2) {
+        val revocations = if (format >= 2) {
             val events = json.getJSONArray("revocations")
             (0 until events.length()).map { i -> events.getJSONObject(i).let { event ->
                 FarmLinkRevocation(
@@ -45,14 +45,45 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
                     event.getString("subject"),
                     UUID.fromString(event.getString("farm")),
                     Instant.parse(event.getString("revokedAt")),
+                    // Format 2 kept revocations in append order without an explicit sequence.
+                    if (format == 3) event.getLong("sequence") else i + 1L,
+                )
+            } }
+        } else emptyList()
+        val reconsents = if (format == 3) {
+            val events = json.getJSONArray("reconsents")
+            (0 until events.length()).map { i -> events.getJSONObject(i).let { event ->
+                FarmLinkReconsent(
+                    UUID.fromString(event.getString("operation")),
+                    event.getString("subject"),
+                    UUID.fromString(event.getString("farm")),
+                    UUID.fromString(event.getString("afterRevocation")),
+                    Instant.parse(event.getString("acceptedAt")),
+                    event.getInt("textVersion"),
+                    event.getLong("sequence"),
                 )
             } }
         } else emptyList()
         val historicalFarms = entries.flatMap { it.farms }.map { it.id }.toSet()
-        check(revocations.all { it.subject == entries.first().subject && it.farmId in historicalFarms })
-        check(revocations.map { it.farmId }.distinct().size == revocations.size)
-        check((entries.map { it.operationId } + revocations.map { it.operationId }).distinct().size == entries.size + revocations.size)
-        FarmLinkLedger(entries, revocations)
+        val subject = entries.first().subject
+        check(revocations.all { it.subject == subject && it.farmId in historicalFarms })
+        check(reconsents.all { it.subject == subject && it.farmId in historicalFarms && it.textVersion in 1..2 })
+        val operations = entries.map { it.operationId } + revocations.map { it.operationId } + reconsents.map { it.operationId }
+        check(operations.distinct().size == operations.size)
+        val sequences = revocations.map { it.sequence } + reconsents.map { it.sequence }
+        check(sequences.all { it >= 1 } && sequences.distinct().size == sequences.size)
+        // Per farm, events alternate revocation -> renewal of THAT revocation -> revocation ...
+        historicalFarms.forEach { farm ->
+            var revoked: FarmLinkRevocation? = null
+            (revocations.filter { it.farmId == farm }.map { it.sequence to it } +
+                reconsents.filter { it.farmId == farm }.map { it.sequence to it }).sortedBy { it.first }.forEach { (_, event) ->
+                when (event) {
+                    is FarmLinkRevocation -> { check(revoked == null); revoked = event }
+                    is FarmLinkReconsent -> { check(revoked?.operationId == event.afterRevocation); revoked = null }
+                }
+            }
+        }
+        FarmLinkLedger(entries, revocations, reconsents)
     } }
 
     override fun append(consent: FarmLinkConsent): FarmLinkLedger = synchronized(lock) { guarded {
@@ -65,7 +96,7 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
             }
             check(consent.farms.none { it.id in old.farmIds })
         }
-        val next = FarmLinkLedger(previous?.consents.orEmpty() + consent, previous?.revocations.orEmpty())
+        val next = FarmLinkLedger(previous?.consents.orEmpty() + consent, previous?.revocations.orEmpty(), previous?.reconsents.orEmpty())
         persist(next)
         next
     } }
@@ -73,14 +104,32 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
     override fun revoke(revocation: FarmLinkRevocation): FarmLinkLedger = synchronized(lock) { guarded {
         val previous = read() ?: throw IOException("farm_link_consent_missing")
         check(revocation.subject == previous.subject && revocation.farmId in previous.farmIds)
-        // Duplicate revocation is a no-op. A new consent requires a separate explicit flow.
+        // Revoking a farm that is already revoked is a no-op. Renewal is a separate explicit event.
         if (revocation.farmId in previous.revokedFarmIds) return@guarded previous
-        check(revocation.operationId !in previous.consents.map { it.operationId })
-        check(revocation.operationId !in previous.revocations.map { it.operationId })
-        val next = previous.copy(revocations = previous.revocations + revocation)
+        check(revocation.operationId !in operations(previous))
+        val next = previous.copy(revocations = previous.revocations + revocation.copy(sequence = nextSequence(previous)))
         persist(next)
         next
     } }
+
+    override fun reconsent(reconsent: FarmLinkReconsent): FarmLinkLedger = synchronized(lock) { guarded {
+        val previous = read() ?: throw IOException("farm_link_consent_missing")
+        previous.reconsents.find { it.operationId == reconsent.operationId }?.let { existing ->
+            check(existing == reconsent.copy(sequence = existing.sequence)); return@guarded previous
+        }
+        check(reconsent.subject == previous.subject && reconsent.textVersion in 1..2)
+        // Only the revocation currently in force can be renewed; the ledger, not a clock, orders them.
+        check(previous.latestRevocation(reconsent.farmId)?.operationId == reconsent.afterRevocation)
+        check(reconsent.operationId !in operations(previous))
+        val next = previous.copy(reconsents = previous.reconsents + reconsent.copy(sequence = nextSequence(previous)))
+        persist(next)
+        next
+    } }
+
+    private fun operations(ledger: FarmLinkLedger) = ledger.consents.map { it.operationId } +
+        ledger.revocations.map { it.operationId } + ledger.reconsents.map { it.operationId }
+    private fun nextSequence(ledger: FarmLinkLedger) =
+        ((ledger.revocations.map { it.sequence } + ledger.reconsents.map { it.sequence }).maxOrNull() ?: 0L) + 1
 
     private fun persist(next: FarmLinkLedger) {
         val rows = JSONArray()
@@ -91,14 +140,26 @@ class AndroidFarmLinkLedger(private val file: File) : FarmLinkLedgerStore {
                 .put("farms",farms).put("backup",value.backupId.toString()).put("manifestHash",value.backupManifestHash)
                 .put("acceptedAt",value.acceptedAt.toString()).put("textVersion",value.textVersion).put("state",value.state))
         }
-        val payloadRecord = JSONObject().put("format", if (next.revocations.isEmpty()) 1 else 2).put("consents",rows)
-        if (next.revocations.isNotEmpty()) {
+        val format = when { next.reconsents.isNotEmpty() -> 3; next.revocations.isNotEmpty() -> 2; else -> 1 }
+        val payloadRecord = JSONObject().put("format", format).put("consents",rows)
+        if (format >= 2) {
             val events = JSONArray()
             next.revocations.forEach { event ->
-                events.put(JSONObject().put("operation",event.operationId.toString()).put("subject",event.subject)
-                    .put("farm",event.farmId.toString()).put("revokedAt",event.revokedAt.toString()))
+                val value = JSONObject().put("operation",event.operationId.toString()).put("subject",event.subject)
+                    .put("farm",event.farmId.toString()).put("revokedAt",event.revokedAt.toString())
+                if (format == 3) value.put("sequence", event.sequence)
+                events.put(value)
             }
             payloadRecord.put("revocations", events)
+        }
+        if (format == 3) {
+            val events = JSONArray()
+            next.reconsents.forEach { event ->
+                events.put(JSONObject().put("operation",event.operationId.toString()).put("subject",event.subject)
+                    .put("farm",event.farmId.toString()).put("afterRevocation",event.afterRevocation.toString())
+                    .put("acceptedAt",event.acceptedAt.toString()).put("textVersion",event.textVersion).put("sequence",event.sequence))
+            }
+            payloadRecord.put("reconsents", events)
         }
         val payload = payloadRecord.toString()
         val bytes = JSONObject().put("payload",payload).put("sha256",hash(payload.toByteArray())).toString().toByteArray()
