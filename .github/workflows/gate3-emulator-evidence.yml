@@ -6,6 +6,7 @@ on:
       - qa/gate3-emulator-evidence-v2
       - "feat/**"
       - "hotfix/**"
+      - "integration/g2-1.0-review"
   pull_request:
     branches:
       - main
