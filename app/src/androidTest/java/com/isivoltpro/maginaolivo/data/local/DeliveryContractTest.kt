@@ -22,6 +22,9 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.DeliverySyncReceipt
 import com.isivoltpro.maginaolivo.data.repository.DeliveryReceiptOutcome
 import com.isivoltpro.maginaolivo.data.repository.applyConfirmedDeliveryReceipt
+import com.isivoltpro.maginaolivo.data.repository.rebaseConfirmedDeliveryEdit
+import com.isivoltpro.maginaolivo.data.repository.DeliveryRebaseOutcome
+import com.isivoltpro.maginaolivo.data.repository.deliveryPayloadHash
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
@@ -910,6 +913,128 @@ class DeliveryContractTest {
         assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(valid.copy(remoteVersion = 0L), now))
         assertEquals(before, db.deliveryDao().findById(deliveryId))
         assertEquals(OutboxStatus.PENDING, dao.findById(initial.id)!!.status)
+    }
+
+    @Test
+    fun g24FailedThenEditedRecoversOldIntentAndSyncsLatestKilosExactlyOnce() = runBlocking {
+        val (receipt, oldPayload) = failedWithNewerEdit()
+        val dao = db.syncOutboxDao()
+        assertTrue(dao.listReadyForAccount(receipt.accountId, now.toEpochMilli()).isEmpty())
+        assertEquals(0, dao.claimFailedDeliveryForRecovery(receipt.operationId, "other", farmId, now.toEpochMilli()))
+        assertEquals(1, dao.claimFailedDeliveryForRecovery(receipt.operationId, receipt.accountId, farmId, now.toEpochMilli()))
+        assertEquals(0, dao.claimFailedDeliveryForRecovery(receipt.operationId, receipt.accountId, farmId, now.toEpochMilli()))
+        assertEquals(oldPayload, dao.findById(receipt.operationId)!!.payloadJson)
+        assertEquals(DeliveryReceiptOutcome.NEEDS_REBASE, db.applyConfirmedDeliveryReceipt(receipt, now))
+        val hash = deliveryPayloadHash(receipt.payloadJson, 2)!!
+        assertEquals(DeliveryRebaseOutcome.REBASED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
+        ))
+        val next = dao.listReadyForAccount(receipt.accountId, now.toEpochMilli()).single()
+        assertEquals(OutboxOperation.UPDATE, next.operation)
+        assertEquals(7L, next.baseRemoteVersion)
+        assertTrue(next.id != receipt.operationId)
+        assertEquals(3_300_000L, org.json.JSONObject(next.payloadJson!!).getLong("netGrams"))
+        assertEquals(DeliveryRebaseOutcome.ALREADY_REBASED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
+        ))
+        assertEquals(next.id, dao.listReadyForAccount(receipt.accountId, now.toEpochMilli()).single().id)
+        assertEquals(DeliveryReceiptOutcome.SYNCED, db.applyConfirmedDeliveryReceipt(
+            receipt.copy(operationId = next.id, payloadJson = next.payloadJson!!, remoteVersion = 8L), now,
+        ))
+        assertEquals(3_300_000L, db.deliveryDao().findById(receipt.deliveryId)!!.netGrams)
+        assertEquals(SyncStatus.SYNCED, db.deliveryDao().findById(receipt.deliveryId)!!.metadata.syncStatus)
+        assertEquals(2, dao.listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId).size)
+        assertTrue(dao.listReadyForAccount(receipt.accountId, now.toEpochMilli()).isEmpty())
+    }
+
+    @Test
+    fun g24ConcurrentRemoteEditPreventsRebaseAtVersionSeven() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.applyConfirmedDeliveryReceipt(receipt, now)
+        val before = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId)
+        assertEquals(DeliveryRebaseOutcome.REMOTE_CONFLICT, db.rebaseConfirmedDeliveryEdit(
+            receipt, 8L, deliveryPayloadHash(receipt.payloadJson, 2)!!, { _, _ -> true }, RandomIds, now,
+        ))
+        assertEquals(before, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId))
+        assertEquals(3_300_000L, db.deliveryDao().findById(receipt.deliveryId)!!.netGrams)
+    }
+
+    @Test
+    fun g24RevokedConsentAndAlteredHashCannotUnlockEdits() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.applyConfirmedDeliveryReceipt(receipt, now)
+        val before = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId)
+        assertEquals(DeliveryRebaseOutcome.NOT_AUTHORIZED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, deliveryPayloadHash(receipt.payloadJson, 2)!!, { _, _ -> false }, RandomIds, now,
+        ))
+        assertEquals(DeliveryRebaseOutcome.REMOTE_CONFLICT, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, "0".repeat(64), { _, _ -> true }, RandomIds, now,
+        ))
+        assertEquals(before, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId))
+    }
+
+    @Test
+    fun g24RecoveryClaimCannotBypassBlockedSibling() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='BLOCKED' WHERE entity_id=? AND id!=?",
+            arrayOf(receipt.deliveryId.toString(), receipt.operationId.toString()),
+        )
+        assertEquals(0, db.syncOutboxDao().claimFailedDeliveryForRecovery(
+            receipt.operationId, receipt.accountId, farmId, now.toEpochMilli(),
+        ))
+    }
+
+    @Test
+    fun g24RebaseRejectsAccountlessOrPreviouslyAttemptedEdits() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.applyConfirmedDeliveryReceipt(receipt, now)
+        val hash = deliveryPayloadHash(receipt.payloadJson, 2)!!
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET account_id=NULL WHERE entity_id=? AND status='BLOCKED'",
+            arrayOf(receipt.deliveryId.toString()),
+        )
+        assertEquals(DeliveryRebaseOutcome.REJECTED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
+        ))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET account_id='account-A', attempt_count=1 WHERE entity_id=? AND status='BLOCKED'",
+            arrayOf(receipt.deliveryId.toString()),
+        )
+        assertEquals(DeliveryRebaseOutcome.REJECTED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, hash, { _, _ -> true }, RandomIds, now,
+        ))
+        assertEquals(2, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId).size)
+    }
+
+    @Test
+    fun g24RebaseDoesNotMakeADeletedDeliveryDispatchable() = runBlocking {
+        val (receipt, _) = failedWithNewerEdit()
+        db.applyConfirmedDeliveryReceipt(receipt, now)
+        val local = db.deliveryDao().findById(receipt.deliveryId)!!
+        db.deliveryDao().upsert(local.copy(metadata = local.metadata.copy(deletedAt = now)))
+        assertEquals(DeliveryRebaseOutcome.REJECTED, db.rebaseConfirmedDeliveryEdit(
+            receipt, 7L, deliveryPayloadHash(receipt.payloadJson, 2)!!, { _, _ -> true }, RandomIds, now,
+        ))
+        assertTrue(db.syncOutboxDao().listReadyForAccount(receipt.accountId, now.toEpochMilli()).isEmpty())
+        assertEquals(now, db.deliveryDao().findById(receipt.deliveryId)!!.metadata.deletedAt)
+    }
+
+    private suspend fun failedWithNewerEdit(): Pair<DeliverySyncReceipt, String> {
+        val deliveryId = ok(deliveries.create(draft(2_850_000, north to null)))
+        val dao = db.syncOutboxDao()
+        val original = dao.listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
+        // Explicit synthetic binding: production adoption remains a separate consent-gated step.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='FAILED', attempt_count=1, account_id='account-A' WHERE id=?",
+            arrayOf(original.id.toString()),
+        )
+        ok(deliveries.update(deliveryId, draft(3_300_000, north to null)))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET account_id='account-A' WHERE entity_id=? AND status='PENDING'",
+            arrayOf(deliveryId.toString()),
+        )
+        return DeliverySyncReceipt(original.id, deliveryId, farmId, "account-A", original.payloadJson!!, 7L) to original.payloadJson!!
     }
 
     private fun <T> ok(result: AppResult<T>): T = when (result) {

@@ -99,6 +99,40 @@ interface SyncOutboxDao {
     )
     suspend fun listReadyForAccount(accountId: String, nowEpochMillis: Long): List<SyncOutboxEntity>
 
+    /**
+     * Recover one uncertain Delivery result before dispatching its newer snapshot.
+     * This does not grant consent or authorize HTTP. The caller must check those afresh.
+     * No age-based PROCESSING takeover: a slow request may still own that operation.
+     * The atomic UPDATE preserves the old UUID, bytes and base version.
+     */
+    @Query(
+        """
+        UPDATE sync_outbox
+        SET status = 'PROCESSING', attempt_count = attempt_count + 1,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND account_id = :accountId AND farm_id = :farmId
+          AND account_id != '' AND payload_json IS NOT NULL AND payload_json != ''
+          AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE')
+          AND payload_version IN (1, 2) AND status = 'FAILED'
+          AND (next_attempt_at IS NULL OR next_attempt_at <= :nowEpochMillis)
+          AND NOT EXISTS (
+              SELECT 1 FROM sync_outbox sibling
+              WHERE sibling.entity_type = sync_outbox.entity_type
+                AND sibling.entity_id = sync_outbox.entity_id AND sibling.id != sync_outbox.id
+                AND sibling.status != 'CONFIRMED'
+                AND (sibling.status != 'PENDING' OR sibling.attempt_count != 0
+                     OR sibling.account_id IS NULL OR sibling.account_id != :accountId
+                     OR sibling.farm_id IS NULL OR sibling.farm_id != :farmId)
+          )
+        """,
+    )
+    suspend fun claimFailedDeliveryForRecovery(
+        operationId: UUID,
+        accountId: String,
+        farmId: UUID,
+        nowEpochMillis: Long,
+    ): Int
+
     @Query(
         """
         SELECT * FROM sync_outbox
@@ -137,7 +171,7 @@ interface SyncOutboxDao {
      */
     @Query(
         """
-        UPDATE sync_outbox SET status = 'BLOCKED', updated_at = :nowEpochMillis
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = 'NEEDS_REBASE', updated_at = :nowEpochMillis
         WHERE entity_type = :entityType AND entity_id = :entityId AND id != :confirmedOperationId
           AND status IN ('PENDING', 'PROCESSING', 'FAILED')
         """,
@@ -148,6 +182,17 @@ interface SyncOutboxDao {
         confirmedOperationId: UUID,
         nowEpochMillis: Long,
     ): Int
+
+    /** Only snapshots explicitly quarantined for rebase and never attempted may be replaced. */
+    @Query(
+        """
+        DELETE FROM sync_outbox
+        WHERE entity_type = 'DELIVERY' AND entity_id = :deliveryId
+          AND account_id = :accountId AND farm_id = :farmId
+          AND status = 'BLOCKED' AND last_error_code = 'NEEDS_REBASE' AND attempt_count = 0
+        """,
+    )
+    suspend fun deleteUnattemptedRebaseSnapshots(deliveryId: UUID, accountId: String, farmId: UUID): Int
 
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE status IN ('PENDING', 'PROCESSING', 'FAILED')")
     suspend fun countActive(): Int
