@@ -98,6 +98,30 @@ before(async () => {
   assert.ok(ready, 'PostgREST schema reload timed out');
 });
 
+test('G2 RPC grants and receipt tables stay account-only behind RLS',()=>{
+  for(const signature of [
+    'public.reserve_local_farm_g1c(jsonb,uuid)',
+    'public.create_own_workspace(uuid,jsonb)',
+    'public.create_reserved_farm(uuid,uuid,uuid,jsonb)',
+    'public.create_own_parcel(uuid,jsonb)',
+    'public.get_own_parcel(uuid)',
+    'public.create_own_campaign(uuid,jsonb)',
+    'public.get_own_campaign(uuid)',
+    'public.sync_own_delivery_v2(uuid,jsonb)',
+    'public.get_own_delivery_v2(uuid)',
+    'public.sync_own_expense(uuid,jsonb)',
+    'public.check_sync_operations(uuid[])'
+  ]) {
+    const grants=sql(`SELECT has_function_privilege('anon',${quote(signature)},'EXECUTE'),
+      has_function_privilege('authenticated',${quote(signature)},'EXECUTE');`);
+    assert.equal(grants,'f|t',signature);
+  }
+  assert.equal(sql(`SELECT has_schema_privilege('anon','magina_g2_private','USAGE'),
+    has_table_privilege('authenticated','magina_g2_private.sync_operations','SELECT');`),'f|f');
+  for(const table of ['magina_g2_private.sync_operations','public.delivery_parcels','public.campaign_parcels'])
+    assert.equal(sql(`SELECT relrowsecurity FROM pg_class WHERE oid=${quote(table)}::regclass;`),'t',table);
+});
+
 test('sync_own_delivery inserts delivery idempotently and returns confirmation', async () => {
   const opId = randomUUID();
   const deliveryId = randomUUID();
