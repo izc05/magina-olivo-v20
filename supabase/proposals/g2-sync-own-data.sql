@@ -902,10 +902,10 @@ BEGIN
         RAISE EXCEPTION 'farm denied' USING ERRCODE='42501';
     END IF;
     token_issuer:=claims->>'iss';
-    IF token_issuer IS NULL OR token_issuer !~ '^https://[^/?#]+/auth/v1$' THEN
+    IF token_issuer IS DISTINCT FROM 'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1' THEN
         RAISE EXCEPTION 'farm denied' USING ERRCODE='42501';
     END IF;
-    token_issuer:=regexp_replace(token_issuer,'/auth/v1$','');
+    token_issuer:='https://zubpicdibqbmewxeurhm.supabase.co';
     IF p_operation_id IS NULL OR p_reservation_operation_id IS NULL OR p_reservation_receipt_id IS NULL
        OR p_farm IS NULL OR jsonb_typeof(p_farm)<>'object'
        OR (SELECT count(*) FROM jsonb_object_keys(p_farm))<>9

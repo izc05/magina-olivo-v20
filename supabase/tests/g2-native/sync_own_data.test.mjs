@@ -844,12 +844,12 @@ async function readComplete(id,token=actors.A.token) {
 // Same issuer fixture as the G1c native suite. GoTrue creates the real account;
 // only the HTTP-local issuer is replaced and signed with the DISPOSABLE key.
 // This proves gateway verification + SQL authorization, not production HTTPS Auth.
-function reservationGatewayToken(actor) {
+function reservationGatewayToken(actor, issuer='https://zubpicdibqbmewxeurhm.supabase.co/auth/v1') {
   const claims = JSON.parse(Buffer.from(actor.token.split('.')[1], 'base64url'));
   assert.ok(claims.iss.startsWith('http://'), 'Review local Auth issuer fixture');
   const part = value => Buffer.from(JSON.stringify(value)).toString('base64url');
   const body = `${part({alg:'HS256',typ:'JWT'})}.${part({
-    ...claims, iss:'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1'
+    ...claims, iss:issuer
   })}`;
   return body + '.' + createHmac('sha256', status.JWT_SECRET).update(body).digest('base64url');
 }
@@ -1148,6 +1148,24 @@ test('reserved farm bootstrap denies mismatched reservations and different opera
   assert.deepEqual(results.map(x=>x.status).sort(),[200,409]);
   assert.equal(sql(`SELECT count(*) FROM public.farms WHERE id=${quote(f.farm)}::uuid;`),'1');
   assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_type='FARM' AND entity_id=${quote(f.farm)}::uuid;`),'1');
+});
+
+test('reserved farm bootstrap rejects another project issuer even with a matching reservation',async()=>{
+  const f=await clientBootstrapFixture(true);
+  const foreignIssuer='https://another-project.supabase.co/auth/v1';
+  const foreignFarm=randomUUID(),reservationOperation=randomUUID(),receipt=randomUUID();
+  sql(`INSERT INTO magina_g1c_private.g1c_reservations
+    (actor_id,operation_id,farm_id,payload_hash,remote_workspace_id,issuer,receipt_id)
+    VALUES (${quote(actors.A.id)}::uuid,${quote(reservationOperation)}::uuid,
+    ${quote(foreignFarm)}::uuid,${quote('a'.repeat(64))},${quote(f.workspace)}::uuid,
+    ${quote('https://another-project.supabase.co')},${quote(receipt)}::uuid);`);
+  const token=reservationGatewayToken(actors.A,foreignIssuer);
+  const body={...f.farmBody,p_operation_id:randomUUID(),
+    p_reservation_operation_id:reservationOperation,p_reservation_receipt_id:receipt,
+    p_farm:{...f.farmBody.p_farm,id:foreignFarm}};
+  const result=await http('/rest/v1/rpc/create_reserved_farm',{token,body});
+  assert.equal(result.status,403);
+  assert.equal(sql(`SELECT count(*) FROM public.farms WHERE id=${quote(foreignFarm)}::uuid;`),'0');
 });
 
 async function campaignBootstrapFixture(status='CLOSED') {
