@@ -1507,7 +1507,9 @@ class DeliveryContractTest {
         val fixture = inFlightThenRevoked()
         val (links, op, ack, account) = fixture
         links.reconsentFarm(account.state.value.userId!!, farmId, true)
-        val record = RecoveredDeliveryReceipt(op.id, op.entityId, ack.accountId, 7L, ack.payloadHash, op.payloadVersion)
+        val record = RecoveredDeliveryReceipt(
+            op.id, op.entityId, SyncEntityType.DELIVERY, ack.accountId, 7L, ack.payloadHash, op.payloadVersion,
+        )
         lease("server-record").use { lease ->
             assertEquals("A different payload for this UUID is a conflict", HeldReconciliationOutcome.RECEIPT_CONFLICT,
                 fixture.reconcile(lease, RemoteDeliveryState(record.copy(payloadHash = "c".repeat(64)), 7L, "c".repeat(64))))

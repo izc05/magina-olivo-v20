@@ -31,6 +31,16 @@ internal data class DeliverySyncReceipt(
 internal data class RecoveredDeliveryReceipt(
     val operationId: UUID,
     val deliveryId: UUID,
+    /**
+     * The entity type the server reported for this operation. Deliberately has no default: the
+     * server's historical receipt carries it, so the adapter must state what it actually read
+     * instead of letting an omission pass as a Delivery.
+     */
+    val entityType: SyncEntityType,
+    /**
+     * The owner of the data. The server derives the actor from the verified session and does
+     * NOT return it, so the adapter fills this from that session — never from response JSON.
+     */
     val accountId: String,
     val remoteVersion: Long,
     val payloadHash: String,
@@ -56,6 +66,9 @@ internal fun verifiedRecoveredDeliveryReceipt(
             (operation.baseRemoteVersion == null || recovered.remoteVersion <= operation.baseRemoteVersion)) ||
         operation.id != recovered.operationId ||
         operation.entityType != SyncEntityType.DELIVERY ||
+        // The server's own receipt must say DELIVERY too: a receipt for another entity that
+        // happens to share this operation UUID is never adopted as this Pesada's.
+        recovered.entityType != SyncEntityType.DELIVERY ||
         operation.operation !in setOf(OutboxOperation.CREATE, OutboxOperation.UPDATE) ||
         operation.entityId != recovered.deliveryId ||
         operation.accountId != recovered.accountId ||
