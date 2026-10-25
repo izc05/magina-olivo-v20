@@ -142,6 +142,7 @@ internal class DeliveryDispatchWorker(
     ): DispatchOutcome {
         var sawReceipt = false
         var wrongEntity = false
+        var foreignEntityType: SyncEntityType? = null
         var transportFailure: DeliveryRpcFailure? = null
         val farmId = database.syncOutboxDao().findById(operationId)?.farmId
 
@@ -174,6 +175,17 @@ internal class DeliveryDispatchWorker(
                     transportFailure = failure
                     return@recordAuthenticatedDeliveryAck null
                 }
+                // Review #774: the worker builds an AuthenticatedDeliveryAck, and that type
+                // carries no entity type, so the DELIVERY guard of
+                // verifiedRecoveredDeliveryReceipt is NOT on this path. A receipt that reports
+                // another entity must be dropped here, by the worker, or a row for another
+                // entity sharing this operation UUID would be adopted as this Pesada's ACK.
+                // Red before this guard existed: a USER_PROFILE receipt sharing this operation
+                // UUID was applied and the Pesada was marked SYNCED.
+                if (receipt != null && receipt.entityType != SyncEntityType.DELIVERY) {
+                    foreignEntityType = receipt.entityType
+                    return@recordAuthenticatedDeliveryAck null
+                }
                 if (receipt == null || farmId == null) {
                     null
                 } else {
@@ -195,6 +207,9 @@ internal class DeliveryDispatchWorker(
         }
 
         if (wrongEntity) return DispatchOutcome.CONFLICT
+        // A receipt for another entity is never this Pesada's. It is a conflict, not an unknown
+        // outcome: the server answered, and what it answered does not belong to this Delivery.
+        if (foreignEntityType != null) return DispatchOutcome.CONFLICT
         transportFailure?.let { failure ->
             return when {
                 failure.outcomeUnknown -> DispatchOutcome.OUTCOME_UNKNOWN

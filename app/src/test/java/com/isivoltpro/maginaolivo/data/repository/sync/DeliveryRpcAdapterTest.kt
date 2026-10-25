@@ -6,6 +6,8 @@ import java.io.IOException
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -216,6 +218,66 @@ class DeliveryRpcAdapterTest {
         )
     }
 
+
+    // --------------------------------------------------- regresiones de la revision de #774
+
+    @Test
+    fun cancellationTravelsUntouchedAndIsNeverReportedAsANetworkError() = runBlocking {
+        // Review #774: a cancelled request is cooperative control flow, not a lost response.
+        // Turning it into NETWORK would report OUTCOME_UNKNOWN for something the caller itself
+        // cancelled, and would hide the cancellation from the enclosing scope.
+        val transport = object : DeliveryRpcTransport {
+            override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =
+                throw kotlinx.coroutines.CancellationException("cancelado por el llamante")
+        }
+        val adapter = DeliveryRpcAdapter(transport)
+
+        for (call in listOf<suspend () -> Any?>(
+            { adapter.syncOwnDelivery(session, operationId, "{}") },
+            { adapter.checkSyncOperations(session, listOf(operationId)) },
+            { adapter.getOwnDeliveryV2(session, deliveryId) },
+        )) {
+            var cancelled = false
+            try {
+                call()
+            } catch (expected: kotlinx.coroutines.CancellationException) {
+                cancelled = true
+            } catch (failure: DeliveryRpcFailure) {
+                fail("La cancelacion no puede convertirse en ${failure.error}")
+            }
+            assertTrue("La CancellationException debe propagarse tal cual", cancelled)
+        }
+    }
+
+    @Test
+    fun aRealCoroutineCancellationIsNotSwallowedByTheAdapter() = runBlocking {
+        // The same thing, but with a cancellation the runtime raises rather than a thrown
+        // instance: the adapter must not convert a cancelled scope into an unknown outcome.
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val transport = object : DeliveryRpcTransport {
+            override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse {
+                started.complete(Unit)
+                kotlinx.coroutines.delay(60_000)
+                return DeliveryRpcResponse(200, "{}")
+            }
+        }
+        val adapter = DeliveryRpcAdapter(transport)
+        var seen: Throwable? = null
+        val job = kotlinx.coroutines.GlobalScope.launch {
+            try {
+                adapter.checkSyncOperations(session, listOf(operationId))
+            } catch (error: Throwable) {
+                seen = error
+                throw error
+            }
+        }
+        started.await()
+        job.cancelAndJoin()
+        assertTrue(
+            "Se esperaba una cancelacion, no ${seen?.javaClass?.simpleName}",
+            seen is kotlinx.coroutines.CancellationException,
+        )
+    }
     private suspend fun failureOf(block: suspend () -> Any?): DeliveryRpcFailure {
         try {
             block()

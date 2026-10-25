@@ -2526,6 +2526,63 @@ class DeliveryContractTest {
         assertEquals(fixture.identity.subject, prepared.subject)
     }
 
+    @Test
+    fun g24WorkerAReceiptForAnotherEntityTypeIsNeverAdoptedAsThisPesada() = runBlocking {
+        // Review #774: the worker builds an AuthenticatedDeliveryAck, which carries no entity
+        // type, so the DELIVERY guard of verifiedRecoveredDeliveryReceipt is NOT on this path.
+        // Before the fix, a receipt for another entity sharing this operation UUID was adopted
+        // as this Pesada's ACK and the delivery was marked SYNCED.
+        val fixture = preparable()
+        val before = db.deliveryDao().findById(fixture.deliveryId)!!
+        val hash = deliveryPayloadHash(fixture.op.payloadJson!!, fixture.op.payloadVersion)!!
+
+        // ONE lease for the whole loop: the same sender retrying. A fresh lease directory per
+        // iteration would be a DIFFERENT sender, and the operation claimed by the first epoch
+        // would correctly be refused as REJECTED, which would test the wrong thing.
+        val directory = dir("worker-foreign")
+        leaseIn(directory).use { lease ->
+        for (type in SyncEntityType.entries.filter { it != SyncEntityType.DELIVERY }) {
+            val transport = FakeRpcTransport(
+                onWrite = { DeliveryRpcResponse(200, writeBody(fixture)) },
+                onCheck = {
+                    // Everything else matches: same operation, same delivery, same hash.
+                    DeliveryRpcResponse(200, """{"confirmed_receipts":[{"operation_id":"${fixture.op.id}",
+                        "entity_id":"${fixture.deliveryId}","entity_type":"$type","remote_version":7,
+                        "payload_version":${fixture.op.payloadVersion},"payload_hash":"$hash"}]}""")
+                },
+            )
+            assertEquals(
+                "entity_type=$type no puede adoptarse como esta pesada",
+                DispatchOutcome.CONFLICT,
+                workerWith(transport, fixture.links).dispatch(fixture.op.id, lease),
+            )
+            val after = db.deliveryDao().findById(fixture.deliveryId)!!
+            assertEquals("entity_type=$type", SyncStatus.PENDING, after.metadata.syncStatus)
+            assertEquals("entity_type=$type", before.netGrams, after.netGrams)
+            assertEquals("entity_type=$type", before.metadata.remoteVersion, after.metadata.remoteVersion)
+            assertNull("entity_type=$type: nada se retiene como prueba",
+                db.deliveryHeldReceiptDao().findByOperation(fixture.op.id))
+            assertNull("entity_type=$type: el PREPARE sigue sin liquidar",
+                db.deliveryDispatchPrepareDao().findByOperation(fixture.op.id)!!.settledAt)
+            assertEquals("entity_type=$type", OutboxStatus.PROCESSING,
+                db.syncOutboxDao().findById(fixture.op.id)!!.status)
+        }
+
+        // And the SAME sender, with a DELIVERY receipt, still applies it: the guard is specific
+        // to the entity type and does not poison the operation for the legitimate receipt.
+        val good = FakeRpcTransport(
+            onWrite = { DeliveryRpcResponse(200, writeBody(fixture)) },
+            onCheck = { DeliveryRpcResponse(200, receiptBody(fixture)) },
+        )
+        assertEquals(
+            DispatchOutcome.SYNCED,
+            workerWith(good, fixture.links).dispatch(fixture.op.id, lease),
+        )
+        }
+        assertEquals(SyncStatus.SYNCED, db.deliveryDao().findById(fixture.deliveryId)!!.metadata.syncStatus)
+        assertEquals(before.netGrams, db.deliveryDao().findById(fixture.deliveryId)!!.netGrams)
+    }
+
     private companion object {
         const val DB = "delivery-contract-test.db"
 

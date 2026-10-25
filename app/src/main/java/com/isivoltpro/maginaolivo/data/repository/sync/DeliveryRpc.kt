@@ -5,6 +5,7 @@ import com.isivoltpro.maginaolivo.data.repository.RecoveredDeliveryReceipt
 import com.isivoltpro.maginaolivo.data.repository.RemoteDeliveryState
 import com.isivoltpro.maginaolivo.feature.account.AuthSession
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
@@ -32,7 +33,11 @@ internal class DeliveryRpcResponse(val status: Int, val body: String) {
     override fun toString() = "DeliveryRpcResponse(status=$status, body=redacted)"
 }
 
-/** One POST to `/rest/v1/rpc/<name>`. Implementations restrict themselves to the three names. */
+/**
+ * One remote procedure call by contracted name. The route, the host and the headers belong to the
+ * implementation, not to this contract: the adapter only knows the three names in [DeliveryRpcAdapter.NAMES]
+ * and refuses anything else.
+ */
 internal fun interface DeliveryRpcTransport {
     suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse
 }
@@ -164,6 +169,13 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
             transport.rpc(name, body, session.accessToken)
         } catch (failure: DeliveryRpcFailure) {
             throw failure
+        } catch (cancellation: CancellationException) {
+            // Review #774: cancellation is cooperative control flow, NOT a network error.
+            // Swallowing it here would report OUTCOME_UNKNOWN for a request the caller itself
+            // cancelled, and would break structured concurrency: the enclosing scope would never
+            // learn it was cancelled, while `withActiveRequest` would still be unwound by this
+            // throw. It must travel untouched.
+            throw cancellation
         } catch (_: Exception) {
             // A cut connection is an unknown outcome, not a failed dispatch.
             throw DeliveryRpcFailure(DeliveryRpcError.NETWORK)

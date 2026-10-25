@@ -1,19 +1,3 @@
-// PROPUESTA, NO COMPILADA. Este fichero NO esta en app/src/main.
-//
-// ArchitectureBoundaryTest#infrastructureOutsideAuthorizedAuthRemainsBlocked prohibe nombrar el
-// backend agricola fuera de /data/remote/weather/ y /feature/account/, cada una con su
-// autorizacion fechada del propietario. Este transporte es el unico fichero del adaptador G2.4
-// que abre una conexion y nombra la URL del proyecto, asi que queda aqui, fuera de las fuentes
-// compiladas, hasta que exista una autorizacion expresa equivalente para su ruta.
-//
-// Para activarlo haria falta, en este orden:
-//   1. Autorizacion expresa del propietario, con fecha y PR, igual que las dos ya existentes.
-//   2. Mover este fichero a app/src/main/java/com/isivoltpro/maginaolivo/data/repository/sync/.
-//   3. Anadir esa ruta a la lista de excepciones del guardia, con el comentario de autorizacion.
-//   4. Construirlo y entregarlo a DeliveryRpcAdapter en el punto de composicion.
-//
-// Hasta entonces el worker funciona contra un DeliveryRpcTransport de pruebas y la aplicacion no
-// puede enviar una pesada a Supabase ni por accidente.
 package com.isivoltpro.maginaolivo.data.repository.sync
 
 import com.isivoltpro.maginaolivo.feature.account.AuthConfiguration
@@ -31,7 +15,7 @@ import kotlinx.coroutines.withContext
  *
  * **NOT WIRED.** Nothing in the app constructs this class. Agricultural data reaches Supabase
  * only once something builds it with a real [AuthConfiguration] and hands it to
- * [SupabaseDeliveryRpc]. That wiring is a separate, explicitly authorized step; until then the
+ * [DeliveryRpcAdapter]. That wiring is a separate, explicitly authorized step; until then the
  * worker runs against a test transport and the app cannot send a Pesada even by accident.
  *
  * The caller still owes the G2.4 contract: a durable PREPARE before the first request, the lease
@@ -46,7 +30,7 @@ internal class HttpsDeliveryRpcTransport(
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =
         withContext(Dispatchers.IO) {
-            check(name in SupabaseDeliveryRpc.NAMES) { "RPC fuera del contrato G2.4: $name" }
+            check(name in DeliveryRpcAdapter.NAMES) { "RPC fuera del contrato G2.4: $name" }
             check(accessToken.isNotBlank())
             val connection = URL("${configuration.projectUrl}/rest/v1/rpc/$name")
                 .openConnection() as HttpsURLConnection
