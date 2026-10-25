@@ -47,6 +47,12 @@ import com.isivoltpro.maginaolivo.feature.account.AccountRepository
 import com.isivoltpro.maginaolivo.feature.account.MemoryAccountSessionStore
 import com.isivoltpro.maginaolivo.feature.account.SimulatedAccountAuthApi
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchWorker
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcResponse
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcTransport
+import com.isivoltpro.maginaolivo.data.repository.sync.DispatchOutcome
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcAdapter
+import org.junit.Assert.fail
 import com.isivoltpro.maginaolivo.data.repository.sync.claimDeliveryRecoveryWithLease
 import com.isivoltpro.maginaolivo.data.repository.sync.recoverAbandonedDeliveryClaim
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
@@ -1611,6 +1617,8 @@ class DeliveryContractTest {
         val op: com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity,
         val identity: DispatchIdentity,
         val ack: AuthenticatedDeliveryAck,
+        // Last on purpose: the existing tests destructure the first five components.
+        val account: AccountRepository,
     )
 
     private suspend fun preparable(): PreparedFixture {
@@ -1626,7 +1634,7 @@ class DeliveryContractTest {
             op.id, id, farmId, op.accountId!!, op.accountId!!, 7L,
             deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!, op.payloadVersion,
         )
-        return PreparedFixture(links, id, op, identity, ack)
+        return PreparedFixture(links, id, op, identity, ack, account)
     }
 
     private fun dir(name: String) = File(context.noBackupFilesDir, "g24-$name-${UUID.randomUUID()}")
@@ -2315,6 +2323,207 @@ class DeliveryContractTest {
         )
         assertEquals(DeliveryHeldReceiptEntity.HELD, db.deliveryHeldReceiptDao().findByOperation(op.id)!!.state)
         assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(id).size)
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // G2.4 WORKER. The transport is a fake, but every rule under test is the production one:
+    // PREPARE before the request, the lease held across the request and the persistence of its
+    // result, consent rechecked after the wait, and identity verified by the real repository.
+    // ---------------------------------------------------------------------------------------
+
+    /** A transport that answers the three contracted RPCs and can misbehave on demand. */
+    private class FakeRpcTransport(
+        private val onWrite: () -> DeliveryRpcResponse,
+        private val onCheck: () -> DeliveryRpcResponse,
+        private val onHead: () -> DeliveryRpcResponse = { DeliveryRpcResponse(200, """{"delivery":{"version":7},"head_payload_hash":null}""") },
+    ) : DeliveryRpcTransport {
+        val names = mutableListOf<String>()
+        override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse {
+            names += name
+            check(accessToken.isNotBlank()) { "El transporte exige el token de la sesion verificada" }
+            return when (name) {
+                DeliveryRpcAdapter.SYNC_OWN_DELIVERY_V2 -> onWrite()
+                DeliveryRpcAdapter.CHECK_SYNC_OPERATIONS -> onCheck()
+                else -> onHead()
+            }
+        }
+    }
+
+    private fun receiptBody(fixture: PreparedFixture): String {
+        val hash = deliveryPayloadHash(fixture.op.payloadJson!!, fixture.op.payloadVersion)!!
+        return """{"confirmed_receipts":[{"operation_id":"${fixture.op.id}","entity_id":"${fixture.deliveryId}",
+            "entity_type":"DELIVERY","remote_version":7,"payload_version":${fixture.op.payloadVersion},
+            "payload_hash":"$hash"}]}"""
+    }
+
+    private fun writeBody(fixture: PreparedFixture) =
+        """{"operation_id":"${fixture.op.id}","entity_id":"${fixture.deliveryId}","remote_version":7,
+           "payload_version":${fixture.op.payloadVersion}}"""
+
+    private fun workerWith(transport: DeliveryRpcTransport, links: LocalFarmLinkRepository) =
+        DeliveryDispatchWorker(db, links, DeliveryRpcAdapter(transport)) { now }
+
+    @Test
+    fun g24WorkerALostResponseLeavesTheOutcomeUnknownAndRecoversByTheSameUuid() = runBlocking {
+        val fixture = preparable()
+        val directory = dir("worker-lost")
+        val before = db.deliveryDao().findById(fixture.deliveryId)!!
+
+        // The response is lost after the server may well have committed.
+        val cut = FakeRpcTransport(
+            onWrite = { throw java.io.IOException("respuesta perdida") },
+            onCheck = { DeliveryRpcResponse(200, """{"confirmed_receipts":[]}""") },
+        )
+        leaseIn(directory).use { lease ->
+            assertEquals(
+                DispatchOutcome.OUTCOME_UNKNOWN,
+                workerWith(cut, fixture.links).dispatch(fixture.op.id, lease),
+            )
+            // The durable PREPARE exists and is NOT settled: the lease still owns the intent.
+            val prepared = db.deliveryDispatchPrepareDao().findByOperation(fixture.op.id)!!
+            assertNull("Un resultado desconocido no se liquida solo", prepared.settledAt)
+            assertEquals(lease.claimMarker(), prepared.leaseMarker)
+            val op = db.syncOutboxDao().findById(fixture.op.id)!!
+            assertEquals(OutboxStatus.PROCESSING, op.status)
+            assertEquals("Mismos bytes tras perder la respuesta", fixture.op.payloadJson, op.payloadJson)
+            assertEquals(fixture.op.id, op.id)
+            assertEquals(SyncStatus.PENDING, db.deliveryDao().findById(fixture.deliveryId)!!.metadata.syncStatus)
+        }
+
+        // The server did have it. The SAME UUID recovers its receipt; no second operation exists.
+        val serving = FakeRpcTransport(
+            onWrite = { fail("La recuperacion no reenvia"); error("inalcanzable") },
+            onCheck = { DeliveryRpcResponse(200, receiptBody(fixture)) },
+        )
+        leaseIn(directory).use { lease ->
+            val worker = workerWith(serving, fixture.links)
+            assertEquals(1, worker.settleInterrupted(farmId, lease))
+            assertEquals(DispatchOutcome.SYNCED, worker.recoverLostResponse(fixture.op.id, lease))
+            assertEquals(DispatchOutcome.SYNCED, worker.recoverLostResponse(fixture.op.id, lease))
+        }
+        assertEquals(DeliveryRpcAdapter.CHECK_SYNC_OPERATIONS, serving.names.first())
+        val after = db.deliveryDao().findById(fixture.deliveryId)!!
+        assertEquals(SyncStatus.SYNCED, after.metadata.syncStatus)
+        assertEquals("Los kilos no se tocan", before.netGrams, after.netGrams)
+        assertEquals(7L, after.metadata.remoteVersion)
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(fixture.op.id)!!.status)
+        assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(fixture.deliveryId).size)
+        assertEquals(1, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, fixture.deliveryId).size)
+    }
+
+    @Test
+    fun g24WorkerARevocationDuringTheRequestRetainsTheReceiptAndLeavesThePesadaUntouched() = runBlocking {
+        val fixture = preparable()
+        val before = db.deliveryDao().findById(fixture.deliveryId)!!
+        // The farmer revokes while the request is in flight: after the wait, consent is gone.
+        val transport = FakeRpcTransport(
+            onWrite = { DeliveryRpcResponse(200, writeBody(fixture)) },
+            onCheck = {
+                runBlocking { fixture.links.revokeConsentForFarm(farmId) }
+                DeliveryRpcResponse(200, receiptBody(fixture))
+            },
+        )
+        leaseIn(dir("worker-revoked")).use { lease ->
+            assertEquals(
+                DispatchOutcome.HELD_AFTER_REVOCATION,
+                workerWith(transport, fixture.links).dispatch(fixture.op.id, lease),
+            )
+        }
+        val after = db.deliveryDao().findById(fixture.deliveryId)!!
+        assertEquals("La pesada no se marca sincronizada", SyncStatus.PENDING, after.metadata.syncStatus)
+        assertEquals(before.netGrams, after.netGrams)
+        assertEquals(before.metadata.remoteVersion, after.metadata.remoteVersion)
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(fixture.op.id)!!.status)
+        // The receipt is kept as evidence, not discarded.
+        assertEquals(
+            DeliveryHeldReceiptEntity.HELD,
+            db.deliveryHeldReceiptDao().findByOperation(fixture.op.id)!!.state,
+        )
+        assertEquals(
+            DeliveryDispatchPrepareEntity.SETTLED_HELD,
+            db.deliveryDispatchPrepareDao().findByOperation(fixture.op.id)!!.settledOutcome,
+        )
+    }
+
+    @Test
+    fun g24WorkerAnExpiredTokenNeverIssuesTheRequestAndWritesNothing() = runBlocking {
+        // Same account and the SAME consent as a normal dispatch: the only thing wrong is that
+        // the access token has expired by the time the worker runs. The clock is the repository's
+        // own, so the expiry is observed exactly where production observes it.
+        // Real time to start with: the simulated Auth API issues its expiry from the wall clock,
+        // so a fixture date in the future would make the session born expired.
+        var clock = Instant.now()
+        val api = object : AccountAuthApi by SimulatedAccountAuthApi() { override val simulated = false }
+        val account = AccountRepository(api, MemoryAccountSessionStore()) { clock }
+        account.login("expired@example.test", "password42", true)
+        val userId = account.state.value.userId!!
+        val ledgerFile = File(context.noBackupFilesDir, "g24-expired-${UUID.randomUUID()}.json")
+        val store = AndroidFarmLinkLedger(ledgerFile)
+        linkedFixtureCleanup.add {
+            store.read()?.consents?.forEach {
+                File(context.noBackupFilesDir, "account-link-backups/${it.backupId}").deleteRecursively()
+            }
+            listOf(ledgerFile, File(ledgerFile.path + ".bak"), File(ledgerFile.path + ".new")).forEach { it.delete() }
+        }
+        val links = LocalFarmLinkRepository(context, db, account, "fixture-project", store)
+        links.consent(userId, links.choices().filter { it.id == farmId }, true)
+        val writer = OfflineFirstDeliveryRepository(
+            db, FixedClock(now), RandomIds, TestDispatchers, writeScope = links,
+        ) { ZoneOffset.UTC }
+        val deliveryId = ok(writer.create(draft(2_800_000, north to null)))
+        val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
+        assertEquals(userId, checkNotNull(account.state.value.userId))
+
+        // Now the token is past its expiry, as the repository sees time.
+        clock = clock.plusSeconds(86_400)
+
+        val transport = FakeRpcTransport(
+            onWrite = { fail("Un token caducado no envia nada"); error("inalcanzable") },
+            onCheck = { fail("Un token caducado no lee nada"); error("inalcanzable") },
+        )
+        leaseIn(dir("worker-expired")).use { lease ->
+            assertEquals(
+                DispatchOutcome.NOT_AUTHORIZED,
+                workerWith(transport, links).dispatch(op.id, lease),
+            )
+        }
+        assertTrue("No se abrio ninguna peticion", transport.names.isEmpty())
+        assertNull(
+            "Sin autoridad vigente no hay PREPARE",
+            db.deliveryDispatchPrepareDao().findByOperation(op.id),
+        )
+        assertEquals(OutboxStatus.PENDING, db.syncOutboxDao().findById(op.id)!!.status)
+        assertEquals(SyncStatus.PENDING, db.deliveryDao().findById(deliveryId)!!.metadata.syncStatus)
+    }
+
+    @Test
+    fun g24WorkerAnAccountChangeDuringTheRequestCommitsNothing() = runBlocking {
+        val fixture = preparable()
+        val before = db.deliveryDao().findById(fixture.deliveryId)!!
+        val account = fixture.account
+        // The session disappears while the request is in flight: the commit must be refused.
+        val transport = FakeRpcTransport(
+            onWrite = { DeliveryRpcResponse(200, writeBody(fixture)) },
+            onCheck = {
+                runBlocking { account.logout(false) }
+                DeliveryRpcResponse(200, receiptBody(fixture))
+            },
+        )
+        leaseIn(dir("worker-account-change")).use { lease ->
+            assertEquals(
+                DispatchOutcome.NOT_AUTHORIZED,
+                workerWith(transport, fixture.links).dispatch(fixture.op.id, lease),
+            )
+        }
+        val after = db.deliveryDao().findById(fixture.deliveryId)!!
+        assertEquals("Un cambio de cuenta no confirma nada", SyncStatus.PENDING, after.metadata.syncStatus)
+        assertEquals(before.netGrams, after.netGrams)
+        assertEquals(before.metadata.remoteVersion, after.metadata.remoteVersion)
+        assertNull(db.deliveryHeldReceiptDao().findByOperation(fixture.op.id))
+        // The PREPARE written before the request survives, unsettled, under its original subject.
+        val prepared = db.deliveryDispatchPrepareDao().findByOperation(fixture.op.id)!!
+        assertNull(prepared.settledAt)
+        assertEquals(fixture.identity.subject, prepared.subject)
     }
 
     private companion object {
