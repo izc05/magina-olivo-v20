@@ -65,10 +65,13 @@ before(async () => {
     '20261016041222_g0_legacy_storage_parcel_hardening.sql',
     '20261016041601_g0_aggregate_identity_guards.sql'
   ];
-  const baselineDDL = migrations.map(name =>
+  const combined = process.env.MAGINA_COMBINED_NATIVE === '1';
+  const baselineDDL = combined ? '' : migrations.map(name =>
     readFileSync(new URL(`../../migrations/${name}`, import.meta.url), 'utf8')
   ).join('\n');
-  const proposalDDL = ['g1c-reservations.sql', 'g2-sync-own-data.sql','g2-parcel-bootstrap.sql'].map(name =>
+  const proposalDDL = (combined
+    ? ['g2-sync-own-data.sql', 'g2-parcel-bootstrap.sql']
+    : ['g1c-reservations.sql', 'g2-sync-own-data.sql', 'g2-parcel-bootstrap.sql']).map(name =>
     readFileSync(new URL(`../../proposals/${name}`, import.meta.url), 'utf8')
   ).join('\n');
 
@@ -99,7 +102,7 @@ before(async () => {
 });
 
 test('G2 RPC grants and receipt tables stay account-only behind RLS',()=>{
-  for(const signature of [
+  const signatures = [
     'public.reserve_local_farm_g1c(jsonb,uuid)',
     'public.create_own_workspace(uuid,jsonb)',
     'public.create_reserved_farm(uuid,uuid,uuid,jsonb)',
@@ -111,7 +114,16 @@ test('G2 RPC grants and receipt tables stay account-only behind RLS',()=>{
     'public.get_own_delivery_v2(uuid)',
     'public.sync_own_expense(uuid,jsonb)',
     'public.check_sync_operations(uuid[])'
-  ]) {
+  ];
+  if (process.env.MAGINA_COMBINED_NATIVE === '1') signatures.push(
+    'public.accept_farm_contract(uuid)',
+    'public.accept_harvest_share_agreement(uuid)',
+    'public.claim_farm_invitation(text)',
+    'public.confirm_farm_invitation(uuid)',
+    'public.has_farm_capability(uuid,text)',
+    'public.user_accessible_farm_ids()'
+  );
+  for(const signature of signatures) {
     const grants=sql(`SELECT has_function_privilege('anon',${quote(signature)},'EXECUTE'),
       has_function_privilege('authenticated',${quote(signature)},'EXECUTE');`);
     assert.equal(grants,'f|t',signature);
