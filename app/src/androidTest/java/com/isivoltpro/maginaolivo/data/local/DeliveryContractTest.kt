@@ -49,9 +49,6 @@ import com.isivoltpro.maginaolivo.feature.account.SimulatedAccountAuthApi
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.claimDeliveryRecoveryWithLease
 import com.isivoltpro.maginaolivo.data.repository.sync.recoverAbandonedDeliveryClaim
-import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryReceiptIntent
-import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryReceiptJournal
-import com.isivoltpro.maginaolivo.account.reservation.ReservationActor
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
@@ -1269,30 +1266,32 @@ class DeliveryContractTest {
         val (_, links) = configureConsentedWrites()
         val id = ok(deliveries.create(draft(2_800_000, north to null)))
         val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
-        val directory = File(context.noBackupFilesDir, "g24-receipt-${UUID.randomUUID()}")
-        linkedFixtureCleanup.add { directory.deleteRecursively() }
-        val file = File(directory, "operation.receipt")
-        // Synthetic server destination, fixed BEFORE the simulated request/revocation.
-        val intent = DeliveryReceiptIntent(
-            ReservationActor("fixture-project", UUID.fromString(op.accountId!!)), workspaceId,
-            UUID.randomUUID(), links.state.value.ledger!!.consents.single().operationId,
-            farmId, op.id, id, op.payloadVersion, deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)!!,
-            op.baseRemoteVersion,
+        // El ambito se prepara ANTES de la peticion simulada, en la tabla canonica.
+        val consent = links.state.value.ledger!!.consents.single()
+        val identity = DispatchIdentity(
+            accountId = op.accountId!!, issuer = "fixture-project",
+            subject = links.subject(UUID.fromString(op.accountId!!)), localWorkspaceId = workspaceId,
         )
-        DeliveryReceiptJournal(file).prepare(intent)
-        db.openHelper.writableDatabase.execSQL(
-            "UPDATE sync_outbox SET status='PROCESSING', attempt_count=1 WHERE id=?", arrayOf(op.id.toString()),
-        )
+        leaseIn(dir("blocked-ack")).use { lease ->
+            assertEquals(
+                PrepareOutcome.PREPARED,
+                db.prepareDeliveryDispatch(lease, op.id, identity, links.state.value.ledger, now),
+            )
+        }
         val before = db.deliveryDao().findById(id)!!
         links.revokeConsentForFarm(farmId)
-        DeliveryReceiptJournal(file).record(intent, 7L)
         val ack = DeliverySyncReceipt(op.id, id, farmId, op.accountId!!, op.payloadJson!!, 7L)
         assertEquals(DeliveryReceiptOutcome.REJECTED, db.applyConfirmedDeliveryReceipt(ack, now))
         assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(op.id)!!.status)
         assertEquals(before, db.deliveryDao().findById(id))
         assertTrue(db.syncOutboxDao().listReadyForAccount(op.accountId!!, now.toEpochMilli()).isEmpty())
-        assertEquals(7L, DeliveryReceiptJournal(file).load()!!.remoteVersion)
-        assertEquals(intent, DeliveryReceiptJournal(file).load()!!.intent)
+        // La evidencia preparada sobrevive a la revocacion, con su hash y version base intactos.
+        val record = db.deliveryDispatchPrepareDao().findByOperation(op.id)!!
+        assertEquals(deliveryPayloadHash(op.payloadJson!!, op.payloadVersion), record.payloadHash)
+        assertEquals(op.baseRemoteVersion, record.baseRemoteVersion)
+        assertEquals(consent.operationId, record.consentOperationId)
+        assertEquals(consent.textVersion, record.consentTextVersion)
+        assertEquals(workspaceId, record.localWorkspaceId)
     }
 
     /** A request in flight (attempted, PROCESSING) when the farmer revokes the farm's consent. */
@@ -1875,8 +1874,8 @@ class DeliveryContractTest {
 
     // ---------------------------------------------------------------------------------------
     // G2.4 PARIDAD journal -> Room. Las cuatro garantias que hoy solo estaban probadas contra
-    // el diario de ficheros (DeliveryReceiptJournalTest), ahora contra la tabla canonica.
-    // Sin estas, retirar DeliveryReceiptJournal perderia garantias verificadas.
+    // el diario de ficheros, hoy retirado, y ahora contra la tabla canonica Room.
+    // Son la cobertura efectiva que sustituye a aquellas garantias.
     // ---------------------------------------------------------------------------------------
 
     /** 1) Interrupcion entre registrar el ACK y actualizar el outbox: o todo, o nada. */
