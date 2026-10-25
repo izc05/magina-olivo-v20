@@ -110,6 +110,7 @@ test('G2 RPC grants and receipt tables stay account-only behind RLS',()=>{
     'public.get_own_parcel(uuid)',
     'public.create_own_campaign(uuid,jsonb)',
     'public.get_own_campaign(uuid)',
+    'public.sync_own_delivery(uuid,jsonb)',
     'public.sync_own_delivery_v2(uuid,jsonb)',
     'public.get_own_delivery_v2(uuid)',
     'public.sync_own_expense(uuid,jsonb)',
