@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo
 
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -125,6 +126,56 @@ class ArchitectureBoundaryTest {
         val text = declaring.single().readText().lowercase()
         listOf("io.github.jan.supabase", "supabase-kt", "gotrue", "postgrest", "realtime").forEach { token ->
             assertFalse("$fileName must stay plain HTTPS (CR-006): $token", text.contains(token))
+        }
+    }
+
+    /**
+     * The drill composition point is prepared but switched off, and that must be visible in a
+     * diff rather than hidden in a setting. This reads the source and requires the literal
+     * `const val ENABLED = false`, so turning the drill on is an obvious, reviewable change that
+     * starts by making this test red — which is the moment the owner's authorization is needed.
+     *
+     * It also holds the rule that there is no user-facing control: the drill must not be referenced
+     * from any UI or navigation source.
+     */
+    @Test
+    fun theDeliveryDrillStaysCompiledOffUntilItIsAuthorized() {
+        val app = sequenceOf(File("src"), File("app/src")).firstOrNull { it.exists() }
+        assertTrue("Could not locate the app source sets", app != null)
+
+        val sources = app!!.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        val drill = sources.singleOrNull { it.name == "DeliveryDrill.kt" }
+        assertTrue("Expected exactly one DeliveryDrill.kt", drill != null)
+        assertTrue(
+            "The drill belongs to the dev flavor only; found at ${drill!!.invariantSeparatorsPath}",
+            "/dev/java/" in drill.invariantSeparatorsPath,
+        )
+
+        val text = drill.readText()
+        assertTrue(
+            "DeliveryDrill.ENABLED must be the literal false while the drill is unauthorized",
+            Regex("""const\s+val\s+ENABLED\s*=\s*false""").containsMatchIn(text),
+        )
+        // Every assignment to ENABLED in that file must be the literal false: not a BuildConfig
+        // field, not a setting, not a computed expression that could become true elsewhere.
+        val assigned = Regex("""ENABLED\s*=\s*(\S+)""").findAll(text)
+            .map { it.groupValues[1].trimEnd(')', ',') }
+            .toSet()
+        assertEquals(
+            "ENABLED must be the literal false and nothing else; found $assigned",
+            setOf("false"),
+            assigned,
+        )
+
+        // No user-facing control may exist while the drill cannot run.
+        sources.filter {
+            "/ui/" in it.invariantSeparatorsPath || "/navigation/" in it.invariantSeparatorsPath
+        }.forEach { file ->
+            assertFalse(
+                "${file.name} must not reference the drill: no control may look operational " +
+                    "while sending is unauthorized",
+                file.readText().contains("DeliveryDrill"),
+            )
         }
     }
 

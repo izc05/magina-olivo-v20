@@ -2643,6 +2643,135 @@ class DeliveryContractTest {
         assertEquals(before.netGrams, db.deliveryDao().findById(fixture.deliveryId)!!.netGrams)
     }
 
+    @Test
+    fun c5EmitTheRealOutboxPayloadAndItsHash() = runBlocking {
+        // C5: emite el payload v2 REAL que Room produce y su hash, para que PostgreSQL lo
+        // verifique con encode(sha256(convert_to($1::jsonb::text,'UTF8')),'hex'). No se editan
+        // los bytes del outbox para acomodarlos: se publican tal cual.
+        val (_, links) = configureConsentedWrites()
+        // Caso 1: reparto NULO (kilos no repartidos).
+        val idNull = ok(deliveries.create(draft(2_800_000, north to null)))
+        // Caso 2: reparto explicito en dos parcelas, con espacios y acentos en el destino.
+        val idTwo = ok(
+            deliveries.create(
+                DeliveryDraft(
+                    farmId = farmId,
+                    deliveryDate = day,
+                    destinationOrganizationId = null,
+                    destinationName = "  Cooperativa  San Isidro \"Olivar\"  ",
+                    netGrams = 3_000_000,
+                    shares = listOf(DeliveryShareInput(north, 1_800_000), DeliveryShareInput(south, 1_200_000)),
+                    origin = PesadaOrigin.TREE,
+                ),
+            )
+        )
+        for ((label, id) in listOf("reparto-nulo" to idNull, "dos-parcelas" to idTwo)) {
+            val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+            val hash = deliveryPayloadHash(op.payloadJson!!, op.payloadVersion)
+            println("C5VECTOR|$label|version=${op.payloadVersion}")
+            println("C5VECTOR|$label|hash=$hash")
+            println("C5VECTOR|$label|payload=${op.payloadJson}")
+            assertEquals("Solo se emiten vectores v2", 2, op.payloadVersion)
+            assertNotNull("Android debe poder hashear su propio payload v2", hash)
+        }
+        assertTrue(links.accessAllowed())
+    }
+
+    @Test
+    fun g24WorkerALossAfterTheServerCommittedRecoversTheSameReceiptAndKilos() = runBlocking {
+        // B3 / pérdida POSTERIOR al commit. Distinta de la prueba de respuesta perdida ya
+        // existente: allí fallaba la escritura, así que el servidor pudo no haber confirmado
+        // nada. Aquí la escritura SE CONFIRMA y lo que se pierde es la respuesta siguiente, que
+        // es el caso que el guion del ensayo debe reproducir con red real.
+        val fixture = preparable()
+        val before = db.deliveryDao().findById(fixture.deliveryId)!!
+        val directory = dir("worker-post-commit")
+        var writes = 0
+        var reads = 0
+
+        val cutAfterCommit = FakeRpcTransport(
+            onWrite = {
+                writes++
+                DeliveryRpcResponse(200, writeBody(fixture))
+            },
+            onCheck = {
+                reads++
+                // El servidor ya aplicó la operación; lo que se corta es esta lectura.
+                throw java.io.IOException("respuesta perdida tras el commit del servidor")
+            },
+        )
+        leaseIn(directory).use { lease ->
+            assertEquals(
+                DispatchOutcome.OUTCOME_UNKNOWN,
+                workerWith(cutAfterCommit, fixture.links).dispatch(fixture.op.id, lease),
+            )
+            assertEquals("La escritura se envió una sola vez", 1, writes)
+            assertEquals(1, reads)
+            // La pesada no se marca sincronizada con una escritura confirmada pero sin recibo:
+            // el recibo es la única prueba que vale.
+            assertEquals(SyncStatus.PENDING, db.deliveryDao().findById(fixture.deliveryId)!!.metadata.syncStatus)
+            val prepared = db.deliveryDispatchPrepareDao().findByOperation(fixture.op.id)!!
+            assertNull("Un resultado desconocido no se liquida", prepared.settledAt)
+            assertEquals(lease.claimMarker(), prepared.leaseMarker)
+            assertEquals(OutboxStatus.PROCESSING, db.syncOutboxDao().findById(fixture.op.id)!!.status)
+            assertEquals(fixture.op.payloadJson, db.syncOutboxDao().findById(fixture.op.id)!!.payloadJson)
+        }
+
+        // Recuperación por el MISMO UUID, sin reenviar: el recibo histórico ya existe.
+        var recoveryWrites = 0
+        val serving = FakeRpcTransport(
+            onWrite = { recoveryWrites++; fail("La recuperación no reenvía"); error("inalcanzable") },
+            onCheck = { DeliveryRpcResponse(200, receiptBody(fixture)) },
+        )
+        leaseIn(directory).use { lease ->
+            val worker = workerWith(serving, fixture.links)
+            assertEquals(1, worker.settleInterrupted(farmId, lease))
+            assertEquals(DispatchOutcome.SYNCED, worker.recoverLostResponse(fixture.op.id, lease))
+        }
+        assertEquals("No se reenvió nada", 0, recoveryWrites)
+        val after = db.deliveryDao().findById(fixture.deliveryId)!!
+        assertEquals(SyncStatus.SYNCED, after.metadata.syncStatus)
+        assertEquals("Kilos intactos tras la pérdida", before.netGrams, after.netGrams)
+        assertEquals(7L, after.metadata.remoteVersion)
+        assertEquals(1, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, fixture.deliveryId).size)
+        assertEquals(1, db.deliveryDispatchPrepareDao().listForDelivery(fixture.deliveryId).size)
+    }
+
+    @Test
+    fun g24WorkerB3ARevocationAfterTheCommitRetainsTheReceiptInsteadOfApplyingIt() = runBlocking {
+        // B3 en vuelo, variante POSTERIOR al commit: el servidor ya aplicó la pesada y el
+        // agricultor revoca antes de que llegue el recibo. El recibo se conserva como prueba y
+        // la pesada local no se toca; no se "deshace" nada en el servidor por nuestra cuenta.
+        val fixture = preparable()
+        val before = db.deliveryDao().findById(fixture.deliveryId)!!
+        val transport = FakeRpcTransport(
+            onWrite = { DeliveryRpcResponse(200, writeBody(fixture)) },
+            onCheck = {
+                runBlocking { fixture.links.revokeConsentForFarm(farmId) }
+                DeliveryRpcResponse(200, receiptBody(fixture))
+            },
+        )
+        leaseIn(dir("worker-b3-post-commit")).use { lease ->
+            assertEquals(
+                DispatchOutcome.HELD_AFTER_REVOCATION,
+                workerWith(transport, fixture.links).dispatch(fixture.op.id, lease),
+            )
+        }
+        val after = db.deliveryDao().findById(fixture.deliveryId)!!
+        assertEquals(SyncStatus.PENDING, after.metadata.syncStatus)
+        assertEquals(before.netGrams, after.netGrams)
+        assertEquals(before.metadata.remoteVersion, after.metadata.remoteVersion)
+        assertEquals(
+            DeliveryHeldReceiptEntity.HELD,
+            db.deliveryHeldReceiptDao().findByOperation(fixture.op.id)!!.state,
+        )
+        // Y una recuperación posterior no puede desbloquearla por sí sola.
+        leaseIn(dir("worker-b3-after")).use { lease ->
+            assertEquals(0, workerWith(transport, fixture.links).settleInterrupted(farmId, lease))
+        }
+        assertEquals(OutboxStatus.BLOCKED, db.syncOutboxDao().findById(fixture.op.id)!!.status)
+    }
+
     private companion object {
         const val DB = "delivery-contract-test.db"
 
