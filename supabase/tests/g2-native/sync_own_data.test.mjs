@@ -836,7 +836,7 @@ function reservationGatewayToken(actor) {
   assert.ok(claims.iss.startsWith('http://'), 'Review local Auth issuer fixture');
   const part = value => Buffer.from(JSON.stringify(value)).toString('base64url');
   const body = `${part({alg:'HS256',typ:'JWT'})}.${part({
-    ...claims, iss:'https://g1c-native.example.test/auth/v1'
+    ...claims, iss:'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1'
   })}`;
   return body + '.' + createHmac('sha256', status.JWT_SECRET).update(body).digest('base64url');
 }

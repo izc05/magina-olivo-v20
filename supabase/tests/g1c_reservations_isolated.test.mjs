@@ -5,7 +5,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 
 const A=randomUUID(), B=randomUUID(), wa=randomUUID(), wb=randomUUID();
-const issuer='https://fixture-project.example.test';
+const issuer='https://zubpicdibqbmewxeurhm.supabase.co';
 const request=()=>({payloadVersion:1,operationId:randomUUID(),farmId:randomUUID(),localWorkspaceId:randomUUID(),consentId:randomUUID(),consentTextVersion:1,manifestSha256:'a'.repeat(64),aggregateVersion:1});
 function hash(r) {
   const h=createHash('sha256');
@@ -60,6 +60,13 @@ test('G1c rejects anonymous sessions, wrong role, expired/malformed claims even 
     for(const claims of [{is_anonymous:true},{role:'anon'},{exp:1},{exp:'9999999999'},{sub:B}]) {
       await assert.rejects(reserve(db,A,request(),wa,claims),e=>e.code==='42501'&&e.message==='reservation denied');
     }
+  }finally{await db.close();}
+});
+test('G1c rejects a foreign HTTPS issuer for the same authenticated account',async()=>{
+  const db=await fixture();try {
+    await assert.rejects(reserve(db,A,request(),wa,{iss:'https://other-project.example.test/auth/v1'}),
+      e=>e.code==='42501'&&e.message==='reservation denied');
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM magina_g1c_private.g1c_reservations')).rows[0].n,0);
   }finally{await db.close();}
 });
 test('G1c execute grants and RLS catalog are narrow; revocation applies to replay',async()=>{

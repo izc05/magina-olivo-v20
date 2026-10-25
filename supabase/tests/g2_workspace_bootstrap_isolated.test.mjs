@@ -19,7 +19,7 @@ async function fixture() {
   return {db,actor};
 }
 async function asActor(db,actor,action,overrides={}) {
-  const claims={iss:'https://fixture-project.example.test/auth/v1',sub:actor,role:'authenticated',is_anonymous:false,
+  const claims={iss:'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1',sub:actor,role:'authenticated',is_anonymous:false,
     exp:Math.floor(Date.now()/1000)+600,...overrides};
   await db.exec('SET ROLE authenticated');
   await db.query("SELECT set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",

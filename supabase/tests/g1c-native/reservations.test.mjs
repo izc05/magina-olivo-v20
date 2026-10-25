@@ -86,7 +86,7 @@ before(async () => {
     const nativeClaims = JSON.parse(Buffer.from(nativeToken.split('.')[1], 'base64url'));
     assert.ok(nativeClaims.iss.startsWith('http://'), 'Review fixture if local Auth starts issuing HTTPS tokens');
     // Synthetic HTTPS issuer signed by this disposable gateway key; not proof of real HTTPS Auth issuance.
-    const token = signed({...nativeClaims, iss:'https://g1c-native.example.test/auth/v1'});
+    const token = signed({...nativeClaims, iss:'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1'});
     actors[actor] = { id:created.data.id, nativeToken, token, workspace:randomUUID() };
   }
   const migrations = ['20261011120000_g0_auth_workspaces_shared_farms.sql','20261011120001_g0_agricultural_sync_schema.sql','20261011120002_g0_contracts_and_storage_rls.sql','20261016041222_g0_legacy_storage_parcel_hardening.sql','20261016041601_g0_aggregate_identity_guards.sql'];
@@ -147,7 +147,20 @@ test('native gateway verifies JWT signatures/expiry and denies anonymous; exact 
   const r=request(), first=await rpc('A',r);
   assert.equal(first.status,200);
   assert.deepEqual(Object.keys(first.data).sort(),['actorId','farmId','issuer','operationId','payloadHash','receiptId','remoteWorkspaceId'].sort());
+  assert.equal(first.data.issuer,'https://zubpicdibqbmewxeurhm.supabase.co');
   assert.deepEqual(await rpc('A',r),first);
+  const foreignIssuer=signed({...claims('A'),iss:'https://other-project.example.test/auth/v1'});
+  const foreignIssuerRequest=request();
+  const foreignIssuerResponse=await rpc('A',foreignIssuerRequest,foreignIssuer);
+  assert.equal(foreignIssuerResponse.status,403);
+  assert.equal(foreignIssuerResponse.data.message,'reservation denied');
+  assert.ok(!JSON.stringify(foreignIssuerResponse.data).includes('receiptId'));
+  assert.equal(sql(`SELECT count(*) FROM magina_g1c_private.g1c_reservations WHERE operation_id='${foreignIssuerRequest.operationId}';`),'0');
+  const crossAccount=await http('/rest/v1/rpc/reserve_local_farm_g1c',{
+    token:actors.B.token,body:{p_request:request(),p_remote_workspace:actors.A.workspace}
+  });
+  assert.equal(crossAccount.status,403);
+  assert.equal(crossAccount.data.message,'reservation denied');
   const wrongProject=signed({...claims('A'),iss:'https://other-project.example.test/auth/v1'},randomBytes(48));
   const expired=signed({...claims('A'),exp:Math.floor(Date.now()/1000)-3600});
   for (const token of [wrongProject,expired]) {
@@ -165,7 +178,7 @@ test('native gateway verifies JWT signatures/expiry and denies anonymous; exact 
   const anonWorkspace=randomUUID();
   sql(`INSERT INTO public.workspaces(id,owner_user_id,name) VALUES('${anonWorkspace}','${anonymous.data.user.id}','anonymous fixture');`);
   const anonymousClaims=JSON.parse(Buffer.from(anonymous.data.access_token.split('.')[1],'base64url'));
-  const anonymousGatewayToken=signed({...anonymousClaims,iss:'https://g1c-native.example.test/auth/v1'});
+  const anonymousGatewayToken=signed({...anonymousClaims,iss:'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1'});
   const denied=await http('/rest/v1/rpc/reserve_local_farm_g1c',{token:anonymousGatewayToken,body:{p_request:request(),p_remote_workspace:anonWorkspace}});
   assert.equal(denied.status,403); assert.equal(denied.data.message,'reservation denied');
   const foreign=await http('/rest/v1/rpc/reserve_local_farm_g1c',{token:actors.B.token,body:{p_request:r,p_remote_workspace:actors.B.workspace}});
