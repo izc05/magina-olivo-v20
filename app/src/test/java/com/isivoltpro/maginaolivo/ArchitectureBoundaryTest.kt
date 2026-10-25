@@ -24,11 +24,11 @@ class ArchitectureBoundaryTest {
         val weatherEdgeClient = "/data/remote/weather/"
         // Owner authorization 14/10/2026 (#725): Auth-only, without agricultural sync.
         val accountAuth = "/feature/account/"
-        // Owner authorization 25/10/2026 (#774): the G2.4 Delivery RPC HTTPS client, and ONLY
-        // that file. Deliberately NOT the whole /data/repository/sync/ folder: every other file
-        // there must stay free of the backend's name, and this one stays unwired, which
-        // [theDeliveryRpcHttpsClientIsNamedButNeverWired] below enforces.
-        val deliveryRpcClient = "/data/repository/sync/HttpsDeliveryRpcTransport.kt"
+        // Owner decision 25/10/2026 (#774): the G2.4 Delivery RPC HTTPS client was moved OUT of
+        // main into the dev flavor, so staging and production carry no agricultural client or
+        // route at all. There is therefore NO exception here any more: if that file ever returns
+        // to main, this test fires again, which is exactly what should happen. The dev-flavor
+        // rules live in [theDeliveryRpcHttpsClientLivesOnlyInTheDevFlavorAndIsNeverWired].
 
         val sources = sourceRoot!!
             .walkTopDown()
@@ -37,8 +37,7 @@ class ArchitectureBoundaryTest {
         val sourceText = sources
             .filterNot {
                 weatherEdgeClient in it.invariantSeparatorsPath ||
-                    accountAuth in it.invariantSeparatorsPath ||
-                    it.invariantSeparatorsPath.endsWith(deliveryRpcClient)
+                    accountAuth in it.invariantSeparatorsPath
             }
             .joinToString("\n") { it.readText() }
             .lowercase()
@@ -50,8 +49,7 @@ class ArchitectureBoundaryTest {
         val sdk = listOf("io.github.jan.supabase", "supabase-kt", "gotrue", "postgrest", "realtime")
         sources.filter {
             weatherEdgeClient in it.invariantSeparatorsPath ||
-                accountAuth in it.invariantSeparatorsPath ||
-                it.invariantSeparatorsPath.endsWith(deliveryRpcClient)
+                accountAuth in it.invariantSeparatorsPath
         }.forEach { file ->
             val text = file.readText().lowercase()
             sdk.forEach { token -> assertFalse("${file.name} must stay plain HTTPS (CR-006): $token", text.contains(token)) }
@@ -64,25 +62,53 @@ class ArchitectureBoundaryTest {
     }
 
     /**
-     * The 25/10/2026 (#774) authorization lets ONE file name the backend. It does not authorize
-     * sending anything. This test is what keeps those two apart: the HTTPS client may exist, but
-     * nothing may construct it, so no code path can reach the agricultural RPCs. Wiring it is a
-     * later, separate authorization, and that step is exactly this test turning red.
+     * Owner decision 25/10/2026 (#774): for the first DEV drill the Delivery RPC HTTPS client
+     * lives in the **dev flavor only**, so staging and production carry no agricultural client
+     * and no agricultural route at all. Naming the backend there was authorized; SENDING with it
+     * was not. This test holds all four parts of that decision at once:
+     *
+     *  1. the file exists, and in the dev source set only;
+     *  2. it is absent from main, staging and production;
+     *  3. nothing anywhere constructs or imports it, so no code path can reach the RPCs;
+     *  4. it stays plain HTTPS, with no backend SDK.
+     *
+     * Promoting it to main is a later authorization and a new review; that step is exactly parts
+     * 1 and 2 of this test turning red.
      */
     @Test
-    fun theDeliveryRpcHttpsClientIsNamedButNeverWired() {
-        val sourceRoot = sequenceOf(File("src/main/java"), File("app/src/main/java"))
-            .firstOrNull { it.exists() }
-        assertTrue("Could not locate main source directory", sourceRoot != null)
+    fun theDeliveryRpcHttpsClientLivesOnlyInTheDevFlavorAndIsNeverWired() {
+        val app = sequenceOf(File("src"), File("app/src")).firstOrNull { it.exists() }
+        assertTrue("Could not locate the app source sets", app != null)
 
         val client = "HttpsDeliveryRpcTransport"
-        val own = "/data/repository/sync/$client.kt"
-        val sources = sourceRoot!!.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        val fileName = "$client.kt"
+        val devHome = "/dev/java/com/isivoltpro/maginaolivo/data/repository/sync/$fileName"
 
-        val declaring = sources.filter { it.invariantSeparatorsPath.endsWith(own) }
-        assertTrue("The authorization covers exactly one file; found ${declaring.size}", declaring.size <= 1)
+        val all = app!!.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assertTrue("No Kotlin sources found under ${app.path}", all.isNotEmpty())
 
-        sources.filterNot { it.invariantSeparatorsPath.endsWith(own) }.forEach { file ->
+        // 1. Exactly one declaration, and it is the dev-flavor one.
+        val declaring = all.filter { it.name == fileName }
+        assertTrue(
+            "Expected exactly one $fileName; found ${declaring.map { it.invariantSeparatorsPath }}",
+            declaring.size == 1,
+        )
+        assertTrue(
+            "$fileName must live in the dev source set; found at ${declaring.single().invariantSeparatorsPath}",
+            declaring.single().invariantSeparatorsPath.endsWith(devHome),
+        )
+
+        // 2. Absent from the source sets that feed staging and production (and from main).
+        listOf("/main/java/", "/staging/java/", "/production/java/").forEach { set ->
+            assertTrue(
+                "$fileName must not exist under $set: staging and production carry no " +
+                    "agricultural client while the transport is unactivated",
+                declaring.none { set in it.invariantSeparatorsPath },
+            )
+        }
+
+        // 3. Nothing constructs or imports it, in any source set, test sources included.
+        all.filterNot { it.name == fileName }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +
@@ -94,23 +120,28 @@ class ArchitectureBoundaryTest {
                 text.contains("import com.isivoltpro.maginaolivo.data.repository.sync.$client"),
             )
         }
+
+        // 4. Plain HTTPS only, like the two older exceptions.
+        val text = declaring.single().readText().lowercase()
+        listOf("io.github.jan.supabase", "supabase-kt", "gotrue", "postgrest", "realtime").forEach { token ->
+            assertFalse("$fileName must stay plain HTTPS (CR-006): $token", text.contains(token))
+        }
     }
 
     /**
-     * The file-scoped exception must stay file-scoped: no other file under the sync package may
-     * name the backend. If a second file there needs it, that needs its own authorization.
+     * The exception is one file wide, not one package wide. No other file of the sync package, in
+     * any source set, may name the backend or its routes. A second file needing it needs its own
+     * authorization.
      */
     @Test
     fun theSyncPackageAsideFromThatOneFileStaysFreeOfTheBackendName() {
-        val sourceRoot = sequenceOf(File("src/main/java"), File("app/src/main/java"))
-            .firstOrNull { it.exists() }
-        assertTrue("Could not locate main source directory", sourceRoot != null)
+        val app = sequenceOf(File("src"), File("app/src")).firstOrNull { it.exists() }
+        assertTrue("Could not locate the app source sets", app != null)
 
-        val own = "/data/repository/sync/HttpsDeliveryRpcTransport.kt"
-        sourceRoot!!.walkTopDown()
+        app!!.walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .filter { "/data/repository/sync/" in it.invariantSeparatorsPath }
-            .filterNot { it.invariantSeparatorsPath.endsWith(own) }
+            .filterNot { it.name == "HttpsDeliveryRpcTransport.kt" }
             .forEach { file ->
                 val text = file.readText().lowercase()
                 listOf("supabase", "/rest/v1", "/storage/v1").forEach { token ->

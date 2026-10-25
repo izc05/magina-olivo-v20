@@ -69,6 +69,25 @@ internal class DeliveryRpcFailure(val error: DeliveryRpcError, val status: Int? 
     val outcomeUnknown: Boolean get() = error == DeliveryRpcError.NETWORK || error == DeliveryRpcError.PROTOCOL
 }
 
+/** One parcel share as the server reports it. A null weight means kilos not distributed. */
+internal class RemoteDeliveryParcelShare(val parcelId: UUID, val weightGrams: Long?)
+
+/**
+ * What the server reports for one Pesada, read by its known UUID. Evidence for the drill's second
+ * installation; nothing here is written into Room and nothing here discovers new data.
+ */
+internal class RemoteDeliveryAggregate(
+    val deliveryId: UUID,
+    val version: Long?,
+    val headPayloadHash: String?,
+    val farmId: UUID?,
+    val campaignId: UUID?,
+    val deliveryDate: String?,
+    val destinationName: String?,
+    val netGrams: Long?,
+    val parcels: List<RemoteDeliveryParcelShare>,
+)
+
 /** What `sync_own_delivery_v2` reports. The authorized hash is NOT here: it is read per operation. */
 internal class SyncOwnDeliveryResult(
     val operationId: UUID,
@@ -145,6 +164,43 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
         val root = objectOf(call(GET_OWN_DELIVERY_V2, """{"p_delivery_id":${quote(deliveryId.toString())}}""", session))
         val delivery = root["delivery"] as? JsonObject ?: return null to null
         return long(delivery, "version") to text(root, "head_payload_hash")
+    }
+
+    /**
+     * READ-ONLY probe for installation B of the first drill. It returns what the server reports
+     * for one Pesada whose UUID the drill script already knows, so B can check that the kilos and
+     * the parcel shares A sent are there, under the same QA account.
+     *
+     * This is **not** a pull, an import or a discovery mechanism, and it writes nothing into Room.
+     * There is no cursor, no listing and no way to find a Pesada whose UUID you were not given.
+     * Reading the aggregate back is evidence for the drill, not synchronization.
+     */
+    suspend fun readOwnDeliveryAggregate(session: AuthSession, deliveryId: UUID): RemoteDeliveryAggregate? {
+        val root = objectOf(call(GET_OWN_DELIVERY_V2, """{"p_delivery_id":${quote(deliveryId.toString())}}""", session))
+        val delivery = root["delivery"] as? JsonObject ?: return null
+        val id = uuid(delivery, "id") ?: return null
+        if (id != deliveryId) throw protocol()
+        val parcels = (root["parcels"] as? JsonArray ?: (delivery["parcels"] as? JsonArray) ?: JsonArray(emptyList()))
+            .map { element ->
+                val row = element as? JsonObject ?: throw protocol()
+                RemoteDeliveryParcelShare(
+                    parcelId = uuid(row, "parcel_id") ?: uuid(row, "parcelId") ?: throw protocol(),
+                    // null means "kilos not distributed", never an invented zero.
+                    weightGrams = (row["weight_grams"] as? JsonPrimitive)?.longOrNull
+                        ?: (row["weightGrams"] as? JsonPrimitive)?.longOrNull,
+                )
+            }
+        return RemoteDeliveryAggregate(
+            deliveryId = id,
+            version = long(delivery, "version"),
+            headPayloadHash = text(root, "head_payload_hash"),
+            farmId = uuid(delivery, "farm_id") ?: uuid(delivery, "farmId"),
+            campaignId = uuid(delivery, "campaign_id") ?: uuid(delivery, "campaignId"),
+            deliveryDate = text(delivery, "delivery_date") ?: text(delivery, "deliveryDate"),
+            destinationName = text(delivery, "destination_name") ?: text(delivery, "destinationName"),
+            netGrams = long(delivery, "net_grams") ?: long(delivery, "netGrams"),
+            parcels = parcels,
+        )
     }
 
     /**

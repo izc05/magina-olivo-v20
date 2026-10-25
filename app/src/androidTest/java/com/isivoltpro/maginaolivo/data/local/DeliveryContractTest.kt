@@ -2583,6 +2583,66 @@ class DeliveryContractTest {
         assertEquals(before.netGrams, db.deliveryDao().findById(fixture.deliveryId)!!.netGrams)
     }
 
+    @Test
+    fun g24WorkerRefusesAPayloadV1OperationBeforeOpeningAnyConnection() = runBlocking {
+        // Review #774: sync_own_delivery_v2 is a v2 endpoint whose receipt reports
+        // payload_version=2. A v1 snapshot has different bytes, so its hash could never match
+        // that receipt. The refusal is LOCAL and happens before the PREPARE, so a v1 operation
+        // is neither sent nor claimed, and keeps its UUID and bytes for a later v2 migration.
+        val fixture = preparable()
+        val before = db.deliveryDao().findById(fixture.deliveryId)!!
+        val original = db.syncOutboxDao().findById(fixture.op.id)!!
+
+        // Same operation, same bytes, only the declared payload version moved back to 1. Done in
+        // SQL on purpose: production has no DAO that rewrites a version, and this fixture must
+        // not invent one.
+        fun setPayloadVersion(version: Int) = db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET payload_version = $version WHERE id = '${fixture.op.id}'",
+        )
+        setPayloadVersion(1)
+        assertEquals(1, db.syncOutboxDao().findById(fixture.op.id)!!.payloadVersion)
+
+        val transport = FakeRpcTransport(
+            onWrite = { fail("Un payload v1 no puede llegar al endpoint v2"); error("inalcanzable") },
+            onCheck = { fail("Un payload v1 no abre ninguna lectura"); error("inalcanzable") },
+        )
+        leaseIn(dir("worker-v1")).use { lease ->
+            assertEquals(
+                DispatchOutcome.REJECTED,
+                workerWith(transport, fixture.links).dispatch(fixture.op.id, lease),
+            )
+        }
+
+        assertTrue("No se abrio ninguna peticion", transport.names.isEmpty())
+        assertNull(
+            "Una operacion que no se envia tampoco se reclama: sin PREPARE",
+            db.deliveryDispatchPrepareDao().findByOperation(fixture.op.id),
+        )
+        val after = db.syncOutboxDao().findById(fixture.op.id)!!
+        assertEquals("El mismo UUID de operacion", fixture.op.id, after.id)
+        assertEquals("Los mismos bytes", original.payloadJson, after.payloadJson)
+        assertEquals("Sin reclamar", OutboxStatus.PENDING, after.status)
+        assertNull("Sin marcador de lease", after.lastErrorCode)
+        val delivery = db.deliveryDao().findById(fixture.deliveryId)!!
+        assertEquals(SyncStatus.PENDING, delivery.metadata.syncStatus)
+        assertEquals(before.netGrams, delivery.netGrams)
+
+        // Back at v2 the same operation dispatches normally: the refusal was about the version.
+        setPayloadVersion(2)
+        val good = FakeRpcTransport(
+            onWrite = { DeliveryRpcResponse(200, writeBody(fixture)) },
+            onCheck = { DeliveryRpcResponse(200, receiptBody(fixture)) },
+        )
+        leaseIn(dir("worker-v1-then-v2")).use { lease ->
+            assertEquals(
+                DispatchOutcome.SYNCED,
+                workerWith(good, fixture.links).dispatch(fixture.op.id, lease),
+            )
+        }
+        assertEquals(SyncStatus.SYNCED, db.deliveryDao().findById(fixture.deliveryId)!!.metadata.syncStatus)
+        assertEquals(before.netGrams, db.deliveryDao().findById(fixture.deliveryId)!!.netGrams)
+    }
+
     private companion object {
         const val DB = "delivery-contract-test.db"
 

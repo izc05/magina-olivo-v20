@@ -86,6 +86,20 @@ internal class DeliveryDispatchWorker(
     ): DispatchOutcome {
         lease.requireOpen()
 
+        // 0. Local contract checks FIRST, before the PREPARE: an operation this worker will not
+        //    send must not be claimed either, or it would be stranded as PROCESSING.
+        //
+        //    Review #774: `sync_own_delivery_v2` is a v2 endpoint and its receipt reports
+        //    payload_version=2. A v1 snapshot has different bytes, so its hash would never match
+        //    the v2 receipt, and sending it would put a payload on the wire the contract does not
+        //    cover. Refused here: no connection opened, no PREPARE written, no state changed,
+        //    and the operation keeps its UUID and its bytes for a later v2 migration.
+        val candidate = database.syncOutboxDao().findById(operationId)
+            ?: return DispatchOutcome.REJECTED
+        if (candidate.entityType != SyncEntityType.DELIVERY) return DispatchOutcome.REJECTED
+        if (candidate.payloadVersion != DELIVERY_PAYLOAD_VERSION_V2) return DispatchOutcome.REJECTED
+        if (candidate.payloadJson == null) return DispatchOutcome.REJECTED
+
         // 1. Durable record first. Anything other than these two outcomes means we do not send.
         val prepared = try {
             links.prepareDeliveryForDispatch(operationId, lease, remoteWorkspaceId, now())
@@ -99,10 +113,15 @@ internal class DeliveryDispatchWorker(
             PrepareOutcome.REJECTED -> return DispatchOutcome.REJECTED
         }
 
+        // Re-read after the PREPARE: it claimed the operation, so this is the current row.
         val operation = database.syncOutboxDao().findById(operationId)
             ?: return DispatchOutcome.REJECTED
         val payload = operation.payloadJson ?: return DispatchOutcome.REJECTED
-        if (operation.entityType != SyncEntityType.DELIVERY) return DispatchOutcome.REJECTED
+        if (operation.entityType != SyncEntityType.DELIVERY ||
+            operation.payloadVersion != DELIVERY_PAYLOAD_VERSION_V2
+        ) {
+            return DispatchOutcome.REJECTED
+        }
         val deliveryId = operation.entityId
 
         // 2. The request, its confirmation and the persistence of its result are ONE unit of
@@ -244,6 +263,11 @@ internal class DeliveryDispatchWorker(
     suspend fun settleInterrupted(farmId: UUID, lease: DeliveryDispatchLease): Int {
         lease.requireOpen()
         return links.settleInterruptedDeliveryDispatches(farmId, lease, now())
+    }
+
+    private companion object {
+        /** `sync_own_delivery_v2` and its receipt are v2 only; a v1 snapshot is never sent. */
+        const val DELIVERY_PAYLOAD_VERSION_V2 = 2
     }
 
     private fun notAuthorized(failure: AuthFailure): DispatchOutcome = when (failure.kind) {

@@ -278,6 +278,100 @@ class DeliveryRpcAdapterTest {
             seen is kotlinx.coroutines.CancellationException,
         )
     }
+
+    // ----------------------------------------------- D4: vector literal v2 confirmado con #773
+
+    @Test
+    fun theV2ReceiptVectorUsesTheServersLiteralDeliveryAndVersionTwo() = runBlocking {
+        // D4 closed 25/10/2026 against #773@846a882a: `sync_delivery` inserts entity_type
+        // 'DELIVERY' literally into magina_g2_private.sync_operations, and
+        // check_sync_operations copies the stored value unchanged. This is the exact v2 vector
+        // Android must accept, byte for byte, with no normalization on either side.
+        val hash = "e".repeat(64)
+        val transport = rpc { _, _ ->
+            DeliveryRpcResponse(200, """{"confirmed_receipts":[{"operation_id":"$operationId",
+                "entity_id":"$deliveryId","entity_type":"DELIVERY","remote_version":7,
+                "payload_version":2,"payload_hash":"$hash"}]}""")
+        }
+        val receipt = DeliveryRpcAdapter(transport).checkSyncOperations(session, listOf(operationId))[operationId]!!
+
+        assertEquals(SyncEntityType.DELIVERY, receipt.entityType)
+        assertEquals("DELIVERY", receipt.entityType.name)
+        assertEquals("El vector v2 lleva payload_version=2", 2, receipt.payloadVersion)
+        assertEquals(hash, receipt.payloadHash)
+        assertEquals(operationId, receipt.operationId)
+        assertEquals(deliveryId, receipt.deliveryId)
+        assertEquals(userId.toString(), receipt.accountId)
+    }
+
+    @Test
+    fun theEntityTypeIsMatchedLiterallyAndNeverNormalized() = runBlocking {
+        // The guard must not be relaxed: any spelling other than the server's literal DELIVERY
+        // is a protocol failure, not a quietly accepted Delivery. If the server ever changed
+        // vocabulary, this must break loudly instead of adopting a foreign row.
+        for (spelling in listOf("delivery", "Delivery", "DELIVERIES", "deliveries", "DELIVERY ", " DELIVERY")) {
+            val transport = rpc { _, _ ->
+                DeliveryRpcResponse(200, """{"confirmed_receipts":[{"operation_id":"$operationId",
+                    "entity_id":"$deliveryId","entity_type":"$spelling","remote_version":7,
+                    "payload_version":2,"payload_hash":"${"f".repeat(64)}"}]}""")
+            }
+            val failure = failureOf {
+                DeliveryRpcAdapter(transport).checkSyncOperations(session, listOf(operationId))
+            }
+            assertEquals("entity_type='$spelling'", DeliveryRpcError.PROTOCOL, failure.error)
+        }
+    }
+
+    // ------------------------------- lectura completa para la segunda instalacion (solo lectura)
+
+    @Test
+    fun installationBReadsTheAggregateByKnownUuidWithItsParcelShares() = runBlocking {
+        val north = UUID.fromString("30000000-0000-0000-0000-00000000000a")
+        val south = UUID.fromString("30000000-0000-0000-0000-00000000000b")
+        val farm = UUID.fromString("20000000-0000-0000-0000-00000000000a")
+        val transport = rpc { _, body ->
+            assertTrue("Se lee por el UUID conocido", body.contains(deliveryId.toString()))
+            DeliveryRpcResponse(200, """{"delivery":{"id":"$deliveryId","farm_id":"$farm",
+                "campaign_id":"40000000-0000-0000-0000-00000000000a","delivery_date":"2026-11-18",
+                "destination_name":"Cooperativa San Isidro","net_grams":2800000,"version":7},
+                "parcels":[{"parcel_id":"$north","weight_grams":1800000},
+                           {"parcel_id":"$south","weight_grams":null}],
+                "head_payload_hash":"${"a".repeat(64)}"}""")
+        }
+        val aggregate = DeliveryRpcAdapter(transport).readOwnDeliveryAggregate(session, deliveryId)!!
+
+        assertEquals(deliveryId, aggregate.deliveryId)
+        assertEquals(7L, aggregate.version)
+        assertEquals(farm, aggregate.farmId)
+        assertEquals(2_800_000L, aggregate.netGrams)
+        assertEquals("2026-11-18", aggregate.deliveryDate)
+        assertEquals("Cooperativa San Isidro", aggregate.destinationName)
+        assertEquals("a".repeat(64), aggregate.headPayloadHash)
+        assertEquals(2, aggregate.parcels.size)
+        assertEquals(1_800_000L, aggregate.parcels.first { it.parcelId == north }.weightGrams)
+        assertNull(
+            "weightGrams null significa kilos no repartidos, nunca un cero inventado",
+            aggregate.parcels.first { it.parcelId == south }.weightGrams,
+        )
+        // Exactly one read RPC, and only the contracted one: no listing, no cursor, no discovery.
+        assertEquals(listOf(DeliveryRpcAdapter.GET_OWN_DELIVERY_V2), transport.calls.map { it.first })
+    }
+
+    @Test
+    fun theAggregateReadRefusesABodyForAnotherDeliveryAndReportsAbsenceAsNull() = runBlocking {
+        val other = UUID.randomUUID()
+        val wrong = rpc { _, _ -> DeliveryRpcResponse(200, """{"delivery":{"id":"$other","version":1}}""") }
+        assertEquals(
+            DeliveryRpcError.PROTOCOL,
+            failureOf { DeliveryRpcAdapter(wrong).readOwnDeliveryAggregate(session, deliveryId) }.error,
+        )
+
+        val absent = rpc { _, _ -> DeliveryRpcResponse(200, """{"delivery":null,"head_payload_hash":null}""") }
+        assertNull(
+            "Otra cuenta o una pesada inexistente se leen como ausencia, no como error",
+            DeliveryRpcAdapter(absent).readOwnDeliveryAggregate(session, deliveryId),
+        )
+    }
     private suspend fun failureOf(block: suspend () -> Any?): DeliveryRpcFailure {
         try {
             block()
