@@ -110,6 +110,9 @@ BEGIN
   IF NOT FOUND OR NOT public.has_farm_capability(d.farm_id, 'view_deliveries') THEN
     RAISE EXCEPTION 'receive denied: unavailable' USING ERRCODE = '42501';
   END IF;
+  IF d.recorded_by_user_id <> actor OR d.net_grams <= 0 THEN
+    RAISE EXCEPTION 'receive incomplete: delivery source' USING ERRCODE = '22023';
+  END IF;
   IF d.destination_organization_id IS NOT NULL OR f.cover_image_uri IS NOT NULL
     OR EXISTS (SELECT 1 FROM public.documents x WHERE x.deleted_at IS NULL
       AND ((x.owner_type = 'DELIVERY' AND x.owner_id = d.id)
@@ -123,8 +126,10 @@ BEGIN
   END IF;
   IF d.harvest_id IS NULL THEN RAISE EXCEPTION 'receive incomplete: harvest' USING ERRCODE = '22023'; END IF;
   SELECT * INTO h FROM public.harvests WHERE id = d.harvest_id AND farm_id = f.id
-    AND campaign_id = c.id AND workspace_id = w.id AND deleted_at IS NULL;
+    AND campaign_id = c.id AND workspace_id = w.id AND recorded_by_user_id = actor AND deleted_at IS NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'receive incomplete: harvest' USING ERRCODE = '22023'; END IF;
+  SELECT count(*) INTO n FROM public.deliveries WHERE harvest_id = h.id AND deleted_at IS NULL;
+  IF n <> 1 THEN RAISE EXCEPTION 'receive incomplete: harvest has other deliveries' USING ERRCODE = '22023'; END IF;
 
   SELECT count(*) INTO n FROM public.delivery_parcels WHERE delivery_id = d.id;
   IF n <> 1 THEN RAISE EXCEPTION 'receive incomplete: delivery allocation' USING ERRCODE = '22023'; END IF;
@@ -140,15 +145,17 @@ BEGIN
   SELECT * INTO p FROM public.parcels WHERE id = dp.parcel_id AND workspace_id = w.id AND deleted_at IS NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'receive incomplete: parcel' USING ERRCODE = '22023'; END IF;
   SELECT * INTO cp FROM public.campaign_parcels WHERE id = dp.campaign_parcel_id
-    AND campaign_id = c.id AND parcel_id = p.id AND workspace_id = w.id;
+    AND campaign_id = c.id AND parcel_id = p.id AND workspace_id = w.id AND farm_id_at_start = f.id;
   IF NOT FOUND THEN RAISE EXCEPTION 'receive incomplete: campaign snapshot' USING ERRCODE = '22023'; END IF;
   SELECT count(*) INTO n FROM public.campaign_parcels WHERE campaign_id = c.id;
   IF n <> 1 THEN RAISE EXCEPTION 'receive incomplete: campaign snapshot count' USING ERRCODE = '22023'; END IF;
   SELECT count(*) INTO n FROM public.farm_parcel_memberships WHERE farm_id = f.id AND parcel_id = p.id
-    AND workspace_id = w.id AND deleted_at IS NULL AND valid_until IS NULL;
+    AND workspace_id = w.id AND deleted_at IS NULL AND valid_until IS NULL
+    AND valid_from::date <= d.delivery_date;
   IF n <> 1 THEN RAISE EXCEPTION 'receive incomplete: membership' USING ERRCODE = '22023'; END IF;
   SELECT * INTO m FROM public.farm_parcel_memberships WHERE farm_id = f.id AND parcel_id = p.id
-    AND workspace_id = w.id AND deleted_at IS NULL AND valid_until IS NULL;
+    AND workspace_id = w.id AND deleted_at IS NULL AND valid_until IS NULL
+    AND valid_from::date <= d.delivery_date;
 
   IF cp.origin_created_at IS NULL OR cp.origin_updated_at IS NULL OR cp.origin_version IS NULL OR cp.origin_evidence_sha256 IS NULL
     OR hp.origin_created_at IS NULL OR hp.origin_updated_at IS NULL OR hp.origin_version IS NULL OR hp.origin_evidence_sha256 IS NULL

@@ -13,9 +13,10 @@ INSERT INTO public.farms(id,owner_id,creator_user_id,workspace_id,name) VALUES
 INSERT INTO public.parcels(id,workspace_id,display_name) VALUES
   ('33333333-3333-4333-8333-333333333333','11111111-1111-4111-8111-111111111111','G25 parcel'),
   ('33333333-3333-4333-8333-333333333334','11111111-1111-4111-8111-111111111111','G25 wrong parcel');
-INSERT INTO public.farm_parcel_memberships(id,workspace_id,farm_id,parcel_id) VALUES
+INSERT INTO public.farm_parcel_memberships(id,workspace_id,farm_id,parcel_id,valid_from) VALUES
   ('44444444-4444-4444-8444-444444444444','11111111-1111-4111-8111-111111111111',
-   '22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333');
+   '22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333',
+   '2026-10-24 00:00+00');
 INSERT INTO public.campaigns(id,workspace_id,farm_id,name,start_date,snapshot_format) VALUES
   ('55555555-5555-4555-8555-555555555555','11111111-1111-4111-8111-111111111111',
    '22222222-2222-4222-8222-222222222222','G25 season','2026-01-01',1);
@@ -121,6 +122,23 @@ EXCEPTION WHEN SQLSTATE '22023' THEN
 END $$;
 RESET ROLE;
 ROLLBACK TO SAVEPOINT unsupported_relation;
+
+SAVEPOINT second_delivery;
+INSERT INTO public.deliveries(id,workspace_id,farm_id,campaign_id,harvest_id,delivery_date,
+  destination_name,net_grams,recorded_by_user_id,snapshot_format) VALUES
+  ('99999999-9999-4999-8999-999999999998','11111111-1111-4111-8111-111111111111',
+   '22222222-2222-4222-8222-222222222222','55555555-5555-4555-8555-555555555555',
+   '77777777-7777-4777-8777-777777777777','2026-10-25','G25 second mill',100,
+   '008ea900-5f3c-407f-8917-ad72bc9d955b',2);
+SET ROLE authenticated;
+DO $$ BEGIN
+  PERFORM public.get_own_delivery_receive_v1('99999999-9999-4999-8999-999999999999');
+  RAISE EXCEPTION 'Shared harvest should fail';
+EXCEPTION WHEN SQLSTATE '22023' THEN
+  IF SQLERRM NOT LIKE '%harvest has other deliveries%' THEN RAISE; END IF;
+END $$;
+RESET ROLE;
+ROLLBACK TO SAVEPOINT second_delivery;
 
 SELECT set_config('request.jwt.claim.sub','49d1dbbb-d974-4eca-8bd7-1e51c83253f5',false);
 SELECT set_config('request.jwt.claims',jsonb_build_object('sub','49d1dbbb-d974-4eca-8bd7-1e51c83253f5',
