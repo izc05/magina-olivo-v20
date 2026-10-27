@@ -51,7 +51,7 @@ before(async()=>{
     '20261016041601_g0_aggregate_identity_guards.sql'];
   sql(`BEGIN;\n${g0.map(n=>file(`supabase/migrations/${n}`)).join('\n')}\n${prereq('g1c-reservations')}\n${prereq('g2-sync-own-data')}\n${prereq('g2-parcel-bootstrap')}\n${file('supabase/migrations/20261027155737_g25_receive_bundle_contract.sql')}\nCOMMIT; NOTIFY pgrst,'reload schema';`);
   const fixture=file('supabase/tests/g25-receive-native.sql');
-  const seed=fixture.split('-- BEGIN G25 SEED')[1]?.split('-- END G25 SEED')[0];
+  const seed=fixture.match(/-- BEGIN G25 SEED[^\n]*\n([\s\S]*?)-- END G25 SEED/)?.[1];
   assert.ok(seed);
   sql(seed.replaceAll('008ea900-5f3c-407f-8917-ad72bc9d955b',actor.A.id)
     .replaceAll('49d1dbbb-d974-4eca-8bd7-1e51c83253f5',actor.C.id));
