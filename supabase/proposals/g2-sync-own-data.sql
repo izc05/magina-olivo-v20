@@ -495,7 +495,12 @@ BEGIN
        OR (claims->>'exp')::numeric<=extract(epoch FROM now()) THEN
         RAISE EXCEPTION 'sync denied: invalid identity' USING ERRCODE='42501';
     END IF;
-    SELECT jsonb_build_object('payload_version',2,'delivery',to_jsonb(d),'parcels',
+    SELECT jsonb_build_object('payload_version',2,'delivery',to_jsonb(d),
+        'head_payload_hash',(SELECT CASE WHEN count(*)=1 THEN min(o.payload_hash) ELSE NULL END
+            FROM magina_g2_private.sync_operations o
+            WHERE o.account_id=actor AND o.entity_type='DELIVERY' AND o.entity_id=d.id
+              AND o.result_version=d.version AND o.payload_version=2 AND o.status='APPLIED'),
+        'parcels',
         coalesce((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.parcel_id)
                   FROM public.delivery_parcels p WHERE p.delivery_id=d.id),'[]'::jsonb))
     INTO result
@@ -534,6 +539,7 @@ DECLARE
     v_notes TEXT;
     v_status TEXT;
     v_workspace UUID;
+    v_expected_workspace UUID;
     v_payload_hash TEXT;
     v_result_version BIGINT;
     v_saved magina_g2_private.sync_operations%ROWTYPE;
@@ -606,10 +612,18 @@ BEGIN
         );
     END IF;
 
+    -- Lock workspace before farm so ownership/deletion cannot change after authorization.
+    SELECT workspace_id INTO v_expected_workspace FROM public.farms WHERE id = v_farm_id;
+    PERFORM 1 FROM public.workspaces
+    WHERE id = v_expected_workspace AND deleted_at IS NULL FOR SHARE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'sync denied: actor does not own farm for economic operations' USING ERRCODE = '42501';
+    END IF;
+
     -- Validate farm ownership (strictly owner/creator of farm)
     SELECT workspace_id INTO v_workspace
     FROM public.farms
-    WHERE id = v_farm_id
+    WHERE id = v_farm_id AND workspace_id = v_expected_workspace
       AND (
           creator_user_id = actor
           OR owner_id = actor
@@ -617,7 +631,7 @@ BEGIN
               SELECT id FROM public.workspaces WHERE owner_user_id = actor AND deleted_at IS NULL
           ))
       )
-      AND deleted_at IS NULL;
+      AND deleted_at IS NULL FOR SHARE;
 
     IF v_workspace IS NULL THEN
         RAISE EXCEPTION 'sync denied: actor does not own farm for economic operations' USING ERRCODE = '42501';
@@ -626,7 +640,7 @@ BEGIN
     -- Validate campaign linkage if provided
     IF v_campaign_id IS NOT NULL THEN
         PERFORM 1 FROM public.campaigns
-        WHERE id = v_campaign_id AND farm_id = v_farm_id AND workspace_id = v_workspace AND deleted_at IS NULL;
+        WHERE id = v_campaign_id AND farm_id = v_farm_id AND workspace_id = v_workspace AND deleted_at IS NULL FOR SHARE;
 
         IF NOT FOUND THEN
             RAISE EXCEPTION 'sync invalid: campaign does not belong to farm' USING ERRCODE = '22023';
@@ -635,11 +649,27 @@ BEGIN
 
     -- Validate parcel linkage if provided
     IF v_parcel_id IS NOT NULL THEN
-        PERFORM 1 FROM public.parcels
-        WHERE id = v_parcel_id AND workspace_id = v_workspace AND deleted_at IS NULL;
+        PERFORM 1 FROM public.parcels p
+        JOIN public.farm_parcel_memberships m
+          ON m.parcel_id = p.id AND m.workspace_id = p.workspace_id
+        WHERE p.id = v_parcel_id AND p.workspace_id = v_workspace AND p.deleted_at IS NULL
+          AND m.farm_id = v_farm_id AND m.deleted_at IS NULL
+          AND (CASE WHEN m.valid_from_exact IS NULL THEN extract(epoch FROM m.valid_from)*1000000000
+                    ELSE magina_g2_private.instant_key(m.valid_from_exact) END)
+              < extract(epoch FROM (v_expense_date+1)::timestamptz)*1000000000
+          AND (m.valid_until IS NULL OR
+               (CASE WHEN m.valid_until_exact IS NULL THEN extract(epoch FROM m.valid_until)*1000000000
+                     ELSE magina_g2_private.instant_key(m.valid_until_exact) END)
+               > extract(epoch FROM v_expense_date::timestamptz)*1000000000)
+          AND (m.valid_until IS NULL OR
+               (CASE WHEN m.valid_until_exact IS NULL THEN extract(epoch FROM m.valid_until)*1000000000
+                     ELSE magina_g2_private.instant_key(m.valid_until_exact) END)
+               > (CASE WHEN m.valid_from_exact IS NULL THEN extract(epoch FROM m.valid_from)*1000000000
+                       ELSE magina_g2_private.instant_key(m.valid_from_exact) END))
+        FOR SHARE OF p,m;
 
         IF NOT FOUND THEN
-            RAISE EXCEPTION 'sync invalid: parcel does not belong to workspace' USING ERRCODE = '22023';
+            RAISE EXCEPTION 'sync denied: parcel does not belong to farm on expense date' USING ERRCODE = '42501';
         END IF;
     END IF;
 
@@ -872,10 +902,10 @@ BEGIN
         RAISE EXCEPTION 'farm denied' USING ERRCODE='42501';
     END IF;
     token_issuer:=claims->>'iss';
-    IF token_issuer IS NULL OR token_issuer !~ '^https://[^/?#]+/auth/v1$' THEN
+    IF token_issuer IS DISTINCT FROM 'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1' THEN
         RAISE EXCEPTION 'farm denied' USING ERRCODE='42501';
     END IF;
-    token_issuer:=regexp_replace(token_issuer,'/auth/v1$','');
+    token_issuer:='https://zubpicdibqbmewxeurhm.supabase.co';
     IF p_operation_id IS NULL OR p_reservation_operation_id IS NULL OR p_reservation_receipt_id IS NULL
        OR p_farm IS NULL OR jsonb_typeof(p_farm)<>'object'
        OR (SELECT count(*) FROM jsonb_object_keys(p_farm))<>9
