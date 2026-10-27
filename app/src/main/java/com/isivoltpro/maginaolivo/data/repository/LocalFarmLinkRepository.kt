@@ -142,6 +142,81 @@ class LocalFarmLinkRepository(
     }
 
     /**
+     * G2.4: the durable PREPARE step. A transport MUST call this and get
+     * [PrepareOutcome.PREPARED] or [PrepareOutcome.ALREADY_PREPARED] before issuing any
+     * request for that Pesada: [recordAuthenticatedDeliveryAck] refuses an ACK that has no
+     * PREPARE record, so an unprepared dispatch can never become local truth.
+     *
+     * The server confirms whose session this is; the Room decision then runs under the local
+     * identity lock against the fresh ledger. Nothing is sent from here.
+     */
+    internal suspend fun prepareDeliveryForDispatch(
+        operationId: UUID,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        remoteWorkspaceId: UUID? = null,
+        at: Instant = Instant.now(),
+    ): PrepareOutcome = account.withServerVerifiedIdentity({ Unit }) { userId, _ -> withContext(Dispatchers.IO) {
+        val operation = database.syncOutboxDao().findById(operationId)
+        val farm = operation?.farmId?.let { database.farmDao().findById(it) }
+        if (operation == null || farm == null) return@withContext PrepareOutcome.REJECTED
+        database.prepareDeliveryDispatch(
+            lease,
+            operationId,
+            DispatchIdentity(
+                accountId = userId.toString(),
+                issuer = issuer,
+                subject = subject(userId),
+                localWorkspaceId = farm.workspaceId,
+                remoteWorkspaceId = remoteWorkspaceId,
+            ),
+            ledgerFor(userId),
+            at,
+        )
+    } }
+
+    /**
+     * G2.4: the only entry point that turns an authenticated server ACK into local state.
+     * [fetch] performs the authenticated read with the verified session while no local lock is
+     * held; the correlation against the durable PREPARE record then runs under the local
+     * identity lock against the fresh ledger. A revoked farm retains the ACK as evidence and
+     * leaves the operation BLOCKED.
+     */
+    internal suspend fun recordAuthenticatedDeliveryAck(
+        fetch: suspend (com.isivoltpro.maginaolivo.feature.account.AuthSession) -> AuthenticatedDeliveryAck?,
+        at: Instant = Instant.now(),
+    ): AckCorrelationOutcome = account.withServerVerifiedIdentity(fetch) { userId, ack -> withContext(Dispatchers.IO) {
+        if (ack == null) return@withContext AckCorrelationOutcome.REJECTED
+        val farm = database.farmDao().findById(ack.farmId)
+            ?: return@withContext AckCorrelationOutcome.REJECTED
+        database.correlateAuthenticatedDeliveryAck(
+            ack,
+            DispatchIdentity(
+                accountId = userId.toString(),
+                issuer = issuer,
+                subject = subject(userId),
+                localWorkspaceId = farm.workspaceId,
+            ),
+            ledgerFor(userId),
+            at,
+        )
+    } }
+
+    /**
+     * G2.4: after a brutal close, reacquiring the OS lock proves no conforming sender still
+     * owns these intents. Their PREPARE records settle as OUTCOME_UNKNOWN and the SAME UUID,
+     * bytes and base version stay eligible, so the server's idempotency decides. Nothing is
+     * resent from here.
+     */
+    internal suspend fun settleInterruptedDeliveryDispatches(
+        farmId: UUID,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        at: Instant = Instant.now(),
+    ): Int = account.withLocalIdentity { userId -> withContext(Dispatchers.IO) {
+        if (ledgerFor(userId) == null) return@withContext 0
+        database.settleAbandonedPreparedDispatches(lease, userId.toString(), farmId, at)
+    } }
+
+    /**
      * G2.3: Revokes local consent eligibility for a farm, transitioning its pending outbox operations
      * to BLOCKED status in Room so they cannot be dispatched.
      */

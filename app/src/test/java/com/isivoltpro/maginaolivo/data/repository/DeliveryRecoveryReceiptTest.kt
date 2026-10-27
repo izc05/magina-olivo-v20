@@ -37,10 +37,23 @@ class DeliveryRecoveryReceiptTest {
     private fun receipt() = RecoveredDeliveryReceipt(
         operationId = operationId,
         deliveryId = deliveryId,
+        entityType = SyncEntityType.DELIVERY,
         accountId = "account-A",
         remoteVersion = 7,
         payloadHash = "a".repeat(64),
     )
+
+    @Test fun aReceiptThatReportsAnotherEntityTypeIsNeverAdoptedAsThisDelivery() {
+        // El servidor devuelve entity_type en su recibo historico. Un recibo de otra entidad
+        // que comparta este UUID de operacion no se adopta como esta pesada.
+        for (type in SyncEntityType.entries.filter { it != SyncEntityType.DELIVERY }) {
+            assertNull(
+                "entity_type=$type",
+                verifiedRecoveredDeliveryReceipt(operation(), receipt().copy(entityType = type)) { _, _ -> true },
+            )
+        }
+        assertNotNull(verifiedRecoveredDeliveryReceipt(operation(), receipt()) { _, _ -> true })
+    }
 
     @Test fun defaultVerifierUsesTheSharedPostgresHashAndPreservesOriginalBytes() {
         val payload = """{"netGrams":2500000,"notes":"Mágina","id":"x"}"""
