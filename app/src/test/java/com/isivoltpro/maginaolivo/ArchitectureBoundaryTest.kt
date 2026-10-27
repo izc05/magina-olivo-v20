@@ -108,8 +108,20 @@ class ArchitectureBoundaryTest {
             )
         }
 
-        // 3. Nothing constructs or imports it, in any source set, test sources included.
-        all.filterNot { it.name == fileName }.forEach { file ->
+        // 3. The opt-in DEV instrumented read probe is the sole test exception. It may read a
+        // known UUID, but cannot wire a worker or invoke a write. Every other source stays inert.
+        val readProbe = all.filter { it.name == "DeliveryReadOnFreshDeviceTest.kt" }
+        assertTrue("At most one DEV read probe is allowed", readProbe.size <= 1)
+        readProbe.singleOrNull()?.let { probe ->
+            assertTrue(probe.invariantSeparatorsPath.contains("/androidTestDev/"))
+            val probeText = probe.readText()
+            assertTrue(probeText.contains("g24ReadOnlyProject"))
+            assertTrue(probeText.contains(".readOwnDeliveryAggregate("))
+            listOf(".syncOwnDelivery(", "DeliveryDispatchWorker(", "deliveryDao().upsert").forEach { forbidden ->
+                assertFalse("DEV read probe must stay read-only: $forbidden", probeText.contains(forbidden))
+            }
+        }
+        all.filterNot { it.name == fileName || it in readProbe }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +
