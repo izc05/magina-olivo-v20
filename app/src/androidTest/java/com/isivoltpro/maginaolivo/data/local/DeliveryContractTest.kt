@@ -2356,6 +2356,15 @@ class DeliveryContractTest {
             "payload_hash":"$hash"}]}"""
     }
 
+    /** get_own_delivery_v2 as the server answers when its HEAD is exactly the historical receipt. */
+    private fun headBody(fixture: PreparedFixture, version: String = "7", hash: String? = null): String {
+        val h = hash ?: deliveryPayloadHash(fixture.op.payloadJson!!, fixture.op.payloadVersion)!!
+        return """{"delivery":{"version":$version},"head_payload_hash":"$h"}"""
+    }
+
+    private fun matchingHead(fixture: PreparedFixture): () -> DeliveryRpcResponse =
+        { DeliveryRpcResponse(200, headBody(fixture)) }
+
     private fun writeBody(fixture: PreparedFixture) =
         """{"operation_id":"${fixture.op.id}","entity_id":"${fixture.deliveryId}","remote_version":7,
            "payload_version":${fixture.op.payloadVersion}}"""
@@ -2394,6 +2403,7 @@ class DeliveryContractTest {
         val serving = FakeRpcTransport(
             onWrite = { fail("La recuperacion no reenvia"); error("inalcanzable") },
             onCheck = { DeliveryRpcResponse(200, receiptBody(fixture)) },
+            onHead = matchingHead(fixture),
         )
         leaseIn(directory).use { lease ->
             val worker = workerWith(serving, fixture.links)
@@ -2422,6 +2432,7 @@ class DeliveryContractTest {
                 runBlocking { fixture.links.revokeConsentForFarm(farmId) }
                 DeliveryRpcResponse(200, receiptBody(fixture))
             },
+            onHead = matchingHead(fixture),
         )
         leaseIn(dir("worker-revoked")).use { lease ->
             assertEquals(
@@ -2573,6 +2584,7 @@ class DeliveryContractTest {
         val good = FakeRpcTransport(
             onWrite = { DeliveryRpcResponse(200, writeBody(fixture)) },
             onCheck = { DeliveryRpcResponse(200, receiptBody(fixture)) },
+            onHead = matchingHead(fixture),
         )
         assertEquals(
             DispatchOutcome.SYNCED,
@@ -2632,6 +2644,7 @@ class DeliveryContractTest {
         val good = FakeRpcTransport(
             onWrite = { DeliveryRpcResponse(200, writeBody(fixture)) },
             onCheck = { DeliveryRpcResponse(200, receiptBody(fixture)) },
+            onHead = matchingHead(fixture),
         )
         leaseIn(dir("worker-v1-then-v2")).use { lease ->
             assertEquals(
@@ -2722,6 +2735,7 @@ class DeliveryContractTest {
         val serving = FakeRpcTransport(
             onWrite = { recoveryWrites++; fail("La recuperación no reenvía"); error("inalcanzable") },
             onCheck = { DeliveryRpcResponse(200, receiptBody(fixture)) },
+            onHead = matchingHead(fixture),
         )
         leaseIn(directory).use { lease ->
             val worker = workerWith(serving, fixture.links)
@@ -2750,6 +2764,7 @@ class DeliveryContractTest {
                 runBlocking { fixture.links.revokeConsentForFarm(farmId) }
                 DeliveryRpcResponse(200, receiptBody(fixture))
             },
+            onHead = matchingHead(fixture),
         )
         leaseIn(dir("worker-b3-post-commit")).use { lease ->
             assertEquals(
@@ -2783,5 +2798,74 @@ class DeliveryContractTest {
             Tara: 9.490 kg
             Peso neto: 2.850 kg
         """.trimIndent()
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // HEAD GUARD (#774 review): an ACK is applied only if get_own_delivery_v2 reports the
+    // historical version and payload hash, read under the same verified session and lease.
+    // ---------------------------------------------------------------------------------------
+
+    private suspend fun assertHeadBlocksTheAck(label: String, head: (PreparedFixture) -> DeliveryRpcResponse, expected: DispatchOutcome) {
+        val fixture = preparable()
+        val before = db.deliveryDao().findById(fixture.deliveryId)!!
+        val directory = dir("head-$label")
+        val cut = FakeRpcTransport(
+            onWrite = { throw java.io.IOException("respuesta perdida") },
+            onCheck = { DeliveryRpcResponse(200, """{"confirmed_receipts":[]}""") },
+        )
+        leaseIn(directory).use { lease ->
+            assertEquals(DispatchOutcome.OUTCOME_UNKNOWN, workerWith(cut, fixture.links).dispatch(fixture.op.id, lease))
+        }
+        val serving = FakeRpcTransport(
+            onWrite = { fail("La recuperacion no reenvia"); error("inalcanzable") },
+            onCheck = { DeliveryRpcResponse(200, receiptBody(fixture)) },
+            onHead = { head(fixture) },
+        )
+        leaseIn(directory).use { lease ->
+            val worker = workerWith(serving, fixture.links)
+            assertEquals(1, worker.settleInterrupted(farmId, lease))
+            assertEquals("$label", expected, worker.recoverLostResponse(fixture.op.id, lease))
+        }
+        assertEquals("HEAD is read after the receipt, never before",
+            listOf(DeliveryRpcAdapter.CHECK_SYNC_OPERATIONS, DeliveryRpcAdapter.GET_OWN_DELIVERY_V2), serving.names)
+        val after = db.deliveryDao().findById(fixture.deliveryId)!!
+        assertEquals("$label: not marked synced", SyncStatus.PENDING, after.metadata.syncStatus)
+        assertEquals("$label: kilos untouched", before.netGrams, after.netGrams)
+        val op = db.syncOutboxDao().findById(fixture.op.id)!!
+        assertEquals("$label: payload bytes preserved", fixture.op.payloadJson, op.payloadJson)
+        assertTrue("$label: operation not confirmed", op.status != OutboxStatus.CONFIRMED)
+        val prepared = db.deliveryDispatchPrepareDao().findByOperation(fixture.op.id)!!
+        assertEquals("$label: PREPARE kept", fixture.op.id, prepared.operationId)
+        assertEquals("$label: PREPARE hash kept", deliveryPayloadHash(fixture.op.payloadJson!!, fixture.op.payloadVersion), prepared.payloadHash)
+        assertEquals(1, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, fixture.deliveryId).size)
+    }
+
+    @Test
+    fun g24WorkerAHeadWithAnotherHashIsAConflictAndNeverSynced() = runBlocking {
+        assertHeadBlocksTheAck("hash", { DeliveryRpcResponse(200, headBody(it, hash = "d".repeat(64))) }, DispatchOutcome.CONFLICT)
+    }
+
+    @Test
+    fun g24WorkerAHeadWithAnotherVersionIsAConflictAndNeverSynced() = runBlocking {
+        assertHeadBlocksTheAck("version", { DeliveryRpcResponse(200, headBody(it, version = "8")) }, DispatchOutcome.CONFLICT)
+    }
+
+    @Test
+    fun g24WorkerANullHeadHashIsAConflictAndNeverSynced() = runBlocking {
+        assertHeadBlocksTheAck("nullhash", {
+            DeliveryRpcResponse(200, """{"delivery":{"version":7},"head_payload_hash":null}""")
+        }, DispatchOutcome.CONFLICT)
+    }
+
+    @Test
+    fun g24WorkerAMissingHeadIsAConflictAndNeverSynced() = runBlocking {
+        assertHeadBlocksTheAck("nohead", { _ -> DeliveryRpcResponse(200, """{"delivery":null,"head_payload_hash":null}""") },
+            DispatchOutcome.CONFLICT)
+    }
+
+    @Test
+    fun g24WorkerANetworkFailureReadingTheHeadLeavesTheOutcomeUnknown() = runBlocking {
+        assertHeadBlocksTheAck("headnet", { _ -> throw java.io.IOException("sin red al leer la HEAD") },
+            DispatchOutcome.OUTCOME_UNKNOWN)
     }
 }

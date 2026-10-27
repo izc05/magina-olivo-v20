@@ -161,6 +161,7 @@ internal class DeliveryDispatchWorker(
     ): DispatchOutcome {
         var sawReceipt = false
         var wrongEntity = false
+        var headMismatch = false
         var foreignEntityType: SyncEntityType? = null
         var transportFailure: DeliveryRpcFailure? = null
         val farmId = database.syncOutboxDao().findById(operationId)?.farmId
@@ -205,6 +206,22 @@ internal class DeliveryDispatchWorker(
                     foreignEntityType = receipt.entityType
                     return@recordAuthenticatedDeliveryAck null
                 }
+                if (receipt != null && farmId != null) {
+                    // The receipt says what was applied; the HEAD says where the Delivery is now.
+                    // Both are read under THIS verified session, inside the active request, and
+                    // the ACK is built only if they agree: same version, same non-null payload
+                    // hash. A null or different HEAD is a conflict, never a synchronization.
+                    val head = try {
+                        rpc.getOwnDeliveryV2(session, receipt.deliveryId)
+                    } catch (failure: DeliveryRpcFailure) {
+                        transportFailure = failure
+                        return@recordAuthenticatedDeliveryAck null
+                    }
+                    if (head.first != receipt.remoteVersion || head.second == null || head.second != receipt.payloadHash) {
+                        headMismatch = true
+                        return@recordAuthenticatedDeliveryAck null
+                    }
+                }
                 if (receipt == null || farmId == null) {
                     null
                 } else {
@@ -226,6 +243,7 @@ internal class DeliveryDispatchWorker(
         }
 
         if (wrongEntity) return DispatchOutcome.CONFLICT
+        if (headMismatch) return DispatchOutcome.CONFLICT
         // A receipt for another entity is never this Pesada's. It is a conflict, not an unknown
         // outcome: the server answered, and what it answered does not belong to this Delivery.
         if (foreignEntityType != null) return DispatchOutcome.CONFLICT
