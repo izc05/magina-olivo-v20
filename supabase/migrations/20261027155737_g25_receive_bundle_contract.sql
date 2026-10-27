@@ -110,6 +110,12 @@ BEGIN
   IF NOT FOUND OR NOT public.has_farm_capability(d.farm_id, 'view_deliveries') THEN
     RAISE EXCEPTION 'receive denied: unavailable' USING ERRCODE = '42501';
   END IF;
+  IF d.destination_organization_id IS NOT NULL OR f.cover_image_uri IS NOT NULL
+    OR EXISTS (SELECT 1 FROM public.documents x WHERE x.deleted_at IS NULL
+      AND ((x.owner_type = 'DELIVERY' AND x.owner_id = d.id)
+        OR (x.owner_type = 'FARM' AND x.owner_id = f.id))) THEN
+    RAISE EXCEPTION 'receive incomplete: unsupported linked record' USING ERRCODE = '22023';
+  END IF;
   SELECT * INTO c FROM public.campaigns WHERE id = d.campaign_id AND farm_id = f.id
     AND workspace_id = w.id AND deleted_at IS NULL;
   IF NOT FOUND OR c.snapshot_format <> 1 OR d.snapshot_format <> 2 THEN

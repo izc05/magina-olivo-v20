@@ -109,6 +109,19 @@ END $$;
 RESET ROLE;
 ROLLBACK TO SAVEPOINT missing_delivery_origin;
 
+SAVEPOINT unsupported_relation;
+UPDATE public.deliveries SET destination_organization_id='cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+  WHERE id='99999999-9999-4999-8999-999999999999';
+SET ROLE authenticated;
+DO $$ BEGIN
+  PERFORM public.get_own_delivery_receive_v1('99999999-9999-4999-8999-999999999999');
+  RAISE EXCEPTION 'Unsupported organization should fail';
+EXCEPTION WHEN SQLSTATE '22023' THEN
+  IF SQLERRM NOT LIKE '%unsupported linked record%' THEN RAISE; END IF;
+END $$;
+RESET ROLE;
+ROLLBACK TO SAVEPOINT unsupported_relation;
+
 SELECT set_config('request.jwt.claim.sub','49d1dbbb-d974-4eca-8bd7-1e51c83253f5',false);
 SELECT set_config('request.jwt.claims',jsonb_build_object('sub','49d1dbbb-d974-4eca-8bd7-1e51c83253f5',
  'role','authenticated','iss','https://zubpicdibqbmewxeurhm.supabase.co/auth/v1',
