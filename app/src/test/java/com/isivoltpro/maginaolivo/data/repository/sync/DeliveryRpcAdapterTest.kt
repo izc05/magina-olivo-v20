@@ -204,7 +204,7 @@ class DeliveryRpcAdapterTest {
     }
 
     @Test
-    fun onlyTheThreeContractedRpcNamesAreEverCalled() = runBlocking {
+    fun onlyTheContractedRpcNamesAreEverCalled() = runBlocking {
         val transport = rpc { name, _ ->
             assertTrue("RPC fuera del contrato: $name", name in DeliveryRpcAdapter.NAMES)
             DeliveryRpcResponse(200, """{"confirmed_receipts":[]}""")
@@ -213,7 +213,7 @@ class DeliveryRpcAdapterTest {
         adapter.checkSyncOperations(session, listOf(operationId))
         assertEquals(setOf(DeliveryRpcAdapter.CHECK_SYNC_OPERATIONS), transport.calls.map { it.first }.toSet())
         assertEquals(
-            setOf("sync_own_delivery_v2", "check_sync_operations", "get_own_delivery_v2"),
+            setOf("sync_own_delivery_v2", "check_sync_operations", "get_own_delivery_v2", "get_own_delivery_receive_v1"),
             DeliveryRpcAdapter.NAMES,
         )
     }
