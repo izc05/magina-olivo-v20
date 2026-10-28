@@ -33,7 +33,46 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(29, MaginaOlivoDatabase.VERSION)
+        assertEquals(30, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration29To30AddsDeliveryImportReceiptsTableAndKeepsExistingDataIntact() {
+        migrationHelper.createDatabase(TEST_DATABASE, 29).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos',NULL,NULL,NULL,'ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','PREPARATION',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, created_at, updated_at, version, sync_status, remote_version) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL',1000,1000,2,'PENDING',4)")
+            database.execSQL("INSERT INTO delivery_dispatch_prepare (operation_id, delivery_id, farm_id, account_id, issuer, subject, local_workspace_id, remote_workspace_id, consent_operation_id, consent_text_version, payload_version, payload_hash, base_remote_version, lease_marker, prepared_at, settled_at, settled_outcome) VALUES ('op-prep','d','f','account-a','https://example.com','sub','w',NULL,'consent-op',2,2,'hash123',NULL,'lease',1000,1100,'CONFIRMED')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 30, true, DatabaseMigrations.MIGRATION_29_30).use { database ->
+            database.query("SELECT net_grams, version, sync_status, remote_version FROM deliveries WHERE id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(3500000L, cursor.getLong(0))
+                assertEquals(2L, cursor.getLong(1))
+                assertEquals("PENDING", cursor.getString(2))
+                assertEquals(4L, cursor.getLong(3))
+            }
+            database.query("SELECT operation_id, settled_outcome FROM delivery_dispatch_prepare WHERE delivery_id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("op-prep", cursor.getString(0))
+                assertEquals("CONFIRMED", cursor.getString(1))
+            }
+            database.query("SELECT COUNT(*) FROM delivery_import_receipts").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+            database.execSQL("INSERT INTO delivery_import_receipts (delivery_id, account_id, issuer, head_payload_hash, head_version, receive_contract_version, received_at) VALUES ('d','account-a','https://issuer.com','abc123hash',1,1,2000)")
+            database.query("SELECT account_id, issuer, head_payload_hash, head_version, receive_contract_version, received_at FROM delivery_import_receipts WHERE delivery_id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("account-a", cursor.getString(0))
+                assertEquals("https://issuer.com", cursor.getString(1))
+                assertEquals("abc123hash", cursor.getString(2))
+                assertEquals(1L, cursor.getLong(3))
+                assertEquals(1, cursor.getInt(4))
+                assertEquals(2000L, cursor.getLong(5))
+            }
+        }
     }
 
     @Test

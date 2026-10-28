@@ -217,6 +217,23 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
         return RemoteDeliveryState(receipt, headVersion, headPayloadHash)
     }
 
+    /**
+     * G2.5 strict receive bundle reader. Calls `get_own_delivery_receive_v1` with `p_delivery_id`,
+     * and strictly parses the returned graph into a validated [DeliveryReceiveBundle].
+     */
+    suspend fun readOwnDeliveryReceiveBundle(
+        session: AuthSession,
+        deliveryId: UUID,
+        expectedIssuer: String? = null,
+    ): DeliveryReceiveBundle {
+        val root = objectOf(call(GET_OWN_DELIVERY_RECEIVE_V1, """{"p_delivery_id":${quote(deliveryId.toString())}}""", session))
+        return try {
+            DeliveryReceiveBundleParser.parse(root, session.userId, expectedIssuer)
+        } catch (_: DeliveryReceiveValidationException) {
+            throw DeliveryRpcFailure(DeliveryRpcError.PROTOCOL)
+        }
+    }
+
     // ------------------------------------------------------------------------------- internals
 
     private suspend fun call(name: String, body: String, session: AuthSession): JsonObject {
@@ -280,10 +297,16 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
         const val SYNC_OWN_DELIVERY_V2 = "sync_own_delivery_v2"
         const val CHECK_SYNC_OPERATIONS = "check_sync_operations"
         const val GET_OWN_DELIVERY_V2 = "get_own_delivery_v2"
+        const val GET_OWN_DELIVERY_RECEIVE_V1 = "get_own_delivery_receive_v1"
 
         /** The matrix caps `check_sync_operations` at 200 operation ids per call. */
         const val BATCH = 200
 
-        val NAMES = setOf(SYNC_OWN_DELIVERY_V2, CHECK_SYNC_OPERATIONS, GET_OWN_DELIVERY_V2)
+        val NAMES = setOf(
+            SYNC_OWN_DELIVERY_V2,
+            CHECK_SYNC_OPERATIONS,
+            GET_OWN_DELIVERY_V2,
+            GET_OWN_DELIVERY_RECEIVE_V1,
+        )
     }
 }
