@@ -114,6 +114,7 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingFarm.description != bundle.farm.description ||
             existingFarm.municipality != bundle.farm.municipality ||
             existingFarm.province != bundle.farm.province ||
+            existingFarm.coverDocumentId != null ||
             existingFarm.notes != bundle.farm.notes ||
             existingFarm.status != bundle.farm.status ||
             existingFarm.metadata.createdAt != bundle.farm.createdAt ||
@@ -138,6 +139,7 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingParcel.source != bundle.parcel.source ||
             existingParcel.geometryGeoJson != bundle.parcel.geometryGeoJson ||
             existingParcel.sourceProvider != bundle.parcel.sourceProvider ||
+            existingParcel.sourceImportedAt != bundle.parcel.sourceImportedAt ||
             existingParcel.cadastralAreaM2 != bundle.parcel.cadastralAreaM2 ||
             existingParcel.managedAreaM2 != bundle.parcel.managedAreaM2 ||
             existingParcel.notes != bundle.parcel.notes ||
