@@ -5,6 +5,7 @@ import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryEntity
+import com.isivoltpro.maginaolivo.data.local.entity.DeliveryImportReceiptEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
@@ -16,6 +17,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.runBlocking
 
 enum class DeliveryReceiveOutcome {
     IMPORTED,
@@ -44,8 +46,9 @@ data class DeliveryImportReceipt(
  *  - ZERO outbox operations generated.
  *  - Idempotent: re-receiving the exact same bundle returns [DeliveryReceiveOutcome.ALREADY_IMPORTED]
  *    with zero row writes and zero outbox changes.
- *  - Conflict detection: any conflicting local row, differing hash/version, or pending outbox operation
- *    for any entity in the hierarchy returns [DeliveryReceiveOutcome.CONFLICT] without modifying bytes.
+ *  - Conflict detection: any conflicting local row, differing domain attributes, version, hash,
+ *    or pending outbox operation for any entity in the hierarchy returns [DeliveryReceiveOutcome.CONFLICT]
+ *    without modifying database state or overwriting existing parent rows.
  *  - Crash / rollback safety: a failure before commit leaves the database with zero imported rows.
  */
 suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
@@ -54,22 +57,7 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
 ): DeliveryReceiveOutcome = withTransaction {
     val db = openHelper.writableDatabase
 
-    // 1. Ensure import receipts table exists in SQLite
-    db.execSQL(
-        """
-        CREATE TABLE IF NOT EXISTS delivery_import_receipts (
-            delivery_id TEXT PRIMARY KEY,
-            account_id TEXT NOT NULL,
-            issuer TEXT NOT NULL,
-            head_payload_hash TEXT NOT NULL,
-            head_version INTEGER NOT NULL,
-            receive_contract_version INTEGER NOT NULL,
-            received_at INTEGER NOT NULL
-        )
-        """.trimIndent(),
-    )
-
-    // 2. Check for active/pending/processing outbox operations for any entity in the incoming graph
+    // 1. Check for active/pending/processing outbox operations for any entity in the incoming graph
     val entityIds = listOf(
         bundle.workspace.id,
         bundle.farm.id,
@@ -91,29 +79,9 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
         return@withTransaction DeliveryReceiveOutcome.CONFLICT
     }
 
-    // 3. Check if this delivery has already been received via import receipt
-    val receiptCursor = db.query(
-        "SELECT account_id, issuer, head_payload_hash, head_version, receive_contract_version, received_at FROM delivery_import_receipts WHERE delivery_id = ?",
-        arrayOf(bundle.delivery.id.toString()),
-    )
-    val existingReceipt = receiptCursor.use { cursor ->
-        if (cursor.moveToFirst()) {
-            DeliveryImportReceipt(
-                deliveryId = bundle.delivery.id,
-                accountId = cursor.getString(0),
-                issuer = cursor.getString(1),
-                headPayloadHash = cursor.getString(2),
-                headVersion = cursor.getLong(3),
-                receiveContractVersion = cursor.getInt(4),
-                receivedAt = Instant.ofEpochMilli(cursor.getLong(5)),
-            )
-        } else {
-            null
-        }
-    }
-
+    // 2. Check if this delivery has already been received via import receipt
+    val existingReceipt = deliveryImportReceiptDao().findById(bundle.delivery.id)
     if (existingReceipt != null) {
-        // Idempotency check: must match account, issuer, head payload hash and head version
         val deliveryRow = deliveryDao().findById(bundle.delivery.id)
         if (deliveryRow != null &&
             existingReceipt.accountId == bundle.accountId.toString() &&
@@ -132,251 +100,399 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
         }
     }
 
-    // 4. If no receipt exists, verify no conflicting delivery or parent entity exists
+    // 3. If no receipt exists, verify no delivery with this UUID exists
     if (deliveryDao().findById(bundle.delivery.id) != null) {
         return@withTransaction DeliveryReceiveOutcome.CONFLICT
     }
 
+    // 4. Strict Conflict Detection on all parent and child entities:
+    // If an entity already exists, ALL domain attributes and versions must match exactly.
+    // If ANY attribute, version, or tombstone differs, return CONFLICT without modifying anything.
+
+    // 4.1 Workspace
     val existingWs = workspaceDao().findById(bundle.workspace.id)
     if (existingWs != null) {
-        if (existingWs.ownerUserId != bundle.workspace.ownerUserId || existingWs.metadata.deletedAt != null) {
+        if (existingWs.metadata.deletedAt != null ||
+            existingWs.name != bundle.workspace.name ||
+            existingWs.ownerUserId != bundle.workspace.ownerUserId ||
+            existingWs.countryCode != bundle.workspace.countryCode ||
+            existingWs.timezone != bundle.workspace.timezone ||
+            existingWs.locale != bundle.workspace.locale ||
+            existingWs.currency != bundle.workspace.currency ||
+            existingWs.metadata.version != bundle.workspace.version
+        ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
         }
     }
 
+    // 4.2 Farm
     val existingFarm = farmDao().findById(bundle.farm.id)
     if (existingFarm != null) {
-        if (existingFarm.workspaceId != bundle.workspace.id || existingFarm.metadata.deletedAt != null) {
+        if (existingFarm.metadata.deletedAt != null ||
+            existingFarm.workspaceId != bundle.workspace.id ||
+            existingFarm.name != bundle.farm.name ||
+            existingFarm.description != bundle.farm.description ||
+            existingFarm.municipality != bundle.farm.municipality ||
+            existingFarm.province != bundle.farm.province ||
+            existingFarm.notes != bundle.farm.notes ||
+            existingFarm.status != bundle.farm.status ||
+            existingFarm.metadata.version != bundle.farm.version
+        ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
         }
     }
 
+    // 4.3 Parcel
     val existingParcel = parcelDao().findById(bundle.parcel.id)
     if (existingParcel != null) {
-        if (existingParcel.workspaceId != bundle.workspace.id || existingParcel.metadata.deletedAt != null) {
-            return@withTransaction DeliveryReceiveOutcome.CONFLICT
-        }
-    }
-
-    val existingCampaign = campaignDao().findById(bundle.campaign.id)
-    if (existingCampaign != null) {
-        if (existingCampaign.workspaceId != bundle.workspace.id ||
-            existingCampaign.farmId != bundle.farm.id ||
-            existingCampaign.metadata.deletedAt != null
+        if (existingParcel.metadata.deletedAt != null ||
+            existingParcel.workspaceId != bundle.workspace.id ||
+            existingParcel.displayName != bundle.parcel.displayName ||
+            existingParcel.cadastralReference != bundle.parcel.cadastralReference ||
+            existingParcel.cadastralPolygon != bundle.parcel.cadastralPolygon ||
+            existingParcel.cadastralParcel != bundle.parcel.cadastralParcel ||
+            existingParcel.municipality != bundle.parcel.municipality ||
+            existingParcel.province != bundle.parcel.province ||
+            existingParcel.source != bundle.parcel.source ||
+            existingParcel.geometryGeoJson != bundle.parcel.geometryGeoJson ||
+            existingParcel.sourceProvider != bundle.parcel.sourceProvider ||
+            existingParcel.cadastralAreaM2 != bundle.parcel.cadastralAreaM2 ||
+            existingParcel.managedAreaM2 != bundle.parcel.managedAreaM2 ||
+            existingParcel.notes != bundle.parcel.notes ||
+            existingParcel.status != bundle.parcel.status ||
+            existingParcel.oliveTreeCount != bundle.parcel.oliveTreeCount ||
+            existingParcel.variety != bundle.parcel.variety ||
+            existingParcel.irrigationSystem != bundle.parcel.irrigationSystem ||
+            existingParcel.irrigationNetwork != bundle.parcel.irrigationNetwork ||
+            existingParcel.irrigationSector != bundle.parcel.irrigationSector ||
+            existingParcel.irrigationDays != bundle.parcel.irrigationDays ||
+            existingParcel.metadata.version != bundle.parcel.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
         }
     }
 
+    // 4.4 FarmParcelMembership
+    val existingMem = parcelDao().listMemberships(bundle.parcel.id).find { it.id == bundle.membership.id }
+    if (existingMem != null) {
+        if (existingMem.metadata.deletedAt != null ||
+            existingMem.workspaceId != bundle.workspace.id ||
+            existingMem.farmId != bundle.farm.id ||
+            existingMem.parcelId != bundle.parcel.id ||
+            existingMem.validFrom != bundle.membership.validFrom ||
+            existingMem.validUntil != null ||
+            existingMem.metadata.version != bundle.membership.version
+        ) {
+            return@withTransaction DeliveryReceiveOutcome.CONFLICT
+        }
+    }
+
+    // 4.5 Campaign
+    val existingCamp = campaignDao().findById(bundle.campaign.id)
+    if (existingCamp != null) {
+        if (existingCamp.metadata.deletedAt != null ||
+            existingCamp.workspaceId != bundle.workspace.id ||
+            existingCamp.farmId != bundle.farm.id ||
+            existingCamp.name != bundle.campaign.name ||
+            existingCamp.startDate != bundle.campaign.startDate ||
+            existingCamp.endDate != bundle.campaign.endDate ||
+            existingCamp.status != bundle.campaign.status ||
+            existingCamp.notes != bundle.campaign.notes ||
+            existingCamp.metadata.version != bundle.campaign.version
+        ) {
+            return@withTransaction DeliveryReceiveOutcome.CONFLICT
+        }
+    }
+
+    // 4.6 CampaignParcelSnapshot
+    val existingSnap = campaignDao().listSnapshots(bundle.campaign.id).find { it.id == bundle.campaignParcel.id }
+    if (existingSnap != null) {
+        if (existingSnap.metadata.deletedAt != null ||
+            existingSnap.workspaceId != bundle.workspace.id ||
+            existingSnap.campaignId != bundle.campaign.id ||
+            existingSnap.parcelId != bundle.parcel.id ||
+            existingSnap.farmIdAtStart != bundle.farm.id ||
+            existingSnap.farmNameAtStart != bundle.campaignParcel.farmNameAtStart ||
+            existingSnap.parcelNameAtStart != bundle.campaignParcel.parcelNameAtStart ||
+            existingSnap.managedAreaM2AtStart != bundle.campaignParcel.managedAreaM2AtStart ||
+            existingSnap.cadastralReferenceAtStart != bundle.campaignParcel.cadastralReferenceAtStart ||
+            existingSnap.geometryGeoJsonSnapshot != bundle.campaignParcel.geometryGeoJsonSnapshot ||
+            existingSnap.metadata.version != bundle.campaignParcel.originVersion
+        ) {
+            return@withTransaction DeliveryReceiveOutcome.CONFLICT
+        }
+    }
+
+    // 4.7 Harvest
     val existingHarvest = harvestDao().findById(bundle.harvest.id)
     if (existingHarvest != null) {
-        if (existingHarvest.workspaceId != bundle.workspace.id ||
+        if (existingHarvest.metadata.deletedAt != null ||
+            existingHarvest.workspaceId != bundle.workspace.id ||
             existingHarvest.farmId != bundle.farm.id ||
             existingHarvest.campaignId != bundle.campaign.id ||
-            existingHarvest.metadata.deletedAt != null
+            existingHarvest.harvestDate != bundle.harvest.harvestDate ||
+            existingHarvest.weightGrams != bundle.harvest.weightGrams ||
+            existingHarvest.destination != bundle.harvest.destination ||
+            existingHarvest.notes != bundle.harvest.notes ||
+            existingHarvest.collectionMethod != bundle.harvest.collectionMethod ||
+            existingHarvest.workerCount != bundle.harvest.workerCount ||
+            existingHarvest.machineryText != bundle.harvest.machineryText ||
+            existingHarvest.dayOrigin != bundle.harvest.dayOrigin ||
+            existingHarvest.metadata.version != bundle.harvest.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
         }
     }
 
-    // 5. Inserción transaccional de padres e hijos preservando los UUIDs originales
-    // 5.1 Workspace
-    workspaceDao().upsert(
-        WorkspaceEntity(
-            id = bundle.workspace.id,
-            name = bundle.workspace.name,
-            ownerUserId = bundle.workspace.ownerUserId,
-            countryCode = bundle.workspace.countryCode,
-            timezone = bundle.workspace.timezone,
-            locale = bundle.workspace.locale,
-            currency = bundle.workspace.currency,
-            metadata = LocalMetadata(
-                createdAt = bundle.workspace.createdAt,
-                updatedAt = bundle.workspace.updatedAt,
-                version = bundle.workspace.version,
-                syncStatus = SyncStatus.SYNCED,
-                remoteVersion = bundle.workspace.version,
-                lastSyncedAt = at,
-            ),
-        ),
-    )
+    // 4.8 HarvestParcel
+    val existingHp = harvestDao().listParcels(bundle.harvest.id).find { it.id == bundle.harvestParcel.id }
+    if (existingHp != null) {
+        if (existingHp.metadata.deletedAt != null ||
+            existingHp.workspaceId != bundle.workspace.id ||
+            existingHp.harvestId != bundle.harvest.id ||
+            existingHp.parcelId != bundle.parcel.id ||
+            existingHp.campaignParcelId != bundle.campaignParcel.id ||
+            existingHp.parcelNameAtHarvest != bundle.harvestParcel.parcelNameAtHarvest ||
+            existingHp.weightGrams != bundle.harvestParcel.weightGrams ||
+            existingHp.allocationMode != bundle.harvestParcel.allocationMode ||
+            existingHp.metadata.version != bundle.harvestParcel.originVersion
+        ) {
+            return@withTransaction DeliveryReceiveOutcome.CONFLICT
+        }
+    }
 
-    // 5.2 Farm
-    farmDao().upsert(
-        FarmEntity(
-            id = bundle.farm.id,
-            workspaceId = bundle.workspace.id,
-            name = bundle.farm.name,
-            description = bundle.farm.description,
-            municipality = bundle.farm.municipality,
-            province = bundle.farm.province,
-            coverDocumentId = null,
-            notes = bundle.farm.notes,
-            status = bundle.farm.status,
-            metadata = LocalMetadata(
-                createdAt = bundle.farm.createdAt,
-                updatedAt = bundle.farm.updatedAt,
-                version = bundle.farm.version,
-                syncStatus = SyncStatus.SYNCED,
-                remoteVersion = bundle.farm.version,
-                lastSyncedAt = at,
-            ),
-        ),
-    )
+    // 4.9 DeliveryParcel
+    val existingDp = deliveryDao().listParcels(bundle.delivery.id).find { it.id == bundle.deliveryParcel.id }
+    if (existingDp != null) {
+        if (existingDp.metadata.deletedAt != null ||
+            existingDp.workspaceId != bundle.workspace.id ||
+            existingDp.deliveryId != bundle.delivery.id ||
+            existingDp.parcelId != bundle.parcel.id ||
+            existingDp.campaignParcelId != bundle.campaignParcel.id ||
+            existingDp.parcelNameAtDelivery != bundle.deliveryParcel.parcelNameAtDelivery ||
+            existingDp.weightGrams != bundle.deliveryParcel.weightGrams ||
+            existingDp.allocationMode != bundle.deliveryParcel.allocationMode ||
+            existingDp.metadata.version != bundle.deliveryParcel.originVersion
+        ) {
+            return@withTransaction DeliveryReceiveOutcome.CONFLICT
+        }
+    }
 
-    // 5.3 Parcel
-    parcelDao().upsert(
-        ParcelEntity(
-            id = bundle.parcel.id,
-            workspaceId = bundle.workspace.id,
-            displayName = bundle.parcel.displayName,
-            cadastralReference = bundle.parcel.cadastralReference,
-            cadastralPolygon = bundle.parcel.cadastralPolygon,
-            cadastralParcel = bundle.parcel.cadastralParcel,
-            municipality = bundle.parcel.municipality,
-            province = bundle.parcel.province,
-            source = bundle.parcel.source,
-            geometryGeoJson = bundle.parcel.geometryGeoJson,
-            sourceProvider = bundle.parcel.sourceProvider,
-            sourceImportedAt = bundle.parcel.sourceImportedAt,
-            cadastralAreaM2 = bundle.parcel.cadastralAreaM2,
-            managedAreaM2 = bundle.parcel.managedAreaM2,
-            notes = bundle.parcel.notes,
-            status = bundle.parcel.status,
-            oliveTreeCount = bundle.parcel.oliveTreeCount,
-            variety = bundle.parcel.variety,
-            irrigationSystem = bundle.parcel.irrigationSystem,
-            irrigationNetwork = bundle.parcel.irrigationNetwork,
-            irrigationSector = bundle.parcel.irrigationSector,
-            irrigationDays = bundle.parcel.irrigationDays,
-            metadata = LocalMetadata(
-                createdAt = bundle.parcel.createdAt,
-                updatedAt = bundle.parcel.updatedAt,
-                version = bundle.parcel.version,
-                syncStatus = SyncStatus.SYNCED,
-                remoteVersion = bundle.parcel.version,
-                lastSyncedAt = at,
-            ),
-        ),
-    )
+    // 5. Inserción de entidades no existentes preservando los UUIDs originales y sin generar outbox
 
-    // 5.4 Membership
-    parcelDao().upsertMembership(
-        FarmParcelMembershipEntity(
-            id = bundle.membership.id,
-            workspaceId = bundle.workspace.id,
-            farmId = bundle.farm.id,
-            parcelId = bundle.parcel.id,
-            validFrom = bundle.membership.validFrom,
-            validUntil = null,
-            metadata = LocalMetadata(
-                createdAt = bundle.membership.createdAt,
-                updatedAt = bundle.membership.updatedAt,
-                version = bundle.membership.version,
-                syncStatus = SyncStatus.SYNCED,
-                remoteVersion = bundle.membership.version,
-                lastSyncedAt = at,
+    // 5.1 Workspace (solo si no existe)
+    if (existingWs == null) {
+        workspaceDao().upsert(
+            WorkspaceEntity(
+                id = bundle.workspace.id,
+                name = bundle.workspace.name,
+                ownerUserId = bundle.workspace.ownerUserId,
+                countryCode = bundle.workspace.countryCode,
+                timezone = bundle.workspace.timezone,
+                locale = bundle.workspace.locale,
+                currency = bundle.workspace.currency,
+                metadata = LocalMetadata(
+                    createdAt = bundle.workspace.createdAt,
+                    updatedAt = bundle.workspace.updatedAt,
+                    version = bundle.workspace.version,
+                    syncStatus = SyncStatus.SYNCED,
+                    remoteVersion = bundle.workspace.version,
+                    lastSyncedAt = at,
+                ),
             ),
-        ),
-    )
+        )
+    }
 
-    // 5.5 Campaign
-    campaignDao().upsert(
-        CampaignEntity(
-            id = bundle.campaign.id,
-            workspaceId = bundle.workspace.id,
-            farmId = bundle.farm.id,
-            name = bundle.campaign.name,
-            startDate = bundle.campaign.startDate,
-            endDate = bundle.campaign.endDate,
-            status = bundle.campaign.status,
-            notes = bundle.campaign.notes,
-            metadata = LocalMetadata(
-                createdAt = bundle.campaign.createdAt,
-                updatedAt = bundle.campaign.updatedAt,
-                version = bundle.campaign.version,
-                syncStatus = SyncStatus.SYNCED,
-                remoteVersion = bundle.campaign.version,
-                lastSyncedAt = at,
+    // 5.2 Farm (solo si no existe)
+    if (existingFarm == null) {
+        farmDao().upsert(
+            FarmEntity(
+                id = bundle.farm.id,
+                workspaceId = bundle.workspace.id,
+                name = bundle.farm.name,
+                description = bundle.farm.description,
+                municipality = bundle.farm.municipality,
+                province = bundle.farm.province,
+                coverDocumentId = null,
+                notes = bundle.farm.notes,
+                status = bundle.farm.status,
+                metadata = LocalMetadata(
+                    createdAt = bundle.farm.createdAt,
+                    updatedAt = bundle.farm.updatedAt,
+                    version = bundle.farm.version,
+                    syncStatus = SyncStatus.SYNCED,
+                    remoteVersion = bundle.farm.version,
+                    lastSyncedAt = at,
+                ),
             ),
-        ),
-    )
+        )
+    }
 
-    // 5.6 CampaignParcelSnapshot (using origin metadata!)
-    campaignDao().upsertSnapshots(
-        listOf(
-            CampaignParcelSnapshotEntity(
-                id = bundle.campaignParcel.id,
+    // 5.3 Parcel (solo si no existe)
+    if (existingParcel == null) {
+        parcelDao().upsert(
+            ParcelEntity(
+                id = bundle.parcel.id,
+                workspaceId = bundle.workspace.id,
+                displayName = bundle.parcel.displayName,
+                cadastralReference = bundle.parcel.cadastralReference,
+                cadastralPolygon = bundle.parcel.cadastralPolygon,
+                cadastralParcel = bundle.parcel.cadastralParcel,
+                municipality = bundle.parcel.municipality,
+                province = bundle.parcel.province,
+                source = bundle.parcel.source,
+                geometryGeoJson = bundle.parcel.geometryGeoJson,
+                sourceProvider = bundle.parcel.sourceProvider,
+                sourceImportedAt = bundle.parcel.sourceImportedAt,
+                cadastralAreaM2 = bundle.parcel.cadastralAreaM2,
+                managedAreaM2 = bundle.parcel.managedAreaM2,
+                notes = bundle.parcel.notes,
+                status = bundle.parcel.status,
+                oliveTreeCount = bundle.parcel.oliveTreeCount,
+                variety = bundle.parcel.variety,
+                irrigationSystem = bundle.parcel.irrigationSystem,
+                irrigationNetwork = bundle.parcel.irrigationNetwork,
+                irrigationSector = bundle.parcel.irrigationSector,
+                irrigationDays = bundle.parcel.irrigationDays,
+                metadata = LocalMetadata(
+                    createdAt = bundle.parcel.createdAt,
+                    updatedAt = bundle.parcel.updatedAt,
+                    version = bundle.parcel.version,
+                    syncStatus = SyncStatus.SYNCED,
+                    remoteVersion = bundle.parcel.version,
+                    lastSyncedAt = at,
+                ),
+            ),
+        )
+    }
+
+    // 5.4 Membership (solo si no existe)
+    if (existingMem == null) {
+        parcelDao().upsertMembership(
+            FarmParcelMembershipEntity(
+                id = bundle.membership.id,
+                workspaceId = bundle.workspace.id,
+                farmId = bundle.farm.id,
+                parcelId = bundle.parcel.id,
+                validFrom = bundle.membership.validFrom,
+                validUntil = null,
+                metadata = LocalMetadata(
+                    createdAt = bundle.membership.createdAt,
+                    updatedAt = bundle.membership.updatedAt,
+                    version = bundle.membership.version,
+                    syncStatus = SyncStatus.SYNCED,
+                    remoteVersion = bundle.membership.version,
+                    lastSyncedAt = at,
+                ),
+            ),
+        )
+    }
+
+    // 5.5 Campaign (solo si no existe)
+    if (existingCamp == null) {
+        campaignDao().upsert(
+            CampaignEntity(
+                id = bundle.campaign.id,
+                workspaceId = bundle.workspace.id,
+                farmId = bundle.farm.id,
+                name = bundle.campaign.name,
+                startDate = bundle.campaign.startDate,
+                endDate = bundle.campaign.endDate,
+                status = bundle.campaign.status,
+                notes = bundle.campaign.notes,
+                metadata = LocalMetadata(
+                    createdAt = bundle.campaign.createdAt,
+                    updatedAt = bundle.campaign.updatedAt,
+                    version = bundle.campaign.version,
+                    syncStatus = SyncStatus.SYNCED,
+                    remoteVersion = bundle.campaign.version,
+                    lastSyncedAt = at,
+                ),
+            ),
+        )
+    }
+
+    // 5.6 CampaignParcelSnapshot (solo si no existe)
+    if (existingSnap == null) {
+        campaignDao().upsertSnapshots(
+            listOf(
+                CampaignParcelSnapshotEntity(
+                    id = bundle.campaignParcel.id,
+                    workspaceId = bundle.workspace.id,
+                    campaignId = bundle.campaign.id,
+                    parcelId = bundle.parcel.id,
+                    farmIdAtStart = bundle.farm.id,
+                    farmNameAtStart = bundle.campaignParcel.farmNameAtStart,
+                    parcelNameAtStart = bundle.campaignParcel.parcelNameAtStart,
+                    managedAreaM2AtStart = bundle.campaignParcel.managedAreaM2AtStart,
+                    cadastralReferenceAtStart = bundle.campaignParcel.cadastralReferenceAtStart,
+                    geometryGeoJsonSnapshot = bundle.campaignParcel.geometryGeoJsonSnapshot,
+                    metadata = LocalMetadata(
+                        createdAt = bundle.campaignParcel.originCreatedAt,
+                        updatedAt = bundle.campaignParcel.originUpdatedAt,
+                        version = bundle.campaignParcel.originVersion,
+                        syncStatus = SyncStatus.SYNCED,
+                        remoteVersion = bundle.campaignParcel.originVersion,
+                        lastSyncedAt = at,
+                    ),
+                ),
+            ),
+        )
+    }
+
+    // 5.7 Harvest (solo si no existe)
+    if (existingHarvest == null) {
+        harvestDao().upsert(
+            HarvestEntity(
+                id = bundle.harvest.id,
                 workspaceId = bundle.workspace.id,
                 campaignId = bundle.campaign.id,
-                parcelId = bundle.parcel.id,
-                farmIdAtStart = bundle.farm.id,
-                farmNameAtStart = bundle.campaignParcel.farmNameAtStart,
-                parcelNameAtStart = bundle.campaignParcel.parcelNameAtStart,
-                managedAreaM2AtStart = bundle.campaignParcel.managedAreaM2AtStart,
-                cadastralReferenceAtStart = bundle.campaignParcel.cadastralReferenceAtStart,
-                geometryGeoJsonSnapshot = bundle.campaignParcel.geometryGeoJsonSnapshot,
+                farmId = bundle.farm.id,
+                harvestDate = bundle.harvest.harvestDate,
+                weightGrams = bundle.harvest.weightGrams,
+                destination = bundle.harvest.destination,
+                notes = bundle.harvest.notes,
+                collectionMethod = bundle.harvest.collectionMethod,
+                workerCount = bundle.harvest.workerCount,
+                machineryText = bundle.harvest.machineryText,
+                dayOrigin = bundle.harvest.dayOrigin,
                 metadata = LocalMetadata(
-                    createdAt = bundle.campaignParcel.originCreatedAt,
-                    updatedAt = bundle.campaignParcel.originUpdatedAt,
-                    version = bundle.campaignParcel.originVersion,
+                    createdAt = bundle.harvest.createdAt,
+                    updatedAt = bundle.harvest.updatedAt,
+                    version = bundle.harvest.version,
                     syncStatus = SyncStatus.SYNCED,
-                    remoteVersion = bundle.campaignParcel.originVersion,
+                    remoteVersion = bundle.harvest.version,
                     lastSyncedAt = at,
                 ),
             ),
-        ),
-    )
+        )
+    }
 
-    // 5.7 Harvest
-    harvestDao().upsert(
-        HarvestEntity(
-            id = bundle.harvest.id,
-            workspaceId = bundle.workspace.id,
-            campaignId = bundle.campaign.id,
-            farmId = bundle.farm.id,
-            harvestDate = bundle.harvest.harvestDate,
-            weightGrams = bundle.harvest.weightGrams,
-            destination = bundle.harvest.destination,
-            notes = bundle.harvest.notes,
-            collectionMethod = bundle.harvest.collectionMethod,
-            workerCount = bundle.harvest.workerCount,
-            machineryText = bundle.harvest.machineryText,
-            dayOrigin = bundle.harvest.dayOrigin,
-            metadata = LocalMetadata(
-                createdAt = bundle.harvest.createdAt,
-                updatedAt = bundle.harvest.updatedAt,
-                version = bundle.harvest.version,
-                syncStatus = SyncStatus.SYNCED,
-                remoteVersion = bundle.harvest.version,
-                lastSyncedAt = at,
-            ),
-        ),
-    )
-
-    // 5.8 HarvestParcel (using origin metadata!)
-    harvestDao().upsertParcels(
-        listOf(
-            HarvestParcelEntity(
-                id = bundle.harvestParcel.id,
-                workspaceId = bundle.workspace.id,
-                harvestId = bundle.harvest.id,
-                parcelId = bundle.parcel.id,
-                campaignParcelId = bundle.campaignParcel.id,
-                parcelNameAtHarvest = bundle.harvestParcel.parcelNameAtHarvest,
-                weightGrams = bundle.harvestParcel.weightGrams,
-                allocationMode = bundle.harvestParcel.allocationMode,
-                metadata = LocalMetadata(
-                    createdAt = bundle.harvestParcel.originCreatedAt,
-                    updatedAt = bundle.harvestParcel.originUpdatedAt,
-                    version = bundle.harvestParcel.originVersion,
-                    syncStatus = SyncStatus.SYNCED,
-                    remoteVersion = bundle.harvestParcel.originVersion,
-                    lastSyncedAt = at,
+    // 5.8 HarvestParcel (solo si no existe)
+    if (existingHp == null) {
+        harvestDao().upsertParcels(
+            listOf(
+                HarvestParcelEntity(
+                    id = bundle.harvestParcel.id,
+                    workspaceId = bundle.workspace.id,
+                    harvestId = bundle.harvest.id,
+                    parcelId = bundle.parcel.id,
+                    campaignParcelId = bundle.campaignParcel.id,
+                    parcelNameAtHarvest = bundle.harvestParcel.parcelNameAtHarvest,
+                    weightGrams = bundle.harvestParcel.weightGrams,
+                    allocationMode = bundle.harvestParcel.allocationMode,
+                    metadata = LocalMetadata(
+                        createdAt = bundle.harvestParcel.originCreatedAt,
+                        updatedAt = bundle.harvestParcel.originUpdatedAt,
+                        version = bundle.harvestParcel.originVersion,
+                        syncStatus = SyncStatus.SYNCED,
+                        remoteVersion = bundle.harvestParcel.originVersion,
+                        lastSyncedAt = at,
+                    ),
                 ),
             ),
-        ),
-    )
+        )
+    }
 
     // 5.9 Delivery
     deliveryDao().upsert(
@@ -409,45 +525,42 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
         ),
     )
 
-    // 5.10 DeliveryParcel (using origin metadata!)
-    deliveryDao().upsertParcels(
-        listOf(
-            DeliveryParcelEntity(
-                id = bundle.deliveryParcel.id,
-                workspaceId = bundle.workspace.id,
-                deliveryId = bundle.delivery.id,
-                parcelId = bundle.parcel.id,
-                campaignParcelId = bundle.campaignParcel.id,
-                parcelNameAtDelivery = bundle.deliveryParcel.parcelNameAtDelivery,
-                weightGrams = bundle.deliveryParcel.weightGrams,
-                allocationMode = bundle.deliveryParcel.allocationMode,
-                metadata = LocalMetadata(
-                    createdAt = bundle.deliveryParcel.originCreatedAt,
-                    updatedAt = bundle.deliveryParcel.originUpdatedAt,
-                    version = bundle.deliveryParcel.originVersion,
-                    syncStatus = SyncStatus.SYNCED,
-                    remoteVersion = bundle.deliveryParcel.originVersion,
-                    lastSyncedAt = at,
+    // 5.10 DeliveryParcel (solo si no existe)
+    if (existingDp == null) {
+        deliveryDao().upsertParcels(
+            listOf(
+                DeliveryParcelEntity(
+                    id = bundle.deliveryParcel.id,
+                    workspaceId = bundle.workspace.id,
+                    deliveryId = bundle.delivery.id,
+                    parcelId = bundle.parcel.id,
+                    campaignParcelId = bundle.campaignParcel.id,
+                    parcelNameAtDelivery = bundle.deliveryParcel.parcelNameAtDelivery,
+                    weightGrams = bundle.deliveryParcel.weightGrams,
+                    allocationMode = bundle.deliveryParcel.allocationMode,
+                    metadata = LocalMetadata(
+                        createdAt = bundle.deliveryParcel.originCreatedAt,
+                        updatedAt = bundle.deliveryParcel.originUpdatedAt,
+                        version = bundle.deliveryParcel.originVersion,
+                        syncStatus = SyncStatus.SYNCED,
+                        remoteVersion = bundle.deliveryParcel.originVersion,
+                        lastSyncedAt = at,
+                    ),
                 ),
             ),
-        ),
-    )
+        )
+    }
 
-    // 6. Insert import receipt
-    db.execSQL(
-        """
-        INSERT INTO delivery_import_receipts (
-            delivery_id, account_id, issuer, head_payload_hash, head_version, receive_contract_version, received_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """.trimIndent(),
-        arrayOf<Any>(
-            bundle.delivery.id.toString(),
-            bundle.accountId.toString(),
-            bundle.issuer,
-            bundle.headPayloadHash,
-            bundle.headVersion,
-            bundle.receiveContractVersion,
-            at.toEpochMilli(),
+    // 6. Inserción del recibo duradero de importación mediante DAO versionado
+    deliveryImportReceiptDao().insert(
+        DeliveryImportReceiptEntity(
+            deliveryId = bundle.delivery.id,
+            accountId = bundle.accountId.toString(),
+            issuer = bundle.issuer,
+            headPayloadHash = bundle.headPayloadHash,
+            headVersion = bundle.headVersion,
+            receiveContractVersion = bundle.receiveContractVersion,
+            receivedAt = at,
         ),
     )
 
@@ -456,27 +569,17 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
 
 /** Reads a previously stored import receipt by delivery UUID. */
 fun MaginaOlivoDatabase.readDeliveryImportReceipt(deliveryId: UUID): DeliveryImportReceipt? {
-    val db = openHelper.readableDatabase
-    return try {
-        db.query(
-            "SELECT delivery_id, account_id, issuer, head_payload_hash, head_version, receive_contract_version, received_at FROM delivery_import_receipts WHERE delivery_id = ?",
-            arrayOf(deliveryId.toString()),
-        ).use { cursor ->
-            if (cursor.moveToFirst()) {
-                DeliveryImportReceipt(
-                    deliveryId = UUID.fromString(cursor.getString(0)),
-                    accountId = cursor.getString(1),
-                    issuer = cursor.getString(2),
-                    headPayloadHash = cursor.getString(3),
-                    headVersion = cursor.getLong(4),
-                    receiveContractVersion = cursor.getInt(5),
-                    receivedAt = Instant.ofEpochMilli(cursor.getLong(6)),
-                )
-            } else {
-                null
-            }
+    return runBlocking {
+        deliveryImportReceiptDao().findById(deliveryId)?.let { entity ->
+            DeliveryImportReceipt(
+                deliveryId = entity.deliveryId,
+                accountId = entity.accountId,
+                issuer = entity.issuer,
+                headPayloadHash = entity.headPayloadHash,
+                headVersion = entity.headVersion,
+                receiveContractVersion = entity.receiveContractVersion,
+                receivedAt = entity.receivedAt,
+            )
         }
-    } catch (_: Exception) {
-        null
     }
 }

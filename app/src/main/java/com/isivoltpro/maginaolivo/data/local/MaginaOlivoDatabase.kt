@@ -76,7 +76,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.IrrigationCommunityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CommunityWaterNoticeEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PersonalIrrigationPlanEntity
 
-private const val DATABASE_VERSION = 29
+private const val DATABASE_VERSION = 30
 
 @Database(
     entities = [
@@ -132,6 +132,7 @@ private const val DATABASE_VERSION = 29
         PersonalIrrigationPlanEntity::class,
         com.isivoltpro.maginaolivo.data.local.entity.DeliveryHeldReceiptEntity::class,
         com.isivoltpro.maginaolivo.data.local.entity.DeliveryDispatchPrepareEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.DeliveryImportReceiptEntity::class,
     ],
     version = DATABASE_VERSION,
     exportSchema = true,
@@ -155,6 +156,8 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun deliveryHeldReceiptDao(): com.isivoltpro.maginaolivo.data.local.dao.DeliveryHeldReceiptDao
 
     abstract fun deliveryDispatchPrepareDao(): com.isivoltpro.maginaolivo.data.local.dao.DeliveryDispatchPrepareDao
+
+    abstract fun deliveryImportReceiptDao(): com.isivoltpro.maginaolivo.data.local.dao.DeliveryImportReceiptDao
 
     abstract fun expenseDao(): ExpenseDao
 

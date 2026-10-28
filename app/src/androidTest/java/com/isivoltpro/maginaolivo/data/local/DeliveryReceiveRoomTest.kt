@@ -4,10 +4,17 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
+import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
+import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
+import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
+import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
+import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryReceiveBundle
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryReceiveBundleParser
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryReceiveOutcome
@@ -375,6 +382,274 @@ class DeliveryReceiveRoomTest {
         }
 
         assertEquals(0, count("workspaces"))
+        assertEquals(0, count("deliveries"))
+        assertEquals(0, count("sync_outbox"))
+    }
+
+    @Test
+    fun existingParentFarmWithDifferingAttributes_returnsConflict_andLeavesLocalRowsAndOutboxUntouched() = runBlocking {
+        // Pre-insert workspace matching bundle
+        db.workspaceDao().upsert(
+            WorkspaceEntity(
+                id = workspaceId,
+                name = "Finca Principal",
+                ownerUserId = accountId,
+                countryCode = "ES",
+                timezone = "Europe/Madrid",
+                locale = "es-ES",
+                currency = "EUR",
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    version = 1,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        // Pre-insert farm with differing name ("Finca Diferente" vs bundle's "Finca Sol")
+        db.farmDao().upsert(
+            FarmEntity(
+                id = farmId,
+                workspaceId = workspaceId,
+                name = "Finca Diferente",
+                description = "Finca de ensayo",
+                municipality = "Baeza",
+                province = "Jaén",
+                coverDocumentId = null,
+                notes = null,
+                status = FarmStatus.ACTIVE,
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    version = 1,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        val bundle = parseBundle()
+        val outcome = db.receiveDeliveryBundle(bundle)
+
+        assertEquals(DeliveryReceiveOutcome.CONFLICT, outcome)
+
+        // Verify existing farm was NOT overwritten
+        val preservedFarm = db.farmDao().findById(farmId)!!
+        assertEquals("Finca Diferente", preservedFarm.name)
+        assertEquals(0, count("deliveries"))
+        assertEquals(0, count("sync_outbox"))
+        assertNull(db.readDeliveryImportReceipt(deliveryId))
+    }
+
+    @Test
+    fun existingParentFarmWithDifferingVersion_returnsConflict_andLeavesLocalRowsAndOutboxUntouched() = runBlocking {
+        db.workspaceDao().upsert(
+            WorkspaceEntity(
+                id = workspaceId,
+                name = "Finca Principal",
+                ownerUserId = accountId,
+                countryCode = "ES",
+                timezone = "Europe/Madrid",
+                locale = "es-ES",
+                currency = "EUR",
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    version = 1,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        // Farm exists with version 2 (bundle has version 1)
+        db.farmDao().upsert(
+            FarmEntity(
+                id = farmId,
+                workspaceId = workspaceId,
+                name = "Finca Sol",
+                description = "Finca de ensayo",
+                municipality = "Baeza",
+                province = "Jaén",
+                coverDocumentId = null,
+                notes = null,
+                status = FarmStatus.ACTIVE,
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    version = 2,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        val bundle = parseBundle()
+        val outcome = db.receiveDeliveryBundle(bundle)
+
+        assertEquals(DeliveryReceiveOutcome.CONFLICT, outcome)
+
+        val preservedFarm = db.farmDao().findById(farmId)!!
+        assertEquals(2L, preservedFarm.metadata.version)
+        assertEquals(0, count("deliveries"))
+        assertEquals(0, count("sync_outbox"))
+    }
+
+    @Test
+    fun existingParentEntitiesWithIdenticalAttributes_succeeds_andImportsDelivery_withZeroOutbox() = runBlocking {
+        // Pre-insert identical workspace and farm
+        db.workspaceDao().upsert(
+            WorkspaceEntity(
+                id = workspaceId,
+                name = "Finca Principal",
+                ownerUserId = accountId,
+                countryCode = "ES",
+                timezone = "Europe/Madrid",
+                locale = "es-ES",
+                currency = "EUR",
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    version = 1,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        db.farmDao().upsert(
+            FarmEntity(
+                id = farmId,
+                workspaceId = workspaceId,
+                name = "Finca Sol",
+                description = "Finca de ensayo",
+                municipality = "Baeza",
+                province = "Jaén",
+                coverDocumentId = null,
+                notes = null,
+                status = FarmStatus.ACTIVE,
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    version = 1,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        val bundle = parseBundle()
+        val outcome = db.receiveDeliveryBundle(bundle)
+
+        assertEquals(DeliveryReceiveOutcome.IMPORTED, outcome)
+
+        // Verify delivery and receipt imported successfully
+        assertEquals(1, count("deliveries"))
+        assertEquals(1, count("delivery_import_receipts"))
+        assertEquals(0, count("sync_outbox"))
+
+        val preservedFarm = db.farmDao().findById(farmId)!!
+        assertEquals("Finca Sol", preservedFarm.name)
+        assertEquals(1L, preservedFarm.metadata.version)
+    }
+
+    @Test
+    fun deletedParentEntity_returnsConflict_withoutModifyingRoom() = runBlocking {
+        db.workspaceDao().upsert(
+            WorkspaceEntity(
+                id = workspaceId,
+                name = "Finca Principal",
+                ownerUserId = accountId,
+                countryCode = "ES",
+                timezone = "Europe/Madrid",
+                locale = "es-ES",
+                currency = "EUR",
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    deletedAt = Instant.now(),
+                    version = 1,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        val bundle = parseBundle()
+        val outcome = db.receiveDeliveryBundle(bundle)
+
+        assertEquals(DeliveryReceiveOutcome.CONFLICT, outcome)
+        assertEquals(0, count("deliveries"))
+        assertEquals(0, count("sync_outbox"))
+    }
+
+    @Test
+    fun existingHarvestWithDifferingWeight_returnsConflict_withoutModifyingRoom() = runBlocking {
+        // Pre-insert workspace and farm
+        db.workspaceDao().upsert(
+            WorkspaceEntity(
+                id = workspaceId,
+                name = "Finca Principal",
+                ownerUserId = accountId,
+                countryCode = "ES",
+                timezone = "Europe/Madrid",
+                locale = "es-ES",
+                currency = "EUR",
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    version = 1,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        db.farmDao().upsert(
+            FarmEntity(
+                id = farmId,
+                workspaceId = workspaceId,
+                name = "Finca Sol",
+                description = "Finca de ensayo",
+                municipality = "Baeza",
+                province = "Jaén",
+                coverDocumentId = null,
+                notes = null,
+                status = FarmStatus.ACTIVE,
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-01T00:00:00Z"),
+                    version = 1,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        // Pre-insert harvest with 999999g instead of 1540000g
+        db.harvestDao().upsert(
+            HarvestEntity(
+                id = harvestId,
+                workspaceId = workspaceId,
+                farmId = farmId,
+                campaignId = campaignId,
+                harvestDate = java.time.LocalDate.parse("2026-10-15"),
+                weightGrams = 999999L,
+                destination = null,
+                notes = "Recolección temprana",
+                collectionMethod = null,
+                workerCount = null,
+                machineryText = null,
+                dayOrigin = null,
+                metadata = LocalMetadata(
+                    createdAt = Instant.parse("2026-10-15T00:00:00Z"),
+                    updatedAt = Instant.parse("2026-10-15T00:00:00Z"),
+                    version = 1,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            ),
+        )
+
+        val bundle = parseBundle()
+        val outcome = db.receiveDeliveryBundle(bundle)
+
+        assertEquals(DeliveryReceiveOutcome.CONFLICT, outcome)
+
+        val preservedHarvest = db.harvestDao().findById(harvestId)!!
+        assertEquals(999999L, preservedHarvest.weightGrams)
         assertEquals(0, count("deliveries"))
         assertEquals(0, count("sync_outbox"))
     }
