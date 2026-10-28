@@ -79,31 +79,9 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
         return@withTransaction DeliveryReceiveOutcome.CONFLICT
     }
 
-    // 2. Check if this delivery has already been received via import receipt
+    // 2. Keep the receipt for the final idempotency decision, after validating the whole graph.
     val existingReceipt = deliveryImportReceiptDao().findById(bundle.delivery.id)
-    if (existingReceipt != null) {
-        val deliveryRow = deliveryDao().findById(bundle.delivery.id)
-        if (deliveryRow != null &&
-            existingReceipt.accountId == bundle.accountId.toString() &&
-            existingReceipt.issuer == bundle.issuer &&
-            existingReceipt.headPayloadHash == bundle.headPayloadHash &&
-            existingReceipt.headVersion == bundle.headVersion &&
-            existingReceipt.receiveContractVersion == bundle.receiveContractVersion &&
-            deliveryRow.netGrams == bundle.delivery.netGrams &&
-            deliveryRow.farmId == bundle.farm.id &&
-            deliveryRow.campaignId == bundle.campaign.id &&
-            deliveryRow.harvestId == bundle.harvest.id
-        ) {
-            return@withTransaction DeliveryReceiveOutcome.ALREADY_IMPORTED
-        } else {
-            return@withTransaction DeliveryReceiveOutcome.CONFLICT
-        }
-    }
-
-    // 3. If no receipt exists, verify no delivery with this UUID exists
-    if (deliveryDao().findById(bundle.delivery.id) != null) {
-        return@withTransaction DeliveryReceiveOutcome.CONFLICT
-    }
+    val existingDelivery = deliveryDao().findById(bundle.delivery.id)
 
     // 4. Strict Conflict Detection on all parent and child entities:
     // If an entity already exists, ALL domain attributes and versions must match exactly.
@@ -119,6 +97,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingWs.timezone != bundle.workspace.timezone ||
             existingWs.locale != bundle.workspace.locale ||
             existingWs.currency != bundle.workspace.currency ||
+            existingWs.metadata.createdAt != bundle.workspace.createdAt ||
+            existingWs.metadata.updatedAt != bundle.workspace.updatedAt ||
             existingWs.metadata.version != bundle.workspace.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -136,6 +116,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingFarm.province != bundle.farm.province ||
             existingFarm.notes != bundle.farm.notes ||
             existingFarm.status != bundle.farm.status ||
+            existingFarm.metadata.createdAt != bundle.farm.createdAt ||
+            existingFarm.metadata.updatedAt != bundle.farm.updatedAt ||
             existingFarm.metadata.version != bundle.farm.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -166,6 +148,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingParcel.irrigationNetwork != bundle.parcel.irrigationNetwork ||
             existingParcel.irrigationSector != bundle.parcel.irrigationSector ||
             existingParcel.irrigationDays != bundle.parcel.irrigationDays ||
+            existingParcel.metadata.createdAt != bundle.parcel.createdAt ||
+            existingParcel.metadata.updatedAt != bundle.parcel.updatedAt ||
             existingParcel.metadata.version != bundle.parcel.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -181,6 +165,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingMem.parcelId != bundle.parcel.id ||
             existingMem.validFrom != bundle.membership.validFrom ||
             existingMem.validUntil != null ||
+            existingMem.metadata.createdAt != bundle.membership.createdAt ||
+            existingMem.metadata.updatedAt != bundle.membership.updatedAt ||
             existingMem.metadata.version != bundle.membership.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -198,6 +184,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingCamp.endDate != bundle.campaign.endDate ||
             existingCamp.status != bundle.campaign.status ||
             existingCamp.notes != bundle.campaign.notes ||
+            existingCamp.metadata.createdAt != bundle.campaign.createdAt ||
+            existingCamp.metadata.updatedAt != bundle.campaign.updatedAt ||
             existingCamp.metadata.version != bundle.campaign.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -217,6 +205,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingSnap.managedAreaM2AtStart != bundle.campaignParcel.managedAreaM2AtStart ||
             existingSnap.cadastralReferenceAtStart != bundle.campaignParcel.cadastralReferenceAtStart ||
             existingSnap.geometryGeoJsonSnapshot != bundle.campaignParcel.geometryGeoJsonSnapshot ||
+            existingSnap.metadata.createdAt != bundle.campaignParcel.originCreatedAt ||
+            existingSnap.metadata.updatedAt != bundle.campaignParcel.originUpdatedAt ||
             existingSnap.metadata.version != bundle.campaignParcel.originVersion
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -238,6 +228,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingHarvest.workerCount != bundle.harvest.workerCount ||
             existingHarvest.machineryText != bundle.harvest.machineryText ||
             existingHarvest.dayOrigin != bundle.harvest.dayOrigin ||
+            existingHarvest.metadata.createdAt != bundle.harvest.createdAt ||
+            existingHarvest.metadata.updatedAt != bundle.harvest.updatedAt ||
             existingHarvest.metadata.version != bundle.harvest.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -255,6 +247,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingHp.parcelNameAtHarvest != bundle.harvestParcel.parcelNameAtHarvest ||
             existingHp.weightGrams != bundle.harvestParcel.weightGrams ||
             existingHp.allocationMode != bundle.harvestParcel.allocationMode ||
+            existingHp.metadata.createdAt != bundle.harvestParcel.originCreatedAt ||
+            existingHp.metadata.updatedAt != bundle.harvestParcel.originUpdatedAt ||
             existingHp.metadata.version != bundle.harvestParcel.originVersion
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -272,11 +266,48 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingDp.parcelNameAtDelivery != bundle.deliveryParcel.parcelNameAtDelivery ||
             existingDp.weightGrams != bundle.deliveryParcel.weightGrams ||
             existingDp.allocationMode != bundle.deliveryParcel.allocationMode ||
+            existingDp.metadata.createdAt != bundle.deliveryParcel.originCreatedAt ||
+            existingDp.metadata.updatedAt != bundle.deliveryParcel.originUpdatedAt ||
             existingDp.metadata.version != bundle.deliveryParcel.originVersion
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
         }
     }
+
+    // A receipt is idempotent only while every row still matches the received graph.
+    if (existingReceipt != null) {
+        if (existingDelivery == null || existingWs == null || existingFarm == null ||
+            existingParcel == null || existingMem == null || existingCamp == null ||
+            existingSnap == null || existingHarvest == null || existingHp == null || existingDp == null ||
+            existingReceipt.accountId != bundle.accountId.toString() ||
+            existingReceipt.issuer != bundle.issuer ||
+            existingReceipt.headPayloadHash != bundle.headPayloadHash ||
+            existingReceipt.headVersion != bundle.headVersion ||
+            existingReceipt.receiveContractVersion != bundle.receiveContractVersion ||
+            existingDelivery.workspaceId != bundle.workspace.id ||
+            existingDelivery.deliveryDate != bundle.delivery.deliveryDate ||
+            existingDelivery.deliveryTime != bundle.delivery.deliveryTime ||
+            existingDelivery.destinationOrganizationId != bundle.delivery.destinationOrganizationId ||
+            existingDelivery.destinationName != bundle.delivery.destinationName ||
+            existingDelivery.netGrams != bundle.delivery.netGrams ||
+            existingDelivery.grossGrams != bundle.delivery.grossGrams ||
+            existingDelivery.tareGrams != bundle.delivery.tareGrams ||
+            existingDelivery.deliveryNumber != bundle.delivery.deliveryNumber ||
+            existingDelivery.ticketNumber != bundle.delivery.ticketNumber ||
+            existingDelivery.source != bundle.delivery.source ||
+            existingDelivery.notes != bundle.delivery.notes ||
+            existingDelivery.farmId != bundle.farm.id ||
+            existingDelivery.campaignId != bundle.campaign.id ||
+            existingDelivery.harvestId != bundle.harvest.id ||
+            existingDelivery.origin != bundle.delivery.harvestOrigin ||
+            existingDelivery.metadata.createdAt != bundle.delivery.createdAt ||
+            existingDelivery.metadata.updatedAt != bundle.delivery.updatedAt ||
+            existingDelivery.metadata.version != bundle.delivery.version ||
+            existingDelivery.metadata.deletedAt != null
+        ) return@withTransaction DeliveryReceiveOutcome.CONFLICT
+        return@withTransaction DeliveryReceiveOutcome.ALREADY_IMPORTED
+    }
+    if (existingDelivery != null) return@withTransaction DeliveryReceiveOutcome.CONFLICT
 
     // 5. Inserción de entidades no existentes preservando los UUIDs originales y sin generar outbox
 

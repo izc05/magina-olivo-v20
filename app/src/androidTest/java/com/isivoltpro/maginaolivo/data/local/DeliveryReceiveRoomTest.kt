@@ -318,6 +318,31 @@ class DeliveryReceiveRoomTest {
     }
 
     @Test
+    fun duplicateReceive_afterLocalFarmEdit_returnsConflict() = runBlocking {
+        val bundle = parseBundle()
+        assertEquals(DeliveryReceiveOutcome.IMPORTED, db.receiveDeliveryBundle(bundle))
+        val farm = db.farmDao().findById(farmId)!!
+        db.farmDao().upsert(farm.copy(name = "Local edit"))
+
+        assertEquals(DeliveryReceiveOutcome.CONFLICT, db.receiveDeliveryBundle(bundle))
+        assertEquals("Local edit", db.farmDao().findById(farmId)!!.name)
+        assertEquals(1, count("delivery_import_receipts"))
+        assertEquals(0, count("sync_outbox"))
+    }
+
+    @Test
+    fun duplicateReceive_afterLocalDeliveryNotesEdit_returnsConflict() = runBlocking {
+        val bundle = parseBundle()
+        assertEquals(DeliveryReceiveOutcome.IMPORTED, db.receiveDeliveryBundle(bundle))
+        val delivery = db.deliveryDao().findById(deliveryId)!!
+        db.deliveryDao().upsert(delivery.copy(notes = "Local note"))
+
+        assertEquals(DeliveryReceiveOutcome.CONFLICT, db.receiveDeliveryBundle(bundle))
+        assertEquals("Local note", db.deliveryDao().findById(deliveryId)!!.notes)
+        assertEquals(0, count("sync_outbox"))
+    }
+
+    @Test
     fun conflictWithModifiedLocalDelivery_returnsConflict_andPreservesLocalRow() = runBlocking {
         val bundle = parseBundle()
         assertEquals(DeliveryReceiveOutcome.IMPORTED, db.receiveDeliveryBundle(bundle))
