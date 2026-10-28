@@ -14,6 +14,7 @@ import com.isivoltpro.maginaolivo.data.local.dao.DocumentDao
 import com.isivoltpro.maginaolivo.data.local.dao.ParcelDao
 import com.isivoltpro.maginaolivo.data.local.dao.SyncOutboxDao
 import com.isivoltpro.maginaolivo.data.local.dao.WorkspaceDao
+import com.isivoltpro.maginaolivo.data.local.dao.WorkspaceSelectionDao
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityParcelTargetEntity
@@ -66,6 +67,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.entity.UserProfileEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WeatherCacheEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceSelectionEntity
 import com.isivoltpro.maginaolivo.data.local.entity.AgronomicCredentialEntity
 import com.isivoltpro.maginaolivo.data.local.dao.TerritorialDao
 import com.isivoltpro.maginaolivo.data.local.entity.AgronomicPersonEntity
@@ -76,11 +78,12 @@ import com.isivoltpro.maginaolivo.data.local.entity.IrrigationCommunityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CommunityWaterNoticeEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PersonalIrrigationPlanEntity
 
-private const val DATABASE_VERSION = 30
+private const val DATABASE_VERSION = 31
 
 @Database(
     entities = [
         WorkspaceEntity::class,
+        WorkspaceSelectionEntity::class,
         FarmEntity::class,
         SyncOutboxEntity::class,
         UserProfileEntity::class,
@@ -140,6 +143,7 @@ private const val DATABASE_VERSION = 30
 @TypeConverters(RoomConverters::class)
 abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun workspaceDao(): WorkspaceDao
+    abstract fun workspaceSelectionDao(): WorkspaceSelectionDao
 
     abstract fun farmDao(): FarmDao
 

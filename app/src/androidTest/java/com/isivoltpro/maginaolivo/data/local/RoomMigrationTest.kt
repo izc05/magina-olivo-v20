@@ -33,7 +33,31 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(30, MaginaOlivoDatabase.VERSION)
+        assertEquals(31, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration30To31AddsEmptySelectionWithoutChangingExistingWorkspaceOrOutbox() {
+        migrationHelper.createDatabase(TEST_DATABASE, 30).use { database ->
+            database.execSQL("INSERT INTO workspaces (id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','Unbound','generated-owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'PENDING')")
+            database.execSQL("INSERT INTO sync_outbox (id,entity_type,entity_id,operation,payload_version,status,attempt_count,created_at,updated_at) VALUES ('op','WORKSPACE','w','CREATE',1,'PENDING',0,1000,1000)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 31, true, DatabaseMigrations.MIGRATION_30_31).use { database ->
+            database.query("SELECT name,owner_user_id,sync_status FROM workspaces WHERE id='w'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Unbound", cursor.getString(0))
+                assertEquals("generated-owner", cursor.getString(1))
+                assertEquals("PENDING", cursor.getString(2))
+            }
+            database.query("SELECT status FROM sync_outbox WHERE id='op'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("PENDING", cursor.getString(0))
+            }
+            database.query("SELECT COUNT(*) FROM workspace_selections").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
     }
 
     @Test

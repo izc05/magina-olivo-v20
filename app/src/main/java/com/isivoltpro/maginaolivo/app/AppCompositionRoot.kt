@@ -87,6 +87,8 @@ data class AppCompositionRoot(
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
                 regionalContext = defaults.regionalContext,
+                account = account,
+                issuer = BuildConfig.AUTH_PROJECT_URL,
             )
             val farmRepository = OfflineFirstFarmRepository(
                 database = database,

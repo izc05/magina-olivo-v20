@@ -11,11 +11,18 @@ import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceSelectionEntity
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceChoice
+import com.isivoltpro.maginaolivo.feature.account.AccountRepository
+import com.isivoltpro.maginaolivo.feature.account.WorkspaceSession
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 class LocalWorkspaceRepository(
     private val database: MaginaOlivoDatabase,
@@ -23,14 +30,82 @@ class LocalWorkspaceRepository(
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
     private val regionalContext: RegionalContext,
+    private val account: AccountRepository? = null,
+    private val issuer: String = "",
 ) : WorkspaceRepository {
-    override suspend fun ensureLocalWorkspace() = withContext(dispatchers.io) {
-        runCatching {
-            database.withTransaction {
-                database.workspaceDao().findFirstActive()?.let { existing ->
-                    return@withTransaction AppResult.Success(existing.id)
-                }
+    override fun observeActiveWorkspace(): Flow<AppResult<java.util.UUID>> =
+        if (account == null) database.workspaceSelectionDao().observeAll().map { activeWorkspace() }
+        else combine(account.state, database.workspaceSelectionDao().observeAll()) { _, _ -> Unit }
+            .map { activeWorkspace() }
+    override suspend fun activeWorkspace(): AppResult<java.util.UUID> = withContext(dispatchers.io) {
+        safe("active_workspace") { resolve(false) }
+    }
 
+    override suspend fun ensureLocalWorkspace(): AppResult<java.util.UUID> = withContext(dispatchers.io) {
+        safe("ensure_local_workspace") { resolve(true) }
+    }
+
+    override suspend fun availableWorkspaces(): AppResult<List<WorkspaceChoice>> = withContext(dispatchers.io) {
+        safe("available_workspaces") {
+            AppResult.Success(when (val session = account?.workspaceSession() ?: WorkspaceSession.SignedOut) {
+                is WorkspaceSession.Authenticated -> authorized(session.accountId)
+                    .map { WorkspaceChoice(it.id, it.name, true) }
+                WorkspaceSession.SignedOut -> database.workspaceDao().listUnboundLocal()
+                    .map { WorkspaceChoice(it.id, it.name, false) }
+                WorkspaceSession.Expired -> emptyList()
+            })
+        }
+    }
+
+    override suspend fun selectWorkspace(id: java.util.UUID): AppResult<Unit> = withContext(dispatchers.io) {
+        safe("select_workspace") {
+            database.withTransaction {
+                val scope = when (val session = account?.workspaceSession() ?: WorkspaceSession.SignedOut) {
+                    is WorkspaceSession.Authenticated -> {
+                        if (authorized(session.accountId).none { it.id == id }) return@withTransaction denied()
+                        issuer to session.accountId.toString()
+                    }
+                    WorkspaceSession.SignedOut -> {
+                        if (database.workspaceDao().listUnboundLocal().none { it.id == id }) return@withTransaction denied()
+                        "" to ""
+                    }
+                    WorkspaceSession.Expired -> return@withTransaction denied()
+                }
+                database.workspaceSelectionDao().upsert(WorkspaceSelectionEntity(scope.first, scope.second, id))
+                AppResult.Success(Unit)
+            }
+        }
+    }
+
+    private suspend fun resolve(createLocal: Boolean): AppResult<java.util.UUID> {
+        return when (val session = account?.workspaceSession() ?: WorkspaceSession.SignedOut) {
+            is WorkspaceSession.Authenticated -> {
+                if (issuer.isBlank()) return denied()
+                val selected = database.workspaceSelectionDao().find(issuer, session.accountId.toString())?.workspaceId
+                    ?: return AppResult.Failure(AppError.Validation("workspaceId", "selection_required"))
+                val grants = grants()
+                when (WorkspaceAccessPolicy.resolve(session, issuer, selected, grants)) {
+                    is WorkspaceAccessDecision.Allowed -> {
+                        val workspace = database.workspaceDao().findById(selected)
+                        if (workspace?.metadata?.deletedAt == null && workspace != null) AppResult.Success(selected) else denied()
+                    }
+                    else -> denied()
+                }
+            }
+            WorkspaceSession.Expired -> denied()
+            WorkspaceSession.SignedOut -> resolveLocal(createLocal)
+        }
+    }
+
+    private suspend fun resolveLocal(createLocal: Boolean): AppResult<java.util.UUID> = database.withTransaction {
+        val local = database.workspaceDao().listUnboundLocal()
+        val selected = database.workspaceSelectionDao().find("", "")?.workspaceId
+        if (selected != null) {
+            return@withTransaction local.find { it.id == selected }?.let { AppResult.Success(it.id) } ?: denied()
+        }
+        if (local.size == 1) return@withTransaction AppResult.Success(local.single().id)
+        if (local.size > 1) return@withTransaction AppResult.Failure(AppError.Validation("workspaceId", "selection_required"))
+        if (!createLocal) return@withTransaction AppResult.Failure(AppError.NotFound("workspace"))
                 val workspaceId = idGenerator.newId()
                 val ownerId = idGenerator.newId()
                 val operationId = idGenerator.newId()
@@ -63,11 +138,28 @@ class LocalWorkspaceRepository(
                     ),
                 )
                 AppResult.Success(workspaceId)
-            }
-        }.getOrElse { error ->
-            AppResult.Failure(
-                AppError.Storage(operation = "ensure_local_workspace", cause = error),
-            )
-        }
     }
+
+    private suspend fun grants(): List<WorkspaceGrant> = database.workspaceDao().listVerifiedGrants().map { row ->
+        WorkspaceGrant(row.issuer, java.util.UUID.fromString(row.accountId), row.workspaceId)
+    }
+
+    private suspend fun authorized(accountId: java.util.UUID): List<WorkspaceEntity> {
+        val all = grants()
+        return all.filter { it.issuer == issuer && it.accountId == accountId }
+            .map { it.workspaceId }.distinct()
+            .mapNotNull { id ->
+                val workspace = database.workspaceDao().findById(id)
+                if (workspace?.metadata?.deletedAt == null && workspace != null &&
+                    WorkspaceAccessPolicy.resolve(WorkspaceSession.Authenticated(accountId), issuer, id, all) is WorkspaceAccessDecision.Allowed
+                ) workspace else null
+            }
+    }
+
+    private fun <T> denied(): AppResult<T> = AppResult.Failure(AppError.Validation("workspaceId", "not_authorized"))
+
+    private suspend fun <T> safe(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
+        try { block() } catch (error: Exception) {
+            AppResult.Failure(AppError.Storage(operation = operation, cause = error))
+        }
 }
