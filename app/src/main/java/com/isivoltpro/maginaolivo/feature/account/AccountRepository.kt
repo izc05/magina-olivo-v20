@@ -36,6 +36,14 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
     private val callbackScope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
     fun receiveLink(url:String,online:Boolean) = callbackScope.launch { completeLink(url,online) }
     fun requestLogout(online:Boolean) = callbackScope.launch { logout(online) }
+    /** Cached identity from the Auth owner. Offline use is valid only before token expiry. */
+    suspend fun workspaceSession(): WorkspaceSession = local.withLock {
+        val current = current()
+        if (api == null || current.recovery != null || api.simulated) return@withLock WorkspaceSession.SignedOut
+        val session = current.session ?: return@withLock WorkspaceSession.SignedOut
+        if (!session.expiresAt.isAfter(now())) WorkspaceSession.Expired
+        else WorkspaceSession.Authenticated(session.userId)
+    }
     internal suspend fun <T> withCachedLocalAccess(action: suspend (java.util.UUID?) -> T): T = local.withLock {
         action(if(api?.simulated==true) null else current().session?.userId)
     }

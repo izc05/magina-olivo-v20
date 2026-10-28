@@ -2,7 +2,18 @@ package com.isivoltpro.maginaolivo.domain.workspace
 
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import java.util.UUID
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+
+data class WorkspaceChoice(val id: UUID, val name: String, val remote: Boolean)
 
 interface WorkspaceRepository {
     suspend fun ensureLocalWorkspace(): AppResult<UUID>
+    /** Read-only lookup. A missing selection never creates a workspace or an outbox intent. */
+    suspend fun activeWorkspace(): AppResult<UUID> = ensureLocalWorkspace()
+    fun observeActiveWorkspace(): Flow<AppResult<UUID>> = flow { emit(activeWorkspace()) }
+    suspend fun availableWorkspaces(): AppResult<List<WorkspaceChoice>> =
+        AppResult.Success(emptyList())
+    suspend fun selectWorkspace(id: UUID): AppResult<Unit> =
+        AppResult.Failure(com.isivoltpro.maginaolivo.core.common.AppError.Validation("workspaceId", "unsupported"))
 }

@@ -46,7 +46,7 @@ class OfflineFirstProfileRepository(
     private val dispatchers: AppDispatchers,
 ) : ProfileRepository {
     override fun observe(): Flow<ProfileSettings> =
-        flow { emit(workspaceRepository.ensureLocalWorkspace()) }.flatMapLatest { workspace ->
+        workspaceRepository.observeActiveWorkspace().flatMapLatest { workspace ->
             when (workspace) {
                 is AppResult.Failure -> flowOf(ProfileSettings())
                 is AppResult.Success -> combine(
