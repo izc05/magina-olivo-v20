@@ -10,10 +10,12 @@ async function fixture() {
   await db.exec(readFileSync(new URL('./fixtures/mock_supabase_environment.sql',import.meta.url),'utf8'));
   await db.exec('CREATE ROLE anon;');
   await db.exec("CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT current_setting('request.jwt.claims',true)::jsonb $$;");
-  for(const file of readdirSync(new URL('../migrations/',import.meta.url)).sort())
+  for(const file of readdirSync(new URL('../migrations/',import.meta.url)).filter(name=>/_g0_.*\.sql$/.test(name)).sort())
     await db.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
   for(const name of ['g1c-reservations.sql','g2-sync-own-data.sql','g2-parcel-bootstrap.sql'])
     await db.exec(readFileSync(new URL('../proposals/'+name,import.meta.url),'utf8'));
+  // G2.5 extends campaign_parcels supplied by the G2.1 proposal.
+  await db.exec(readFileSync(new URL('../migrations/20261027155737_g25_receive_bundle_contract.sql',import.meta.url),'utf8'));
   const actor=randomUUID();
   await db.query('INSERT INTO auth.users(id) VALUES($1)',[actor]);
   return {db,actor};
