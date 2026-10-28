@@ -76,6 +76,44 @@ class RoomMigrationTest {
     }
 
     @Test
+    fun migration28Through30PreservesAgriculturalRowsOutboxAndReceipts() {
+        migrationHelper.createDatabase(TEST_DATABASE, 28).use { database ->
+            database.execSQL("INSERT INTO workspaces (id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','Olivar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,3,'PENDING')")
+            database.execSQL("INSERT INTO farms (id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('f','w','Finca','ACTIVE',1000,1000,2,'PENDING')")
+            database.execSQL("INSERT INTO campaigns (id,workspace_id,farm_id,name,start_date,status,created_at,updated_at,version,sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','HARVEST',1000,1000,3,'PENDING')")
+            database.execSQL("INSERT INTO deliveries (id,workspace_id,farm_id,campaign_id,delivery_date,destination_name,net_grams,source,created_at,updated_at,version,sync_status,remote_version) VALUES ('d','w','f','c','2025-11-20','Cooperativa',1540000,'MANUAL',1000,1000,2,'SYNCED',1)")
+            database.execSQL("INSERT INTO sync_outbox (id,entity_type,entity_id,operation,payload_version,status,attempt_count,created_at,updated_at,account_id,payload_json,farm_id) VALUES ('op','CAMPAIGN','c','CREATE',1,'PENDING',0,1000,1000,'account-a','{\"name\":\"2025/2026\"}','f')")
+            database.execSQL("INSERT INTO delivery_held_receipts (operation_id,delivery_id,account_id,farm_id,remote_version,payload_hash,payload_version,revocation_operation_id,state,received_at) VALUES ('held','d','account-a','f',2,'${"a".repeat(64)}',2,'rev','HELD',2000)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 29, true, DatabaseMigrations.MIGRATION_28_29).use { database ->
+            database.execSQL("INSERT INTO delivery_dispatch_prepare (operation_id,delivery_id,farm_id,account_id,issuer,subject,local_workspace_id,consent_operation_id,consent_text_version,payload_version,payload_hash,lease_marker,prepared_at) VALUES ('prep','d','f','account-a','https://example.com','sub','w','consent',1,2,'hash','lease',3000)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 30, true, DatabaseMigrations.MIGRATION_29_30).use { database ->
+            val expected = mapOf(
+                "workspaces" to "SELECT name || ':' || version || ':' || sync_status FROM workspaces WHERE id='w'" to "Olivar:3:PENDING",
+                "farms" to "SELECT name || ':' || version || ':' || sync_status FROM farms WHERE id='f'" to "Finca:2:PENDING",
+                "campaigns" to "SELECT status || ':' || version || ':' || sync_status FROM campaigns WHERE id='c'" to "HARVEST:3:PENDING",
+                "deliveries" to "SELECT net_grams || ':' || remote_version || ':' || sync_status FROM deliveries WHERE id='d'" to "1540000:1:SYNCED",
+                "sync_outbox" to "SELECT status || ':' || account_id || ':' || payload_json FROM sync_outbox WHERE id='op'" to "PENDING:account-a:{\"name\":\"2025/2026\"}",
+                "delivery_held_receipts" to "SELECT state || ':' || remote_version FROM delivery_held_receipts WHERE operation_id='held'" to "HELD:2",
+                "delivery_dispatch_prepare" to "SELECT lease_marker || ':' || payload_hash FROM delivery_dispatch_prepare WHERE operation_id='prep'" to "lease:hash",
+            )
+            expected.forEach { (tableAndQuery, value) ->
+                val (table, query) = tableAndQuery
+                database.query(query).use { cursor ->
+                    assertTrue("Missing row in $table", cursor.moveToFirst())
+                    assertEquals("Changed row in $table", value, cursor.getString(0))
+                    assertTrue("Duplicate row in $table", !cursor.moveToNext())
+                }
+            }
+            database.query("SELECT COUNT(*) FROM delivery_import_receipts").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
     fun migration28To29AddsTheDurablePrepareTableAndKeepsHeldReceiptsAndIntentsIntact() {
         migrationHelper.createDatabase(TEST_DATABASE, 28).use { database ->
             database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
