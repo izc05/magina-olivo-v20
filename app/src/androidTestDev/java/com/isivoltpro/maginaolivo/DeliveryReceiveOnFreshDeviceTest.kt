@@ -18,7 +18,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Opt-in G2.5 drill for the one audited DEV Pesada on the clean receiver D. */
+/** Opt-in G2.5 drill for the one audited DEV Pesada on receiver D. */
 @RunWith(AndroidJUnit4::class)
 class DeliveryReceiveOnFreshDeviceTest {
     @Test fun receivesAuditedDeliveryOnceWithNoOutbox() = runBlocking {
@@ -40,9 +40,14 @@ class DeliveryReceiveOnFreshDeviceTest {
             "campaign_parcels", "harvests", "harvest_parcels", "deliveries",
             "delivery_parcels",
         )
-        graphTables.forEach { assertEquals("D must start empty: $it", 0, count(it)) }
-        assertEquals(0, count("sync_outbox"))
-        assertEquals(0, count("delivery_import_receipts"))
+        val localWorkspaceCount = count("workspaces")
+        val localOutboxCount = count("sync_outbox")
+        val alreadyImported = count("delivery_import_receipts") == 1
+        // App startup may create its own local workspace. The agricultural graph must be empty.
+        if (!alreadyImported) {
+            graphTables.filterNot { it == "workspaces" }
+                .forEach { assertEquals("D must start without $it", 0, count(it)) }
+        }
 
         val account = AccountRuntime.get(context)
         account.resume(true)
@@ -56,16 +61,21 @@ class DeliveryReceiveOnFreshDeviceTest {
                 assertEquals(DELIVERY, value.delivery.id)
                 assertEquals(1_540_000L, value.delivery.netGrams)
                 assertEquals(HASH, value.headPayloadHash)
-                assertEquals(DeliveryReceiveOutcome.IMPORTED, db.receiveDeliveryBundle(value))
+                assertEquals(
+                    if (alreadyImported) DeliveryReceiveOutcome.ALREADY_IMPORTED else DeliveryReceiveOutcome.IMPORTED,
+                    db.receiveDeliveryBundle(value),
+                )
                 value
             },
         )
-        graphTables.forEach { assertEquals("Exactly one imported row: $it", 1, count(it)) }
+        assertEquals(localWorkspaceCount + if (alreadyImported) 0 else 1, count("workspaces"))
+        graphTables.filterNot { it == "workspaces" }
+            .forEach { assertEquals("Exactly one imported row: $it", 1, count(it)) }
         assertEquals(1, count("delivery_import_receipts"))
-        assertEquals(0, count("sync_outbox"))
+        assertEquals(localOutboxCount, count("sync_outbox"))
         assertEquals(DeliveryReceiveOutcome.ALREADY_IMPORTED, db.receiveDeliveryBundle(bundle))
         assertEquals(1, count("delivery_import_receipts"))
-        assertEquals(0, count("sync_outbox"))
+        assertEquals(localOutboxCount, count("sync_outbox"))
     }
 
     private companion object {

@@ -108,8 +108,8 @@ class ArchitectureBoundaryTest {
             )
         }
 
-        // 3. The opt-in DEV instrumented read probe is the sole test exception. It may read a
-        // known UUID, but cannot wire a worker or invoke a write. Every other source stays inert.
+        // 3. Only the two opt-in DEV instrumented probes may construct this client. Neither
+        // may wire the dispatch worker or invoke a remote write.
         val readProbe = all.filter { it.name == "DeliveryReadOnFreshDeviceTest.kt" }
         assertTrue("At most one DEV read probe is allowed", readProbe.size <= 1)
         readProbe.singleOrNull()?.let { probe ->
@@ -121,7 +121,19 @@ class ArchitectureBoundaryTest {
                 assertFalse("DEV read probe must stay read-only: $forbidden", probeText.contains(forbidden))
             }
         }
-        all.filterNot { it.name == fileName || it in readProbe }.forEach { file ->
+        val receiveProbe = all.filter { it.name == "DeliveryReceiveOnFreshDeviceTest.kt" }
+        assertTrue("At most one DEV receive probe is allowed", receiveProbe.size <= 1)
+        receiveProbe.singleOrNull()?.let { probe ->
+            assertTrue(probe.invariantSeparatorsPath.contains("/androidTestDev/"))
+            val probeText = probe.readText()
+            assertTrue(probeText.contains("g25ReceiveProject"))
+            assertTrue(probeText.contains(".readOwnDeliveryReceiveBundle("))
+            assertTrue(probeText.contains(".receiveDeliveryBundle("))
+            listOf(".syncOwnDelivery(", "DeliveryDispatchWorker(", ".runSingleDispatch(").forEach { forbidden ->
+                assertFalse("DEV receive probe must not send: $forbidden", probeText.contains(forbidden))
+            }
+        }
+        all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +

@@ -97,8 +97,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingWs.timezone != bundle.workspace.timezone ||
             existingWs.locale != bundle.workspace.locale ||
             existingWs.currency != bundle.workspace.currency ||
-            existingWs.metadata.createdAt != bundle.workspace.createdAt ||
-            existingWs.metadata.updatedAt != bundle.workspace.updatedAt ||
+            existingWs.metadata.createdAt.toEpochMilli() != bundle.workspace.createdAt.toEpochMilli() ||
+            existingWs.metadata.updatedAt.toEpochMilli() != bundle.workspace.updatedAt.toEpochMilli() ||
             existingWs.metadata.version != bundle.workspace.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -117,8 +117,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingFarm.coverDocumentId != null ||
             existingFarm.notes != bundle.farm.notes ||
             existingFarm.status != bundle.farm.status ||
-            existingFarm.metadata.createdAt != bundle.farm.createdAt ||
-            existingFarm.metadata.updatedAt != bundle.farm.updatedAt ||
+            existingFarm.metadata.createdAt.toEpochMilli() != bundle.farm.createdAt.toEpochMilli() ||
+            existingFarm.metadata.updatedAt.toEpochMilli() != bundle.farm.updatedAt.toEpochMilli() ||
             existingFarm.metadata.version != bundle.farm.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -139,7 +139,7 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingParcel.source != bundle.parcel.source ||
             existingParcel.geometryGeoJson != bundle.parcel.geometryGeoJson ||
             existingParcel.sourceProvider != bundle.parcel.sourceProvider ||
-            existingParcel.sourceImportedAt != bundle.parcel.sourceImportedAt ||
+            existingParcel.sourceImportedAt?.toEpochMilli() != bundle.parcel.sourceImportedAt?.toEpochMilli() ||
             existingParcel.cadastralAreaM2 != bundle.parcel.cadastralAreaM2 ||
             existingParcel.managedAreaM2 != bundle.parcel.managedAreaM2 ||
             existingParcel.notes != bundle.parcel.notes ||
@@ -150,8 +150,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingParcel.irrigationNetwork != bundle.parcel.irrigationNetwork ||
             existingParcel.irrigationSector != bundle.parcel.irrigationSector ||
             existingParcel.irrigationDays != bundle.parcel.irrigationDays ||
-            existingParcel.metadata.createdAt != bundle.parcel.createdAt ||
-            existingParcel.metadata.updatedAt != bundle.parcel.updatedAt ||
+            existingParcel.metadata.createdAt.toEpochMilli() != bundle.parcel.createdAt.toEpochMilli() ||
+            existingParcel.metadata.updatedAt.toEpochMilli() != bundle.parcel.updatedAt.toEpochMilli() ||
             existingParcel.metadata.version != bundle.parcel.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -167,8 +167,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingMem.parcelId != bundle.parcel.id ||
             existingMem.validFrom != bundle.membership.validFrom ||
             existingMem.validUntil != null ||
-            existingMem.metadata.createdAt != bundle.membership.createdAt ||
-            existingMem.metadata.updatedAt != bundle.membership.updatedAt ||
+            existingMem.metadata.createdAt.toEpochMilli() != bundle.membership.createdAt.toEpochMilli() ||
+            existingMem.metadata.updatedAt.toEpochMilli() != bundle.membership.updatedAt.toEpochMilli() ||
             existingMem.metadata.version != bundle.membership.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -186,8 +186,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingCamp.endDate != bundle.campaign.endDate ||
             existingCamp.status != bundle.campaign.status ||
             existingCamp.notes != bundle.campaign.notes ||
-            existingCamp.metadata.createdAt != bundle.campaign.createdAt ||
-            existingCamp.metadata.updatedAt != bundle.campaign.updatedAt ||
+            existingCamp.metadata.createdAt.toEpochMilli() != bundle.campaign.createdAt.toEpochMilli() ||
+            existingCamp.metadata.updatedAt.toEpochMilli() != bundle.campaign.updatedAt.toEpochMilli() ||
             existingCamp.metadata.version != bundle.campaign.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -207,8 +207,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingSnap.managedAreaM2AtStart != bundle.campaignParcel.managedAreaM2AtStart ||
             existingSnap.cadastralReferenceAtStart != bundle.campaignParcel.cadastralReferenceAtStart ||
             existingSnap.geometryGeoJsonSnapshot != bundle.campaignParcel.geometryGeoJsonSnapshot ||
-            existingSnap.metadata.createdAt != bundle.campaignParcel.originCreatedAt ||
-            existingSnap.metadata.updatedAt != bundle.campaignParcel.originUpdatedAt ||
+            existingSnap.metadata.createdAt.toEpochMilli() != bundle.campaignParcel.originCreatedAt.toEpochMilli() ||
+            existingSnap.metadata.updatedAt.toEpochMilli() != bundle.campaignParcel.originUpdatedAt.toEpochMilli() ||
             existingSnap.metadata.version != bundle.campaignParcel.originVersion
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -230,8 +230,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingHarvest.workerCount != bundle.harvest.workerCount ||
             existingHarvest.machineryText != bundle.harvest.machineryText ||
             existingHarvest.dayOrigin != bundle.harvest.dayOrigin ||
-            existingHarvest.metadata.createdAt != bundle.harvest.createdAt ||
-            existingHarvest.metadata.updatedAt != bundle.harvest.updatedAt ||
+            existingHarvest.metadata.createdAt.toEpochMilli() != bundle.harvest.createdAt.toEpochMilli() ||
+            existingHarvest.metadata.updatedAt.toEpochMilli() != bundle.harvest.updatedAt.toEpochMilli() ||
             existingHarvest.metadata.version != bundle.harvest.version
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -249,8 +249,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingHp.parcelNameAtHarvest != bundle.harvestParcel.parcelNameAtHarvest ||
             existingHp.weightGrams != bundle.harvestParcel.weightGrams ||
             existingHp.allocationMode != bundle.harvestParcel.allocationMode ||
-            existingHp.metadata.createdAt != bundle.harvestParcel.originCreatedAt ||
-            existingHp.metadata.updatedAt != bundle.harvestParcel.originUpdatedAt ||
+            existingHp.metadata.createdAt.toEpochMilli() != bundle.harvestParcel.originCreatedAt.toEpochMilli() ||
+            existingHp.metadata.updatedAt.toEpochMilli() != bundle.harvestParcel.originUpdatedAt.toEpochMilli() ||
             existingHp.metadata.version != bundle.harvestParcel.originVersion
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -268,8 +268,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingDp.parcelNameAtDelivery != bundle.deliveryParcel.parcelNameAtDelivery ||
             existingDp.weightGrams != bundle.deliveryParcel.weightGrams ||
             existingDp.allocationMode != bundle.deliveryParcel.allocationMode ||
-            existingDp.metadata.createdAt != bundle.deliveryParcel.originCreatedAt ||
-            existingDp.metadata.updatedAt != bundle.deliveryParcel.originUpdatedAt ||
+            existingDp.metadata.createdAt.toEpochMilli() != bundle.deliveryParcel.originCreatedAt.toEpochMilli() ||
+            existingDp.metadata.updatedAt.toEpochMilli() != bundle.deliveryParcel.originUpdatedAt.toEpochMilli() ||
             existingDp.metadata.version != bundle.deliveryParcel.originVersion
         ) {
             return@withTransaction DeliveryReceiveOutcome.CONFLICT
@@ -302,8 +302,8 @@ suspend fun MaginaOlivoDatabase.receiveDeliveryBundle(
             existingDelivery.campaignId != bundle.campaign.id ||
             existingDelivery.harvestId != bundle.harvest.id ||
             existingDelivery.origin != bundle.delivery.harvestOrigin ||
-            existingDelivery.metadata.createdAt != bundle.delivery.createdAt ||
-            existingDelivery.metadata.updatedAt != bundle.delivery.updatedAt ||
+            existingDelivery.metadata.createdAt.toEpochMilli() != bundle.delivery.createdAt.toEpochMilli() ||
+            existingDelivery.metadata.updatedAt.toEpochMilli() != bundle.delivery.updatedAt.toEpochMilli() ||
             existingDelivery.metadata.version != bundle.delivery.version ||
             existingDelivery.metadata.deletedAt != null
         ) return@withTransaction DeliveryReceiveOutcome.CONFLICT
