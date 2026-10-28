@@ -18,7 +18,8 @@ async function fixture() {
   const db=new PGlite();
   await db.exec(readFileSync(new URL('./fixtures/mock_supabase_environment.sql',import.meta.url),'utf8'));
   await db.exec('CREATE ROLE anon;');
-  for(const file of readdirSync(new URL('../migrations/',import.meta.url)).sort()) await db.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
+  for(const file of readdirSync(new URL('../migrations/',import.meta.url)).filter(name=>/_g0_.*\.sql$/.test(name)).sort())
+    await db.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
   await db.exec(`GRANT USAGE ON SCHEMA public,auth TO authenticated; GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
     INSERT INTO auth.users(id) VALUES('${A}'),('${B}'); INSERT INTO public.workspaces(id,owner_user_id,name) VALUES('${wa}','${A}','A'),('${wb}','${B}','B');`);
   // Apply only the proposal to this disposable in-memory PostgreSQL.

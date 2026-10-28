@@ -100,7 +100,10 @@ class MainMapNavigationTest {
 
     private fun openMap(farm: UUID, name: String) {
         waitTag("farms-root")
-        compose.onNodeWithTag("farm-" + farm).performScrollTo().performClick()
+        // During return navigation the list root can exist before its cards are
+        // available in the merged semantics tree. Await the exact interaction target.
+        waitTag("farm-" + farm)
+        compose.onNodeWithTag("farm-" + farm).performScrollTo().assertIsDisplayed().performClick()
         waitTag("farm-section-parcels")
         compose.onNodeWithTag("farm-section-parcels").performScrollTo().performClick()
         waitTag("add-parcel")

@@ -496,13 +496,89 @@ object DatabaseMigrations {
         }
     }
 
+    /** G2.3: Cola offline-first en Room — account_id, payload_json, farm_id e índices de vinculación. */
+    val MIGRATION_26_27 = object : Migration(26, 27) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `sync_outbox` ADD COLUMN `account_id` TEXT")
+            db.execSQL("ALTER TABLE `sync_outbox` ADD COLUMN `payload_json` TEXT")
+            db.execSQL("ALTER TABLE `sync_outbox` ADD COLUMN `farm_id` TEXT")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_sync_outbox_account_id_status` ON `sync_outbox` (`account_id`, `status`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_sync_outbox_farm_id` ON `sync_outbox` (`farm_id`)")
+        }
+    }
+
+    /** G2.4: additive. Late ACKs after a revocation are held as evidence; no existing row changes. */
+    val MIGRATION_27_28 = object : Migration(27, 28) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `delivery_held_receipts` (`operation_id` TEXT NOT NULL, `delivery_id` TEXT NOT NULL, `account_id` TEXT NOT NULL, `farm_id` TEXT NOT NULL, `remote_version` INTEGER NOT NULL, `payload_hash` TEXT NOT NULL, `payload_version` INTEGER NOT NULL, `revocation_operation_id` TEXT NOT NULL, `state` TEXT NOT NULL, `conflict_remote_version` INTEGER, `conflict_payload_hash` TEXT, `received_at` INTEGER NOT NULL, `resolved_at` INTEGER, PRIMARY KEY(`operation_id`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_delivery_held_receipts_delivery_id_state` ON `delivery_held_receipts` (`delivery_id`, `state`)")
+        }
+    }
+
+    /**
+     * G2.4: additive. The durable PREPARE record written before any request may leave the
+     * device. No existing row is read or changed; an upgrade simply starts with no prepared
+     * operations, so nothing can be correlated until it is prepared again.
+     */
+    val MIGRATION_28_29 = object : Migration(28, 29) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `delivery_dispatch_prepare` (" +
+                    "`operation_id` TEXT NOT NULL, `delivery_id` TEXT NOT NULL, `farm_id` TEXT NOT NULL, " +
+                    "`account_id` TEXT NOT NULL, `issuer` TEXT NOT NULL, `subject` TEXT NOT NULL, " +
+                    "`local_workspace_id` TEXT NOT NULL, `remote_workspace_id` TEXT, " +
+                    "`consent_operation_id` TEXT NOT NULL, `consent_text_version` INTEGER NOT NULL, " +
+                    "`payload_version` INTEGER NOT NULL, `payload_hash` TEXT NOT NULL, " +
+                    "`base_remote_version` INTEGER, `lease_marker` TEXT NOT NULL, " +
+                    "`prepared_at` INTEGER NOT NULL, `settled_at` INTEGER, `settled_outcome` TEXT, " +
+                    "PRIMARY KEY(`operation_id`))",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_delivery_dispatch_prepare_delivery_id` " +
+                    "ON `delivery_dispatch_prepare` (`delivery_id`)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_delivery_dispatch_prepare_account_id_farm_id` " +
+                    "ON `delivery_dispatch_prepare` (`account_id`, `farm_id`)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_delivery_dispatch_prepare_settled_at` " +
+                    "ON `delivery_dispatch_prepare` (`settled_at`)",
+            )
+        }
+    }
+
+    /**
+     * G2.5: additive. The durable import receipt table recording received verified delivery bundles,
+     * their provenance, issuer, account ID, and head payload hash. No existing row is modified.
+     */
+    val MIGRATION_29_30 = object : Migration(29, 30) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `delivery_import_receipts` (" +
+                    "`delivery_id` TEXT NOT NULL, " +
+                    "`account_id` TEXT NOT NULL, " +
+                    "`issuer` TEXT NOT NULL, " +
+                    "`head_payload_hash` TEXT NOT NULL, " +
+                    "`head_version` INTEGER NOT NULL, " +
+                    "`receive_contract_version` INTEGER NOT NULL, " +
+                    "`received_at` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`delivery_id`))",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_delivery_import_receipts_account_id` " +
+                    "ON `delivery_import_receipts` (`account_id`)",
+            )
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
             MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
             MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
-            MIGRATION_25_26,
+            MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30,
         )
 
     private val schemaVersion11Statements =
