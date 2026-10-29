@@ -14,6 +14,8 @@ import com.isivoltpro.maginaolivo.data.repository.parseCampaignCasEnvelope
 import com.isivoltpro.maginaolivo.data.repository.sync.CampaignCasCoordinator
 import com.isivoltpro.maginaolivo.data.repository.sync.CampaignCasOutcome
 import com.isivoltpro.maginaolivo.data.repository.sync.CampaignCasRpcAdapter
+import com.isivoltpro.maginaolivo.data.repository.sync.CampaignReceiveCoordinator
+import com.isivoltpro.maginaolivo.data.repository.sync.CampaignReceiveOutcome
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.HttpsDeliveryRpcTransport
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcTransport
@@ -122,6 +124,42 @@ class CampaignCasHttpsEphemeralTest {
         assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(updateOp)?.status)
         assertEquals(SyncStatus.SYNCED, db.campaignDao().findById(campaign)?.metadata?.syncStatus)
         assertEquals(2L, db.campaignDao().findById(campaign)?.metadata?.remoteVersion)
+
+        // B is a separate durable Room file. Parents are fixture rows because general FARM/PARCEL
+        // reception is not implemented; the receiver is forbidden to invent them.
+        val bName = "g26-receiver-${UUID.randomUUID()}"
+        var b = MaginaOlivoDatabase.create(context, bName)
+        try {
+            b.workspaceSelectionDao().upsert(WorkspaceSelectionEntity(issuer, actor.toString(), workspace))
+            b.workspaceAuthorizationCacheDao().upsert(WorkspaceAuthorizationCacheEntity(issuer, actor.toString(), grant))
+            val receiveTransport = HttpsDeliveryRpcTransport(config,
+                scope = HttpsDeliveryRpcTransport.RpcScope.CAMPAIGN_RECEIVE)
+            var receiver = CampaignReceiveCoordinator(b, account, issuer, receiveTransport)
+            assertEquals(CampaignReceiveOutcome.PARENTS_MISSING, receiver.receive(campaign))
+            b.openHelper.writableDatabase.execSQL("INSERT INTO workspaces(id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('$workspace','QA','$actor','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'SYNCED')")
+            b.openHelper.writableDatabase.execSQL("INSERT INTO farms(id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('$farm','$workspace','HTTPS farm','ACTIVE',1000,1000,1,'SYNCED')")
+            b.openHelper.writableDatabase.execSQL("INSERT INTO parcels(id,workspace_id,display_name,source,status,created_at,updated_at,version,sync_status) VALUES ('$parcel','$workspace','HTTPS parcel','MANUAL','ACTIVE',1000,1000,1,'SYNCED')")
+            assertEquals(CampaignReceiveOutcome.IMPORTED, receiver.receive(campaign))
+            assertEquals("HTTPS edited", b.campaignDao().findById(campaign)?.name)
+            assertEquals(1, b.campaignDao().listSnapshots(campaign).size)
+            assertEquals(CampaignReceiveOutcome.ALREADY_CURRENT, receiver.receive(campaign))
+            assertEquals(1, b.campaignDao().listSnapshots(campaign).size)
+            b.close()
+            b = MaginaOlivoDatabase.create(context, bName)
+            receiver = CampaignReceiveCoordinator(b, account, issuer, receiveTransport)
+            assertEquals("HTTPS edited", b.campaignDao().findById(campaign)?.name)
+            assertEquals(CampaignReceiveOutcome.ALREADY_CURRENT, receiver.receive(campaign))
+
+            val foreignToken = fixture.getString("foreignToken")
+            val foreignActor = UUID.fromString(fixture.getString("foreignActor"))
+            val foreignExp = JSONObject(String(Base64.getUrlDecoder().decode(foreignToken.split('.')[1]))).getLong("exp")
+            val foreignSession = AuthSession(foreignActor, "foreign@example.test", foreignToken,
+                "unused", Instant.ofEpochSecond(foreignExp))
+            val foreignStore = MemoryAccountSessionStore().apply { write(AccountRecord(session = foreignSession)) }
+            val foreignAccount = AccountRepository(SupabaseAuthApi(config, HttpsAuthTransport(config)), foreignStore)
+            assertEquals(CampaignReceiveOutcome.NOT_AUTHORIZED,
+                CampaignReceiveCoordinator(b, foreignAccount, issuer, receiveTransport).receive(campaign))
+            assertEquals("HTTPS edited", b.campaignDao().findById(campaign)?.name)
         val receipt = CampaignCasRpcAdapter(transport).receipt(session, updateOp)!!
         assertEquals(updateOp, receipt.operationId)
         assertEquals(campaign, receipt.campaignId)
@@ -160,5 +198,20 @@ class CampaignCasHttpsEphemeralTest {
         assertEquals(3L, db.campaignDao().findById(campaign)?.metadata?.remoteVersion)
         assertEquals("Second HTTPS edit", db.campaignDao().findById(campaign)?.name)
         assertEquals(3, db.syncOutboxDao().listForEntity(com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.CAMPAIGN, campaign).size)
+        assertEquals(CampaignReceiveOutcome.UPDATED, receiver.receive(campaign))
+        assertEquals("Second HTTPS edit", b.campaignDao().findById(campaign)?.name)
+        assertEquals(3L, b.campaignDao().findById(campaign)?.metadata?.remoteVersion)
+        assertEquals(CampaignReceiveOutcome.ALREADY_CURRENT, receiver.receive(campaign))
+        val bCurrent = b.campaignDao().findById(campaign)!!
+        b.campaignDao().upsert(bCurrent.copy(name = "B offline edit", metadata = bCurrent.metadata.copy(
+            version = 4, syncStatus = SyncStatus.PENDING)))
+        val bPending = UUID.randomUUID()
+        b.openHelper.writableDatabase.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,created_at,updated_at) VALUES ('$bPending','CAMPAIGN','$campaign','UPDATE',1,'PENDING',0,1003,1003)")
+        assertEquals(CampaignReceiveOutcome.CONFLICT, receiver.receive(campaign))
+        assertEquals("B offline edit", b.campaignDao().findById(campaign)?.name)
+        assertEquals(1, b.syncOutboxDao().listForEntity(
+            com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.CAMPAIGN, campaign).size)
+        assertEquals(OutboxStatus.PENDING, b.syncOutboxDao().findById(bPending)?.status)
+        } finally { b.close(); context.deleteDatabase(bName) }
     }
 }

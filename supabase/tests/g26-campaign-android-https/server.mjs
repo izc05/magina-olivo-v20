@@ -44,7 +44,8 @@ const files = [...names.map(name => new URL(`../../migrations/${name}`, import.m
     .map(name => new URL(`../../proposals/${name}`, import.meta.url)),
   new URL('../../migrations/20261029044901_g26_workspace_authorization.sql', import.meta.url),
   new URL('../../migrations/20261029104720_g26_campaign_cas.sql', import.meta.url),
-  new URL('../../proposals/g26-campaign-head-v1.sql', import.meta.url)];
+  new URL('../../proposals/g26-campaign-head-v1.sql', import.meta.url),
+  new URL('../../proposals/g26-campaign-receive-v1.sql', import.meta.url)];
 sql(`BEGIN;\n${files.map(file => readFileSync(file, 'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
 
 const email = `g26-https-${randomUUID()}@example.test`;
@@ -52,6 +53,12 @@ const password = `Fixture!${randomUUID()}`;
 const user = await request('/auth/v1/admin/users', { email, password, email_confirm: true }, status.SERVICE_ROLE_KEY, true);
 const login = await request('/auth/v1/token?grant_type=password', { email, password });
 const actor = user.id;
+const foreignEmail = `g26-foreign-${randomUUID()}@example.test`;
+const foreignPassword = `Fixture!${randomUUID()}`;
+const foreign = await request('/auth/v1/admin/users',
+  { email: foreignEmail, password: foreignPassword, email_confirm: true }, status.SERVICE_ROLE_KEY, true);
+const foreignLogin = await request('/auth/v1/token?grant_type=password',
+  { email: foreignEmail, password: foreignPassword });
 const ids = { workspace: randomUUID(), farm: randomUUID(), parcel: randomUUID(), campaign: randomUUID(), snapshot: randomUUID() };
 sql(`INSERT INTO public.workspaces(id,owner_user_id,name) VALUES (${q(ids.workspace)},${q(actor)},'HTTPS fixture');
   INSERT INTO public.farms(id,workspace_id,creator_user_id,owner_id,name) VALUES (${q(ids.farm)},${q(ids.workspace)},${q(actor)},${q(actor)},'HTTPS farm');
@@ -76,7 +83,8 @@ await request('/rest/v1/rpc/create_own_campaign', { p_operation_id: createOp, p_
     farmNameAtStart: 'HTTPS farm', parcelNameAtStart: 'HTTPS parcel', managedAreaM2AtStart: null,
     cadastralReferenceAtStart: null, geometryGeoJsonSnapshot: null }],
 } }, token);
-const fixture = { ...ids, actor, createOp, token, anonKey: status.ANON_KEY };
+const fixture = { ...ids, actor, createOp, token, foreignActor: foreign.id,
+  foreignToken: jwt(foreignLogin.access_token), anonKey: status.ANON_KEY };
 
 const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
   cert: readFileSync(process.env.G26_TLS_CERT) }, async (incoming, outgoing) => {
