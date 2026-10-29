@@ -79,8 +79,37 @@ fun ProfileRoute(
     onAgronomicPeople: () -> Unit = {},
     appearanceStore: AppearanceStore? = null,
     onAccount: (() -> Unit)? = null,
+    accountRepository: com.isivoltpro.maginaolivo.feature.account.AccountRepository? = null,
 ) {
     val context = LocalContext.current
+    val avatarStore = remember(context) { ProfileAvatarStore.fromContext(context) }
+    var avatarVersion by remember { mutableStateOf(0) }
+    val accountState by (accountRepository?.state ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
+    val personalProfile = remember(accountState, avatarVersion) {
+        val uid = accountState?.userId
+        val avatarFile = uid?.let { avatarStore.getAvatarFile(it) }
+        accountState?.let { PersonalProfile.fromAccountState(it, avatarFile) }
+    }
+    val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        val uid = accountState?.userId
+        if (uri != null && uid != null) {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                val result = avatarStore.saveAvatar(uid, stream)
+                if (result is com.isivoltpro.maginaolivo.core.common.AppResult.Success) {
+                    avatarVersion++
+                }
+            }
+        }
+    }
+    val onPickAvatar = if (personalProfile != null) ({
+        photoPicker.launch(
+            androidx.activity.result.PickVisualMediaRequest(
+                androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+            )
+        )
+    }) else null
     val profileRepository = persistence?.profileRepository
     val profileViewModel: MyProfileViewModel? = if (persistence != null && profileRepository != null) {
         viewModel(
@@ -101,6 +130,8 @@ fun ProfileRoute(
     }
     ProfileScreen(
         onAccount = onAccount,
+        personalProfile = personalProfile,
+        onPickAvatar = onPickAvatar,
         appVersion = appVersion,
         notificationsOn = notificationsOn,
         onNotifications = openNotifications,
@@ -164,6 +195,8 @@ fun ProfileScreen(
     onAgronomicPeople: () -> Unit = {},
     appearanceSettings: (@Composable () -> Unit)? = null,
     onAccount: (() -> Unit)? = null,
+    personalProfile: PersonalProfile? = null,
+    onPickAvatar: (() -> Unit)? = null,
 ) {
     Column(
         Modifier
@@ -176,13 +209,13 @@ fun ProfileScreen(
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
         Spacer(Modifier.height(MoSpacing.sm))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-            OliveMark(Modifier.size(48.dp))
-            Column {
-                Text("Perfil", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
-                Text("Tus datos se guardan primero en este teléfono.", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
-            }
-        }
+        Text("Perfil", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
+        Spacer(Modifier.height(MoSpacing.xs))
+        PersonalProfileHeader(
+            profile = personalProfile,
+            onAccount = onAccount,
+            onPickAvatar = onPickAvatar,
+        )
         Spacer(Modifier.height(MoSpacing.xs))
         myProfile?.invoke()
         MoSectionHeader("Tu olivar")

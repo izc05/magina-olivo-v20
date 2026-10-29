@@ -353,6 +353,7 @@ fun AppNavigation(
             }
             composable(RootDestination.Profile.route) {
                 ProfileRoute(
+                    accountRepository = compositionRoot.accountRepository,
                     onAccount = if(compositionRoot.environment!=AppEnvironment.PRODUCTION) ({ navController.navigate(AppDestination.Account) }) else null,
                     appearanceStore = compositionRoot.appearanceStore,
                     appVersion = appVersionLabel(
