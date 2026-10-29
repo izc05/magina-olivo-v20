@@ -35,6 +35,17 @@ class LocalWorkspaceRepository(
     private val issuer: String = "",
     private val authorizationRemote: WorkspaceAuthorizationRemote? = null,
 ) : WorkspaceRepository {
+    private val lastRefreshAttemptNanos = java.util.concurrent.atomic.AtomicLong(0L)
+
+    private suspend fun refreshIfDue() {
+        if (account?.state?.value?.online != true || authorizationRemote == null) return
+        val now = System.nanoTime()
+        val last = lastRefreshAttemptNanos.get()
+        if (last == 0L || now - last >= 60_000_000_000L) {
+            if (lastRefreshAttemptNanos.compareAndSet(last, now)) refreshAuthorizations()
+        }
+    }
+
     override fun observeActiveWorkspace(): Flow<AppResult<java.util.UUID>> =
         if (account == null) database.workspaceSelectionDao().observeAll().map { activeWorkspace() }
         else combine(account.state, database.workspaceSelectionDao().observeAll(),
@@ -42,6 +53,7 @@ class LocalWorkspaceRepository(
             .map { activeWorkspace() }
 
     override suspend fun refreshAuthorizations(): AppResult<Unit> = withContext(dispatchers.io) {
+        lastRefreshAttemptNanos.set(System.nanoTime())
         safe("refresh_workspace_authorizations") {
             val owner = account ?: return@safe denied()
             val remote = authorizationRemote ?: return@safe denied()
@@ -107,6 +119,7 @@ class LocalWorkspaceRepository(
                 if (issuer.isBlank()) return denied()
                 val selected = database.workspaceSelectionDao().find(issuer, session.accountId.toString())?.workspaceId
                     ?: return AppResult.Failure(AppError.Validation("workspaceId", "selection_required"))
+                refreshIfDue()
                 if (authorized(session.accountId).none { it.id == selected }) denied()
                 else AppResult.Success(selected)
             }

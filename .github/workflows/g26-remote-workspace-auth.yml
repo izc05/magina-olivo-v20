@@ -21,6 +21,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: '2.120.0'
       - name: Disposable Supabase Auth, RPC and RLS negative tests
         run: bash supabase/tests/g26-native/run.sh
 
