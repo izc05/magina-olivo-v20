@@ -47,8 +47,10 @@ internal class CampaignCasCoordinator(
                     farm.metadata.syncStatus != SyncStatus.SYNCED ||
                     parentOps.any { it.status != OutboxStatus.CONFIRMED } ||
                     campaignOps.none { it.operation == OutboxOperation.CREATE && it.status == OutboxStatus.CONFIRMED } ||
-                    campaignOps.any { it.status == OutboxStatus.BLOCKED } ||
-                    campaignOps.any { it.id != op.id && it.status != OutboxStatus.CONFIRMED && it.payloadJson != null }
+                    campaignOps.any { it.status == OutboxStatus.BLOCKED &&
+                        it.lastErrorCode?.startsWith("RESOLVED_") != true } ||
+                    campaignOps.any { it.id != op.id && it.status != OutboxStatus.CONFIRMED &&
+                        it.payloadJson != null && it.lastErrorCode?.startsWith("RESOLVED_") != true }
                 ) return@withTransaction CampaignCasOutcome.REJECTED
                 val snapshots = database.campaignDao().listSnapshots(campaign.id)
                 if (snapshots.any { snapshot ->
@@ -136,7 +138,8 @@ internal class CampaignCasCoordinator(
         val exact = current.metadata.version == snapshot.localVersion &&
             buildCampaignCasEnvelope(current, issuer, snapshot.expectedVersion) == op.payloadJson
         val siblings = database.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, op.entityId)
-            .any { it.id != op.id && it.status != OutboxStatus.CONFIRMED }
+            .any { it.id != op.id && it.status != OutboxStatus.CONFIRMED &&
+                !(it.status == OutboxStatus.BLOCKED && it.lastErrorCode?.startsWith("RESOLVED_") == true) }
         if (database.syncOutboxDao().markConfirmed(op.id, now().toEpochMilli()) != 1)
             return@withTransaction CampaignCasOutcome.REJECTED
         val remoteVersion = maxOf(current.metadata.remoteVersion ?: 0L, receipt.remoteVersion)

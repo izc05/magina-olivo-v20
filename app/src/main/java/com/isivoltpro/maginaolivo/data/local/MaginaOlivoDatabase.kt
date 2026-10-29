@@ -10,6 +10,7 @@ import com.isivoltpro.maginaolivo.data.local.dao.ProfileSettingsDao
 import com.isivoltpro.maginaolivo.data.local.dao.PhytosanitaryResourceDao
 import com.isivoltpro.maginaolivo.data.local.dao.ActivityDao
 import com.isivoltpro.maginaolivo.data.local.dao.CampaignDao
+import com.isivoltpro.maginaolivo.data.local.dao.CampaignReconciliationDao
 import com.isivoltpro.maginaolivo.data.local.dao.DocumentDao
 import com.isivoltpro.maginaolivo.data.local.dao.ParcelDao
 import com.isivoltpro.maginaolivo.data.local.dao.SyncOutboxDao
@@ -80,7 +81,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.IrrigationCommunityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CommunityWaterNoticeEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PersonalIrrigationPlanEntity
 
-private const val DATABASE_VERSION = 32
+private const val DATABASE_VERSION = 33
 
 @Database(
     entities = [
@@ -93,6 +94,7 @@ private const val DATABASE_VERSION = 32
         ParcelEntity::class,
         FarmParcelMembershipEntity::class,
         CampaignEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.CampaignReconciliationEntity::class,
         CampaignParcelSnapshotEntity::class,
         ActivityEntity::class,
         ActivityParcelTargetEntity::class,
@@ -156,6 +158,7 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun parcelDao(): ParcelDao
 
     abstract fun campaignDao(): CampaignDao
+    abstract fun campaignReconciliationDao(): CampaignReconciliationDao
 
     abstract fun activityDao(): ActivityDao
 

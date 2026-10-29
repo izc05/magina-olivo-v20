@@ -27,6 +27,8 @@ interface SyncOutboxDao {
                 AND sibling.entity_id = sync_outbox.entity_id
                 AND sibling.id != sync_outbox.id
                 AND sibling.status IN ('PENDING', 'FAILED', 'PROCESSING', 'BLOCKED')
+                AND NOT (sibling.entity_type = 'CAMPAIGN' AND sibling.status = 'BLOCKED'
+                         AND sibling.last_error_code IN ('RESOLVED_CAS_CONFLICT', 'RESOLVED_NEEDS_REBASE'))
           )
           -- G2.4: a late ACK held after revocation freezes its whole Delivery until reconciled.
           AND NOT EXISTS (
@@ -90,6 +92,24 @@ interface SyncOutboxDao {
     suspend fun quarantineCampaignCas(operationId: UUID, accountId: String,
         payloadJson: String, reason: String, nowEpochMillis: Long): Int
 
+    /** Keeps the old intent blocked and auditable; only an explicit decision can retire its blocker. */
+    @Query("""
+        UPDATE sync_outbox SET last_error_code = :resolvedReason, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'CAMPAIGN' AND operation = 'UPDATE'
+          AND status = 'BLOCKED' AND account_id = :accountId
+          AND last_error_code IN ('CAS_CONFLICT', 'NEEDS_REBASE')
+    """)
+    suspend fun resolveCampaignBlock(operationId: UUID, accountId: String,
+        resolvedReason: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET last_error_code = 'RESOLVED_NEEDS_REBASE', updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'CAMPAIGN' AND operation = 'UPDATE'
+          AND status = 'BLOCKED' AND account_id IS NULL AND attempt_count = 0
+          AND payload_json IS NULL AND last_error_code = 'NEEDS_REBASE'
+    """)
+    suspend fun resolveUnstagedCampaignBlock(operationId: UUID, nowEpochMillis: Long): Int
+
     @Query("DELETE FROM sync_outbox WHERE entity_type = :entityType AND entity_id = :entityId AND status = 'PENDING'")
     suspend fun deleteOnlyPendingForEntity(entityType: SyncEntityType, entityId: UUID)
 
@@ -135,6 +155,8 @@ interface SyncOutboxDao {
                 AND sibling.entity_id = sync_outbox.entity_id
                 AND sibling.id != sync_outbox.id
                 AND sibling.status IN ('PENDING', 'FAILED', 'PROCESSING', 'BLOCKED')
+                AND NOT (sibling.entity_type = 'CAMPAIGN' AND sibling.status = 'BLOCKED'
+                         AND sibling.last_error_code IN ('RESOLVED_CAS_CONFLICT', 'RESOLVED_NEEDS_REBASE'))
           )
           -- G2.4: a late ACK held after revocation freezes its whole Delivery until reconciled.
           AND NOT EXISTS (

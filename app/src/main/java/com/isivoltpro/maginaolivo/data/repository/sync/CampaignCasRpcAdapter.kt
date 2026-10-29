@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.data.repository.sync
 
 import com.isivoltpro.maginaolivo.feature.account.AuthSession
+import com.isivoltpro.maginaolivo.data.repository.parseCampaignCasEnvelope
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
@@ -8,6 +9,11 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
+internal data class CampaignRemoteHead(val issuer: String, val subject: UUID,
+    val version: Long, val campaign: JsonObject)
 
 internal data class CampaignCasRemoteAck(val operationId: UUID, val campaignId: UUID, val remoteVersion: Long)
 internal data class CampaignCasRemoteReceipt(
@@ -17,6 +23,23 @@ internal data class CampaignCasRemoteReceipt(
 
 /** Reuses the G2.4 transport boundary; this class opens no connection. */
 internal class CampaignCasRpcAdapter(private val transport: DeliveryRpcTransport) {
+    /** Proposed isolated read RPC. The server must check current membership and JWT. */
+    suspend fun head(session: AuthSession, campaignId: UUID): CampaignRemoteHead {
+        val root = call("get_own_campaign_head_v1", """{"p_campaign_id":"$campaignId"}""", session)
+        if (root.getValue("contract_version").jsonPrimitive.long != 1L ||
+            root.getValue("subject").jsonPrimitive.content != session.userId.toString()) throw protocol()
+        val row = root["campaign"] as? JsonObject ?: throw protocol()
+        val version = root.getValue("version").jsonPrimitive.long
+        if (version < 1 || row.getValue("id").jsonPrimitive.content != campaignId.toString() ||
+            row.keys != setOf("id","workspaceId","farmId","name","startDate","endDate","status","notes"))
+            throw protocol()
+        val issuer = root.getValue("issuer").jsonPrimitive.content
+        if (parseCampaignCasEnvelope(buildJsonObject {
+            put("issuer", issuer); put("localVersion", 1); put("expectedVersion", version)
+            put("campaign", row)
+        }.toString()) == null) throw protocol()
+        return CampaignRemoteHead(issuer, session.userId, version, row)
+    }
     suspend fun update(session: AuthSession, operationId: UUID, expectedVersion: Long,
         campaign: JsonObject): CampaignCasRemoteAck {
         val body = """{"p_operation_id":"$operationId","p_expected_version":$expectedVersion,"p_campaign":$campaign}"""
@@ -53,7 +76,7 @@ internal class CampaignCasRpcAdapter(private val transport: DeliveryRpcTransport
     }
 
     private suspend fun call(name: String, body: String, session: AuthSession): JsonObject {
-        check(name == "update_own_campaign_v1" || name == "check_sync_operations")
+        check(name in setOf("update_own_campaign_v1", "check_sync_operations", "get_own_campaign_head_v1"))
         val response = try { transport.rpc(name, body, session.accessToken) }
         catch (cancel: CancellationException) { throw cancel }
         catch (failure: DeliveryRpcFailure) { throw failure }

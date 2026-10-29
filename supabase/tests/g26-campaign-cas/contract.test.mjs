@@ -51,7 +51,8 @@ before(async()=>{
   const files=[...migrations.map(name=>new URL(`../../migrations/${name}`,import.meta.url)),
     ...['g1c-reservations.sql','g2-sync-own-data.sql','g2-parcel-bootstrap.sql'].map(name=>new URL(`../../proposals/${name}`,import.meta.url)),
     new URL('../../migrations/20261029044901_g26_workspace_authorization.sql',import.meta.url),
-    new URL('../../migrations/20261029104720_g26_campaign_cas.sql',import.meta.url)];
+    new URL('../../migrations/20261029104720_g26_campaign_cas.sql',import.meta.url),
+    new URL('../../proposals/g26-campaign-head-v1.sql',import.meta.url)];
   sql(`BEGIN;\n${files.map(file=>readFileSync(file,'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
   fixture={workspace:randomUUID(),farm:randomUUID(),parcel:randomUUID(),campaign:randomUUID(),snapshot:randomUUID()};
   const f=fixture,a=actors.A;
@@ -124,4 +125,28 @@ test('campaign create, CAS, concurrent conflict and lost-response receipt remain
   const direct=await http(`/rest/v1/campaigns?id=eq.${f.campaign}`,{token:auth,method:'PATCH',body:{name:'Bypass',version:4}});
   assert.equal(direct.status,403);
   assert.equal(sql(`SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_type='CAMPAIGN' AND entity_id=${q(f.campaign)};`),'3');
+});
+
+test('versioned campaign HEAD rejects foreign identity, expiry and revoked membership',async()=>{
+  const f=fixture,a=actors.A,c=actors.C;
+  const access=(actor,authToken=token(actor))=>http('/rest/v1/rpc/get_own_campaign_head_v1',{
+    token:authToken,body:{p_campaign_id:f.campaign}});
+  assert.equal(sql("SELECT has_function_privilege('anon','public.get_own_campaign_head_v1(uuid)','EXECUTE'),has_function_privilege('authenticated','public.get_own_campaign_head_v1(uuid)','EXECUTE');"),'f|t');
+  const own=await access(a);assert.equal(own.status,200,JSON.stringify(own.data));
+  assert.equal(own.data.contract_version,1);assert.equal(own.data.subject,a.id);
+  assert.equal(own.data.issuer,'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1');
+  assert.equal(own.data.campaign.workspaceId,f.workspace);
+  assert.equal(own.data.campaign.farmId,f.farm);
+  assert.equal(own.data.version,3);
+  assert.equal((await access(c)).status,403);
+  assert.equal((await access(a,token(a,'https://other.example/auth/v1'))).status,403);
+  assert.ok([401,403].includes((await access(a,token(a,undefined,true))).status));
+  sql(`INSERT INTO public.workspace_memberships(workspace_id,user_id,role,permissions)
+       VALUES (${q(f.workspace)},${q(c.id)},'VIEWER',ARRAY['read']);`);
+  const member=await access(c);assert.equal(member.status,200,JSON.stringify(member.data));
+  assert.equal(member.data.subject,c.id);
+  sql(`UPDATE public.workspace_memberships SET status='REVOKED',revoked_at=now(),version=version+1
+       WHERE workspace_id=${q(f.workspace)} AND user_id=${q(c.id)};`);
+  assert.equal((await access(c)).status,403);
+  assert.equal(sql(`SELECT count(*) FROM public.campaigns WHERE id=${q(f.campaign)};`),'1');
 });

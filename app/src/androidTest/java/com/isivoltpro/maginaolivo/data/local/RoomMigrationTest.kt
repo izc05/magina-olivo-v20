@@ -33,7 +33,33 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(32, MaginaOlivoDatabase.VERSION)
+        assertEquals(33, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration32To33PreservesCampaignOutboxAndAuthorization() {
+        migrationHelper.createDatabase(TEST_DATABASE, 32).use { database ->
+            database.execSQL("INSERT INTO workspaces(id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','QA','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO farms(id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('f','w','Farm','ACTIVE',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO campaigns(id,workspace_id,farm_id,name,start_date,status,created_at,updated_at,version,sync_status) VALUES ('c','w','f','Edited','2026-01-01','PREPARATION',1000,1000,2,'CONFLICT')")
+            database.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,last_error_code,created_at,updated_at) VALUES ('op','CAMPAIGN','c','UPDATE',1,'BLOCKED',1,'CAS_CONFLICT',1000,1000)")
+            database.execSQL("INSERT INTO workspace_selections(issuer,account_id,workspace_id) VALUES ('issuer','a','w')")
+            database.execSQL("INSERT INTO workspace_authorization_cache(issuer,account_id,contract_json) VALUES ('issuer','a','{}')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE,33,true,DatabaseMigrations.MIGRATION_32_33).use { database ->
+            database.query("SELECT name,sync_status FROM campaigns WHERE id='c'").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals("Edited",c.getString(0)); assertEquals("CONFLICT",c.getString(1))
+            }
+            database.query("SELECT status,last_error_code FROM sync_outbox WHERE id='op'").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals("BLOCKED",c.getString(0)); assertEquals("CAS_CONFLICT",c.getString(1))
+            }
+            database.query("SELECT COUNT(*) FROM campaign_reconciliations").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals(0,c.getInt(0))
+            }
+            database.query("SELECT COUNT(*) FROM workspace_authorization_cache").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals(1,c.getInt(0))
+            }
+        }
     }
 
     @Test
