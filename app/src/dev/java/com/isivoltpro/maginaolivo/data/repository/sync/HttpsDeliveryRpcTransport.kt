@@ -9,28 +9,35 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * The real HTTPS route for the three G2.4 Delivery RPCs, modelled on `HttpsAuthTransport`: no
+ * The DEV-only HTTPS route for the G2.4 Delivery RPCs and, when explicitly scoped, the G2.6
+ * CAMPAIGN CAS RPCs. Modelled on `HttpsAuthTransport`: no
  * redirects, no custom trust manager, no credential logging, a hard path allowlist and a bounded
  * response.
  *
- * **NOT WIRED.** Nothing in the app constructs this class. Agricultural data reaches Supabase
+ * **NOT WIRED.** Only isolated probes construct this class. Agricultural writes reach Supabase
  * only once something builds it with a real [AuthConfiguration] and hands it to
- * [DeliveryRpcAdapter]. That wiring is a separate, explicitly authorized step; until then the
- * worker runs against a test transport and the app cannot send a Pesada even by accident.
+ * an adapter. That wiring is a separate, explicitly authorized step; until then the app cannot
+ * send a Pesada or CAMPAIGN update through this client.
  *
- * The caller still owes the G2.4 contract: a durable PREPARE before the first request, the lease
- * held across the request and the persistence of its result, and consent rechecked after every
- * wait. This class only moves bytes.
+ * The caller still owes its outbox contract: durable staging before the first request, the lease
+ * held across the request and receipt persistence, and authorization rechecked after every wait.
+ * This class only moves bytes.
  */
 internal class HttpsDeliveryRpcTransport(
     private val configuration: AuthConfiguration,
     private val connectTimeoutMillis: Int = 10_000,
     private val readTimeoutMillis: Int = 20_000,
+    private val scope: RpcScope = RpcScope.DELIVERY,
 ) : DeliveryRpcTransport {
+
+    internal enum class RpcScope(val allowedNames: Set<String>) {
+        DELIVERY(DeliveryRpcAdapter.NAMES),
+        CAMPAIGN_CAS(CampaignCasRpcAdapter.NAMES),
+    }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =
         withContext(Dispatchers.IO) {
-            check(name in DeliveryRpcAdapter.NAMES) { "RPC fuera del contrato G2.4: $name" }
+            check(name in scope.allowedNames) { "RPC fuera del contrato ${scope.name}: $name" }
             check(accessToken.isNotBlank())
             val connection = URL("${configuration.projectUrl}/rest/v1/rpc/$name")
                 .openConnection() as HttpsURLConnection
