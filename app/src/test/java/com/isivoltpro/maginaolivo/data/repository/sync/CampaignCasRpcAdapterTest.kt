@@ -71,4 +71,21 @@ class CampaignCasRpcAdapterTest {
         })
         assertNull(missing.receipt(session,operationId))
     }
+
+    @Test fun authorizedHeadRequiresExactCampaignAndVersion() = runBlocking {
+        val valid="""{"contract_version":1,"issuer":"https://project.example/auth/v1","subject":"$accountId","version":9,"campaign":{"id":"$campaignId","workspaceId":"${row.workspaceId}","farmId":"${row.farmId}","name":"Remote","startDate":"2026-01-01","endDate":null,"status":"PREPARATION","notes":null}}"""
+        val adapter=CampaignCasRpcAdapter(DeliveryRpcTransport { name,body,token ->
+            assertEquals("get_own_campaign_head_v1",name)
+            assertEquals("access",token)
+            assertTrue(body.contains(campaignId.toString()))
+            DeliveryRpcResponse(200,valid)
+        })
+        assertEquals(9L,adapter.head(session,campaignId).version)
+        assertEquals("\"Remote\"",adapter.head(session,campaignId).campaign["name"].toString())
+        val foreign=CampaignCasRpcAdapter(DeliveryRpcTransport { _,_,_ ->
+            DeliveryRpcResponse(200,valid.replace(campaignId.toString(),operationId.toString()))
+        })
+        assertEquals(DeliveryRpcError.PROTOCOL,
+            (runCatching { foreign.head(session,campaignId) }.exceptionOrNull() as DeliveryRpcFailure).error)
+    }
 }

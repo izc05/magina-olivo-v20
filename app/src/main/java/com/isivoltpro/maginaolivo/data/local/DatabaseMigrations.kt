@@ -585,13 +585,21 @@ object DatabaseMigrations {
         }
     }
 
+    /** Additive, empty on upgrade. No campaign, outbox, receipt or file is rewritten. */
+    val MIGRATION_32_33 = object : Migration(32, 33) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `campaign_reconciliations` (`original_operation_id` TEXT NOT NULL, `issuer` TEXT NOT NULL, `account_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `farm_id` TEXT NOT NULL, `campaign_id` TEXT NOT NULL, `reason` TEXT NOT NULL, `local_payload_json` TEXT NOT NULL, `remote_payload_json` TEXT NOT NULL, `remote_version` INTEGER NOT NULL, `captured_at` INTEGER NOT NULL, `resolved_operation_id` TEXT, PRIMARY KEY(`original_operation_id`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_campaign_reconciliations_issuer_account_id_workspace_id` ON `campaign_reconciliations` (`issuer`, `account_id`, `workspace_id`)")
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
             MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
             MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
-            MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32,
+            MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33,
         )
 
     private val schemaVersion11Statements =
