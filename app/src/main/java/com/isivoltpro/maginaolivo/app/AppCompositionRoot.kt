@@ -89,6 +89,9 @@ data class AppCompositionRoot(
                 regionalContext = defaults.regionalContext,
                 account = account,
                 issuer = BuildConfig.AUTH_PROJECT_URL,
+                authorizationRemote = if (BuildConfig.AUTH_PROJECT_URL.startsWith("https://") && BuildConfig.AUTH_PUBLIC_KEY.isNotBlank())
+                    com.isivoltpro.maginaolivo.data.repository.HttpsWorkspaceAuthorizationRemote(BuildConfig.AUTH_PROJECT_URL, BuildConfig.AUTH_PUBLIC_KEY)
+                else null,
             )
             val farmRepository = OfflineFirstFarmRepository(
                 database = database,

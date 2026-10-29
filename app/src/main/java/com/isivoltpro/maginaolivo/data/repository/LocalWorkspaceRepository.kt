@@ -12,6 +12,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceSelectionEntity
+import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceAuthorizationCacheEntity
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
@@ -32,11 +33,32 @@ class LocalWorkspaceRepository(
     private val regionalContext: RegionalContext,
     private val account: AccountRepository? = null,
     private val issuer: String = "",
+    private val authorizationRemote: WorkspaceAuthorizationRemote? = null,
 ) : WorkspaceRepository {
     override fun observeActiveWorkspace(): Flow<AppResult<java.util.UUID>> =
         if (account == null) database.workspaceSelectionDao().observeAll().map { activeWorkspace() }
-        else combine(account.state, database.workspaceSelectionDao().observeAll()) { _, _ -> Unit }
+        else combine(account.state, database.workspaceSelectionDao().observeAll(),
+            database.workspaceAuthorizationCacheDao().observeAll()) { _, _, _ -> Unit }
             .map { activeWorkspace() }
+
+    override suspend fun refreshAuthorizations(): AppResult<Unit> = withContext(dispatchers.io) {
+        safe("refresh_workspace_authorizations") {
+            val owner = account ?: return@safe denied()
+            val remote = authorizationRemote ?: return@safe denied()
+            if (!owner.state.value.online) return@safe denied()
+            owner.withServerVerifiedIdentity(
+                remote = { session -> remote.list(session) },
+                commit = { accountId, body ->
+                    val contract = WorkspaceAuthorizationContract.parse(body)
+                    if (!contract.validFor(issuer, accountId, clock.nowInstant())) return@withServerVerifiedIdentity denied<Unit>()
+                    database.workspaceAuthorizationCacheDao().upsert(
+                        WorkspaceAuthorizationCacheEntity(issuer, accountId.toString(), body),
+                    )
+                    AppResult.Success(Unit)
+                },
+            )
+        }
+    }
     override suspend fun activeWorkspace(): AppResult<java.util.UUID> = withContext(dispatchers.io) {
         safe("active_workspace") { resolve(false) }
     }
@@ -47,6 +69,7 @@ class LocalWorkspaceRepository(
 
     override suspend fun availableWorkspaces(): AppResult<List<WorkspaceChoice>> = withContext(dispatchers.io) {
         safe("available_workspaces") {
+            if (account?.state?.value?.online == true) refreshAuthorizations()
             AppResult.Success(when (val session = account?.workspaceSession() ?: WorkspaceSession.SignedOut) {
                 is WorkspaceSession.Authenticated -> authorized(session.accountId)
                     .map { WorkspaceChoice(it.id, it.name, true) }
@@ -59,6 +82,7 @@ class LocalWorkspaceRepository(
 
     override suspend fun selectWorkspace(id: java.util.UUID): AppResult<Unit> = withContext(dispatchers.io) {
         safe("select_workspace") {
+            if (account?.state?.value?.online == true) refreshAuthorizations()
             database.withTransaction {
                 val scope = when (val session = account?.workspaceSession() ?: WorkspaceSession.SignedOut) {
                     is WorkspaceSession.Authenticated -> {
@@ -83,14 +107,8 @@ class LocalWorkspaceRepository(
                 if (issuer.isBlank()) return denied()
                 val selected = database.workspaceSelectionDao().find(issuer, session.accountId.toString())?.workspaceId
                     ?: return AppResult.Failure(AppError.Validation("workspaceId", "selection_required"))
-                val grants = grants()
-                when (WorkspaceAccessPolicy.resolve(session, issuer, selected, grants)) {
-                    is WorkspaceAccessDecision.Allowed -> {
-                        val workspace = database.workspaceDao().findById(selected)
-                        if (workspace?.metadata?.deletedAt == null && workspace != null) AppResult.Success(selected) else denied()
-                    }
-                    else -> denied()
-                }
+                if (authorized(session.accountId).none { it.id == selected }) denied()
+                else AppResult.Success(selected)
             }
             WorkspaceSession.Expired -> denied()
             WorkspaceSession.SignedOut -> resolveLocal(createLocal)
@@ -140,26 +158,24 @@ class LocalWorkspaceRepository(
                 AppResult.Success(workspaceId)
     }
 
-    private suspend fun grants(): List<WorkspaceGrant> = database.workspaceDao().listVerifiedGrants().map { row ->
-        WorkspaceGrant(row.issuer, java.util.UUID.fromString(row.accountId), row.workspaceId)
-    }
-
     private suspend fun authorized(accountId: java.util.UUID): List<WorkspaceEntity> {
-        val all = grants()
-        return all.filter { it.issuer == issuer && it.accountId == accountId }
-            .map { it.workspaceId }.distinct()
+        val cached = database.workspaceAuthorizationCacheDao().find(issuer, accountId.toString()) ?: return emptyList()
+        val contract = WorkspaceAuthorizationContract.parse(cached.contractJson)
+        if (!contract.validFor(issuer, accountId, clock.nowInstant())) return emptyList()
+        return contract.available(clock.nowInstant())
+            .map { it.id }
             .mapNotNull { id ->
                 val workspace = database.workspaceDao().findById(id)
-                if (workspace?.metadata?.deletedAt == null && workspace != null &&
-                    WorkspaceAccessPolicy.resolve(WorkspaceSession.Authenticated(accountId), issuer, id, all) is WorkspaceAccessDecision.Allowed
-                ) workspace else null
+                if (workspace?.metadata?.deletedAt == null) workspace else null
             }
     }
 
     private fun <T> denied(): AppResult<T> = AppResult.Failure(AppError.Validation("workspaceId", "not_authorized"))
 
     private suspend fun <T> safe(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
-        try { block() } catch (error: Exception) {
+        try { block() } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
+        } catch (error: Exception) {
             AppResult.Failure(AppError.Storage(operation = operation, cause = error))
         }
 }

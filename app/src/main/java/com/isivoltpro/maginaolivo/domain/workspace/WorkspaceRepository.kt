@@ -16,4 +16,6 @@ interface WorkspaceRepository {
         AppResult.Success(emptyList())
     suspend fun selectWorkspace(id: UUID): AppResult<Unit> =
         AppResult.Failure(com.isivoltpro.maginaolivo.core.common.AppError.Validation("workspaceId", "unsupported"))
+    suspend fun refreshAuthorizations(): AppResult<Unit> =
+        AppResult.Failure(com.isivoltpro.maginaolivo.core.common.AppError.Validation("workspaceId", "unsupported"))
 }

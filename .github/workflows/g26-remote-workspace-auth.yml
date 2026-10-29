@@ -1,0 +1,59 @@
+name: G2.6 remote workspace authorization
+
+on:
+  pull_request:
+    branches: [codex/g26-account-workspace-selector]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ephemeral-supabase:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact source SHA
+        run: git rev-parse HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Disposable Supabase Auth, RPC and RLS negative tests
+        run: bash supabase/tests/g26-native/run.sh
+
+  android-cache:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact source SHA
+        run: git rev-parse HEAD
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.4.1'
+      - name: Unit tests and disposable debug test pair
+        run: gradle --no-daemon --max-workers=1 --no-parallel testDevDebugUnitTest assembleDevDebug assembleDevDebugAndroidTest
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+      - name: Cache, selection and migrations on disposable API 35
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash .github/scripts/g26-workspace-selector.sh

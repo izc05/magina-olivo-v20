@@ -9,6 +9,7 @@ import com.isivoltpro.maginaolivo.core.id.UuidGenerator
 import com.isivoltpro.maginaolivo.core.regional.RegionalContext
 import com.isivoltpro.maginaolivo.core.time.SystemAppClock
 import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
+import com.isivoltpro.maginaolivo.data.repository.WorkspaceAuthorizationRemote
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
 import com.isivoltpro.maginaolivo.feature.account.AccountAuthApi
@@ -37,7 +38,7 @@ class WorkspaceSelectionRoomTest {
     private val w2 = UUID.fromString("22222222-2222-2222-2222-222222222222")
     private val local = UUID.fromString("33333333-3333-3333-3333-333333333333")
     private var database: MaginaOlivoDatabase? = null
-    private var now = Instant.parse("2026-10-28T12:00:00Z")
+    private var now = Instant.now()
 
     @After fun close() { database?.close(); context.deleteDatabase(name) }
 
@@ -94,22 +95,38 @@ class WorkspaceSelectionRoomTest {
         assertEquals(local, (signedOut.activeWorkspace() as AppResult.Success).value)
     }
 
-    @Test fun conflictingReceiptAndMissingWorkspaceNeverFallback() = runBlocking {
+    @Test fun revokedAuthorizationCannotBeRestoredByHistoricReceipt() = runBlocking {
         val db = open()
         insertWorkspace(db, w1, "Shared")
         insertVerifiedDelivery(db, w1, a, "1")
-        val work = workspace(db, account(sessionStore(a)))
+        var allowed = setOf(w1)
+        val identity = account(sessionStore(a))
+        val work = workspace(db, identity) { allowed }
         val selection = work.selectWorkspace(w1)
         assertTrue(selection.toString(), selection is AppResult.Success)
+        allowed = emptySet()
+        assertTrue(work.refreshAuthorizations() is AppResult.Success)
+        assertTrue(work.activeWorkspace() is AppResult.Failure)
+        identity.resume(false)
         insertVerifiedDelivery(db, w1, c, "2")
         assertTrue(work.activeWorkspace() is AppResult.Failure)
         assertTrue(work.selectWorkspace(w2) is AppResult.Failure)
         assertEquals(0, count(db, "SELECT count(*) FROM sync_outbox"))
+        allowed = setOf(w1)
+        identity.resume(true)
+        assertTrue(work.refreshAuthorizations() is AppResult.Success)
+        assertEquals(w1, (work.activeWorkspace() as AppResult.Success).value)
     }
 
     private fun open() = MaginaOlivoDatabase.create(context, name).also { database = it }
-    private fun workspace(db: MaginaOlivoDatabase, account: AccountRepository) = LocalWorkspaceRepository(
+    private fun workspace(db: MaginaOlivoDatabase, account: AccountRepository, allowed: () -> Set<UUID> = { setOf(w1, w2) }) = LocalWorkspaceRepository(
         db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), RegionalContext.spainDefault(), account, issuer,
+        WorkspaceAuthorizationRemote { session ->
+            val grants = (if (session.userId == a) allowed() else emptySet()).joinToString(",") { id ->
+                """{"id":"$id","name":"Workspace $id","role":"OWNER","permissions":["read","write","manage_members"],"grant_version":1,"authorization_expires_at":"${now.plusSeconds(900)}"}"""
+            }
+            """{"contract_version":1,"issuer":"$issuer/auth/v1","subject":"${session.userId}","verified_at":"$now","token_expires_at":"${now.plusSeconds(3600)}","workspaces":[$grants]}"""
+        },
     )
     private fun farms(db: MaginaOlivoDatabase, work: LocalWorkspaceRepository) = OfflineFirstFarmRepository(
         db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), work,
@@ -141,7 +158,7 @@ class WorkspaceSelectionRoomTest {
         override suspend fun recover(email: String, challenge: String) = error("unexpected network")
         override suspend fun exchange(code: String, verifier: String): AuthSession = error("unexpected network")
         override suspend fun refresh(session: AuthSession): AuthSession = error("unexpected network")
-        override suspend fun user(session: AuthSession): Pair<UUID, String> = error("unexpected network")
+        override suspend fun user(session: AuthSession): Pair<UUID, String> = session.userId to session.email
         override suspend fun changePassword(session: AuthSession, password: String) = error("unexpected network")
         override suspend fun signOut(session: AuthSession) = error("unexpected network")
     }

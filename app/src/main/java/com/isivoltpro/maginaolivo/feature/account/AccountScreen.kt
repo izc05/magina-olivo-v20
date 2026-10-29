@@ -63,7 +63,7 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
     var workspaceChoices by remember { mutableStateOf<List<WorkspaceChoice>>(emptyList()) }
     var selectedWorkspace by remember { mutableStateOf<UUID?>(null) }
     var workspaceNotice by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(workspaces,state.userId,state.status,simulation) {
+    LaunchedEffect(workspaces,state.userId,state.status,state.online,simulation) {
         if(workspaces==null || simulation || state.status==AccountStatus.EXPIRED) {
             workspaceChoices=emptyList();selectedWorkspace=null
         } else {
@@ -95,8 +95,8 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
             if(workspaceChoices.isEmpty()) Text("No hay workspaces disponibles para esta sesión. Los datos locales se conservan.",color=MoSurfaceTokens.secondaryText)
             workspaceChoices.forEach { choice ->
                 MoSecondaryButton(
-                    if(choice.id==selectedWorkspace) "${choice.name} · ${if(choice.remote) "recibo G2.5" else "local sin vincular"} · activo"
-                    else "Usar ${choice.name} · ${if(choice.remote) "recibo G2.5" else "local sin vincular"}",
+                    if(choice.id==selectedWorkspace) "${choice.name} · ${if(choice.remote) "autorización en caché" else "local sin vincular"} · activo"
+                    else "Usar ${choice.name} · ${if(choice.remote) "autorización en caché" else "local sin vincular"}",
                     { scope.launch {
                         when(workspaces.selectWorkspace(choice.id)) {
                             is AppResult.Success -> { selectedWorkspace=choice.id;workspaceNotice="Workspace seleccionado" }

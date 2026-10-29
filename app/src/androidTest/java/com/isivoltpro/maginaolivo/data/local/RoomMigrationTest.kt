@@ -33,7 +33,24 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(31, MaginaOlivoDatabase.VERSION)
+        assertEquals(32, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration31To32AddsEmptyAuthorizationCacheAndPreservesSelection() {
+        migrationHelper.createDatabase(TEST_DATABASE, 31).use { database ->
+            database.execSQL("INSERT INTO workspace_selections (issuer,account_id,workspace_id) VALUES ('https://project.example','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','11111111-1111-1111-1111-111111111111')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 32, true, DatabaseMigrations.MIGRATION_31_32).use { database ->
+            database.query("SELECT workspace_id FROM workspace_selections").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("11111111-1111-1111-1111-111111111111", cursor.getString(0))
+            }
+            database.query("SELECT COUNT(*) FROM workspace_authorization_cache").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
     }
 
     @Test
