@@ -37,13 +37,13 @@ internal fun deliveryPayloadHash(payload: String, payloadVersion: Int = 1): Stri
 } catch (_: IllegalArgumentException) { null
 } catch (_: IllegalStateException) { null }
 
-private fun pgObject(value: JsonObject, render: (String, kotlinx.serialization.json.JsonElement) -> String): String =
+internal fun pgObject(value: JsonObject, render: (String, kotlinx.serialization.json.JsonElement) -> String): String =
     // Supported keys are ASCII: byte length then byte order equals length then lexical order.
     value.entries.sortedWith(compareBy({ it.key.length }, { it.key })).joinToString(", ", "{", "}") {
         pgQuoted(it.key) + ": " + render(it.key, it.value)
     }
 
-private fun pgScalar(value: kotlinx.serialization.json.JsonElement, text: Boolean, nullable: Boolean): String {
+internal fun pgScalar(value: kotlinx.serialization.json.JsonElement, text: Boolean, nullable: Boolean): String {
     if (nullable && value == JsonNull) return "null"
     val primitive = value as? JsonPrimitive ?: error("Scalar required")
     return if (text) {

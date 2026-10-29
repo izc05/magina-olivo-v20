@@ -255,7 +255,9 @@ class OfflineFirstCampaignRepository(
     private suspend fun enqueue(id: UUID, requested: OutboxOperation, now: Instant) {
         val existing = database.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
         val operation = if (existing.any { it.operation == OutboxOperation.CREATE } && requested != OutboxOperation.DELETE) OutboxOperation.CREATE else requested
-        database.syncOutboxDao().deletePendingForEntity(SyncEntityType.CAMPAIGN, id)
+        // A staged or attempted CAS operation has immutable bytes and UUID. A later local edit
+        // must leave it available for receipt recovery, even when the HTTP response was lost.
+        database.syncOutboxDao().deleteUnstagedCampaignMarkers(id)
         database.syncOutboxDao().insert(SyncOutboxEntity(idGenerator.newId(), SyncEntityType.CAMPAIGN, id, operation, 1, createdAt = now, updatedAt = now))
     }
 
