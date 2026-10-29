@@ -82,15 +82,22 @@ test('revocation, expiry, deleted workspace and connection recovery fail closed'
   sql(`UPDATE public.workspace_memberships SET status='REVOKED',revoked_at=now(),version=version+1 WHERE workspace_id=${quote(ids.w2)} AND user_id=${quote(actors.C.id)};`);
   assert.equal((await verify('C',ids.w2)).data.authorized,false);
   assert.deepEqual((await list('C')).data.workspaces.map(w=>w.id),[ids.wc]);
+  assert.deepEqual((await get(`/rest/v1/workspaces?id=eq.${ids.w2}&select=id`,actors.C.token)).data,[]);
   const claims=JSON.parse(Buffer.from(actors.A.token.split('.')[1],'base64url'));
-  assert.equal((await list('A',signed({...claims,exp:Math.floor(Date.now()/1000)-10}))).status,401);
-  assert.equal((await list('A',signed({...claims,iss:'https://other.example/auth/v1'}))).status,403);
+  const expired=await list('A',signed({...claims,exp:Math.floor(Date.now()/1000)-10}));
+  assert.equal(expired.status,403);
+  assert.equal(expired.data.code,'42501');
+  const foreignToken=signed({...claims,iss:'https://other.example/auth/v1'});
+  assert.equal((await list('A',foreignToken)).status,403);
+  assert.deepEqual((await get(`/rest/v1/workspaces?id=eq.${ids.w1}&select=id`,foreignToken)).data,[]);
   assert.equal((await list('A',status.ANON_KEY)).status,401);
   assert.equal((await verify('A',randomUUID())).data.authorized,false);
   sql(`UPDATE public.workspaces SET deleted_at=now() WHERE id=${quote(ids.w1)};`);
   assert.equal((await verify('A',ids.w1)).data.authorized,false);
   sql(`UPDATE public.workspace_memberships SET status='ACTIVE',revoked_at=NULL,version=version+1 WHERE workspace_id=${quote(ids.w2)} AND user_id=${quote(actors.C.id)};`);
   assert.equal((await verify('C',ids.w2)).data.authorized,true);
+  sql(`UPDATE public.workspace_memberships SET valid_from=now()-interval '2 days',valid_until=now()-interval '1 day',version=version+1 WHERE workspace_id=${quote(ids.w2)} AND user_id=${quote(actors.C.id)};`);
+  assert.equal((await verify('C',ids.w2)).data.authorized,false);
 });
 
 test('RLS denies C write to A workspace and direct membership manipulation',async()=>{

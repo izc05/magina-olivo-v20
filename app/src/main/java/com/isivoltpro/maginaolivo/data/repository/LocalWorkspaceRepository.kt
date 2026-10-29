@@ -49,8 +49,11 @@ class LocalWorkspaceRepository(
     override fun observeActiveWorkspace(): Flow<AppResult<java.util.UUID>> =
         if (account == null) database.workspaceSelectionDao().observeAll().map { activeWorkspace() }
         else combine(account.state, database.workspaceSelectionDao().observeAll(),
-            database.workspaceAuthorizationCacheDao().observeAll()) { _, _, _ -> Unit }
-            .map { activeWorkspace() }
+            database.workspaceAuthorizationCacheDao().observeAll()) { state, _, _ -> state.online }
+            .map { online ->
+                if (!online) lastRefreshAttemptNanos.set(0L)
+                activeWorkspace()
+            }
 
     override suspend fun refreshAuthorizations(): AppResult<Unit> = withContext(dispatchers.io) {
         lastRefreshAttemptNanos.set(System.nanoTime())
