@@ -1,0 +1,33 @@
+name: G2.6 CAMPAIGN HTTPS transport isolated
+
+on:
+  pull_request:
+    branches: [codex/g26-campaign-reconcile]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  campaign-transport:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact source SHA
+        run: git rev-parse HEAD
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.4.1'
+      - name: Campaign transport, RPC contract and unwired boundary
+        run: |
+          gradle --no-daemon --max-workers=1 --no-parallel :app:testDevDebugUnitTest \
+            --tests '*CampaignHttpsScopeTest' \
+            --tests '*CampaignCasRpcAdapterTest' \
+            --tests '*ArchitectureBoundaryTest'
