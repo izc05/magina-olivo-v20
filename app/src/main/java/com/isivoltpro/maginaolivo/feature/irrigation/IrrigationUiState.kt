@@ -26,11 +26,12 @@ data class DoseCalculatorState(
     val parcelId: UUID? = null,
     val parcelName: String? = null,
     val oliveTreeCountText: String = "",
-    val emittersPerTreeText: String = "2",
-    val emitterFlowLphText: String = "4.0",
+    val emittersPerTreeText: String = "",
+    val emitterFlowLphText: String = "",
     val emitterType: EmitterType = EmitterType.INTEGRATED,
-    val durationMinutesText: String = "120",
+    val durationMinutesText: String = "",
     val calculatedDose: CalculatedDose? = null,
+    val isSimulationMode: Boolean = false,
     val error: String? = null,
 )
 
@@ -40,6 +41,9 @@ data class DoseCalculatorState(
 data class IrrigationUiState(
     val farmId: UUID? = null,
     val farmName: String? = null,
+    val farmNotFound: Boolean = false,
+    val isFarmArchived: Boolean = false,
+    val errorMessage: String? = null,
     val selectedTab: IrrigationTab = IrrigationTab.SUMMARY,
     val selectedDay: DayOfWeek = DayOfWeek.MONDAY,
     val isLoading: Boolean = true,

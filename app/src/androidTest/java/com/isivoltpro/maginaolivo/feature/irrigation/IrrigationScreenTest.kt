@@ -289,5 +289,165 @@ class IrrigationScreenTest {
         composeRule.onNodeWithTag("irrigation-register-button").performClick()
         assertTrue(registerClicked.get())
     }
+
+    @Test
+    fun unauthorizedOrMissingFarm_displaysErrorAndNoHeaderOrTabs() {
+        val backClicked = AtomicBoolean(false)
+        val state = IrrigationUiState(
+            isLoading = false,
+            farmNotFound = true,
+        )
+
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                IrrigationScreen(
+                    state = state,
+                    onSelectTab = {},
+                    onSelectDay = {},
+                    onSelectParcelForCalculator = {},
+                    onUpdateTrees = {},
+                    onUpdateEmitters = {},
+                    onUpdateFlow = {},
+                    onUpdateDuration = {},
+                    onUpdateEmitterType = {},
+                    onCalculateDose = {},
+                    onRegisterIrrigation = {},
+                    onActivityClick = {},
+                    onBack = { backClicked.set(true) },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("irrigation-unauthorized-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("irrigation-unauthorized-error").assertIsDisplayed()
+        composeRule.onNodeWithText("Finca no disponible").assertIsDisplayed()
+        composeRule.onNodeWithTag("irrigation-header").assertDoesNotExist()
+        composeRule.onNodeWithTag("irrigation-register-button").assertDoesNotExist()
+
+        composeRule.onNodeWithTag("irrigation-error-back").performClick()
+        assertTrue(backClicked.get())
+    }
+
+    @Test
+    fun simulationMode_displaysBannerAndAllowsClearing() {
+        val clearClicked = AtomicBoolean(false)
+        val state = IrrigationUiState(
+            isLoading = false,
+            selectedTab = IrrigationTab.INSTALLATIONS,
+            calculator = DoseCalculatorState(
+                isSimulationMode = true,
+                oliveTreeCountText = "450",
+                emittersPerTreeText = "2",
+                emitterFlowLphText = "4.0",
+                durationMinutesText = "120",
+                calculatedDose = CalculatedDose(
+                    durationMinutes = 120,
+                    totalFlowRateM3PerHour = 3.6,
+                    theoreticalVolumeLiters = 7200.0,
+                    theoreticalVolumeM3 = 7.2,
+                    litersPerTree = 16.0,
+                ),
+            ),
+        )
+
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                IrrigationScreen(
+                    state = state,
+                    onSelectTab = {},
+                    onSelectDay = {},
+                    onSelectParcelForCalculator = {},
+                    onUpdateTrees = {},
+                    onUpdateEmitters = {},
+                    onUpdateFlow = {},
+                    onUpdateDuration = {},
+                    onUpdateEmitterType = {},
+                    onCalculateDose = {},
+                    onClearSimulation = { clearClicked.set(true) },
+                    onRegisterIrrigation = {},
+                    onActivityClick = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("simulation-mode-banner").assertIsDisplayed()
+        composeRule.onNodeWithText("Modo simulación (valores de ejemplo)").assertIsDisplayed()
+        composeRule.onNodeWithText("Resultado de simulación (estimación teórica)").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("clear-simulation-button").performClick()
+        assertTrue(clearClicked.get())
+    }
+
+    @Test
+    fun pendingAuthorization_displaysLoadingIndicatorWithoutShellOrData() {
+        val state = IrrigationUiState(
+            isLoading = true,
+            farmNotFound = false,
+        )
+
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                IrrigationScreen(
+                    state = state,
+                    onSelectTab = {},
+                    onSelectDay = {},
+                    onSelectParcelForCalculator = {},
+                    onUpdateTrees = {},
+                    onUpdateEmitters = {},
+                    onUpdateFlow = {},
+                    onUpdateDuration = {},
+                    onUpdateEmitterType = {},
+                    onCalculateDose = {},
+                    onRegisterIrrigation = {},
+                    onActivityClick = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("irrigation-loading").assertIsDisplayed()
+        composeRule.onNodeWithTag("irrigation-screen").assertDoesNotExist()
+        composeRule.onNodeWithTag("irrigation-title").assertDoesNotExist()
+        composeRule.onNodeWithTag("irrigation-register-button").assertDoesNotExist()
+        composeRule.onNodeWithTag("irrigation-unauthorized-root").assertDoesNotExist()
+    }
+
+    @Test
+    fun archivedFarm_displaysArchivedBadgeAndHidesRegisterButton() {
+        val state = IrrigationUiState(
+            farmName = "Finca Huerta Vieja",
+            isFarmArchived = true,
+            isLoading = false,
+        )
+
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                IrrigationScreen(
+                    state = state,
+                    onSelectTab = {},
+                    onSelectDay = {},
+                    onSelectParcelForCalculator = {},
+                    onUpdateTrees = {},
+                    onUpdateEmitters = {},
+                    onUpdateFlow = {},
+                    onUpdateDuration = {},
+                    onUpdateEmitterType = {},
+                    onCalculateDose = {},
+                    onRegisterIrrigation = {},
+                    onActivityClick = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        // Título con sufijo Archivada y badge presente
+        composeRule.onNodeWithTag("irrigation-title").assertIsDisplayed()
+        composeRule.onNodeWithTag("irrigation-archived-badge").assertIsDisplayed()
+        composeRule.onNodeWithText("Finca Huerta Vieja · Archivada").assertIsDisplayed()
+
+        // El botón para registrar riego NO debe ofrecerse (para no dar acciones engañosas)
+        composeRule.onNodeWithTag("irrigation-register-button").assertDoesNotExist()
+    }
 }
 

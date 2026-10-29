@@ -20,12 +20,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,9 +43,11 @@ import com.isivoltpro.maginaolivo.domain.irrigation.ScheduledTurnItem
 import com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
+import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoMetricCard
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
+import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
@@ -69,7 +73,7 @@ fun IrrigationRoute(
     farmId: UUID,
     parcelRepository: ParcelRepository,
     activityRepository: ActivityRepository,
-    farmRepository: FarmRepository? = null,
+    farmRepository: FarmRepository,
     onRegisterIrrigation: () -> Unit,
     onActivityClick: (UUID) -> Unit,
     onBack: () -> Unit,
@@ -101,6 +105,8 @@ fun IrrigationRoute(
         onUpdateDuration = viewModel::updateDuration,
         onUpdateEmitterType = viewModel::updateEmitterType,
         onCalculateDose = viewModel::recalculateDose,
+        onLoadSimulation = viewModel::loadSimulationExample,
+        onClearSimulation = viewModel::clearSimulation,
         onRegisterIrrigation = onRegisterIrrigation,
         onActivityClick = onActivityClick,
         onBack = onBack,
@@ -120,11 +126,51 @@ fun IrrigationScreen(
     onUpdateDuration: (String) -> Unit,
     onUpdateEmitterType: (EmitterType) -> Unit,
     onCalculateDose: () -> Unit,
+    onLoadSimulation: () -> Unit = {},
+    onClearSimulation: () -> Unit = {},
     onRegisterIrrigation: () -> Unit,
     onActivityClick: (UUID) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (state.isLoading) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .testTag("irrigation-loading"),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(color = MoColors.current.primaryButton)
+        }
+        return
+    }
+
+    if (state.farmNotFound) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(MoSpacing.screen)
+                .testTag("irrigation-unauthorized-root"),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            MoErrorState(
+                title = "Finca no disponible",
+                body = "No tienes acceso a esta finca o no existe en el espacio de trabajo actual.",
+                modifier = Modifier.testTag("irrigation-unauthorized-error"),
+            )
+            Spacer(Modifier.height(MoSpacing.md))
+            MoSecondaryButton(
+                text = "Volver",
+                onClick = onBack,
+                modifier = Modifier.testTag("irrigation-error-back"),
+            )
+        }
+        return
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -133,6 +179,7 @@ fun IrrigationScreen(
     ) {
         IrrigationHeader(
             farmName = state.farmName,
+            isArchived = state.isFarmArchived,
             onBack = onBack,
             onRegister = onRegisterIrrigation,
         )
@@ -158,9 +205,12 @@ fun IrrigationScreen(
                 onUpdateDuration = onUpdateDuration,
                 onUpdateEmitterType = onUpdateEmitterType,
                 onCalculate = onCalculateDose,
+                onLoadSimulation = onLoadSimulation,
+                onClearSimulation = onClearSimulation,
             )
             IrrigationTab.HISTORY -> IrrigationHistoryTab(
                 activities = state.recentActivities,
+                isArchived = state.isFarmArchived,
                 onActivityClick = onActivityClick,
                 onRegisterIrrigation = onRegisterIrrigation,
             )
@@ -171,6 +221,7 @@ fun IrrigationScreen(
 @Composable
 private fun IrrigationHeader(
     farmName: String?,
+    isArchived: Boolean = false,
     onBack: () -> Unit,
     onRegister: () -> Unit,
 ) {
@@ -201,15 +252,35 @@ private fun IrrigationHeader(
                     )
                 }
                 Column {
-                    Text(
-                        text = "Riego",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.testTag("irrigation-title"),
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MoSpacing.xxs),
+                    ) {
+                        Text(
+                            text = "Riego",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.testTag("irrigation-title"),
+                        )
+                        if (isArchived) {
+                            Surface(
+                                shape = MoShape.pill,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+                                modifier = Modifier.testTag("irrigation-archived-badge"),
+                            ) {
+                                Text(
+                                    text = "Archivada",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MoSurfaceTokens.secondaryText,
+                                    modifier = Modifier.padding(horizontal = MoSpacing.xs, vertical = 2.dp),
+                                )
+                            }
+                        }
+                    }
                     if (!farmName.isNullOrBlank()) {
                         Text(
-                            text = farmName,
+                            text = if (isArchived) "$farmName · Archivada" else farmName,
                             style = MaterialTheme.typography.bodySmall,
                             color = MoSurfaceTokens.secondaryText,
                         )
@@ -217,11 +288,13 @@ private fun IrrigationHeader(
                 }
             }
 
-            MoPrimaryButton(
-                text = "+ Registrar riego",
-                onClick = onRegister,
-                modifier = Modifier.testTag("irrigation-register-button"),
-            )
+            if (!isArchived) {
+                MoPrimaryButton(
+                    text = "+ Registrar riego",
+                    onClick = onRegister,
+                    modifier = Modifier.testTag("irrigation-register-button"),
+                )
+            }
         }
     }
 }
@@ -535,6 +608,8 @@ private fun IrrigationInstallationsTab(
     onUpdateDuration: (String) -> Unit,
     onUpdateEmitterType: (EmitterType) -> Unit,
     onCalculate: () -> Unit,
+    onLoadSimulation: () -> Unit = {},
+    onClearSimulation: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier
@@ -553,6 +628,8 @@ private fun IrrigationInstallationsTab(
                 onUpdateDuration = onUpdateDuration,
                 onUpdateEmitterType = onUpdateEmitterType,
                 onCalculate = onCalculate,
+                onLoadSimulation = onLoadSimulation,
+                onClearSimulation = onClearSimulation,
             )
         }
 
@@ -643,6 +720,8 @@ private fun DoseCalculatorSection(
     onUpdateDuration: (String) -> Unit,
     onUpdateEmitterType: (EmitterType) -> Unit,
     onCalculate: () -> Unit,
+    onLoadSimulation: () -> Unit = {},
+    onClearSimulation: () -> Unit = {},
 ) {
     Card(
         shape = MoShape.card,
@@ -669,6 +748,36 @@ private fun DoseCalculatorSection(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+            }
+
+            if (calc.isSimulationMode) {
+                Surface(
+                    shape = MoShape.card,
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("simulation-mode-banner"),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = MoSpacing.sm, vertical = MoSpacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "Modo simulación (valores de ejemplo)",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                        TextButton(
+                            onClick = onClearSimulation,
+                            modifier = Modifier.testTag("clear-simulation-button"),
+                        ) {
+                            Text("Limpiar", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
             }
 
             if (!calc.parcelName.isNullOrBlank()) {
@@ -723,6 +832,28 @@ private fun DoseCalculatorSection(
                 )
             }
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+            ) {
+                if (!calc.isSimulationMode) {
+                    MoSecondaryButton(
+                        text = "Cargar ejemplo simulación",
+                        onClick = onLoadSimulation,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("load-simulation-button"),
+                    )
+                }
+                MoPrimaryButton(
+                    text = "Calcular dotación",
+                    onClick = onCalculate,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("calculate-dose-button"),
+                )
+            }
+
             // Results Box
             val dose = calc.calculatedDose
             if (dose != null) {
@@ -739,7 +870,7 @@ private fun DoseCalculatorSection(
                         verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs),
                     ) {
                         Text(
-                            text = "Resultado teórico estimado",
+                            text = if (calc.isSimulationMode) "Resultado de simulación (estimación teórica)" else "Resultado teórico calculado (no registrado)",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface,
                         )
@@ -801,6 +932,7 @@ private fun DoseCalculatorSection(
 @Composable
 private fun IrrigationHistoryTab(
     activities: List<Activity>,
+    isArchived: Boolean = false,
     onActivityClick: (UUID) -> Unit,
     onRegisterIrrigation: () -> Unit,
 ) {
@@ -814,8 +946,8 @@ private fun IrrigationHistoryTab(
             MoEmptyState(
                 title = "Aún no has registrado ningún riego",
                 body = "Registra un riego desde el botón superior o desde el Cuaderno para ver aquí su volumen, duración y coste acumulado.",
-                actionText = "Registrar riego",
-                onAction = onRegisterIrrigation,
+                actionText = if (isArchived) null else "Registrar riego",
+                onAction = if (isArchived) null else onRegisterIrrigation,
                 icon = MoIcons.History,
             )
         }

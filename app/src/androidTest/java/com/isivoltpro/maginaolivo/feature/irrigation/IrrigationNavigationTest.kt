@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.irrigation
 
 import android.content.Context
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -325,11 +326,72 @@ class IrrigationNavigationTest {
 
         // Pestaña Instalaciones debe mostrar que no hay parcelas de regadío
         composeRule.onNodeWithTag("irrigation-tab-installations").performClick()
-        waitForTag("installations-empty")
-        composeRule.onNodeWithTag("installations-empty").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("irrigation-installations-tab").performScrollToNode(hasTestTag("installations-empty"))
+        composeRule.onNodeWithTag("installations-empty").assertIsDisplayed()
 
         // Comprobación de seguridad offline: navegar no debe haber creado ninguna entrada en outbox
         val finalOutbox = countOutboxRecords()
         assertEquals("Navegar y consultar datos locales no debe generar entradas de outbox", initialOutbox, finalOutbox)
+    }
+
+    @Test
+    fun simulationModeFlowAllowsCalculatingAndClearingWithoutOutboxWrites() {
+        val initialOutbox = countOutboxRecords()
+        enterMainShell()
+
+        // Navegar a Riego en finca de regadío
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        openFarm(testFarmIrrigatedId)
+        openIrrigationFromFarmDetail()
+
+        // Pestaña Instalaciones
+        composeRule.onNodeWithTag("irrigation-tab-installations").performClick()
+        waitForTag("dose-calculator-card")
+        composeRule.onNodeWithTag("dose-calculator-card").performScrollTo().assertIsDisplayed()
+
+        // Por defecto, sin valores por defecto inventados ni banner de simulación
+        composeRule.onAllNodes(hasTestTag("simulation-mode-banner")).assertCountEquals(0)
+        composeRule.onAllNodes(hasTestTag("calc-results-box")).assertCountEquals(0)
+
+        // Pulsar "Cargar ejemplo simulación"
+        composeRule.onNodeWithTag("load-simulation-button").performScrollTo().performClick()
+
+        // Debe activarse el banner de simulación y el resultado teórico
+        waitForTag("simulation-mode-banner")
+        composeRule.onNodeWithTag("simulation-mode-banner").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("calc-results-box").performScrollTo().assertIsDisplayed()
+
+        // Limpiar la simulación
+        composeRule.onNodeWithTag("clear-simulation-button").performScrollTo().performClick()
+
+        // Debe desaparecer el banner y el resultado
+        composeRule.onAllNodes(hasTestTag("simulation-mode-banner")).assertCountEquals(0)
+        composeRule.onAllNodes(hasTestTag("calc-results-box")).assertCountEquals(0)
+
+        // Verificar que interactuar con la calculadora y simulación es 100% offline y no toca el outbox
+        val finalOutbox = countOutboxRecords()
+        assertEquals("Cálculos y simulaciones no deben generar escrituras de sincronización", initialOutbox, finalOutbox)
+    }
+
+    @Test
+    fun activityRecreationPreservesIrrigationData() {
+        enterMainShell()
+
+        // Navegar a Riego
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        openFarm(testFarmIrrigatedId)
+        openIrrigationFromFarmDetail()
+
+        waitForTag("irrigation-screen")
+        composeRule.onNodeWithTag("irrigation-screen").assertIsDisplayed()
+        composeRule.onNodeWithText("Finca Huerta del Pozo").assertIsDisplayed()
+
+        // Recrear Activity (cambio de configuración / rotación / reinicio de ciclo de vida)
+        composeRule.activityRule.scenario.recreate()
+
+        // Verificar que la pantalla se restablece intacta
+        waitForTag("irrigation-screen")
+        composeRule.onNodeWithTag("irrigation-screen").assertIsDisplayed()
+        composeRule.onNodeWithText("Finca Huerta del Pozo").assertIsDisplayed()
     }
 }
