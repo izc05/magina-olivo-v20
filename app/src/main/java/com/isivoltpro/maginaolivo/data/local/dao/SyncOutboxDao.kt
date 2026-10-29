@@ -54,6 +54,42 @@ interface SyncOutboxDao {
     @Query("DELETE FROM sync_outbox WHERE entity_type = :entityType AND entity_id = :entityId AND status IN ('PENDING', 'FAILED')")
     suspend fun deletePendingForEntity(entityType: SyncEntityType, entityId: UUID)
 
+    /** A local edit may replace only a never prepared CAMPAIGN marker. */
+    @Query("DELETE FROM sync_outbox WHERE entity_type = 'CAMPAIGN' AND entity_id = :campaignId AND operation = 'UPDATE' AND status = 'PENDING' AND attempt_count = 0 AND payload_json IS NULL AND account_id IS NULL")
+    suspend fun deleteUnstagedCampaignMarkers(campaignId: UUID)
+
+    @Query("""
+        UPDATE sync_outbox SET account_id = :accountId, farm_id = :farmId,
+            base_remote_version = :baseVersion, payload_json = :payloadJson,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'CAMPAIGN' AND operation = 'UPDATE'
+          AND status = 'PENDING' AND attempt_count = 0 AND payload_json IS NULL
+          AND account_id IS NULL AND base_remote_version IS NULL
+    """)
+    suspend fun stageCampaignCas(operationId: UUID, accountId: String, farmId: UUID,
+        baseVersion: Long, payloadJson: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'FAILED', attempt_count = attempt_count + 1,
+            last_error_code = 'OUTCOME_UNKNOWN', last_error_message = NULL,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'CAMPAIGN' AND operation = 'UPDATE'
+          AND status IN ('PENDING', 'FAILED') AND account_id = :accountId
+          AND payload_json = :payloadJson
+    """)
+    suspend fun markCampaignUnknown(operationId: UUID, accountId: String,
+        payloadJson: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = :reason,
+            last_error_message = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'CAMPAIGN' AND operation = 'UPDATE'
+          AND status IN ('PENDING', 'FAILED') AND account_id = :accountId
+          AND payload_json = :payloadJson
+    """)
+    suspend fun quarantineCampaignCas(operationId: UUID, accountId: String,
+        payloadJson: String, reason: String, nowEpochMillis: Long): Int
+
     @Query("DELETE FROM sync_outbox WHERE entity_type = :entityType AND entity_id = :entityId AND status = 'PENDING'")
     suspend fun deleteOnlyPendingForEntity(entityType: SyncEntityType, entityId: UUID)
 
