@@ -10,11 +10,13 @@ import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.HttpsWorkspaceAuthorizationRemote
 import com.isivoltpro.maginaolivo.data.repository.WorkspaceAuthorizationContract
+import com.isivoltpro.maginaolivo.data.repository.parseCampaignCasEnvelope
 import com.isivoltpro.maginaolivo.data.repository.sync.CampaignCasCoordinator
 import com.isivoltpro.maginaolivo.data.repository.sync.CampaignCasOutcome
 import com.isivoltpro.maginaolivo.data.repository.sync.CampaignCasRpcAdapter
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.HttpsDeliveryRpcTransport
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcTransport
 import com.isivoltpro.maginaolivo.feature.account.AccountRecord
 import com.isivoltpro.maginaolivo.feature.account.AccountRepository
 import com.isivoltpro.maginaolivo.feature.account.AuthConfiguration
@@ -23,6 +25,7 @@ import com.isivoltpro.maginaolivo.feature.account.HttpsAuthTransport
 import com.isivoltpro.maginaolivo.feature.account.MemoryAccountSessionStore
 import com.isivoltpro.maginaolivo.feature.account.SupabaseAuthApi
 import java.net.URL
+import java.io.IOException
 import java.security.KeyStore
 import java.security.cert.CertificateFactory
 import java.time.Instant
@@ -75,7 +78,7 @@ class CampaignCasHttpsEphemeralTest {
         if (::originalTls.isInitialized) HttpsURLConnection.setDefaultSSLSocketFactory(originalTls)
     }
 
-    @Test fun realHttpsAckConfirmsOnlyTheStagedLocalRevision() = runBlocking {
+    @Test fun realHttpsAckDuplicateAndLostResponsePreserveExactRevisions() = runBlocking {
         val actor = UUID.fromString(fixture.getString("actor"))
         val workspace = UUID.fromString(fixture.getString("workspace"))
         val farm = UUID.fromString(fixture.getString("farm"))
@@ -123,6 +126,39 @@ class CampaignCasHttpsEphemeralTest {
         assertEquals(updateOp, receipt.operationId)
         assertEquals(campaign, receipt.campaignId)
         assertEquals(2L, receipt.remoteVersion)
-        assertEquals(2, db.syncOutboxDao().listForEntity(com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.CAMPAIGN, campaign).size)
+        val snapshot = parseCampaignCasEnvelope(staged.payloadJson!!)!!
+        assertEquals(2L, CampaignCasRpcAdapter(transport).update(session, updateOp, 1, snapshot.campaign).remoteVersion)
+        assertEquals(2L, CampaignCasRpcAdapter(transport).receipt(session, updateOp)?.remoteVersion)
+        assertEquals(2L, db.campaignDao().findById(campaign)?.metadata?.remoteVersion)
+
+        val next = UUID.randomUUID()
+        val current = db.campaignDao().findById(campaign)!!
+        db.campaignDao().upsert(current.copy(name = "Second HTTPS edit", metadata = current.metadata.copy(
+            version = 3, syncStatus = SyncStatus.PENDING)))
+        db.openHelper.writableDatabase.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,created_at,updated_at) VALUES ('$next','CAMPAIGN','$campaign','UPDATE',1,'PENDING',0,1002,1002)")
+        var sends = 0
+        var loseOnce = true
+        val responseLoss = DeliveryRpcTransport { name, body, accessToken ->
+            val response = transport.rpc(name, body, accessToken)
+            if (name == "update_own_campaign_v1") {
+                sends++
+                if (loseOnce) { loseOnce = false; throw IOException("response lost after server commit") }
+            }
+            response
+        }
+        val recovery = CampaignCasCoordinator(db, account, issuer, CampaignCasRpcAdapter(responseLoss))
+        assertEquals(CampaignCasOutcome.STAGED, recovery.stage(next))
+        suspend fun dispatchNext(): CampaignCasOutcome {
+            val held = DeliveryDispatchLease.tryAcquire(java.io.File(context.noBackupFilesDir, "g26-https-lease"))!!
+            return try { recovery.dispatch(next, held) } finally { held.close() }
+        }
+        assertEquals(CampaignCasOutcome.OUTCOME_UNKNOWN, dispatchNext())
+        assertEquals(OutboxStatus.FAILED, db.syncOutboxDao().findById(next)?.status)
+        assertEquals(CampaignCasOutcome.SYNCED, dispatchNext())
+        assertEquals(1, sends)
+        assertEquals(OutboxStatus.CONFIRMED, db.syncOutboxDao().findById(next)?.status)
+        assertEquals(3L, db.campaignDao().findById(campaign)?.metadata?.remoteVersion)
+        assertEquals("Second HTTPS edit", db.campaignDao().findById(campaign)?.name)
+        assertEquals(3, db.syncOutboxDao().listForEntity(com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.CAMPAIGN, campaign).size)
     }
 }

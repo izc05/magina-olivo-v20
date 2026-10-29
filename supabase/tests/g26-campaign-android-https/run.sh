@@ -50,9 +50,9 @@ adb install -r app/build/outputs/apk/androidTest/dev/debug/app-dev-debug-android
 adb shell pm clear com.isivoltpro.maginaolivo.dev >/dev/null
 certificate="$(base64 -w0 "$work/tls-cert.pem")"
 adb shell am instrument -w -e class \
-  com.isivoltpro.maginaolivo.data.local.CampaignCasHttpsEphemeralTest \
+  com.isivoltpro.maginaolivo.data.local.CampaignCasHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.CampaignCasRoomTest \
   -e g26_test_cert "$certificate" \
   com.isivoltpro.maginaolivo.dev.test/androidx.test.runner.AndroidJUnitRunner \
   > "$work/instrument.out"
 cat "$work/instrument.out"
-grep -q 'OK (1 test)' "$work/instrument.out"
+grep -q 'OK (20 tests)' "$work/instrument.out"
