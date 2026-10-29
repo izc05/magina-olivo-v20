@@ -567,6 +567,7 @@ private fun IrrigationInstallationsTab(
                     title = "Sin parcelas de regadío",
                     body = "Ninguna parcela de esta finca tiene asignado sistema de riego (goteo o aspersión).",
                     icon = MoIcons.Parcels,
+                    modifier = Modifier.testTag("installations-empty"),
                 )
             }
         } else {

@@ -101,11 +101,13 @@ object AppDestination {
     const val DeliveryYieldPattern = "delivery/{deliveryId}/yield"
     const val TicketPattern = "delivery-ticket/{extractionId}"
     const val MachinePattern = "machine/{machineId}"
+    const val IrrigationPattern = "irrigation/{farmId}"
     const val FarmMapPattern = "farm-map/{farmId}"
     const val FarmMapLocatePattern = "farm-map/{farmId}/locate/{parcelId}"
     const val CatastroPattern = "map-catastro/{farmId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
+    fun irrigation(farmId: String): String = nestedRoute("irrigation", farmId)
     fun farmMap(farmId: String): String = nestedRoute("farm-map", farmId)
     fun farmMapLocate(farmId: String, parcelId: String): String = "${farmMap(farmId)}/locate/${android.net.Uri.encode(parcelId)}"
 
@@ -209,6 +211,7 @@ object AppDestination {
             "farm-activities",
             "farm-documents",
             "farm-map",
+            "irrigation",
             "parcel",
             "campaign",
             "activity",

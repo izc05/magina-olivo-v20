@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,6 +63,7 @@ fun HomeRoute(
     /** Phase 20D-3: the oil market screen (12-week official chart). */
     onOilMarket: () -> Unit = {},
     onAlerts: () -> Unit = onCalendar,
+    onIrrigation: (UUID?) -> Unit = {},
 ) {
     val viewModel: HomeViewModel = viewModel(
         key = "home",
@@ -93,6 +95,7 @@ fun HomeRoute(
         onOilMarket = onOilMarket,
         onRetryLocalData = viewModel::retryLocalData,
         onAlerts = onAlerts,
+        onIrrigation = onIrrigation,
     )
 }
 
@@ -117,6 +120,7 @@ fun HomeScreen(
     onOilMarket: (() -> Unit)? = null,
     onRetryLocalData: () -> Unit = {},
     onAlerts: () -> Unit = onCalendar,
+    onIrrigation: ((UUID?) -> Unit)? = null,
 ) {
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
@@ -216,12 +220,29 @@ fun HomeScreen(
                 // #720 R2: the farmer's own weekly watering days. Shown only when some Parcel has
                 // them; nothing is guessed, and a plan is never a watering already done.
                 if (state.irrigationTurns.isNotEmpty()) {
-                    MoSectionHeader("Próximo riego")
+                    val targetFarmId = state.irrigationTurns.firstOrNull()?.farmId ?: state.farms.firstOrNull()?.id
+                    MoSectionHeader(
+                        title = "Próximo riego",
+                        modifier = Modifier.testTag("home-irrigation-header"),
+                        action = onIrrigation?.let { cb ->
+                            {
+                                Text(
+                                    text = "Ver riego",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier
+                                        .clickable { cb(targetFarmId) }
+                                        .testTag("home-irrigation-action"),
+                                )
+                            }
+                        },
+                    )
                     state.irrigationTurns.forEach { turn ->
                         MoCompactListItem(
                             title = "${turn.parcelName} · ${dayLabel(turn.date, state.today)}",
                             subtitle = turn.where ?: "Tus días de riego de esta parcela",
                             icon = MoIcons.Drop,
+                            onClick = onIrrigation?.let { cb -> { cb(turn.farmId ?: targetFarmId) } },
                             modifier = Modifier.testTag("home-irrigation-turn"),
                         )
                     }

@@ -369,6 +369,7 @@ fun FarmDetailRoute(
     modifier: Modifier = Modifier,
     /** UX-F (Issue #246 §5), CR-011 §18: opens the Cuaderno with this Farm chosen. */
     onRegister: (() -> Unit)? = null,
+    onOpenIrrigation: () -> Unit = {},
 ) {
     val viewModel: FarmDetailViewModel = viewModel(
         key = "farm-$farmId",
@@ -392,6 +393,7 @@ fun FarmDetailRoute(
         onOpenSection = onOpenSection,
         modifier = modifier,
         onRegister = onRegister,
+        onOpenIrrigation = onOpenIrrigation,
     )
 }
 
@@ -406,6 +408,7 @@ fun FarmDetailScreen(
     onOpenSection: (FarmSection) -> Unit = {},
     modifier: Modifier = Modifier,
     onRegister: (() -> Unit)? = null,
+    onOpenIrrigation: () -> Unit = {},
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -458,6 +461,7 @@ fun FarmDetailScreen(
                 onOpenSection = onOpenSection,
                 modifier = Modifier.padding(innerPadding),
                 onRegister = onRegister,
+                onOpenIrrigation = onOpenIrrigation,
             )
         }
     }
@@ -525,6 +529,7 @@ private fun FarmDetailContent(
     onOpenSection: (FarmSection) -> Unit,
     modifier: Modifier = Modifier,
     onRegister: (() -> Unit)? = null,
+    onOpenIrrigation: () -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -562,6 +567,14 @@ private fun FarmDetailContent(
                 MoPrimaryButton("Registrar en esta finca", register, Modifier.fillMaxWidth().testTag("farm-register"))
             }
             SectionEntry(FarmSection.PARCELS, MoIcons.Parcels, if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas", onOpenSection)
+            MoCompactListItem(
+                title = "Riego",
+                subtitle = "Instalaciones, turnos e historial",
+                icon = MoIcons.Drop,
+                onClick = onOpenIrrigation,
+                modifier = Modifier.testTag("farm-section-irrigation"),
+                trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText) },
+            )
             SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Diario, fitosanitario, gastos y campaña", onOpenSection)
             SectionEntry(FarmSection.CAMPAIGNS, MoIcons.Campaign, farm.activeCampaignName ?: "Sin campaña activa", onOpenSection)
             SectionEntry(FarmSection.DOCUMENTS, MoIcons.Document, "Escrituras, facturas y fotos", onOpenSection)

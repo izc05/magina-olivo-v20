@@ -25,6 +25,7 @@ data class IrrigationTurn(
     val sector: String? = null,
     val network: String? = null,
     val system: IrrigationSystem? = null,
+    val farmId: UUID? = null,
 ) {
     /** "Sector 1 · Red Demo", or null when the farmer gave neither. */
     val where: String? get() = listOfNotNull(sector?.takeIf(String::isNotBlank), network?.takeIf(String::isNotBlank))
@@ -53,6 +54,7 @@ object IrrigationTurns {
                     sector = parcel.agronomy.irrigationSector,
                     network = parcel.agronomy.irrigationNetwork,
                     system = parcel.agronomy.irrigationSystem,
+                    farmId = parcel.farmId,
                 )
             }
             .sortedWith(compareBy({ it.date }, { it.parcelName }))

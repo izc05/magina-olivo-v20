@@ -57,6 +57,7 @@ import com.isivoltpro.maginaolivo.feature.home.OilMarketRoute
 import com.isivoltpro.maginaolivo.feature.home.RadarRoute
 import com.isivoltpro.maginaolivo.feature.home.WeatherWeekRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
+import com.isivoltpro.maginaolivo.feature.irrigation.IrrigationRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
@@ -220,6 +221,12 @@ fun AppNavigation(
                         onWeatherWeek = { navController.navigate(AppDestination.Weather) },
                         onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
                         onOilMarket = { navController.navigate(AppDestination.OilMarket) },
+                        onIrrigation = { farmId ->
+                            val targetFarmId = farmId ?: compositionRoot.activeFarmStore.get()
+                            if (targetFarmId != null) {
+                                navController.navigate(AppDestination.irrigation(targetFarmId.toString()))
+                            }
+                        },
                     )
                 }
             }
@@ -419,6 +426,9 @@ fun AppNavigation(
                         },
                         onArchived = { navController.popBackStack() },
                         onRegister = { openNotebookOn(farmId, null, null, NotebookOrigin.FARM_CONTEXT) },
+                        onOpenIrrigation = {
+                            navController.navigate(AppDestination.irrigation(farmId.toString()))
+                        },
                     )
                 }
             }
@@ -470,6 +480,33 @@ fun AppNavigation(
                     // Back on the parcel it came from, now with its boundary.
                     onLocated = { navController.popBackStack() },
                 )
+            }
+            composable(AppDestination.IrrigationPattern) { entry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = entry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    IrrigationRoute(
+                        farmId = farmId,
+                        parcelRepository = persistence.parcelRepository,
+                        activityRepository = persistence.activityRepository,
+                        farmRepository = persistence.farmRepository,
+                        onRegisterIrrigation = {
+                            registerFarmId = farmId.toString()
+                            navController.navigate(AppDestination.register(ActivityType.IRRIGATION.name)) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onActivityClick = { activityId ->
+                            navController.navigate(AppDestination.activity(activityId.toString()))
+                        },
+                        onBack = {
+                            navController.popBackStack()
+                        },
+                    )
+                }
             }
             composable(AppDestination.ParcelPattern) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
