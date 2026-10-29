@@ -23,6 +23,9 @@ internal data class CampaignCasRemoteReceipt(
 
 /** Reuses the G2.4 transport boundary; this class opens no connection. */
 internal class CampaignCasRpcAdapter(private val transport: DeliveryRpcTransport) {
+    internal companion object {
+        val NAMES = setOf("update_own_campaign_v1", "check_sync_operations", "get_own_campaign_head_v1")
+    }
     /** Proposed isolated read RPC. The server must check current membership and JWT. */
     suspend fun head(session: AuthSession, campaignId: UUID): CampaignRemoteHead {
         val root = call("get_own_campaign_head_v1", """{"p_campaign_id":"$campaignId"}""", session)
@@ -76,7 +79,7 @@ internal class CampaignCasRpcAdapter(private val transport: DeliveryRpcTransport
     }
 
     private suspend fun call(name: String, body: String, session: AuthSession): JsonObject {
-        check(name in setOf("update_own_campaign_v1", "check_sync_operations", "get_own_campaign_head_v1"))
+        check(name in NAMES)
         val response = try { transport.rpc(name, body, session.accessToken) }
         catch (cancel: CancellationException) { throw cancel }
         catch (failure: DeliveryRpcFailure) { throw failure }
