@@ -126,8 +126,8 @@ class CampaignCasHttpsEphemeralTest {
         assertEquals(updateOp, receipt.operationId)
         assertEquals(campaign, receipt.campaignId)
         assertEquals(2L, receipt.remoteVersion)
-        val snapshot = parseCampaignCasEnvelope(staged.payloadJson!!)!!
-        assertEquals(2L, CampaignCasRpcAdapter(transport).update(session, updateOp, 1, snapshot.campaign).remoteVersion)
+        val stagedSnapshot = parseCampaignCasEnvelope(staged.payloadJson!!)!!
+        assertEquals(2L, CampaignCasRpcAdapter(transport).update(session, updateOp, 1, stagedSnapshot.campaign).remoteVersion)
         assertEquals(2L, CampaignCasRpcAdapter(transport).receipt(session, updateOp)?.remoteVersion)
         assertEquals(2L, db.campaignDao().findById(campaign)?.metadata?.remoteVersion)
 
