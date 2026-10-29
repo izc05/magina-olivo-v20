@@ -133,7 +133,14 @@ class ArchitectureBoundaryTest {
                 assertFalse("DEV receive probe must not send: $forbidden", probeText.contains(forbidden))
             }
         }
-        all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe }.forEach { file ->
+        val campaignProbe = all.filter { it.name == "CampaignCasHttpsEphemeralTest.kt" }
+        assertEquals("Exactly one isolated CAMPAIGN HTTPS probe", 1, campaignProbe.size)
+        assertTrue(campaignProbe.single().invariantSeparatorsPath.contains("/androidTestDev/"))
+        val campaignText = campaignProbe.single().readText()
+        assertTrue(campaignText.contains("CampaignCasCoordinator("))
+        assertTrue(campaignText.contains("RpcScope.CAMPAIGN_CAS"))
+        assertFalse(campaignText.contains("WorkManager"))
+        all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe || it in campaignProbe }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +
