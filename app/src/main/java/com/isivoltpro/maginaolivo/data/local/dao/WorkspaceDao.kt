@@ -3,15 +3,8 @@ package com.isivoltpro.maginaolivo.data.local.dao
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
-import androidx.room.ColumnInfo
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import java.util.UUID
-
-data class WorkspaceGrantRow(
-    val issuer: String,
-    @ColumnInfo(name = "account_id") val accountId: String,
-    @ColumnInfo(name = "workspace_id") val workspaceId: UUID,
-)
 
 @Dao
 interface WorkspaceDao {
@@ -23,9 +16,6 @@ interface WorkspaceDao {
 
     @Query("SELECT * FROM workspaces WHERE deleted_at IS NULL ORDER BY created_at, id LIMIT 1")
     suspend fun findFirstActive(): WorkspaceEntity?
-
-    @Query("SELECT DISTINCT r.issuer, r.account_id, d.workspace_id FROM delivery_import_receipts r JOIN deliveries d ON d.id = r.delivery_id")
-    suspend fun listVerifiedGrants(): List<WorkspaceGrantRow>
 
     @Query("""
         SELECT * FROM workspaces w WHERE w.deleted_at IS NULL
