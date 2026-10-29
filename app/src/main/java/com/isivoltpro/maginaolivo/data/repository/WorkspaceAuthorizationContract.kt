@@ -37,7 +37,7 @@ internal data class WorkspaceAuthorizationContract(
             tokenExpiresAt.isAfter(now)
 
     fun available(now: Instant): List<AuthorizedWorkspace> = workspaces.filter {
-        it.expiresAt.isAfter(now) && verifiedAt.plus(Duration.ofMinutes(15)).isAfter(now) && tokenExpiresAt.isAfter(now)
+        it.expiresAt.isAfter(now) && verifiedAt.plus(Duration.ofMinutes(13)).isAfter(now) && tokenExpiresAt.isAfter(now)
     }
 
     companion object {

@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.data.repository
 
 import com.isivoltpro.maginaolivo.feature.account.AuthSession
+import java.io.ByteArrayOutputStream
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 import kotlinx.coroutines.Dispatchers
@@ -26,10 +27,16 @@ internal class HttpsWorkspaceAuthorizationRemote(
             connection.doOutput = true
             connection.outputStream.use { it.write("{}".toByteArray(Charsets.UTF_8)) }
             check(connection.responseCode == 200) { "workspace_authorization_http_${connection.responseCode}" }
-            connection.inputStream.bufferedReader().use { reader ->
-                val body = reader.readText()
-                require(body.length <= 131_072)
-                body
+            connection.inputStream.use { input ->
+                val output = ByteArrayOutputStream()
+                val chunk = ByteArray(4096)
+                while (true) {
+                    val count = input.read(chunk)
+                    if (count < 0) break
+                    require(output.size() + count <= 131_072)
+                    output.write(chunk, 0, count)
+                }
+                output.toString("UTF-8")
             }
         } finally {
             connection.disconnect()

@@ -18,6 +18,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Exact source SHA
         run: git rev-parse HEAD
+      - name: Verify proposed DEV SQL SHA-256
+        run: echo '19131ffdbd864e6f3416742d31a4b14451eb0c700d6835af4986fd8672ab1fd3  supabase/migrations/20261029044901_g26_workspace_authorization.sql' | sha256sum -c -
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
