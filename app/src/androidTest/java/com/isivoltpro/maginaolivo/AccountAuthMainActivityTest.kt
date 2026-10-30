@@ -68,11 +68,12 @@ class AccountAuthMainActivityTest {
         compose.activityRule.scenario.onActivity { assertNull("Callback code not retained in Activity intent",it.intent.data) }
     }
     @Test fun accountIsNestedUnderProfileAndBackKeepsNavigation() {
+        runBlocking { repository.login("qa@example.test", "password42", online = true) }
         waitFor("bottom-Perfil");compose.onNodeWithTag("bottom-Perfil").performClick()
         waitFor("profile-account");compose.onNodeWithTag("profile-account").performScrollTo().performClick()
         waitFor("account-root");compose.onNodeWithTag("account-simulation").assertIsDisplayed()
         compose.onNodeWithTag("account-back").performScrollTo().performClick()
-        waitFor("profile-root");assertNull(store.read().session)
+        waitFor("profile-root");assertNotNull(store.read().session)
     }
     private fun waitFor(tag:String)=compose.waitUntil(15_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
 }
