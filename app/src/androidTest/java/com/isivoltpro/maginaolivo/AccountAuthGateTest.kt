@@ -166,7 +166,7 @@ class AccountAuthGateTest {
     }
 
     @Test
-    fun restartWithSavedSessionRestoresDirectAccessWithoutPassword() = runBlocking {
+    fun restartWithSavedSessionRestoresDirectAccessWithoutPassword(): Unit = runBlocking {
         val store = MemoryAccountSessionStore()
         val sessionA = AuthSession(userA, "a@example.com", "access", "refresh", Instant.now().plusSeconds(3600))
         store.write(AccountRecord(session = sessionA))
@@ -188,7 +188,7 @@ class AccountAuthGateTest {
     }
 
     @Test
-    fun offlineModeWithExpiredJwtAllowsLocalAccessForVerifiedAccount() = runBlocking {
+    fun offlineModeWithExpiredJwtAllowsLocalAccessForVerifiedAccount(): Unit = runBlocking {
         val store = MemoryAccountSessionStore()
         // Token expired 2 hours ago
         val sessionExpired = AuthSession(userA, "campo@example.test", "access", "refresh", Instant.now().minusSeconds(7200))
@@ -211,7 +211,7 @@ class AccountAuthGateTest {
     }
 
     @Test
-    fun logoutReturnsToGateAndProtectsLocalDataWithoutDeletingIt() = runBlocking {
+    fun logoutReturnsToGateAndProtectsLocalDataWithoutDeletingIt(): Unit = runBlocking {
         val store = MemoryAccountSessionStore()
         val sessionA = AuthSession(userA, "a@example.com", "access", "refresh", Instant.now().plusSeconds(3600))
         store.write(AccountRecord(session = sessionA))
@@ -242,7 +242,7 @@ class AccountAuthGateTest {
     }
 
     @Test
-    fun realRoomMultiUserFarmIsolationAToBToA() = runBlocking {
+    fun realRoomMultiUserFarmIsolationAToBToA(): Unit = runBlocking {
         val store = MemoryAccountSessionStore()
         val repo = AccountRepository(TestAuthApi(), store)
         // Pass repo so that all repositories (workspaceRepository, farmLinks, etc.) share the exact same AccountRepository instance
@@ -314,7 +314,7 @@ class AccountAuthGateTest {
     }
 
     @Test
-    fun historicalFarmsAreNotVisibleByDefaultToAuthenticatedUser() = runBlocking {
+    fun historicalFarmsAreNotVisibleByDefaultToAuthenticatedUser(): Unit = runBlocking {
         val store = MemoryAccountSessionStore()
         val repo = AccountRepository(TestAuthApi(), store)
         val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
@@ -341,7 +341,7 @@ class AccountAuthGateTest {
     }
 
     @Test
-    fun stagingEnvironmentWithoutConfigurationFailsClosed() = runBlocking {
+    fun stagingEnvironmentWithoutConfigurationFailsClosed(): Unit = runBlocking {
         val unconfiguredRepo = AccountRepository(null)
         val root = AppCompositionRoot.createAndroid(context, "STAGING", accountRepository = unconfiguredRepo)
 
@@ -354,7 +354,7 @@ class AccountAuthGateTest {
     }
 
     @Test
-    fun directRouteToForeignFarmDoesNotDiscloseParcelsCampaignsOrDocumentsToAnotherUser() = runBlocking {
+    fun directRouteToForeignFarmDoesNotDiscloseParcelsCampaignsOrDocumentsToAnotherUser(): Unit = runBlocking {
         val store = MemoryAccountSessionStore()
         val repo = AccountRepository(TestAuthApi(), store)
         val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
@@ -468,7 +468,7 @@ class AccountAuthGateTest {
     }
 
     @Test
-    fun directRouteToForeignParcelDoesNotDiscloseParcelDetailOrLocateMapToAnotherUser() = runBlocking {
+    fun directRouteToForeignParcelDoesNotDiscloseParcelDetailOrLocateMapToAnotherUser(): Unit = runBlocking {
         val store = MemoryAccountSessionStore()
         val repo = AccountRepository(TestAuthApi(), store)
         val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
@@ -548,7 +548,7 @@ class AccountAuthGateTest {
     }
 
     @Test
-    fun androidPersistedSessionStoreSurvivesOfflineWithExpiredJwt() = runBlocking {
+    fun androidPersistedSessionStoreSurvivesOfflineWithExpiredJwt(): Unit = runBlocking {
         val sessionFile = File(context.noBackupFilesDir, "qa-offline-session-${UUID.randomUUID()}.json")
         val keyAlias = "qa-key-${UUID.randomUUID()}"
         val scope = "test-scope"

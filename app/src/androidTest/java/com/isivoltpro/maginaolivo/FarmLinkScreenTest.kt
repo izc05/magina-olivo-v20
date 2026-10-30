@@ -109,7 +109,7 @@ class FarmLinkScreenTest {
             File(folder,"$label.png").outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) };bitmap.recycle()
         }
     }
-    @Test fun onlySelectedFarmsArePreparedButConsentProtectsTheEntireLocalDataset()=runBlocking {
+    @Test fun onlySelectedFarmsArePreparedButConsentProtectsTheEntireLocalDataset(): Unit = runBlocking {
         seed();content();waitFor("farm-link-choice-${ids[0]}")
         compose.onNodeWithTag("farm-link-choice-${ids[0]}").performScrollTo().performClick()
         compose.onNodeWithTag("farm-link-confirm").performScrollTo().assertIsNotEnabled()
@@ -128,7 +128,7 @@ class FarmLinkScreenTest {
             .assertTextContains("incluidas las no seleccionadas",substring=true).assertIsDisplayed()
         compose.onNodeWithTag("farm-link-pending").performScrollTo();capture("pending")
     }
-    @Test fun logoutSwitchAndRecreatedActivityCannotShowPreviousAgriculture()=runBlocking {
+    @Test fun logoutSwitchAndRecreatedActivityCannotShowPreviousAgriculture(): Unit = runBlocking {
         seed();repository.consent(account.state.value.userId!!,repository.choices().take(2),true)
         content();waitFor("private-agriculture")
         account.logout(false);waitFor("farm-link-locked")
@@ -142,7 +142,7 @@ class FarmLinkScreenTest {
         account.logout(false);account.login("a@example.test","password42",true);account.resume(false)
         waitFor("private-agriculture");compose.onNodeWithTag("farm-link-locked").assertDoesNotExist();capture("restored-offline")
     }
-    @Test fun remoteLogoutSurvivesDestructionOfItsViewModel()=runBlocking {
+    @Test fun remoteLogoutSurvivesDestructionOfItsViewModel(): Unit = runBlocking {
         seed();repository.consent(account.state.value.userId!!,repository.choices().take(1),true)
         slowSignOut=true;content();waitFor("test-link-logout")
         compose.onNodeWithTag("test-link-logout").performScrollTo().performClick()
@@ -152,7 +152,7 @@ class FarmLinkScreenTest {
         compose.waitUntil(10_000) { revoked }
         assertNull(session.read().session)
     }
-    @Test fun realRotationPreservesProtectionAcrossLogoutOtherAccountAndRestoredOwner()=runBlocking {
+    @Test fun realRotationPreservesProtectionAcrossLogoutOtherAccountAndRestoredOwner(): Unit = runBlocking {
         seed();repository.consent(account.state.value.userId!!,repository.choices().take(1),true)
         // Establish a known starting orientation before observing actual Android recreations.
         compose.activityRule.scenario.onActivity { it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
