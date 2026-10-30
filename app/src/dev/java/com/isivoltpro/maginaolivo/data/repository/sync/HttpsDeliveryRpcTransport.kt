@@ -33,6 +33,7 @@ internal class HttpsDeliveryRpcTransport(
     internal enum class RpcScope(val allowedNames: Set<String>) {
         DELIVERY(DeliveryRpcAdapter.NAMES),
         CAMPAIGN_CAS(CampaignCasRpcAdapter.NAMES),
+        CAMPAIGN_RECEIVE(setOf("get_own_campaign_receive_v1")),
     }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =

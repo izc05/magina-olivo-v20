@@ -52,7 +52,8 @@ before(async()=>{
     ...['g1c-reservations.sql','g2-sync-own-data.sql','g2-parcel-bootstrap.sql'].map(name=>new URL(`../../proposals/${name}`,import.meta.url)),
     new URL('../../migrations/20261029044901_g26_workspace_authorization.sql',import.meta.url),
     new URL('../../migrations/20261029104720_g26_campaign_cas.sql',import.meta.url),
-    new URL('../../proposals/g26-campaign-head-v1.sql',import.meta.url)];
+    new URL('../../proposals/g26-campaign-head-v1.sql',import.meta.url),
+    new URL('../../proposals/g26-campaign-receive-v1.sql',import.meta.url)];
   sql(`BEGIN;\n${files.map(file=>readFileSync(file,'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
   fixture={workspace:randomUUID(),farm:randomUUID(),parcel:randomUUID(),campaign:randomUUID(),snapshot:randomUUID()};
   const f=fixture,a=actors.A;
@@ -143,6 +144,38 @@ test('versioned campaign HEAD rejects foreign identity, expiry and revoked membe
   assert.ok([401,403].includes((await access(a,token(a,undefined,true))).status));
   sql(`INSERT INTO public.workspace_memberships(workspace_id,user_id,role,permissions)
        VALUES (${q(f.workspace)},${q(c.id)},'VIEWER',ARRAY['read']);`);
+  const member=await access(c);assert.equal(member.status,200,JSON.stringify(member.data));
+  assert.equal(member.data.subject,c.id);
+  sql(`UPDATE public.workspace_memberships SET status='REVOKED',revoked_at=now(),version=version+1
+       WHERE workspace_id=${q(f.workspace)} AND user_id=${q(c.id)};`);
+  assert.equal((await access(c)).status,403);
+  assert.equal(sql(`SELECT count(*) FROM public.campaigns WHERE id=${q(f.campaign)};`),'1');
+});
+
+test('receiver gets a complete authorized snapshot; foreign and revoked accounts get none',async()=>{
+  const f=fixture,a=actors.A,c=actors.C;
+  const access=(actor,authToken=token(actor))=>http('/rest/v1/rpc/get_own_campaign_receive_v1',{
+    token:authToken,body:{p_campaign_id:f.campaign}});
+  assert.equal(sql("SELECT has_function_privilege('anon','public.get_own_campaign_receive_v1(uuid)','EXECUTE'),has_function_privilege('authenticated','public.get_own_campaign_receive_v1(uuid)','EXECUTE');"),'f|t');
+  const own=await access(a);assert.equal(own.status,200,JSON.stringify(own.data));
+  assert.equal(own.data.contract_version,1);
+  assert.equal(own.data.subject,a.id);
+  assert.equal(own.data.issuer,'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1');
+  assert.equal(own.data.campaign.id,f.campaign);
+  assert.equal(own.data.campaign.workspaceId,f.workspace);
+  assert.equal(own.data.campaign.farmId,f.farm);
+  assert.equal(own.data.campaign.version,3);
+  assert.equal(own.data.campaign.snapshotFormat,1);
+  assert.ok(own.data.campaign.createdAt);
+  assert.ok(own.data.campaign.updatedAt);
+  assert.deepEqual(own.data.snapshots.map(x=>x.id),[f.snapshot]);
+  assert.equal(own.data.snapshots[0].parcelId,f.parcel);
+  assert.equal(own.data.snapshots[0].farmIdAtStart,f.farm);
+  assert.equal((await access(c)).status,403);
+  assert.equal((await access(a,token(a,'https://other.example/auth/v1'))).status,403);
+  assert.ok([401,403].includes((await access(a,token(a,undefined,true))).status));
+  sql(`UPDATE public.workspace_memberships SET status='ACTIVE',revoked_at=NULL,version=version+1
+       WHERE workspace_id=${q(f.workspace)} AND user_id=${q(c.id)};`);
   const member=await access(c);assert.equal(member.status,200,JSON.stringify(member.data));
   assert.equal(member.data.subject,c.id);
   sql(`UPDATE public.workspace_memberships SET status='REVOKED',revoked_at=now(),version=version+1

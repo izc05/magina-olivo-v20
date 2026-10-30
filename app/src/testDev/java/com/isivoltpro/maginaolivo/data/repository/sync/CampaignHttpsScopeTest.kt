@@ -19,4 +19,11 @@ class CampaignHttpsScopeTest {
         assertFalse("update_own_campaign_v1" in names)
         assertFalse("get_own_campaign_head_v1" in names)
     }
+
+    @Test fun receiverScopeAllowsOnlyAuthorizedRead() {
+        val names = HttpsDeliveryRpcTransport.RpcScope.CAMPAIGN_RECEIVE.allowedNames
+        assertEquals(setOf("get_own_campaign_receive_v1"), names)
+        assertFalse("update_own_campaign_v1" in names)
+        assertFalse("sync_own_delivery_v2" in names)
+    }
 }
