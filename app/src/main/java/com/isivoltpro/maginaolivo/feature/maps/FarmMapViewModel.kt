@@ -150,7 +150,9 @@ class FarmMapViewModel(
         }
         if (locateParcelId != null) {
             viewModelScope.launch {
-                parcels.observeById(locateParcelId).collect { parcel -> mutableState.update { it.copy(locateParcel = parcel) } }
+                farms.observeById(farmId).flatMapLatest { farm ->
+                    if (farm == null) flowOf(null) else parcels.observeById(locateParcelId)
+                }.collect { parcel -> mutableState.update { it.copy(locateParcel = parcel) } }
             }
         }
     }

@@ -23,6 +23,8 @@ import com.isivoltpro.maginaolivo.domain.parcel.NewParcel
 import com.isivoltpro.maginaolivo.domain.campaign.NewCampaign
 import com.isivoltpro.maginaolivo.feature.farms.FarmSection
 import com.isivoltpro.maginaolivo.feature.farms.FarmSectionRoute
+import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
+import com.isivoltpro.maginaolivo.feature.maps.FarmMapRoute
 import com.isivoltpro.maginaolivo.data.local.entity.DocumentEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
@@ -463,6 +465,86 @@ class AccountAuthGateTest {
         waitFor("farm-section-unauthorized")
         compose.onNodeWithTag("farm-section-unauthorized").assertIsDisplayed()
         compose.onNodeWithText("Escritura Privada A").assertDoesNotExist()
+    }
+
+    @Test
+    fun directRouteToForeignParcelDoesNotDiscloseParcelDetailOrLocateMapToAnotherUser() = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val repo = AccountRepository(TestAuthApi(), store)
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        val local = checkNotNull(root.localPersistence)
+
+        // 1. User A logs in and creates a Farm and a Parcel
+        repo.login("a@example.com", "passwordA123", online = true)
+        val workspaceA = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        val farmA = (local.farmRepository.create(NewFarm(workspaceA, "Finca Exclusiva A")) as AppResult.Success).value
+        val parcelA = (local.parcelRepository.create(
+            NewParcel(
+                farmId = farmA,
+                displayName = "Parcela Confidencial A",
+            )
+        ) as AppResult.Success).value
+
+        // 2. User A logs out
+        repo.logout(online = true)
+
+        // 3. User B logs in
+        repo.login("b@example.com", "passwordB123", online = true)
+        val workspaceB = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertNotEquals(workspaceA, workspaceB)
+
+        // 4. Test direct navigation to ParcelDetailRoute of Parcel A: User B must see "Parcela no disponible"
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                MaginaOlivoTheme {
+                    ParcelDetailRoute(
+                        parcelId = parcelA,
+                        persistence = local,
+                        onArchived = {},
+                    )
+                }
+            }
+        }
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Parcela no disponible").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Parcela no disponible").assertIsDisplayed()
+        compose.onNodeWithText("Parcela Confidencial A").assertDoesNotExist()
+
+        // 5. Test direct navigation to FarmMapRoute with locateParcelId = Parcel A: User B must not see parcel name
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                MaginaOlivoTheme {
+                    FarmMapRoute(
+                        farmId = farmA,
+                        persistence = local,
+                        locateParcelId = parcelA,
+                        onOpenParcel = {},
+                        onSearchByReference = {},
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("Ubicar «Parcela Confidencial A»").assertDoesNotExist()
+        compose.onNodeWithText("Parcela Confidencial A").assertDoesNotExist()
+
+        // 6. User B logs out
+        repo.logout(online = true)
+
+        // 7. User A logs back in and recovers their parcel
+        repo.login("a@example.com", "passwordA123", online = true)
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                MaginaOlivoTheme {
+                    ParcelDetailRoute(
+                        parcelId = parcelA,
+                        persistence = local,
+                        onArchived = {},
+                    )
+                }
+            }
+        }
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Parcela Confidencial A").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Parcela Confidencial A").assertIsDisplayed()
     }
 
     @Test

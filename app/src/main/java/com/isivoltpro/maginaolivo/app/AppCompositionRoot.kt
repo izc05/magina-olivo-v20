@@ -111,6 +111,7 @@ data class AppCompositionRoot(
                 clock = defaults.clock,
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
+                workspaceRepository = workspaceRepository,
             )
             val campaignRepository = OfflineFirstCampaignRepository(
                 database, defaults.clock, defaults.idGenerator, defaults.dispatchers, workspaceRepository,
