@@ -31,13 +31,17 @@ import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.DayOfWeek
 import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class OfflineFirstParcelRepository(
     private val database: MaginaOlivoDatabase,
     private val clock: AppClock,
@@ -48,44 +52,41 @@ class OfflineFirstParcelRepository(
     private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
 
     override fun observeActive(farmId: UUID): Flow<List<Parcel>> =
-        flow {
-            val active = when (val result = workspaceScope.resolve()) {
-                is AppResult.Failure -> return@flow emit(emptyList())
-                is AppResult.Success -> result.value
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(emptyList())
+            } else {
+                val farm = database.farmDao().findById(farmId)
+                if (farm == null || farm.workspaceId != active || farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
+                    flowOf(emptyList())
+                } else {
+                    database.parcelDao().observeActive(farmId).map { rows -> rows.map { it.toDomain() } }
+                }
             }
-            val farm = database.farmDao().findById(farmId)
-            if (farm == null || farm.workspaceId != active || farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
-                return@flow emit(emptyList())
-            }
-            emitAll(
-                database.parcelDao().observeActive(farmId).map { rows -> rows.map { it.toDomain() } },
-            )
         }.flowOn(dispatchers.io)
 
     override fun observeArchived(farmId: UUID): Flow<List<Parcel>> =
-        flow {
-            val active = when (val result = workspaceScope.resolve()) {
-                is AppResult.Failure -> return@flow emit(emptyList())
-                is AppResult.Success -> result.value
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(emptyList())
+            } else {
+                val farm = database.farmDao().findById(farmId)
+                if (farm == null || farm.workspaceId != active) {
+                    flowOf(emptyList())
+                } else {
+                    database.parcelDao().observeArchived(farmId).map { rows -> rows.map { it.toDomain() } }
+                }
             }
-            val farm = database.farmDao().findById(farmId)
-            if (farm == null || farm.workspaceId != active) {
-                return@flow emit(emptyList())
-            }
-            emitAll(
-                database.parcelDao().observeArchived(farmId).map { rows -> rows.map { it.toDomain() } },
-            )
         }.flowOn(dispatchers.io)
 
     override fun observeById(parcelId: UUID): Flow<Parcel?> =
-        flow {
-            when (val active = workspaceScope.resolve()) {
-                is AppResult.Failure -> emit(null)
-                is AppResult.Success -> emitAll(
-                    database.parcelDao().observeById(parcelId).map { row ->
-                        row?.takeIf { it.parcel.workspaceId == active.value }?.toDomain()
-                    },
-                )
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(null)
+            } else {
+                database.parcelDao().observeById(parcelId).map { row ->
+                    row?.takeIf { it.parcel.workspaceId == active }?.toDomain()
+                }
             }
         }.flowOn(dispatchers.io)
 

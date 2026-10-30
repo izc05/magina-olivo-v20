@@ -255,8 +255,9 @@ fun ParcelDetailRoute(
     /** UX-F (Issue #246 §5): opens Mi Cuaderno → Registrar hoy with this Parcel's Farm and the Parcel. */
     onRegister: ((farmId: UUID, parcelName: String) -> Unit)? = null,
 ) {
+    val ownerScope = persistence.workspaceRepository.currentOwnerId()?.toString() ?: "default"
     val viewModel: ParcelDetailViewModel = viewModel(
-        key = "parcel-$parcelId",
+        key = "parcel-$parcelId-$ownerScope",
         factory = viewModelFactory {
             initializer {
                 ParcelDetailViewModel(parcelId, persistence.parcelRepository, persistence.activityRepository, persistence.farmRepository)

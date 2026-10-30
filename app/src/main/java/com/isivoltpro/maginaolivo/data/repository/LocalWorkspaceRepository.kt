@@ -15,6 +15,11 @@ import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
+import java.util.UUID
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class LocalWorkspaceRepository(
@@ -25,6 +30,15 @@ class LocalWorkspaceRepository(
     private val regionalContext: RegionalContext,
     private val accountRepository: com.isivoltpro.maginaolivo.feature.account.AccountRepository? = null,
 ) : WorkspaceRepository {
+    override fun currentOwnerId(): UUID? = accountRepository?.state?.value?.userId
+
+    override fun observeLocalWorkspace(): Flow<UUID?> =
+        accountRepository?.state
+            ?.map { it.userId }
+            ?.distinctUntilChanged()
+            ?.map { (ensureLocalWorkspace() as? AppResult.Success)?.value }
+            ?: flow { emit((ensureLocalWorkspace() as? AppResult.Success)?.value) }
+
     override suspend fun ensureLocalWorkspace() = withContext(dispatchers.io) {
         runCatching {
             database.withTransaction {
