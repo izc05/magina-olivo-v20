@@ -2,10 +2,12 @@ package com.isivoltpro.maginaolivo.feature.irrigation
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import com.isivoltpro.maginaolivo.domain.irrigation.CalculatedDose
 import com.isivoltpro.maginaolivo.domain.irrigation.DaySchedule
 import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationRealStats
@@ -143,6 +145,7 @@ class IrrigationScreenTest {
         composeRule.onNodeWithText("75.00 €").assertIsDisplayed()
 
         // Turn Card
+        composeRule.onNodeWithTag("irrigation-summary-tab").performScrollToNode(hasTestTag("irrigation-turn-card-${parcel.id}"))
         composeRule.onNodeWithTag("irrigation-turn-card-${parcel.id}").assertIsDisplayed()
         composeRule.onNodeWithText("Parcela Las Canteras").assertIsDisplayed()
     }
@@ -448,6 +451,200 @@ class IrrigationScreenTest {
 
         // El botón para registrar riego NO debe ofrecerse (para no dar acciones engañosas)
         composeRule.onNodeWithTag("irrigation-register-button").assertDoesNotExist()
+    }
+
+    @Test
+    fun farmerProfile_displaysOvernightBadgeAndEstimatedMetricsOnCalendar() {
+        val parcelId = UUID.randomUUID()
+        val turn = ScheduledTurnItem(
+            parcelId = parcelId,
+            parcelName = "La Loma Alta",
+            communityOrNetwork = "Comunidad San Isidro",
+            sector = "Sector 2",
+            hydrant = "H-14",
+            intakeOrValve = "Boca 3",
+            timeSlot = com.isivoltpro.maginaolivo.domain.irrigation.ScheduledTimeSlot(
+                startTime = java.time.LocalTime.of(22, 0),
+                endTime = java.time.LocalTime.of(6, 0),
+            ),
+            estimatedVolumeM3 = 32.0,
+            estimatedCostMinor = 640L,
+            isExtraordinary = false,
+        )
+
+        val plan = WeeklyPlan(
+            days = listOf(DaySchedule(dayOfWeek = DayOfWeek.MONDAY, turns = listOf(turn))),
+            totalScheduledTurns = 1,
+            participatingParcelsCount = 1,
+            communitiesInPlan = setOf("Comunidad San Isidro"),
+            totalEstimatedWeeklyVolumeM3 = 32.0,
+            totalEstimatedWeeklyCostMinor = 640L,
+        )
+
+        val state = IrrigationUiState(
+            farmName = "Finca San Isidro",
+            isLoading = false,
+            selectedTab = IrrigationTab.SUMMARY,
+            selectedDay = DayOfWeek.MONDAY,
+            weeklyPlan = plan,
+        )
+
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                IrrigationScreen(
+                    state = state,
+                    onSelectTab = {},
+                    onSelectDay = {},
+                    onSelectParcelForCalculator = {},
+                    onUpdateTrees = {},
+                    onUpdateEmitters = {},
+                    onUpdateFlow = {},
+                    onUpdateDuration = {},
+                    onUpdateEmitterType = {},
+                    onCalculateDose = {},
+                    onRegisterIrrigation = {},
+                    onActivityClick = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("irrigation-summary-tab").performScrollToNode(hasTestTag("add-punctual-turn-button"))
+        composeRule.onNodeWithTag("add-punctual-turn-button").assertIsDisplayed()
+        composeRule.onNodeWithTag("irrigation-summary-tab").performScrollToNode(hasTestTag("irrigation-turn-card-$parcelId"))
+        composeRule.onNodeWithTag("irrigation-turn-card-$parcelId").assertIsDisplayed()
+        composeRule.onNodeWithTag("overnight-badge").assertIsDisplayed()
+        composeRule.onNodeWithText("La Loma Alta").assertIsDisplayed()
+        composeRule.onNodeWithText("Comunidad San Isidro · Sector 2 · Hidrante H-14 · Boca 3").assertIsDisplayed()
+    }
+
+    @Test
+    fun installationsTab_displaysConfigureButtonAndOpensProfileDialog() {
+        val parcel = sampleParcel(name = "Parcela Don Diego")
+        val openedParcel = AtomicReference<Parcel?>(null)
+        val state = IrrigationUiState(
+            farmName = "Finca Don Diego",
+            isLoading = false,
+            selectedTab = IrrigationTab.INSTALLATIONS,
+            irrigatedParcels = listOf(parcel),
+        )
+
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                IrrigationScreen(
+                    state = state,
+                    onSelectTab = {},
+                    onSelectDay = {},
+                    onSelectParcelForCalculator = {},
+                    onUpdateTrees = {},
+                    onUpdateEmitters = {},
+                    onUpdateFlow = {},
+                    onUpdateDuration = {},
+                    onUpdateEmitterType = {},
+                    onCalculateDose = {},
+                    onRegisterIrrigation = {},
+                    onActivityClick = {},
+                    onBack = {},
+                    onOpenProfileEditor = { openedParcel.set(it) },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("irrigation-installations-tab").performScrollToNode(hasTestTag("configure-parcel-irrigation-${parcel.id}"))
+        composeRule.onNodeWithTag("configure-parcel-irrigation-${parcel.id}").assertIsDisplayed()
+        composeRule.onNodeWithTag("configure-parcel-irrigation-${parcel.id}").performClick()
+        org.junit.Assert.assertEquals(parcel.id, openedParcel.get()?.id)
+    }
+
+    @Test
+    fun installationsTab_showsProfileDialogWhenDraftIsSet() {
+        val parcel = sampleParcel(name = "Parcela Don Diego")
+        val state = IrrigationUiState(
+            farmName = "Finca Don Diego",
+            isLoading = false,
+            selectedTab = IrrigationTab.INSTALLATIONS,
+            irrigatedParcels = listOf(parcel),
+            editingProfileParcel = parcel,
+            editingProfileDraft = com.isivoltpro.maginaolivo.domain.irrigation.ParcelIrrigationProfile(parcelId = parcel.id),
+        )
+
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                IrrigationScreen(
+                    state = state,
+                    onSelectTab = {},
+                    onSelectDay = {},
+                    onSelectParcelForCalculator = {},
+                    onUpdateTrees = {},
+                    onUpdateEmitters = {},
+                    onUpdateFlow = {},
+                    onUpdateDuration = {},
+                    onUpdateEmitterType = {},
+                    onCalculateDose = {},
+                    onRegisterIrrigation = {},
+                    onActivityClick = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("farmer-profile-dialog-content").assertIsDisplayed()
+        composeRule.onNodeWithTag("save-irrigation-profile-button").assertIsDisplayed()
+    }
+
+    @Test
+    fun punctualTurn_displaysExtraordinaryBadge() {
+        val parcelId = UUID.randomUUID()
+        val extraordinaryTurn = ScheduledTurnItem(
+            parcelId = parcelId,
+            parcelName = "Parcela El Valle",
+            communityOrNetwork = "Comunidad San Isidro",
+            timeSlot = com.isivoltpro.maginaolivo.domain.irrigation.ScheduledTimeSlot(
+                startTime = java.time.LocalTime.of(18, 0),
+                endTime = java.time.LocalTime.of(20, 0),
+            ),
+            isExtraordinary = true,
+            reason = "Turno de socorro",
+            punctualTurnId = UUID.randomUUID(),
+        )
+
+        val plan = WeeklyPlan(
+            days = listOf(DaySchedule(dayOfWeek = DayOfWeek.MONDAY, turns = listOf(extraordinaryTurn))),
+            totalScheduledTurns = 1,
+            participatingParcelsCount = 1,
+            communitiesInPlan = setOf("Comunidad San Isidro"),
+        )
+
+        val state = IrrigationUiState(
+            farmName = "Finca El Valle",
+            isLoading = false,
+            selectedTab = IrrigationTab.SUMMARY,
+            selectedDay = DayOfWeek.MONDAY,
+            weeklyPlan = plan,
+        )
+
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                IrrigationScreen(
+                    state = state,
+                    onSelectTab = {},
+                    onSelectDay = {},
+                    onSelectParcelForCalculator = {},
+                    onUpdateTrees = {},
+                    onUpdateEmitters = {},
+                    onUpdateFlow = {},
+                    onUpdateDuration = {},
+                    onUpdateEmitterType = {},
+                    onCalculateDose = {},
+                    onRegisterIrrigation = {},
+                    onActivityClick = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("irrigation-summary-tab").performScrollToNode(hasTestTag("extraordinary-badge"))
+        composeRule.onNodeWithTag("extraordinary-badge").assertIsDisplayed()
     }
 }
 

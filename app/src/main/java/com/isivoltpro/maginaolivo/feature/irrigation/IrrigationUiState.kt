@@ -5,6 +5,8 @@ import com.isivoltpro.maginaolivo.domain.irrigation.CalculatedDose
 import com.isivoltpro.maginaolivo.domain.irrigation.EmitterType
 import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationRealStats
 import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationSummary
+import com.isivoltpro.maginaolivo.domain.irrigation.ParcelIrrigationProfile
+import com.isivoltpro.maginaolivo.domain.irrigation.PunctualTurn
 import com.isivoltpro.maginaolivo.domain.irrigation.WeeklyPlan
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import java.time.DayOfWeek
@@ -70,7 +72,14 @@ data class IrrigationUiState(
         communitiesInPlan = emptySet(),
     ),
     val irrigatedParcels: List<Parcel> = emptyList(),
+    val allParcels: List<Parcel> = emptyList(),
     val recentActivities: List<Activity> = emptyList(),
     val calculator: DoseCalculatorState = DoseCalculatorState(),
+    // B.5 Extensions:
+    val profiles: Map<UUID, ParcelIrrigationProfile> = emptyMap(),
+    val editingProfileParcel: Parcel? = null,
+    val editingProfileDraft: ParcelIrrigationProfile? = null,
+    val showPunctualTurnDialog: Boolean = false,
+    val punctualTurnParcelId: UUID? = null,
+    val editingPunctualTurn: PunctualTurn? = null,
 )
-

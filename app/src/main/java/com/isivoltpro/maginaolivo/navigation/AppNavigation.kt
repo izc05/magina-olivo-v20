@@ -493,6 +493,7 @@ fun AppNavigation(
                         parcelRepository = persistence.parcelRepository,
                         activityRepository = persistence.activityRepository,
                         farmRepository = persistence.farmRepository,
+                        accountRepository = compositionRoot.accountRepository,
                         onRegisterIrrigation = {
                             registerFarmId = farmId.toString()
                             navController.navigate(AppDestination.register(ActivityType.IRRIGATION.name)) {

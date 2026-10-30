@@ -8,16 +8,27 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
+import com.isivoltpro.maginaolivo.domain.irrigation.AforoConfig
+import com.isivoltpro.maginaolivo.domain.irrigation.AndroidFarmerIrrigationStore
 import com.isivoltpro.maginaolivo.domain.irrigation.DripInstallation
 import com.isivoltpro.maginaolivo.domain.irrigation.EmitterType
+import com.isivoltpro.maginaolivo.domain.irrigation.FarmerIrrigationStore
+import com.isivoltpro.maginaolivo.domain.irrigation.InMemoryFarmerIrrigationStore
 import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationSummarizer
+import com.isivoltpro.maginaolivo.domain.irrigation.ParcelIrrigationProfile
+import com.isivoltpro.maginaolivo.domain.irrigation.PunctualTurn
+import com.isivoltpro.maginaolivo.domain.irrigation.WaterSupplyDetails
 import com.isivoltpro.maginaolivo.domain.irrigation.WateringDoseCalculator
 import com.isivoltpro.maginaolivo.domain.irrigation.WeeklyIrrigationCalendar
 import com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
+import com.isivoltpro.maginaolivo.feature.account.AccountRepository
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
 import java.util.UUID
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +54,9 @@ class IrrigationViewModel(
     private val parcelRepository: ParcelRepository,
     private val activityRepository: ActivityRepository,
     private val farmRepository: FarmRepository,
+    private val farmerIrrigationStore: FarmerIrrigationStore = InMemoryFarmerIrrigationStore(),
+    private val accountRepository: AccountRepository? = null,
+    private val currentUserIdProvider: (() -> UUID?)? = null,
     private val today: LocalDate = LocalDate.now(),
 ) : ViewModel() {
 
@@ -55,6 +69,10 @@ class IrrigationViewModel(
         )
     )
     val state: StateFlow<IrrigationUiState> = mutableState.asStateFlow()
+
+    private var lastAuthorizedFarm: Farm? = null
+    private var lastAuthorizedParcels: List<Parcel> = emptyList()
+    private var lastAuthorizedActivities: List<Activity> = emptyList()
 
     init {
         // Strict Fail-Closed Authorization Chain:
@@ -78,6 +96,10 @@ class IrrigationViewModel(
                 .collect { authState ->
                     when (authState) {
                         is FarmAuthorizationState.Unauthorized -> {
+                            lastAuthorizedFarm = null
+                            lastAuthorizedParcels = emptyList()
+                            lastAuthorizedActivities = emptyList()
+                            farmerIrrigationStore.setScope(AndroidFarmerIrrigationStore.DEFAULT_SCOPE)
                             // FAIL-CLOSED: Immediately purge all protected agricultural data from memory
                             mutableState.value = IrrigationUiState(
                                 farmId = farmId,
@@ -88,9 +110,13 @@ class IrrigationViewModel(
                                 errorMessage = "Finca no disponible o no autorizada",
                                 selectedDay = today.dayOfWeek,
                                 selectedTab = IrrigationTab.SUMMARY,
+                                profiles = emptyMap(),
                             )
                         }
                         is FarmAuthorizationState.Authorized -> {
+                            lastAuthorizedFarm = authState.farm
+                            lastAuthorizedParcels = authState.parcels
+                            lastAuthorizedActivities = authState.activities
                             mutableState.value = updateProjection(
                                 farm = authState.farm,
                                 parcels = authState.parcels,
@@ -100,6 +126,26 @@ class IrrigationViewModel(
                     }
                 }
         }
+        if (accountRepository != null) {
+            viewModelScope.launch {
+                accountRepository.state
+                    .map { it.userId }
+                    .distinctUntilChanged()
+                    .collect { userId ->
+                        val currentFarm = lastAuthorizedFarm
+                        if (currentFarm != null) {
+                            val effectiveUserId = (currentUserIdProvider?.invoke() ?: userId)?.toString()
+                            val scope = AndroidFarmerIrrigationStore.scopeKey(effectiveUserId, currentFarm.workspaceId)
+                            farmerIrrigationStore.setScope(scope)
+                            mutableState.value = updateProjection(
+                                farm = currentFarm,
+                                parcels = lastAuthorizedParcels,
+                                activities = lastAuthorizedActivities,
+                            )
+                        }
+                    }
+            }
+        }
     }
 
     private fun updateProjection(
@@ -107,8 +153,16 @@ class IrrigationViewModel(
         parcels: List<Parcel>,
         activities: List<Activity>,
     ): IrrigationUiState {
-        val weeklyPlan = WeeklyIrrigationCalendar.buildWeeklyPlan(parcels)
-        val summary = IrrigationSummarizer.computeSummary(parcels, activities)
+        val currentUserId = (currentUserIdProvider?.invoke() ?: accountRepository?.state?.value?.userId)?.toString()
+        val scope = AndroidFarmerIrrigationStore.scopeKey(currentUserId, farm.workspaceId)
+        farmerIrrigationStore.setScope(scope)
+        val allProfiles = farmerIrrigationStore.getAllProfiles()
+        val activeParcelIds = parcels.map { it.id }.toSet()
+        val relevantProfiles = allProfiles.filterKeys { it in activeParcelIds }
+
+        val referenceMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val weeklyPlan = WeeklyIrrigationCalendar.buildWeeklyPlan(parcels, relevantProfiles, referenceMonday)
+        val summary = IrrigationSummarizer.computeSummary(parcels, activities, relevantProfiles)
 
         val irrigatedParcels = parcels.filter { parcel ->
             parcel.archivedAt == null &&
@@ -160,8 +214,10 @@ class IrrigationViewModel(
             summary = summary,
             weeklyPlan = weeklyPlan,
             irrigatedParcels = irrigatedParcels,
+            allParcels = parcels.filter { it.archivedAt == null },
             recentActivities = recentIrrigations,
             calculator = updatedCalc,
+            profiles = relevantProfiles,
         )
     }
 
@@ -260,6 +316,89 @@ class IrrigationViewModel(
         mutableState.value = mutableState.value.copy(calculator = reset)
     }
 
+    // --- B.5 Farmer Irrigation Configuration Methods ---
+
+    fun openProfileEditor(parcel: Parcel) {
+        if (mutableState.value.farmNotFound || mutableState.value.isLoading) return
+        val existing = farmerIrrigationStore.getProfile(parcel.id)
+        val initialDraft = existing ?: ParcelIrrigationProfile(
+            parcelId = parcel.id,
+            supply = WaterSupplyDetails(
+                communityName = parcel.agronomy.irrigationNetwork,
+                sector = parcel.agronomy.irrigationSector,
+            ),
+            aforo = AforoConfig(
+                oliveTreeCount = parcel.agronomy.oliveTreeCount ?: 0,
+            ),
+        )
+        mutableState.value = mutableState.value.copy(
+            editingProfileParcel = parcel,
+            editingProfileDraft = initialDraft,
+        )
+    }
+
+    fun updateProfileDraft(draft: ParcelIrrigationProfile) {
+        if (mutableState.value.farmNotFound || mutableState.value.isLoading) return
+        mutableState.value = mutableState.value.copy(editingProfileDraft = draft)
+    }
+
+    fun closeProfileEditor() {
+        mutableState.value = mutableState.value.copy(
+            editingProfileParcel = null,
+            editingProfileDraft = null,
+        )
+    }
+
+    fun saveProfile(profile: ParcelIrrigationProfile) {
+        if (mutableState.value.farmNotFound || mutableState.value.isLoading) return
+        farmerIrrigationStore.saveProfile(profile)
+        closeProfileEditor()
+        val farm = lastAuthorizedFarm ?: return
+        mutableState.value = updateProjection(farm, lastAuthorizedParcels, lastAuthorizedActivities)
+    }
+
+    fun openPunctualTurnDialog(parcelId: UUID? = null) {
+        if (mutableState.value.farmNotFound || mutableState.value.isLoading) return
+        val targetId = parcelId ?: mutableState.value.irrigatedParcels.firstOrNull()?.id
+        mutableState.value = mutableState.value.copy(
+            showPunctualTurnDialog = true,
+            punctualTurnParcelId = targetId,
+        )
+    }
+
+    fun closePunctualTurnDialog() {
+        mutableState.value = mutableState.value.copy(
+            showPunctualTurnDialog = false,
+            punctualTurnParcelId = null,
+            editingPunctualTurn = null,
+        )
+    }
+
+    fun addPunctualTurn(turn: PunctualTurn) {
+        if (mutableState.value.farmNotFound || mutableState.value.isLoading) return
+        farmerIrrigationStore.addPunctualTurn(turn)
+        closePunctualTurnDialog()
+        val farm = lastAuthorizedFarm ?: return
+        mutableState.value = updateProjection(farm, lastAuthorizedParcels, lastAuthorizedActivities)
+    }
+
+    fun togglePunctualTurnCancellation(parcelId: UUID, turnId: UUID) {
+        if (mutableState.value.farmNotFound || mutableState.value.isLoading) return
+        val profile = farmerIrrigationStore.getProfile(parcelId) ?: return
+        val turn = profile.punctualTurns.firstOrNull { it.id == turnId } ?: return
+        val updated = turn.copy(isCancelled = !turn.isCancelled)
+        farmerIrrigationStore.updatePunctualTurn(updated)
+        val farm = lastAuthorizedFarm ?: return
+        mutableState.value = updateProjection(farm, lastAuthorizedParcels, lastAuthorizedActivities)
+    }
+
+    fun deletePunctualTurn(parcelId: UUID, turnId: UUID) {
+        if (mutableState.value.farmNotFound || mutableState.value.isLoading) return
+        farmerIrrigationStore.deletePunctualTurn(parcelId, turnId)
+        val farm = lastAuthorizedFarm ?: return
+        mutableState.value = updateProjection(farm, lastAuthorizedParcels, lastAuthorizedActivities)
+    }
+
     private fun runCalculation(calc: DoseCalculatorState, explicit: Boolean = false): DoseCalculatorState {
         val trees = calc.oliveTreeCountText.toIntOrNull()
         val emitters = calc.emittersPerTreeText.toIntOrNull()
@@ -295,5 +434,3 @@ class IrrigationViewModel(
         }
     }
 }
-
-

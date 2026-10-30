@@ -17,10 +17,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,19 +34,45 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.isivoltpro.maginaolivo.feature.account.AccountRepository
+import com.isivoltpro.maginaolivo.feature.account.AccountState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
+import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
+import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
+import com.isivoltpro.maginaolivo.domain.irrigation.AforoConfig
+import com.isivoltpro.maginaolivo.domain.irrigation.AndroidFarmerIrrigationStore
 import com.isivoltpro.maginaolivo.domain.irrigation.CalculatedDose
 import com.isivoltpro.maginaolivo.domain.irrigation.EmitterType
+import com.isivoltpro.maginaolivo.domain.irrigation.FarmerIrrigationStore
+import com.isivoltpro.maginaolivo.domain.irrigation.FlowMeasurementMode
+import com.isivoltpro.maginaolivo.domain.irrigation.FlowUnit
+import com.isivoltpro.maginaolivo.domain.irrigation.ParcelIrrigationProfile
+import com.isivoltpro.maginaolivo.domain.irrigation.PunctualTurn
+import com.isivoltpro.maginaolivo.domain.irrigation.ScheduledTimeSlot
 import com.isivoltpro.maginaolivo.domain.irrigation.ScheduledTurnItem
+import com.isivoltpro.maginaolivo.domain.irrigation.WaterSourceType
+import com.isivoltpro.maginaolivo.domain.irrigation.WaterSupplyDetails
+import com.isivoltpro.maginaolivo.domain.irrigation.WaterTariff
+import com.isivoltpro.maginaolivo.domain.irrigation.WaterTariffType
 import com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
+import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
@@ -55,18 +86,11 @@ import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
-
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.compose.runtime.getValue
-import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
-import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
-import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 
 @Composable
 fun IrrigationRoute(
@@ -77,10 +101,16 @@ fun IrrigationRoute(
     onRegisterIrrigation: () -> Unit,
     onActivityClick: (UUID) -> Unit,
     onBack: () -> Unit,
+    accountRepository: AccountRepository? = null,
+    farmerIrrigationStore: FarmerIrrigationStore? = null,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val store = farmerIrrigationStore ?: remember(context) { AndroidFarmerIrrigationStore(context) }
+    val identity by accountRepository?.state?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(AccountState()) }
+
     val viewModel: IrrigationViewModel = viewModel(
-        key = "IrrigationViewModel-$farmId",
+        key = "IrrigationViewModel-$farmId-${identity.userId}",
         factory = viewModelFactory {
             initializer {
                 IrrigationViewModel(
@@ -88,6 +118,8 @@ fun IrrigationRoute(
                     parcelRepository = parcelRepository,
                     activityRepository = activityRepository,
                     farmRepository = farmRepository,
+                    farmerIrrigationStore = store,
+                    accountRepository = accountRepository,
                 )
             }
         },
@@ -107,6 +139,15 @@ fun IrrigationRoute(
         onCalculateDose = viewModel::recalculateDose,
         onLoadSimulation = viewModel::loadSimulationExample,
         onClearSimulation = viewModel::clearSimulation,
+        onOpenProfileEditor = viewModel::openProfileEditor,
+        onUpdateProfileDraft = viewModel::updateProfileDraft,
+        onCloseProfileEditor = viewModel::closeProfileEditor,
+        onSaveProfile = viewModel::saveProfile,
+        onOpenPunctualTurnDialog = viewModel::openPunctualTurnDialog,
+        onClosePunctualTurnDialog = viewModel::closePunctualTurnDialog,
+        onAddPunctualTurn = viewModel::addPunctualTurn,
+        onTogglePunctualTurnCancellation = viewModel::togglePunctualTurnCancellation,
+        onDeletePunctualTurn = viewModel::deletePunctualTurn,
         onRegisterIrrigation = onRegisterIrrigation,
         onActivityClick = onActivityClick,
         onBack = onBack,
@@ -128,6 +169,15 @@ fun IrrigationScreen(
     onCalculateDose: () -> Unit,
     onLoadSimulation: () -> Unit = {},
     onClearSimulation: () -> Unit = {},
+    onOpenProfileEditor: (Parcel) -> Unit = {},
+    onUpdateProfileDraft: (ParcelIrrigationProfile) -> Unit = {},
+    onCloseProfileEditor: () -> Unit = {},
+    onSaveProfile: (ParcelIrrigationProfile) -> Unit = {},
+    onOpenPunctualTurnDialog: (UUID?) -> Unit = {},
+    onClosePunctualTurnDialog: () -> Unit = {},
+    onAddPunctualTurn: (PunctualTurn) -> Unit = {},
+    onTogglePunctualTurnCancellation: (UUID, UUID) -> Unit = { _, _ -> },
+    onDeletePunctualTurn: (UUID, UUID) -> Unit = { _, _ -> },
     onRegisterIrrigation: () -> Unit,
     onActivityClick: (UUID) -> Unit,
     onBack: () -> Unit,
@@ -194,11 +244,13 @@ fun IrrigationScreen(
             IrrigationTab.SUMMARY -> IrrigationSummaryTab(
                 state = state,
                 onSelectDay = onSelectDay,
-                onRegisterIrrigation = onRegisterIrrigation,
+                onOpenPunctualDialog = { onOpenPunctualTurnDialog(null) },
+                onToggleCancellation = onTogglePunctualTurnCancellation,
             )
             IrrigationTab.INSTALLATIONS -> IrrigationInstallationsTab(
                 state = state,
                 onSelectParcel = onSelectParcelForCalculator,
+                onConfigureParcel = onOpenProfileEditor,
                 onUpdateTrees = onUpdateTrees,
                 onUpdateEmitters = onUpdateEmitters,
                 onUpdateFlow = onUpdateFlow,
@@ -216,19 +268,40 @@ fun IrrigationScreen(
             )
         }
     }
+
+    // Modal: Profile Configuration Dialog (B.5)
+    if (state.editingProfileParcel != null && state.editingProfileDraft != null) {
+        FarmerIrrigationProfileDialog(
+            parcel = state.editingProfileParcel,
+            draft = state.editingProfileDraft,
+            onUpdateDraft = onUpdateProfileDraft,
+            onSave = { onSaveProfile(state.editingProfileDraft) },
+            onDismiss = onCloseProfileEditor,
+        )
+    }
+
+    // Modal: Punctual Turn Dialog (B.5)
+    if (state.showPunctualTurnDialog) {
+        PunctualTurnDialog(
+            parcels = state.irrigatedParcels.ifEmpty { state.allParcels },
+            initialParcelId = state.punctualTurnParcelId,
+            onConfirm = onAddPunctualTurn,
+            onDismiss = onClosePunctualTurnDialog,
+        )
+    }
 }
 
 @Composable
 private fun IrrigationHeader(
     farmName: String?,
-    isArchived: Boolean = false,
+    isArchived: Boolean,
     onBack: () -> Unit,
     onRegister: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
-        color = MoSurfaceTokens.cardSurface,
-        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
-        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.background,
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier
@@ -343,7 +416,8 @@ private fun IrrigationTabBar(
 private fun IrrigationSummaryTab(
     state: IrrigationUiState,
     onSelectDay: (DayOfWeek) -> Unit,
-    onRegisterIrrigation: () -> Unit,
+    onOpenPunctualDialog: () -> Unit,
+    onToggleCancellation: (UUID, UUID) -> Unit,
 ) {
     val realStats = state.summary.realStats
 
@@ -399,42 +473,64 @@ private fun IrrigationSummaryTab(
             )
         }
 
-        // 2. Irrigation Breakdown Badges
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
-            ) {
-                state.summary.breakdownByType.forEach { breakdown ->
-                    Card(
-                        shape = MoShape.pill,
-                        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
-                        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
-                        modifier = Modifier.weight(1f),
+        // 2. Annual Community Fees (Fixed quotas)
+        if (state.summary.annualCommunityFees.isNotEmpty()) {
+            item {
+                Card(
+                    shape = MoShape.card,
+                    colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+                    border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("irrigation-community-fees-section"),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(MoSpacing.md),
+                        verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                     ) {
-                        Column(
-                            modifier = Modifier.padding(MoSpacing.xs),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(
-                                text = breakdown.systemLabel,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MoSurfaceTokens.secondaryText,
-                            )
-                            Text(
-                                text = "${breakdown.parcelCount} parcelas",
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
+                        Text(
+                            text = "Cuotas fijas anuales de comunidad",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        state.summary.annualCommunityFees.forEach { fee ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = if (!fee.sector.isNullOrBlank()) "${fee.communityName} · Sector ${fee.sector}" else fee.communityName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MoSurfaceTokens.secondaryText,
+                                )
+                                Text(
+                                    text = formatEuros(fee.annualFixedFeeMinor),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
                         }
                     }
                 }
             }
         }
 
-        // 3. Weekly Calendar Section
+        // 3. Weekly Calendar Section & Actions
         item {
-            MoSectionHeader("Plan semanal de turnos de riego")
+            MoSectionHeader(
+                title = "Plan semanal de turnos de riego",
+                action = {
+                    if (!state.isFarmArchived) {
+                        OutlinedButton(
+                            onClick = onOpenPunctualDialog,
+                            shape = MoShape.pill,
+                            modifier = Modifier.testTag("add-punctual-turn-button"),
+                        ) {
+                            Text("+ Turno extraordinario", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                },
+            )
             Spacer(Modifier.height(MoSpacing.xs))
             DayOfWeekSelector(
                 selectedDay = state.selectedDay,
@@ -456,8 +552,8 @@ private fun IrrigationSummaryTab(
                 )
             }
         } else {
-            items(turnsForDay, key = { it.parcelId }) { turn ->
-                TurnItemCard(turn)
+            items(turnsForDay, key = { it.punctualTurnId ?: it.parcelId }) { turn ->
+                TurnItemCard(turn = turn, onToggleCancellation = onToggleCancellation)
             }
         }
 
@@ -481,7 +577,7 @@ private fun IrrigationSummaryTab(
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = "Los días habituales son configurados por el agricultor en cada parcela. No constituyen turnos confirmados oficialmente por la comunidad de regantes ni suponen agua efectivamente entregada.",
+                        text = "Los días y turnos habituales son configurados por el agricultor en cada parcela. No constituyen turnos confirmados oficialmente por la comunidad de regantes ni suponen agua efectivamente entregada.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MoSurfaceTokens.secondaryText,
                     )
@@ -548,51 +644,148 @@ private fun DayOfWeekSelector(
 }
 
 @Composable
-private fun TurnItemCard(turn: ScheduledTurnItem) {
+private fun TurnItemCard(
+    turn: ScheduledTurnItem,
+    onToggleCancellation: (UUID, UUID) -> Unit = { _, _ -> },
+) {
     Card(
         shape = MoShape.card,
-        colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (turn.isCancelled) MaterialTheme.colorScheme.surfaceVariant else MoSurfaceTokens.cardSurface,
+        ),
         border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
         modifier = Modifier
             .fillMaxWidth()
             .testTag("irrigation-turn-card-${turn.parcelId}"),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(MoSpacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = turn.parcelName,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = turn.locationDescription ?: "Comunidad y sector sin especificar",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MoSurfaceTokens.secondaryText,
-                )
-                if (turn.oliveTreeCount != null && turn.oliveTreeCount > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MoSpacing.xxs),
+                    ) {
+                        Text(
+                            text = turn.parcelName,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (turn.isExtraordinary) {
+                            Surface(
+                                shape = MoShape.pill,
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                modifier = Modifier.testTag("extraordinary-badge"),
+                            ) {
+                                Text(
+                                    text = "Extraordinario",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = MoSpacing.xxs, vertical = 1.dp),
+                                )
+                            }
+                        }
+                        if (turn.isCancelled) {
+                            Surface(
+                                shape = MoShape.pill,
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                modifier = Modifier.testTag("cancelled-turn-badge"),
+                            ) {
+                                Text(
+                                    text = "Cancelado",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.padding(horizontal = MoSpacing.xxs, vertical = 1.dp),
+                                )
+                            }
+                        }
+                    }
                     Text(
-                        text = "${turn.oliveTreeCount} olivos",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = turn.locationDescription ?: "Comunidad y sector sin especificar",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MoSurfaceTokens.secondaryText,
+                    )
+                }
+
+                Surface(
+                    shape = MoShape.pill,
+                    color = MoSurfaceTokens.cardSurface,
+                    border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+                ) {
+                    Text(
+                        text = turn.system?.name ?: "Riego",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MoColors.current.primaryButton,
+                        modifier = Modifier.padding(horizontal = MoSpacing.xs, vertical = 2.dp),
                     )
                 }
             }
 
-            Surface(
-                shape = MoShape.pill,
-                color = MoSurfaceTokens.cardSurface,
-                border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
-            ) {
-                Text(
-                    text = turn.system?.name ?: "Riego",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MoColors.current.primaryButton,
-                    modifier = Modifier.padding(horizontal = MoSpacing.xs, vertical = 2.dp),
-                )
+            // Horario y detalles de volumen / coste
+            if (turn.timeSlot != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                    ) {
+                        Icon(MoIcons.Clock, contentDescription = null, tint = MoColors.current.primaryButton, modifier = Modifier.size(14.dp))
+                        Text(
+                            text = turn.timeSlot.formattedSlot,
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.testTag("turn-time-slot"),
+                        )
+                        if (turn.timeSlot.isOvernight) {
+                            Surface(
+                                shape = MoShape.pill,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.testTag("overnight-badge"),
+                            ) {
+                                Text(
+                                    text = "Nocturno",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MoSurfaceTokens.secondaryText,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    if (turn.estimatedVolumeM3 != null) {
+                        Text(
+                            text = "Est. ${turn.estimatedVolumeM3} m³ · ${formatEuros(turn.estimatedCostMinor ?: 0L)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MoColors.current.primaryButton,
+                        )
+                    }
+                }
+            }
+
+            if (turn.punctualTurnId != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = { onToggleCancellation(turn.parcelId, turn.punctualTurnId) },
+                        modifier = Modifier.testTag("toggle-punctual-turn-${turn.punctualTurnId}"),
+                    ) {
+                        Text(
+                            text = if (turn.isCancelled) "Reactivar turno" else "Suspender turno",
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
             }
         }
     }
@@ -602,6 +795,7 @@ private fun TurnItemCard(turn: ScheduledTurnItem) {
 private fun IrrigationInstallationsTab(
     state: IrrigationUiState,
     onSelectParcel: (Parcel) -> Unit,
+    onConfigureParcel: (Parcel) -> Unit,
     onUpdateTrees: (String) -> Unit,
     onUpdateEmitters: (String) -> Unit,
     onUpdateFlow: (String) -> Unit,
@@ -635,21 +829,29 @@ private fun IrrigationInstallationsTab(
 
         // 2. Installations List
         item {
-            MoSectionHeader("Parcelas de regadío en la explotación")
+            MoSectionHeader("Parcelas de la explotación")
         }
 
-        if (state.irrigatedParcels.isEmpty()) {
+        val parcelsToShow = state.irrigatedParcels.ifEmpty { state.allParcels }
+        if (parcelsToShow.isEmpty()) {
             item {
                 MoEmptyState(
-                    title = "Sin parcelas de regadío",
-                    body = "Ninguna parcela de esta finca tiene asignado sistema de riego (goteo o aspersión).",
+                    title = "Sin parcelas registradas",
+                    body = "Esta finca no tiene parcelas activas asociadas.",
                     icon = MoIcons.Parcels,
                     modifier = Modifier.testTag("installations-empty"),
                 )
             }
         } else {
-            items(state.irrigatedParcels, key = { it.id }) { parcel ->
-                ParcelInstallationCard(parcel = parcel, onSimulate = { onSelectParcel(parcel) })
+            items(parcelsToShow, key = { it.id }) { parcel ->
+                val profile = state.profiles[parcel.id]
+                ParcelInstallationCard(
+                    parcel = parcel,
+                    profile = profile,
+                    isArchived = state.isFarmArchived,
+                    onSimulate = { onSelectParcel(parcel) },
+                    onConfigure = { onConfigureParcel(parcel) },
+                )
             }
         }
     }
@@ -658,54 +860,110 @@ private fun IrrigationInstallationsTab(
 @Composable
 private fun ParcelInstallationCard(
     parcel: Parcel,
+    profile: ParcelIrrigationProfile?,
+    isArchived: Boolean,
     onSimulate: () -> Unit,
+    onConfigure: () -> Unit,
 ) {
     Card(
         shape = MoShape.card,
         colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
         border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("parcel-card-${parcel.id}"),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(MoSpacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = parcel.displayName,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                val agro = parcel.agronomy
-                val systemLabel = when (agro.irrigationSystem) {
-                    IrrigationSystem.DRIP -> "Goteo"
-                    IrrigationSystem.SPRINKLER -> "Aspersión"
-                    IrrigationSystem.OTHER -> "Otro"
-                    else -> "Secano"
-                }
-                val network = agro.irrigationNetwork ?: "Comunidad no asignada"
-                val sector = agro.irrigationSector?.let { " · Sector $it" }.orEmpty()
-                Text(
-                    text = "$systemLabel · $network$sector",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MoSurfaceTokens.secondaryText,
-                )
-                if (agro.oliveTreeCount != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "${agro.oliveTreeCount} olivos",
+                        text = parcel.displayName,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    val supplyText = profile?.supply?.fullSupplyDescription
+                        ?: listOfNotNull(
+                            parcel.agronomy.irrigationNetwork,
+                            parcel.agronomy.irrigationSector?.let { "Sector $it" },
+                        ).joinToString(" · ").ifBlank { "Suministro no configurado" }
+
+                    Text(
+                        text = supplyText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoSurfaceTokens.secondaryText,
+                    )
+                }
+
+                Surface(
+                    shape = MoShape.pill,
+                    color = MoSurfaceTokens.cardSurface,
+                    border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+                ) {
+                    val systemLabel = when (parcel.agronomy.irrigationSystem) {
+                        IrrigationSystem.DRIP -> "Goteo"
+                        IrrigationSystem.SPRINKLER -> "Aspersión"
+                        IrrigationSystem.OTHER -> "Otro"
+                        else -> "Secano"
+                    }
+                    Text(
+                        text = systemLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = MoColors.current.primaryButton,
+                        modifier = Modifier.padding(horizontal = MoSpacing.xs, vertical = 2.dp),
                     )
                 }
             }
 
-            OutlinedButton(
-                onClick = onSimulate,
-                shape = MoShape.pill,
-                modifier = Modifier.testTag("simulate-dose-${parcel.id}"),
+            // Datos de aforo y tarifa si están configurados
+            if (profile != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MoSpacing.md),
+                ) {
+                    Text(
+                        text = "Aforo: ${profile.aforo.effectiveFlowRateM3PerHour} m³/h",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MoColors.current.primaryButton,
+                    )
+                    Text(
+                        text = "Tarifa: ${profile.tariff.tariffType.label}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MoSurfaceTokens.secondaryText,
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
             ) {
-                Text("Simular dosis", style = MaterialTheme.typography.labelSmall)
+                if (!isArchived) {
+                    OutlinedButton(
+                        onClick = onConfigure,
+                        shape = MoShape.pill,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("configure-parcel-irrigation-${parcel.id}"),
+                    ) {
+                        Text("Configurar riego", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                OutlinedButton(
+                    onClick = onSimulate,
+                    shape = MoShape.pill,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("simulate-dose-${parcel.id}"),
+                ) {
+                    Text("Simular dosis", style = MaterialTheme.typography.labelSmall)
+                }
             }
         }
     }
@@ -1046,6 +1304,355 @@ private fun HistoryActivityCard(
             }
         }
     }
+}
+
+// ==========================================
+// B.5 FARMER IRRIGATION CONFIGURATION DIALOG
+// ==========================================
+
+@Composable
+fun FarmerIrrigationProfileDialog(
+    parcel: Parcel,
+    draft: ParcelIrrigationProfile,
+    onUpdateDraft: (ParcelIrrigationProfile) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var sourceIndex by remember { mutableStateOf(draft.supply.sourceType.ordinal) }
+    var communityName by remember { mutableStateOf(draft.supply.communityName.orEmpty()) }
+    var sector by remember { mutableStateOf(draft.supply.sector.orEmpty()) }
+    var hydrant by remember { mutableStateOf(draft.supply.hydrant.orEmpty()) }
+    var intake by remember { mutableStateOf(draft.supply.intakeOrValve.orEmpty()) }
+
+    var treesText by remember { mutableStateOf(draft.aforo.oliveTreeCount.toString()) }
+    var emittersText by remember { mutableStateOf(draft.aforo.emittersPerTree.toString()) }
+    var flowText by remember { mutableStateOf(draft.aforo.emitterFlowLph.toString()) }
+    var directFlowText by remember { mutableStateOf(draft.aforo.directFlowRate?.toString().orEmpty()) }
+    var isDirectMode by remember { mutableStateOf(draft.aforo.measurementMode == FlowMeasurementMode.DIRECT_HYDRANT_FLOW) }
+
+    var startHourText by remember { mutableStateOf("22") }
+    var startMinuteText by remember { mutableStateOf("00") }
+    var endHourText by remember { mutableStateOf("06") }
+    var endMinuteText by remember { mutableStateOf("00") }
+
+    var selectedDays by remember {
+        mutableStateOf(
+            if (draft.weeklySlots.isNotEmpty()) draft.weeklySlots.keys.toSet()
+            else parcel.agronomy.irrigationDays
+        )
+    }
+
+    var tariffMode by remember { mutableStateOf(draft.tariff.tariffType) }
+    var pricePerUnitText by remember { mutableStateOf((draft.tariff.variablePricePerUnitMinor / 100.0).toString()) }
+    var annualFeeText by remember { mutableStateOf((draft.tariff.annualCommunityQuotaMinor / 100.0).toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Configurar riego: ${parcel.displayName}",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .testTag("farmer-profile-dialog-content"),
+                verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+            ) {
+                // Section 1: Suministro
+                Text("1. Suministrador y red de agua", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                    WaterSourceType.entries.forEachIndexed { index, type ->
+                        FilterChip(
+                            selected = sourceIndex == index,
+                            onClick = { sourceIndex = index },
+                            label = { Text(type.label, style = MaterialTheme.typography.labelSmall) },
+                        )
+                    }
+                }
+                if (sourceIndex == WaterSourceType.IRRIGATION_COMMUNITY.ordinal) {
+                    MoTextField(
+                        value = communityName,
+                        onValueChange = { communityName = it },
+                        label = "Nombre comunidad de regantes",
+                        modifier = Modifier.fillMaxWidth().testTag("input-community-name"),
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                    MoTextField(value = sector, onValueChange = { sector = it }, label = "Sector", modifier = Modifier.weight(1f).testTag("input-sector"))
+                    MoTextField(value = hydrant, onValueChange = { hydrant = it }, label = "Hidrante", modifier = Modifier.weight(1f).testTag("input-hydrant"))
+                    MoTextField(value = intake, onValueChange = { intake = it }, label = "Toma / Boca", modifier = Modifier.weight(1f).testTag("input-intake"))
+                }
+
+                Spacer(Modifier.height(MoSpacing.xs))
+
+                // Section 2: Instalación y Aforo
+                Text("2. Instalación y aforo", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                    FilterChip(
+                        selected = !isDirectMode,
+                        onClick = { isDirectMode = false },
+                        label = { Text("Por goteros", style = MaterialTheme.typography.labelSmall) },
+                    )
+                    FilterChip(
+                        selected = isDirectMode,
+                        onClick = { isDirectMode = true },
+                        label = { Text("Aforo directo hidrante", style = MaterialTheme.typography.labelSmall) },
+                    )
+                }
+                if (!isDirectMode) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                        MoTextField(value = treesText, onValueChange = { treesText = it }, label = "Olivos", modifier = Modifier.weight(1f))
+                        MoTextField(value = emittersText, onValueChange = { emittersText = it }, label = "Goteros/árbol", modifier = Modifier.weight(1f))
+                        MoTextField(value = flowText, onValueChange = { flowText = it }, label = "Caudal (L/h)", modifier = Modifier.weight(1f))
+                    }
+                } else {
+                    MoTextField(
+                        value = directFlowText,
+                        onValueChange = { directFlowText = it },
+                        label = "Caudal instantáneo aforado (m³/h)",
+                        modifier = Modifier.fillMaxWidth().testTag("input-direct-flow"),
+                    )
+                }
+
+                Spacer(Modifier.height(MoSpacing.xs))
+
+                // Section 3: Horarios y días fijos
+                Text("3. Días y horario habitual de riego", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    DayOfWeek.entries.forEach { day ->
+                        val isSelected = day in selectedDays
+                        Surface(
+                            shape = MoShape.pill,
+                            color = if (isSelected) MoColors.current.primaryButton else MoSurfaceTokens.cardSurface,
+                            border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    selectedDays = if (isSelected) selectedDays - day else selectedDays + day
+                                },
+                        ) {
+                            Text(
+                                text = dayShortLabel(day),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isSelected) MoColors.current.onPrimaryButton else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    MoTextField(value = startHourText, onValueChange = { startHourText = it }, label = "Hora inicio", modifier = Modifier.weight(1f))
+                    Text(":")
+                    MoTextField(value = startMinuteText, onValueChange = { startMinuteText = it }, label = "Min", modifier = Modifier.weight(1f))
+                    Text("hasta")
+                    MoTextField(value = endHourText, onValueChange = { endHourText = it }, label = "Hora fin", modifier = Modifier.weight(1f))
+                    Text(":")
+                    MoTextField(value = endMinuteText, onValueChange = { endMinuteText = it }, label = "Min", modifier = Modifier.weight(1f))
+                }
+                val sHour = startHourText.toIntOrNull() ?: 22
+                val eHour = endHourText.toIntOrNull() ?: 6
+                if (eHour <= sHour) {
+                    Text(
+                        text = "Turno nocturno: cruza la medianoche (+1 día)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MoColors.current.primaryButton,
+                    )
+                }
+
+                Spacer(Modifier.height(MoSpacing.xs))
+
+                // Section 4: Tarifas y cuotas
+                Text("4. Tarifas de agua y cuotas fijas", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                    WaterTariffType.entries.forEach { type ->
+                        FilterChip(
+                            selected = tariffMode == type,
+                            onClick = { tariffMode = type },
+                            label = { Text(type.label, style = MaterialTheme.typography.labelSmall) },
+                        )
+                    }
+                }
+                if (tariffMode != WaterTariffType.FREE) {
+                    MoTextField(
+                        value = pricePerUnitText,
+                        onValueChange = { pricePerUnitText = it },
+                        label = if (tariffMode == WaterTariffType.PER_M3) "Precio por m³ (€)" else "Precio por hora (€)",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                MoTextField(
+                    value = annualFeeText,
+                    onValueChange = { annualFeeText = it },
+                    label = "Cuota fija anual comunidad (€/año)",
+                    modifier = Modifier.fillMaxWidth().testTag("input-annual-fee"),
+                )
+            }
+        },
+        confirmButton = {
+            MoPrimaryButton(
+                text = "Guardar configuración",
+                onClick = {
+                    val sH = (startHourText.toIntOrNull() ?: 22).coerceIn(0, 23)
+                    val sM = (startMinuteText.toIntOrNull() ?: 0).coerceIn(0, 59)
+                    val eH = (endHourText.toIntOrNull() ?: 6).coerceIn(0, 23)
+                    val eM = (endMinuteText.toIntOrNull() ?: 0).coerceIn(0, 59)
+                    val timeSlot = ScheduledTimeSlot(LocalTime.of(sH, sM), LocalTime.of(eH, eM))
+
+                    val weeklyMap = selectedDays.associateWith { timeSlot }
+
+                    val updatedSupply = WaterSupplyDetails(
+                        sourceType = WaterSourceType.entries[sourceIndex],
+                        communityName = communityName.takeIf(String::isNotBlank),
+                        sector = sector.takeIf(String::isNotBlank),
+                        hydrant = hydrant.takeIf(String::isNotBlank),
+                        intakeOrValve = intake.takeIf(String::isNotBlank),
+                    )
+
+                    val updatedAforo = AforoConfig(
+                        measurementMode = if (isDirectMode) FlowMeasurementMode.DIRECT_HYDRANT_FLOW else FlowMeasurementMode.CALCULATED_FROM_EMITTERS,
+                        oliveTreeCount = treesText.toIntOrNull() ?: 0,
+                        emittersPerTree = emittersText.toIntOrNull() ?: 0,
+                        emitterFlowLph = flowText.toDoubleOrNull() ?: 0.0,
+                        directFlowRate = directFlowText.toDoubleOrNull(),
+                    )
+
+                    val variablePriceMinor = ((pricePerUnitText.toDoubleOrNull() ?: 0.0) * 100).toLong()
+                    val annualFeeMinor = ((annualFeeText.toDoubleOrNull() ?: 0.0) * 100).toLong()
+
+                    val updatedTariff = WaterTariff(
+                        tariffType = tariffMode,
+                        variablePricePerUnitMinor = variablePriceMinor,
+                        annualCommunityQuotaMinor = annualFeeMinor,
+                    )
+
+                    val profile = draft.copy(
+                        supply = updatedSupply,
+                        aforo = updatedAforo,
+                        weeklySlots = weeklyMap,
+                        tariff = updatedTariff,
+                    )
+                    onUpdateDraft(profile)
+                    onSave()
+                },
+                modifier = Modifier.testTag("save-irrigation-profile-button"),
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("cancel-irrigation-profile-button")) {
+                Text("Cancelar")
+            }
+        },
+    )
+}
+
+// ==========================================
+// B.5 PUNCTUAL TURN CREATION DIALOG
+// ==========================================
+
+@Composable
+fun PunctualTurnDialog(
+    parcels: List<Parcel>,
+    initialParcelId: UUID?,
+    onConfirm: (PunctualTurn) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var selectedParcelId by remember { mutableStateOf(initialParcelId ?: parcels.firstOrNull()?.id) }
+    var reasonText by remember { mutableStateOf("Turno extraordinario") }
+    var startHourText by remember { mutableStateOf("20") }
+    var startMinuteText by remember { mutableStateOf("00") }
+    var endHourText by remember { mutableStateOf("02") }
+    var endMinuteText by remember { mutableStateOf("00") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Añadir turno extraordinario / puntual", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("punctual-turn-dialog-content"),
+                verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+            ) {
+                Text("Selecciona la parcela destinataria:", style = MaterialTheme.typography.labelMedium)
+                parcels.forEach { p ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedParcelId = p.id }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(if (p.id == selectedParcelId) MoColors.current.primaryButton else MoSurfaceTokens.cardStroke),
+                        )
+                        Text(text = p.displayName, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                MoTextField(
+                    value = reasonText,
+                    onValueChange = { reasonText = it },
+                    label = "Motivo del turno",
+                    modifier = Modifier.fillMaxWidth().testTag("input-punctual-reason"),
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    MoTextField(value = startHourText, onValueChange = { startHourText = it }, label = "Inicio (H)", modifier = Modifier.weight(1f))
+                    Text(":")
+                    MoTextField(value = startMinuteText, onValueChange = { startMinuteText = it }, label = "Min", modifier = Modifier.weight(1f))
+                    Text("hasta")
+                    MoTextField(value = endHourText, onValueChange = { endHourText = it }, label = "Fin (H)", modifier = Modifier.weight(1f))
+                    Text(":")
+                    MoTextField(value = endMinuteText, onValueChange = { endMinuteText = it }, label = "Min", modifier = Modifier.weight(1f))
+                }
+            }
+        },
+        confirmButton = {
+            MoPrimaryButton(
+                text = "Añadir turno",
+                onClick = {
+                    val pId = selectedParcelId ?: return@MoPrimaryButton
+                    val sH = (startHourText.toIntOrNull() ?: 20).coerceIn(0, 23)
+                    val sM = (startMinuteText.toIntOrNull() ?: 0).coerceIn(0, 59)
+                    val eH = (endHourText.toIntOrNull() ?: 2).coerceIn(0, 23)
+                    val eM = (endMinuteText.toIntOrNull() ?: 0).coerceIn(0, 59)
+
+                    val turn = PunctualTurn(
+                        parcelId = pId,
+                        date = LocalDate.now(),
+                        timeSlot = ScheduledTimeSlot(LocalTime.of(sH, sM), LocalTime.of(eH, eM)),
+                        reason = reasonText.ifBlank { "Turno extraordinario" },
+                    )
+                    onConfirm(turn)
+                },
+                modifier = Modifier.testTag("confirm-punctual-turn-button"),
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("cancel-punctual-turn-button")) {
+                Text("Cancelar")
+            }
+        },
+    )
 }
 
 private fun formatEuros(cents: Long): String =

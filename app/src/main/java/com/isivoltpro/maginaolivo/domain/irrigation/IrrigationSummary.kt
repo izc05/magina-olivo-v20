@@ -40,7 +40,14 @@ data class CommunityWaterTariffFee(
     val waterPricePerM3Minor: Long? = null,
     val currency: String = "EUR",
     val notes: String? = null,
+    val sector: String? = null,
+    val feeIdentifier: String? = null,
+    val assessmentYear: Int? = null,
 ) {
+    val canonicalKey: String
+        get() = feeIdentifier?.takeIf(String::isNotBlank)
+            ?: "${communityName.trim().lowercase()}:::${sector?.trim()?.lowercase().orEmpty()}:::${annualFixedFeeMinor}"
+
     init {
         require(annualFixedFeeMinor >= 0L) { "annualFixedFeeMinor cannot be negative: $annualFixedFeeMinor" }
         require(waterPricePerM3Minor == null || waterPricePerM3Minor >= 0L) {
@@ -102,11 +109,12 @@ object IrrigationSummarizer {
 
     /**
      * Computes the complete irrigation summary by aggregating active parcels, recorded activities,
-     * and optional community annual quotas.
+     * optional farmer profiles with community quotas, and optional manual tariff fees.
      */
     fun computeSummary(
         parcels: List<Parcel>,
         activities: List<Activity>,
+        profiles: Map<UUID, ParcelIrrigationProfile> = emptyMap(),
         annualCommunityFees: List<CommunityWaterTariffFee> = emptyList(),
     ): IrrigationSummary {
         val activeParcels = parcels.filter { it.archivedAt == null }
@@ -123,6 +131,42 @@ object IrrigationSummarizer {
         // 2. Real stats from completed/planned irrigation activities
         val realStats = computeRealStats(activities)
 
+        // 3. Extract community quotas strictly from the active farm's parcels (CR-004)
+        val activeParcelIds = activeParcels.map { it.id }.toSet()
+        val relevantProfiles = profiles.filterKeys { it in activeParcelIds }
+
+        val profileFeesByKey = LinkedHashMap<String, CommunityWaterTariffFee>()
+        for (profile in relevantProfiles.values) {
+            val commName = profile.supply.communityName?.takeIf(String::isNotBlank) ?: continue
+            val quota = profile.tariff.annualCommunityQuotaMinor
+            if (quota > 0L) {
+                val sector = profile.supply.sector?.takeIf(String::isNotBlank)
+                val feeId = profile.tariff.quotaIdentifier?.takeIf(String::isNotBlank)
+                val fee = CommunityWaterTariffFee(
+                    communityName = commName,
+                    annualFixedFeeMinor = quota,
+                    sector = sector,
+                    waterPricePerM3Minor = if (profile.tariff.tariffType == WaterTariffType.PER_M3) profile.tariff.variablePricePerUnitMinor else null,
+                    currency = profile.tariff.currency,
+                    notes = sector?.let { "Cuota anual estimada (Sector $it)" } ?: "Cuota anual estimada fijada por agricultor",
+                    feeIdentifier = feeId,
+                )
+                // Shared holding fee across parcels with identical community, sector and amount is counted once.
+                // Distinct quotas (different sectors, different amounts, or distinct explicit identifiers) are preserved.
+                profileFeesByKey.putIfAbsent(fee.canonicalKey, fee)
+            }
+        }
+
+        val allFeesByKey = LinkedHashMap<String, CommunityWaterTariffFee>()
+        for (fee in annualCommunityFees) {
+            allFeesByKey[fee.canonicalKey] = fee
+        }
+        for ((key, fee) in profileFeesByKey) {
+            allFeesByKey.putIfAbsent(key, fee)
+        }
+
+        val combinedFees = allFeesByKey.values.toList()
+
         return IrrigationSummary(
             realStats = realStats,
             breakdownByType = breakdown,
@@ -130,9 +174,20 @@ object IrrigationSummarizer {
             irrigatedParcelsCount = irrigatedCount,
             drylandParcelsCount = drylandCount,
             unspecifiedSystemCount = unspecifiedCount,
-            annualCommunityFees = annualCommunityFees,
+            annualCommunityFees = combinedFees,
         )
     }
+
+    fun computeSummary(
+        parcels: List<Parcel>,
+        activities: List<Activity>,
+        annualCommunityFees: List<CommunityWaterTariffFee>,
+    ): IrrigationSummary = computeSummary(
+        parcels = parcels,
+        activities = activities,
+        profiles = emptyMap(),
+        annualCommunityFees = annualCommunityFees,
+    )
 
     private fun computeBreakdown(parcels: List<Parcel>): List<IrrigationTypeBreakdown> {
         val groups = parcels.groupBy { it.agronomy.irrigationSystem }
