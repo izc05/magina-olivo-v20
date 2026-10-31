@@ -31,12 +31,18 @@ import com.isivoltpro.maginaolivo.ui.theme.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.launch
+import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceChoice
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
+import java.util.UUID
 
 private enum class AccountForm { LOGIN, REGISTER, RECOVER }
 
 @Composable
 fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:Boolean=false,connectivity:Flow<Boolean>? = null,
-    farmLinks:com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository?=null,showBack:Boolean=true) {
+    farmLinks:com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository?=null,showBack:Boolean=true,
+    workspaces:WorkspaceRepository?=null) {
     val context=LocalContext.current
     var simulation by rememberSaveable { mutableStateOf(false) }
     val simulated=remember { AccountRepository(SimulatedAccountAuthApi()) }
@@ -53,6 +59,18 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
     var password by remember { mutableStateOf("") }
     LaunchedEffect(state.status) { password="" }
     val enabled=state.status!=AccountStatus.UNCONFIGURED && online && !state.busy
+    val scope=rememberCoroutineScope()
+    var workspaceChoices by remember { mutableStateOf<List<WorkspaceChoice>>(emptyList()) }
+    var selectedWorkspace by remember { mutableStateOf<UUID?>(null) }
+    var workspaceNotice by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(workspaces,state.userId,state.status,state.online,simulation) {
+        if(workspaces==null || simulation || state.status==AccountStatus.EXPIRED) {
+            workspaceChoices=emptyList();selectedWorkspace=null
+        } else {
+            workspaceChoices=(workspaces.availableWorkspaces() as? AppResult.Success)?.value ?: emptyList()
+            selectedWorkspace=(workspaces.activeWorkspace() as? AppResult.Success)?.value
+        }
+    }
     fun choose(next:AccountForm) { form=next;password="";model.repository.clearNotice() }
     Column(Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).statusBarsPadding().imePadding()
         .verticalScroll(rememberScrollState()).padding(MoSpacing.screen).testTag("account-root"),verticalArrangement=Arrangement.spacedBy(MoSpacing.sm)) {
@@ -72,6 +90,25 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
         state.email?.let { Text(it,color=MoSurfaceTokens.secondaryText) }
         Text(if(farmLinks!=null && !simulation) "Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Puedes preparar su vinculación a la cuenta; todavía no se sincronizan."
             else "Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Esta pantalla no los vincula ni los sincroniza.",color=MoSurfaceTokens.secondaryText)
+        if(workspaces!=null && !simulation) {
+            Text("Workspace activo",style=MaterialTheme.typography.titleMedium,color=MoColors.current.primaryText)
+            if(workspaceChoices.isEmpty()) Text("No hay workspaces disponibles para esta sesión. Los datos locales se conservan.",color=MoSurfaceTokens.secondaryText)
+            workspaceChoices.forEach { choice ->
+                MoSecondaryButton(
+                    if(choice.id==selectedWorkspace) "${choice.name} · ${if(choice.remote) "autorización en caché" else "local sin vincular"} · activo"
+                    else "Usar ${choice.name} · ${if(choice.remote) "autorización en caché" else "local sin vincular"}",
+                    { scope.launch {
+                        when(workspaces.selectWorkspace(choice.id)) {
+                            is AppResult.Success -> { selectedWorkspace=choice.id;workspaceNotice="Workspace seleccionado" }
+                            is AppResult.Failure -> workspaceNotice="No se pudo seleccionar este workspace"
+                        }
+                    } },
+                    Modifier.fillMaxWidth().testTag("workspace-select-${choice.id}"),
+                    !state.busy,
+                )
+            }
+            workspaceNotice?.let { Text(it,color=MoSurfaceTokens.secondaryText) }
+        }
         if(!online) Text("Sin conexión. Puedes seguir trabajando con tus datos locales; el acceso y la recuperación necesitan conexión.",color=MoSurfaceTokens.secondaryText)
         if(state.busy) { CircularProgressIndicator(Modifier.testTag("account-loading"));Text("Procesando…",color=MoSurfaceTokens.secondaryText) }
         state.error?.let { Text(it,Modifier.testTag("account-error").semantics { liveRegion=LiveRegionMode.Polite },color=MoColors.current.errorText) }

@@ -86,14 +86,72 @@ class ReservationRpcTransportTest {
                 if(payloads.size==1) throw IOException("response lost after server commit")
                 ReservationWireResponse(200,response().toString())
             })
-            DurableReservationJournal(file).prepare(scope,request)
+            DurableReservationJournal(file).prepare(scope,request,workspace)
             assertThrows(IOException::class.java) { DurableReservationJournal(file).attempt(scope,{actor},transport) }
             assertEquals(ReservationStatus.PENDING,DurableReservationJournal(file).load(scope)?.status)
+            assertEquals(workspace,DurableReservationJournal(file).load(scope)?.expectedRemoteWorkspaceId)
+            var wrongCalls=0
+            val wrongTarget=ReservationRpcTransport(actor.issuer,UUID(0,98),{credentials()},
+                { _,_ -> wrongCalls++;error("Must not reroute an interrupted reservation") },{time})
+            assertEquals(ReservationStatus.PENDING,
+                DurableReservationJournal(file).attempt(scope,{actor},wrongTarget).status)
+            assertEquals(0,wrongCalls)
             val restored=DurableReservationJournal(file).attempt(scope,{actor},transport)
             assertEquals(ReservationStatus.RESERVED_REMOTE,restored.status)
             assertEquals(restored,DurableReservationJournal(file).attempt(scope,{actor},transport))
             assertEquals(2,payloads.size);assertEquals(payloads[0],payloads[1])
             assertFalse(file.readBytes().toString(Charsets.ISO_8859_1).contains("synthetic-bearer"))
         } finally { directory.listFiles()?.forEach { it.delete() };directory.delete() }
+    }
+
+    @Test fun journalWithoutRecordedDestinationCannotUseRpcAdapter() {
+        val file=Files.createTempDirectory("g1c-unbound-route").resolve("journal").toFile()
+        try {
+            DurableReservationJournal(file).prepare(scope,request)
+            var calls=0
+            val transport=adapter({ _,_ -> calls++;ReservationWireResponse(200,response().toString()) })
+            val recovery=DurableReservationJournal(file).attempt(scope,{actor},transport)
+            assertEquals(0,calls)
+            assertEquals(ReservationStatus.PENDING,recovery.status)
+            assertNull(DurableReservationJournal(file).load(scope)?.receipt)
+        } finally { file.parentFile.listFiles()?.forEach { it.delete() };file.parentFile.delete() }
+    }
+
+    @Test fun legacyVersionOneJournalIsReadableButCannotBeSilentlyBoundOrSent() {
+        val file=Files.createTempDirectory("g1c-legacy-route").resolve("journal").toFile()
+        // Fixed v1 pending journal, independently encoded from the previous binary format.
+        val legacy=java.util.Base64.getDecoder().decode(
+            "TUdSMQAAAAEAAADMBR33Wh4yITVFfYEwHqY98+hAr89HgtcwJmIE3+WMJEUAAAABAAAAGGh0dHBzOi8vaXNzdWVyLWEuZXhhbXBsZQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAFAAAAAgAAAEBhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhAAAAAAAAAAcAAAAHUEVORElORwA=")
+        try {
+            file.writeBytes(legacy)
+            val journal=DurableReservationJournal(file)
+            assertEquals(request,journal.load(scope)?.request)
+            assertNull(journal.load(scope)?.expectedRemoteWorkspaceId)
+            val transport=adapter({ _,_ -> error("Legacy journal has no verified route") })
+            assertEquals(ReservationStatus.PENDING,journal.attempt(scope,{actor},transport).status)
+            assertThrows(IllegalArgumentException::class.java) { journal.prepare(scope,request,workspace) }
+            assertArrayEquals(legacy,file.readBytes())
+        } finally { file.parentFile.listFiles()?.forEach { it.delete() };file.parentFile.delete() }
+    }
+
+    @Test fun recordedDestinationIsImmutableAndMismatchedReceiptIsQuarantined() {
+        val file=Files.createTempDirectory("g1c-bound-route").resolve("journal").toFile()
+        try {
+            val journal=DurableReservationJournal(file)
+            val pending=journal.prepare(scope,request,workspace)
+            assertEquals(pending,DurableReservationJournal(file).prepare(scope,request,workspace))
+            assertThrows(IllegalArgumentException::class.java) { journal.prepare(scope,request,UUID(0,98)) }
+            assertThrows(IllegalArgumentException::class.java) { journal.prepare(scope,request) }
+            val wrong=object:ReservationTransport {
+                override val remoteWorkspaceId=workspace
+                override fun reserve(scope:ReservationScope,request:ReservationRequest)=ReservationResponse.Accepted(
+                    ReservationReceipt(scope,request.farmId,request.payloadHash(),UUID(0,98),UUID(0,7)))
+            }
+            assertEquals(ReservationStatus.INVALID_RECEIPT,journal.attempt(scope,{actor},wrong).status)
+            val reopened=DurableReservationJournal(file).load(scope)!!
+            assertEquals(ReservationStatus.INVALID_RECEIPT,reopened.status)
+            assertNull(reopened.receipt)
+            assertEquals(workspace,reopened.expectedRemoteWorkspaceId)
+        } finally { file.parentFile.listFiles()?.forEach { it.delete() };file.parentFile.delete() }
     }
 }

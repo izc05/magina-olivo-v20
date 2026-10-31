@@ -75,6 +75,8 @@ sealed interface ReservationResponse {
  * from names, email or Catastro. Actor correlation here is not a credential/body authority.
  */
 interface ReservationTransport {
+    /** Null is reserved for local contract doubles; RPC adapters must declare their target. */
+    val remoteWorkspaceId: UUID? get() = null
     fun reserve(scope: ReservationScope, request: ReservationRequest): ReservationResponse
 }
 
@@ -90,11 +92,13 @@ data class ReservationRecovery(
     val request: ReservationRequest,
     val status: ReservationStatus = ReservationStatus.PENDING,
     val receipt: ReservationReceipt? = null,
+    val expectedRemoteWorkspaceId: UUID? = null,
 ) {
     init {
         require(scope.operationId == request.operationId)
         require(receipt == null || (receipt.scope == scope && receipt.farmId == request.farmId &&
-            receipt.payloadHash == request.payloadHash()))
+            receipt.payloadHash == request.payloadHash() &&
+            (expectedRemoteWorkspaceId == null || receipt.remoteWorkspaceId == expectedRemoteWorkspaceId)))
         require(status !in setOf(ReservationStatus.RESERVED_REMOTE, ReservationStatus.AWAITING_ACTOR) || receipt != null)
     }
 
@@ -102,6 +106,9 @@ data class ReservationRecovery(
         val visibleActor = currentActor()
         if (visibleActor != scope.actor || status in terminalStates) return this
         receipt?.let { return accept(it, visibleActor) }
+        // An unbound legacy journal cannot borrow the target from a new adapter.
+        // Nor can an interrupted operation be rerouted to another workspace.
+        if (expectedRemoteWorkspaceId != transport.remoteWorkspaceId) return this
         return when (val result = transport.reserve(scope, request)) {
             is ReservationResponse.Accepted -> accept(result.receipt, currentActor())
             ReservationResponse.Conflict -> copy(status = ReservationStatus.CONFLICT)
@@ -113,7 +120,9 @@ data class ReservationRecovery(
     fun accept(incoming: ReservationReceipt, visibleActor: ReservationActor?): ReservationRecovery {
         if (status == ReservationStatus.CONFLICT || status == ReservationStatus.INVALID_RECEIPT) return this
         if (incoming.scope != scope || incoming.farmId != request.farmId ||
-            incoming.payloadHash != request.payloadHash() || (receipt != null && receipt != incoming)) {
+            incoming.payloadHash != request.payloadHash() ||
+            (expectedRemoteWorkspaceId != null && incoming.remoteWorkspaceId != expectedRemoteWorkspaceId) ||
+            (receipt != null && receipt != incoming)) {
             return copy(status = ReservationStatus.INVALID_RECEIPT)
         }
         return copy(status = if (visibleActor == scope.actor) ReservationStatus.RESERVED_REMOTE

@@ -1,0 +1,69 @@
+name: G2.5 remote receive contract
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261027155737_g25_receive_bundle_contract.sql'
+      - 'supabase/tests/g25-*.sql'
+      - 'supabase/tests/g25-native/**'
+      - '.github/workflows/g25-remote-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  receive-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: g25_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: g25_ci_only
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned G1c and G2.1 prerequisite
+        run: git fetch --no-tags --depth=1 origin 21bac42e9d8621b2ad0be6e68ed0e712c16868c5
+      - name: Apply platform fixture and G0 in order
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/mock_supabase_environment.sql >/dev/null
+          psql -X -v ON_ERROR_STOP=1 -f supabase/tests/g25-native-platform.sql >/dev/null
+          for f in $(find supabase/migrations -maxdepth 1 -name '*g0*.sql' | sort); do
+            psql -X -v ON_ERROR_STOP=1 -f "$f" >/dev/null
+          done
+      - name: Apply pinned prerequisites and G2.5 candidate
+        run: |
+          set -euo pipefail
+          for name in g1c-reservations g2-sync-own-data g2-parcel-bootstrap; do
+            git show "21bac42e9d8621b2ad0be6e68ed0e712c16868c5:supabase/proposals/${name}.sql" > "/tmp/${name}.sql"
+            psql -X -v ON_ERROR_STOP=1 -f "/tmp/${name}.sql" >/dev/null
+          done
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261027155737_g25_receive_bundle_contract.sql >/dev/null
+      - name: Exercise A/C identity, graph and HEAD guards
+        run: psql -X -q -v ON_ERROR_STOP=1 -f supabase/tests/g25-receive-native.sql >/dev/null
+  native-supabase:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: '2.120.0'
+      - name: Fetch pinned G1c and G2.1 prerequisite
+        run: git fetch --no-tags --depth=1 origin 21bac42e9d8621b2ad0be6e68ed0e712c16868c5
+      - name: Exercise native Auth, PostgREST and RLS in disposable stack
+        run: bash supabase/tests/g25-native/run.sh
