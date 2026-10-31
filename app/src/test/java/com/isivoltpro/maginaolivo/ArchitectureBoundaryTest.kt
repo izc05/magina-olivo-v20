@@ -140,7 +140,20 @@ class ArchitectureBoundaryTest {
         assertTrue(campaignText.contains("CampaignCasCoordinator("))
         assertTrue(campaignText.contains("RpcScope.CAMPAIGN_CAS"))
         assertFalse(campaignText.contains("WorkManager"))
-        all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe || it in campaignProbe }.forEach { file ->
+        // G2.6 parents: read-only probe. It may receive WORKSPACE/FARM/PARCEL and the campaign
+        // that depends on them, never send or wire a worker.
+        val parentProbe = all.filter { it.name == "ParentReceiveHttpsEphemeralTest.kt" }
+        assertEquals("Exactly one isolated parent receive HTTPS probe", 1, parentProbe.size)
+        assertTrue(parentProbe.single().invariantSeparatorsPath.contains("/androidTestDev/"))
+        val parentText = parentProbe.single().readText()
+        assertTrue(parentText.contains("ParentReceiveCoordinator("))
+        assertTrue(parentText.contains("RpcScope.PARENT_RECEIVE"))
+        listOf("WorkManager", "CampaignCasCoordinator(", "RpcScope.CAMPAIGN_CAS", "RpcScope.DELIVERY",
+            ".dispatch(").forEach { forbidden ->
+            assertFalse("Parent receive probe must stay read-only: $forbidden", parentText.contains(forbidden))
+        }
+        all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe || it in campaignProbe ||
+            it in parentProbe }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +
@@ -307,5 +320,22 @@ class ArchitectureBoundaryTest {
             "Production applicationId contract changed",
             buildText.contains("applicationId = \"com.isivoltpro.maginaolivo\""),
         )
+    }
+
+    /** G2.6 receivers are explicit QA entry points: no app source may construct them yet. */
+    @Test
+    fun g26ReceiversStayUnwiredFromAppAndScheduler() {
+        val app = sequenceOf(File("src"), File("app/src")).firstOrNull { it.exists() }
+        assertTrue("Could not locate the app source sets", app != null)
+        val appSources = app!!.walkTopDown().filter { file ->
+            file.isFile && file.extension == "kt" &&
+                listOf("/main/java/", "/dev/java/", "/staging/java/", "/production/java/")
+                    .any { it in file.invariantSeparatorsPath }
+        }.toList()
+        listOf("ParentReceiveCoordinator", "CampaignReceiveCoordinator").forEach { receiver ->
+            appSources.filterNot { it.name == "$receiver.kt" }.forEach { file ->
+                assertFalse("${file.name} must not construct $receiver", file.readText().contains("$receiver("))
+            }
+        }
     }
 }
