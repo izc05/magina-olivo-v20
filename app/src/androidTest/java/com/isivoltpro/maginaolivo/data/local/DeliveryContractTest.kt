@@ -120,6 +120,7 @@ import org.junit.runner.RunWith
 class DeliveryContractTest {
     private val context = attachmentFixtureContext(ApplicationProvider.getApplicationContext<Context>(), "delivery")
     private val workspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000d1")
+    private val defaultOwnerId = UUID.nameUUIDFromBytes("a@example.test".toByteArray(Charsets.UTF_8))
     private val farmId = UUID.fromString("20000000-0000-0000-0000-0000000000d1")
     private val campaignId = UUID.fromString("40000000-0000-0000-0000-0000000000d1")
     private val north = UUID.fromString("30000000-0000-0000-0000-0000000000d1")
@@ -1210,6 +1211,10 @@ class DeliveryContractTest {
         val account = AccountRepository(api, MemoryAccountSessionStore())
         account.login("slow@example.test", "password42", true)
         val userId = account.state.value.userId!!
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE workspaces SET owner_user_id = ? WHERE id = ?",
+            arrayOf(userId.toString(), workspaceId.toString()),
+        )
         val file = File(context.noBackupFilesDir, "g24-slow-${UUID.randomUUID()}.json")
         val store = AndroidFarmLinkLedger(file)
         val links = LocalFarmLinkRepository(context, db, account, "fixture-project", store)
@@ -1255,6 +1260,11 @@ class DeliveryContractTest {
         val api = object : AccountAuthApi by SimulatedAccountAuthApi() { override val simulated = false }
         val account = AccountRepository(api, MemoryAccountSessionStore())
         account.login("a@example.test", "password42", true)
+        val userId = account.state.value.userId!!
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE workspaces SET owner_user_id = ? WHERE id = ?",
+            arrayOf(userId.toString(), workspaceId.toString()),
+        )
         val links = LocalFarmLinkRepository(context, db, account, "fixture-project", store)
         linkedFixtureCleanup.add {
             store.read()?.consents?.forEach {
@@ -1262,7 +1272,7 @@ class DeliveryContractTest {
             }
             listOf(file, File(file.path + ".bak"), File(file.path + ".new")).forEach { it.delete() }
         }
-        if (consent) links.consent(account.state.value.userId!!, links.choices().filter { it.id == farmId }, true)
+        if (consent) links.consent(userId, links.choices().filter { it.id == farmId }, true)
         deliveries = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, writeScope = links) { ZoneOffset.UTC }
         return account to links
     }
@@ -1558,10 +1568,10 @@ class DeliveryContractTest {
         assertTrue("Expected validation on $field but was $result", error is AppError.Validation && error.field == field)
     }
 
-    private suspend fun seed() {
+    private suspend fun seed(ownerUserId: UUID = defaultOwnerId) {
         val meta = LocalMetadata(now, now)
         db.workspaceDao().upsert(
-            WorkspaceEntity(workspaceId, "Olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+            WorkspaceEntity(workspaceId, "Olivar", ownerUserId, "ES", "Europe/Madrid", "es-ES", "EUR", meta),
         )
         db.farmDao().upsert(FarmEntity(farmId, workspaceId, "La Solana", metadata = meta))
         listOf(north to "Norte", south to "Sur").forEach { (id, name) ->
@@ -2468,6 +2478,10 @@ class DeliveryContractTest {
         val account = AccountRepository(api, MemoryAccountSessionStore()) { clock }
         account.login("expired@example.test", "password42", true)
         val userId = account.state.value.userId!!
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE workspaces SET owner_user_id = ? WHERE id = ?",
+            arrayOf(userId.toString(), workspaceId.toString()),
+        )
         val ledgerFile = File(context.noBackupFilesDir, "g24-expired-${UUID.randomUUID()}.json")
         val store = AndroidFarmLinkLedger(ledgerFile)
         linkedFixtureCleanup.add {
