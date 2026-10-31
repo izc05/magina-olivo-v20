@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 data class FarmDraft(
@@ -114,9 +115,13 @@ class FarmListViewModel(
         observationJob?.cancel()
         mutableState.value = mutableState.value.copy(isLoading = true, error = null)
         observationJob = viewModelScope.launch {
-            when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            workspaceRepository.observeActiveWorkspace().collectLatest { workspace ->
+                when (workspace) {
                 is AppResult.Failure -> mutableState.value = mutableState.value.copy(
                     isLoading = false,
+                    workspaceId = null,
+                    farms = emptyList(),
+                    archivedFarms = emptyList(),
                     error = workspace.error.userMessage(),
                 )
                 is AppResult.Success -> {
@@ -134,6 +139,7 @@ class FarmListViewModel(
                                 error = null,
                             )
                         }
+                }
                 }
             }
         }

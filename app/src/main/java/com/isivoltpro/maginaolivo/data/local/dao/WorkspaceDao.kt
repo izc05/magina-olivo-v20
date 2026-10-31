@@ -23,4 +23,13 @@ interface WorkspaceDao {
 
     @Query("SELECT * FROM workspaces WHERE deleted_at IS NULL AND owner_user_id = :ownerUserId ORDER BY created_at, id LIMIT 1")
     suspend fun findActiveByOwner(ownerUserId: UUID): WorkspaceEntity?
+
+    @Query("""
+        SELECT * FROM workspaces w WHERE w.deleted_at IS NULL
+        AND (w.sync_status IN ('LOCAL_ONLY', 'PENDING', 'FAILED')
+             OR EXISTS (SELECT 1 FROM sync_outbox o WHERE o.entity_type = 'WORKSPACE' AND o.entity_id = w.id))
+        AND NOT EXISTS (SELECT 1 FROM deliveries d JOIN delivery_import_receipts r ON r.delivery_id = d.id WHERE d.workspace_id = w.id)
+        ORDER BY w.created_at, w.id
+    """)
+    suspend fun listUnboundLocal(): List<WorkspaceEntity>
 }
