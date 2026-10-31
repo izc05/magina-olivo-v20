@@ -42,7 +42,8 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
         val current = current()
         if (api == null || current.recovery != null || api.simulated) return@withLock WorkspaceSession.SignedOut
         val session = current.session ?: return@withLock WorkspaceSession.SignedOut
-        if (!session.expiresAt.isAfter(now())) WorkspaceSession.Expired
+        val isExpired = !session.expiresAt.isAfter(now())
+        if (isExpired && mutable.value.online) WorkspaceSession.Expired
         else WorkspaceSession.Authenticated(session.userId)
     }
     internal suspend fun <T> withCachedLocalAccess(action: suspend (java.util.UUID?) -> T): T = local.withLock {

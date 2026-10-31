@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalWorkspaceRepository(
     private val database: MaginaOlivoDatabase,
     private val clock: AppClock,
@@ -320,8 +321,18 @@ class LocalWorkspaceRepository(
     private suspend fun authorized(accountId: UUID): List<WorkspaceEntity> {
         val cached = database.workspaceAuthorizationCacheDao().find(issuer, accountId.toString()) ?: return emptyList()
         val contract = WorkspaceAuthorizationContract.parse(cached.contractJson)
-        if (!contract.validFor(issuer, accountId, clock.nowInstant())) return emptyList()
-        return contract.available(clock.nowInstant())
+        val valid = if (account?.state?.value?.online == false) {
+            contract.subject == accountId
+        } else {
+            contract.validFor(issuer, accountId, clock.nowInstant())
+        }
+        if (!valid) return emptyList()
+        val available = if (account?.state?.value?.online == false) {
+            contract.workspaces
+        } else {
+            contract.available(clock.nowInstant())
+        }
+        return available
             .map { it.id }
             .mapNotNull { id ->
                 val workspace = database.workspaceDao().findById(id)

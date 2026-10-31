@@ -19,13 +19,20 @@ internal class ActiveWorkspaceScope(
     private val workspaces: WorkspaceRepository?,
 ) {
     suspend fun resolve(): AppResult<UUID> {
-        return workspaces?.activeWorkspace()
-            ?: AppResult.Failure(AppError.Validation("workspaceId", "selection_required"))
+        if (workspaces != null) {
+            return workspaces.activeWorkspace()
+        }
+        val active = database.workspaceDao().findFirstActive()
+            ?: return AppResult.Failure(AppError.NotFound("workspace"))
+        return AppResult.Success(active.id)
     }
 
     fun observe(): Flow<UUID?> =
-        workspaces?.observeLocalWorkspace()
-            ?: database.workspaceDao().observeFirstActive().map { it?.id }
+        if (workspaces != null) {
+            workspaces.observeLocalWorkspace()
+        } else {
+            database.workspaceDao().observeFirstActive().map { it?.id }
+        }
 
     suspend fun mismatch(workspaceId: UUID): AppResult.Failure? =
         when (val active = resolve()) {

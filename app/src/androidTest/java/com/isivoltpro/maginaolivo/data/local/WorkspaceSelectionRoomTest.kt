@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -91,8 +92,12 @@ class WorkspaceSelectionRoomTest {
         val accountLoggedOut = account(storeA)
         accountLoggedOut.logout(false)
         val signedOut = workspace(reopened, accountLoggedOut)
-        assertTrue((signedOut.activeWorkspace() as AppResult.Success).value != w2)
-        assertEquals(local, (signedOut.activeWorkspace() as AppResult.Success).value)
+        assertTrue("Logged out session on configured account must fail closed", signedOut.activeWorkspace() is AppResult.Failure)
+        assertTrue("Logged out session must not ensure workspaces", signedOut.ensureLocalWorkspace() is AppResult.Failure)
+        org.junit.Assert.assertNull(signedOut.observeLocalWorkspace().first())
+        assertEquals(1, count(reopened, "SELECT count(*) FROM workspaces WHERE id='$local'"))
+        assertEquals(1, count(reopened, "SELECT count(*) FROM workspaces WHERE id='$w2'"))
+        assertEquals(1, count(reopened, "SELECT count(*) FROM sync_outbox WHERE id='local-op' AND status='PENDING'"))
     }
 
     @Test fun revokedAuthorizationCannotBeRestoredByHistoricReceipt() = runBlocking {
