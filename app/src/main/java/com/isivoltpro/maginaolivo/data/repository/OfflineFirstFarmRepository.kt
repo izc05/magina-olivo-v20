@@ -42,18 +42,28 @@ class OfflineFirstFarmRepository(
 ) : FarmRepository {
     private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
     override fun observeActive(workspaceId: UUID): Flow<List<Farm>> =
-        database
-            .farmDao()
-            .observeActive(workspaceId)
-            .map { farms -> farms.map { farm -> farm.toDomain() } }
-            .flowOn(dispatchers.io)
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null || active != workspaceId) {
+                flowOf(emptyList())
+            } else {
+                database
+                    .farmDao()
+                    .observeActive(workspaceId)
+                    .map { farms -> farms.map { farm -> farm.toDomain() } }
+            }
+        }.flowOn(dispatchers.io)
 
     override fun observeArchived(workspaceId: UUID): Flow<List<Farm>> =
-        database
-            .farmDao()
-            .observeArchived(workspaceId)
-            .map { farms -> farms.map { farm -> farm.toDomain() } }
-            .flowOn(dispatchers.io)
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null || active != workspaceId) {
+                flowOf(emptyList())
+            } else {
+                database
+                    .farmDao()
+                    .observeArchived(workspaceId)
+                    .map { farms -> farms.map { farm -> farm.toDomain() } }
+            }
+        }.flowOn(dispatchers.io)
 
     override fun observeById(farmId: UUID): Flow<Farm?> =
         workspaceScope.observe().flatMapLatest { active ->

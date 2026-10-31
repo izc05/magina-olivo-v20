@@ -36,7 +36,13 @@ class LocalWorkspaceRepository(
         accountRepository?.state
             ?.map { it.userId }
             ?.distinctUntilChanged()
-            ?.map { (ensureLocalWorkspace() as? AppResult.Success)?.value }
+            ?.map { userId ->
+                if (accountRepository.isConfigured && userId == null) {
+                    null
+                } else {
+                    (ensureLocalWorkspace() as? AppResult.Success)?.value
+                }
+            }
             ?: flow { emit((ensureLocalWorkspace() as? AppResult.Success)?.value) }
 
     override suspend fun ensureLocalWorkspace() = withContext(dispatchers.io) {
@@ -79,6 +85,10 @@ class LocalWorkspaceRepository(
                         ),
                     )
                     return@withTransaction AppResult.Success(workspaceId)
+                }
+
+                if (accountRepository?.isConfigured == true) {
+                    return@withTransaction AppResult.Failure(AppError.Permission("No hay sesión activa"))
                 }
 
                 database.workspaceDao().findFirstActive()?.let { existing ->

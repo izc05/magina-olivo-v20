@@ -548,6 +548,93 @@ class AccountAuthGateTest {
     }
 
     @Test
+    fun foreignWorkspaceIdCannotObserveActiveOrArchivedFarms(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val repo = AccountRepository(TestAuthApi(), store)
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        val local = checkNotNull(root.localPersistence)
+
+        // 1. User A logs in, creates an active farm and an archived farm
+        repo.login("a@example.com", "passwordA123", online = true)
+        val workspaceA = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        val farmActiveA = (local.farmRepository.create(NewFarm(workspaceA, "Finca Activa A")) as AppResult.Success).value
+        val farmArchivedA = (local.farmRepository.create(NewFarm(workspaceA, "Finca Archivada A")) as AppResult.Success).value
+        local.farmRepository.archive(farmArchivedA)
+
+        // Verify User A sees both their active and archived farms
+        val activeForA = local.farmRepository.observeActive(workspaceA).first()
+        assertEquals(1, activeForA.size)
+        assertEquals("Finca Activa A", activeForA.first().name)
+        val archivedForA = local.farmRepository.observeArchived(workspaceA).first()
+        assertEquals(1, archivedForA.size)
+        assertEquals("Finca Archivada A", archivedForA.first().name)
+
+        // 2. User A logs out
+        repo.logout(online = true)
+
+        // 3. User B logs in
+        repo.login("b@example.com", "passwordB123", online = true)
+        val workspaceB = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertNotEquals(workspaceA, workspaceB)
+
+        // Negative assertion: User B queries User A's workspace ID -> MUST BE EMPTY!
+        val activeForBQueryingA = local.farmRepository.observeActive(workspaceA).first()
+        assertTrue("User B querying workspaceA active farms must get empty list", activeForBQueryingA.isEmpty())
+        val archivedForBQueryingA = local.farmRepository.observeArchived(workspaceA).first()
+        assertTrue("User B querying workspaceA archived farms must get empty list", archivedForBQueryingA.isEmpty())
+
+        // 4. User B logs out
+        repo.logout(online = true)
+
+        // 5. User A logs back in
+        repo.login("a@example.com", "passwordA123", online = true)
+        val activeForARecovered = local.farmRepository.observeActive(workspaceA).first()
+        assertEquals(1, activeForARecovered.size)
+        assertEquals("Finca Activa A", activeForARecovered.first().name)
+        val archivedForARecovered = local.farmRepository.observeArchived(workspaceA).first()
+        assertEquals(1, archivedForARecovered.size)
+        assertEquals("Finca Archivada A", archivedForARecovered.first().name)
+    }
+
+    @Test
+    fun observeLocalWorkspaceFailsClosedWhenLoggedOutWithoutExposingPreviousWorkspace(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val repo = AccountRepository(TestAuthApi(), store)
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        val local = checkNotNull(root.localPersistence)
+
+        // 1. User A logs in
+        repo.login("a@example.com", "passwordA123", online = true)
+        val workspaceA = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertEquals(workspaceA, local.workspaceRepository.observeLocalWorkspace().first())
+
+        // 2. User A logs out
+        repo.logout(online = true)
+
+        // Flow MUST emit null immediately upon logout, NOT falling back to workspaceA!
+        val loggedOutWorkspace = local.workspaceRepository.observeLocalWorkspace().first()
+        assertNull("Logged-out session must emit null workspace, not previous user's workspace", loggedOutWorkspace)
+
+        // Calling ensureLocalWorkspace while logged out on configured account must fail closed
+        val ensureResult = local.workspaceRepository.ensureLocalWorkspace()
+        assertTrue("ensureLocalWorkspace while logged out on configured repo must fail closed", ensureResult is AppResult.Failure)
+
+        // 3. User B logs in
+        repo.login("b@example.com", "passwordB123", online = true)
+        val workspaceB = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertNotEquals(workspaceA, workspaceB)
+        assertEquals(workspaceB, local.workspaceRepository.observeLocalWorkspace().first())
+
+        // 4. User B logs out
+        repo.logout(online = true)
+        assertNull(local.workspaceRepository.observeLocalWorkspace().first())
+
+        // 5. User A logs back in
+        repo.login("a@example.com", "passwordA123", online = true)
+        assertEquals(workspaceA, local.workspaceRepository.observeLocalWorkspace().first())
+    }
+
+    @Test
     fun androidPersistedSessionStoreSurvivesOfflineWithExpiredJwt(): Unit = runBlocking {
         val sessionFile = File(context.noBackupFilesDir, "qa-offline-session-${UUID.randomUUID()}.json")
         val keyAlias = "qa-key-${UUID.randomUUID()}"
