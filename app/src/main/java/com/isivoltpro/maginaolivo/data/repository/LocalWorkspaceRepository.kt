@@ -72,7 +72,10 @@ class LocalWorkspaceRepository(
     }
 
     override fun observeActiveWorkspace(): Flow<AppResult<UUID>> =
-        if (account == null) database.workspaceSelectionDao().observeAll().map { activeWorkspace() }
+        if (account == null) database.workspaceSelectionDao().observeAll().map {
+            val active = activeWorkspace()
+            if (active is AppResult.Success) active else ensureLocalWorkspace()
+        }
         else combine(
             account.state,
             database.workspaceSelectionDao().observeAll(),
@@ -80,7 +83,12 @@ class LocalWorkspaceRepository(
         ) { state, _, _ -> state.online }
             .map { online ->
                 if (!online) lastRefreshAttemptNanos.set(0L)
-                activeWorkspace()
+                val active = activeWorkspace()
+                if (active is AppResult.Success) active
+                else if (account.state.value.userId != null || !account.isConfigured) {
+                    val ensured = ensureLocalWorkspace()
+                    if (ensured is AppResult.Success) ensured else active
+                } else active
             }
 
     override suspend fun refreshAuthorizations(): AppResult<Unit> = withContext(dispatchers.io) {

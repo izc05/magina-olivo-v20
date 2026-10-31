@@ -115,6 +115,7 @@ class FarmListViewModel(
         observationJob?.cancel()
         mutableState.value = mutableState.value.copy(isLoading = true, error = null)
         observationJob = viewModelScope.launch {
+            workspaceRepository.ensureLocalWorkspace()
             workspaceRepository.observeActiveWorkspace().collectLatest { workspace ->
                 when (workspace) {
                 is AppResult.Failure -> mutableState.value = mutableState.value.copy(
