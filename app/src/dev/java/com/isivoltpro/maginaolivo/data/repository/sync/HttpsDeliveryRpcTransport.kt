@@ -34,6 +34,7 @@ internal class HttpsDeliveryRpcTransport(
         DELIVERY(DeliveryRpcAdapter.NAMES),
         CAMPAIGN_CAS(CampaignCasRpcAdapter.NAMES),
         CAMPAIGN_RECEIVE(setOf("get_own_campaign_receive_v1")),
+        PARENT_RECEIVE(setOf(ParentReceiveCoordinator.RPC)),
     }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =
