@@ -21,14 +21,18 @@ import com.isivoltpro.maginaolivo.domain.farm.FarmChanges
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class OfflineFirstFarmRepository(
     private val database: MaginaOlivoDatabase,
     private val clock: AppClock,
@@ -38,28 +42,37 @@ class OfflineFirstFarmRepository(
 ) : FarmRepository {
     private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
     override fun observeActive(workspaceId: UUID): Flow<List<Farm>> =
-        database
-            .farmDao()
-            .observeActive(workspaceId)
-            .map { farms -> farms.map { farm -> farm.toDomain() } }
-            .flowOn(dispatchers.io)
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null || active != workspaceId) {
+                flowOf(emptyList())
+            } else {
+                database
+                    .farmDao()
+                    .observeActive(workspaceId)
+                    .map { farms -> farms.map { farm -> farm.toDomain() } }
+            }
+        }.flowOn(dispatchers.io)
 
     override fun observeArchived(workspaceId: UUID): Flow<List<Farm>> =
-        database
-            .farmDao()
-            .observeArchived(workspaceId)
-            .map { farms -> farms.map { farm -> farm.toDomain() } }
-            .flowOn(dispatchers.io)
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null || active != workspaceId) {
+                flowOf(emptyList())
+            } else {
+                database
+                    .farmDao()
+                    .observeArchived(workspaceId)
+                    .map { farms -> farms.map { farm -> farm.toDomain() } }
+            }
+        }.flowOn(dispatchers.io)
 
     override fun observeById(farmId: UUID): Flow<Farm?> =
-        flow {
-            when (val active = workspaceScope.resolve()) {
-                is AppResult.Failure -> emit(null)
-                is AppResult.Success -> emitAll(
-                    database.farmDao().observeSummaryById(farmId).map { row ->
-                        row?.takeIf { it.farm.workspaceId == active.value }?.toDomain()
-                    },
-                )
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(null)
+            } else {
+                database.farmDao().observeSummaryById(farmId).map { row ->
+                    row?.takeIf { it.farm.workspaceId == active }?.toDomain()
+                }
             }
         }.flowOn(dispatchers.io)
 

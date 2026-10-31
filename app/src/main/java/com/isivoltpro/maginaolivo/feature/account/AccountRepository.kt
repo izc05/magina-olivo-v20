@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.withLock
 /** No agricultural repository, database, file store or outbox is a dependency. */
 class AccountRepository(private val api: AccountAuthApi?, private val store: AccountSessionStore = MemoryAccountSessionStore(),
     private val now: () -> Instant = Instant::now) {
+    val isConfigured: Boolean get() = api != null
     private val mutable = MutableStateFlow(AccountState(status=if(api==null) AccountStatus.UNCONFIGURED else AccountStatus.SIGNED_OUT, simulated=api?.simulated==true))
     val state: StateFlow<AccountState> = mutable
     private val mutex = Mutex()

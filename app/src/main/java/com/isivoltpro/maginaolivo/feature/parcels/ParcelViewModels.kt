@@ -153,9 +153,11 @@ class ParcelDetailViewModel(
     val state: StateFlow<ParcelDetailUiState> = mutableState.asStateFlow()
 
     init {
-        activities?.let { repository ->
+        activities?.let { activityRepo ->
             viewModelScope.launch {
-                repository.observeForParcel(parcelId).collect { list ->
+                repository.observeById(parcelId).flatMapLatest { parcel ->
+                    if (parcel == null) flowOf(emptyList()) else activityRepo.observeForParcel(parcelId)
+                }.collect { list ->
                     mutableState.value = mutableState.value.copy(
                         activities = list.sortedByDescending { it.activityDate },
                     )

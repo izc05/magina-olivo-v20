@@ -5,6 +5,8 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.util.UUID
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * #615: one boundary for operations initiated from the currently active agricultural experience.
@@ -22,6 +24,10 @@ internal class ActiveWorkspaceScope(
             ?: return AppResult.Failure(AppError.NotFound("workspace"))
         return AppResult.Success(active.id)
     }
+
+    fun observe(): Flow<UUID?> =
+        workspaces?.observeLocalWorkspace()
+            ?: database.workspaceDao().observeFirstActive().map { it?.id }
 
     suspend fun mismatch(workspaceId: UUID): AppResult.Failure? =
         when (val active = resolve()) {

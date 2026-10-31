@@ -27,28 +27,68 @@ import com.isivoltpro.maginaolivo.domain.parcel.ParcelMembership
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
 import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.DayOfWeek
 import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class OfflineFirstParcelRepository(
     private val database: MaginaOlivoDatabase,
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
+    private val workspaceRepository: WorkspaceRepository? = null,
 ) : ParcelRepository {
+    private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
+
     override fun observeActive(farmId: UUID): Flow<List<Parcel>> =
-        database.parcelDao().observeActive(farmId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(emptyList())
+            } else {
+                val farm = database.farmDao().findById(farmId)
+                if (farm == null || farm.workspaceId != active || farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
+                    flowOf(emptyList())
+                } else {
+                    database.parcelDao().observeActive(farmId).map { rows -> rows.map { it.toDomain() } }
+                }
+            }
+        }.flowOn(dispatchers.io)
 
     override fun observeArchived(farmId: UUID): Flow<List<Parcel>> =
-        database.parcelDao().observeArchived(farmId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(emptyList())
+            } else {
+                val farm = database.farmDao().findById(farmId)
+                if (farm == null || farm.workspaceId != active) {
+                    flowOf(emptyList())
+                } else {
+                    database.parcelDao().observeArchived(farmId).map { rows -> rows.map { it.toDomain() } }
+                }
+            }
+        }.flowOn(dispatchers.io)
 
     override fun observeById(parcelId: UUID): Flow<Parcel?> =
-        database.parcelDao().observeById(parcelId).map { it?.toDomain() }.flowOn(dispatchers.io)
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(null)
+            } else {
+                database.parcelDao().observeById(parcelId).map { row ->
+                    row?.takeIf { it.parcel.workspaceId == active }?.toDomain()
+                }
+            }
+        }.flowOn(dispatchers.io)
 
     override suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID? =
         withContext(dispatchers.io) {
@@ -67,10 +107,17 @@ class OfflineFirstParcelRepository(
         validateAgronomy(command.agronomy)?.let { return it }
         return withContext(dispatchers.io) {
             val now = clock.nowInstant()
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@withContext result
+                is AppResult.Success -> result.value
+            }
             runCatching {
                 database.withTransaction {
                     val farm = database.farmDao().findById(command.farmId)
                         ?: return@withTransaction AppResult.Failure(AppError.NotFound("farm"))
+                    if (farm.workspaceId != active) {
+                        return@withTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+                    }
                     if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                         return@withTransaction AppResult.Failure(AppError.Conflict("archived_farm"))
                     }
@@ -225,6 +272,10 @@ class OfflineFirstParcelRepository(
     override suspend fun restore(parcelId: UUID, farmId: UUID): AppResult<Unit> = mutate(parcelId, "restore_parcel") { current, now ->
         // #494: «Restaurar» only brings back an archived Parcel; it is never a hidden move between
         // Farms, and it never reactivates an identity that another active Parcel now holds.
+        val active = when (val result = workspaceScope.resolve()) {
+            is AppResult.Failure -> return@mutate result
+            is AppResult.Success -> result.value
+        }
         if (current.status != RecordStatus.ARCHIVED || current.metadata.deletedAt == null ||
             database.parcelDao().findCurrentMembership(parcelId) != null
         ) return@mutate AppResult.Failure(AppError.Conflict("parcel_not_archived"))
@@ -240,7 +291,7 @@ class OfflineFirstParcelRepository(
         }
         val farm = database.farmDao().findById(farmId)
             ?: return@mutate AppResult.Failure(AppError.NotFound("farm"))
-        if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null || farm.workspaceId != current.workspaceId) {
+        if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null || farm.workspaceId != current.workspaceId || current.workspaceId != active) {
             return@mutate AppResult.Failure(AppError.Conflict("invalid_farm"))
         }
         database.parcelDao().upsertMembership(
@@ -261,6 +312,14 @@ class OfflineFirstParcelRepository(
     }
 
     override suspend fun membershipHistory(parcelId: UUID): List<ParcelMembership> = withContext(dispatchers.io) {
+        val active = when (val result = workspaceScope.resolve()) {
+            is AppResult.Failure -> return@withContext emptyList()
+            is AppResult.Success -> result.value
+        }
+        val current = database.parcelDao().findById(parcelId)
+        if (current == null || current.workspaceId != active) {
+            return@withContext emptyList()
+        }
         database.parcelDao().listMemberships(parcelId).map {
             ParcelMembership(it.id, it.farmId, it.parcelId, it.validFrom, it.validUntil)
         }
@@ -271,10 +330,17 @@ class OfflineFirstParcelRepository(
         operation: String,
         block: suspend (ParcelEntity, Instant) -> AppResult<Unit>,
     ): AppResult<Unit> = withContext(dispatchers.io) {
+        val active = when (val result = workspaceScope.resolve()) {
+            is AppResult.Failure -> return@withContext result
+            is AppResult.Success -> result.value
+        }
         runCatching {
             database.withTransaction {
                 val current = database.parcelDao().findById(parcelId)
                     ?: return@withTransaction AppResult.Failure(AppError.NotFound("parcel"))
+                if (current.workspaceId != active) {
+                    return@withTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+                }
                 block(current, clock.nowInstant())
             }
         }.getOrElse { AppResult.Failure(AppError.Storage(operation, it)) }

@@ -25,20 +25,27 @@ fun AppRoot(
                 androidx.compose.material3.CircularProgressIndicator()
             }
         } else {
-        val protectedContent: @Composable () -> Unit = {
-        NotificationPermissionHost(compositionRoot.localPersistence, compositionRoot.clock) {
-            AppNavigation(
-                compositionRoot = compositionRoot,
-                openActivityId = openActivityId,
-                onActivityOpened = onActivityOpened,
-                openAccount = openAccount,
-                onAccountOpened = onAccountOpened,
-            )
-        }
-        }
-        val links=compositionRoot.farmLinks
-        if(links==null) protectedContent()
-        else com.isivoltpro.maginaolivo.feature.accountlink.FarmLinkAccessHost(links,compositionRoot.accountRepository,protectedContent)
+            com.isivoltpro.maginaolivo.feature.account.AuthGateHost(
+                accountRepository = compositionRoot.accountRepository,
+                farmLinks = compositionRoot.farmLinks,
+                simulationAllowed = com.isivoltpro.maginaolivo.BuildConfig.DEBUG && compositionRoot.environment == AppEnvironment.DEV,
+                environment = compositionRoot.environment,
+            ) {
+                val protectedContent: @Composable () -> Unit = {
+                    NotificationPermissionHost(compositionRoot.localPersistence, compositionRoot.clock) {
+                        AppNavigation(
+                            compositionRoot = compositionRoot,
+                            openActivityId = openActivityId,
+                            onActivityOpened = onActivityOpened,
+                            openAccount = openAccount,
+                            onAccountOpened = onAccountOpened,
+                        )
+                    }
+                }
+                val links = compositionRoot.farmLinks
+                if (links == null) protectedContent()
+                else com.isivoltpro.maginaolivo.feature.accountlink.FarmLinkAccessHost(links, compositionRoot.accountRepository, protectedContent)
+            }
         }
     }
 }

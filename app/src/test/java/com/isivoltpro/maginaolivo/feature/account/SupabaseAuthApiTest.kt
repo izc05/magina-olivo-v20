@@ -13,9 +13,11 @@ class SupabaseAuthApiTest {
     private val now=Instant.parse("2026-10-14T12:00:00Z")
     private val id=UUID.fromString("00000000-0000-0000-0000-000000000042")
     private val sessionJson="""{"access_token":"access","refresh_token":"refresh","token_type":"bearer","expires_in":3600,"user":{"id":"$id","email":"qa@example.com"}}"""
-    @Test fun acceptsOnlyExplicitNonProductionConfigurationAndPublicKeys() {
+    @Test fun acceptsOnlyExplicitAuthorizedEnvironmentsAndPublicKeys() {
         assertNotNull(AuthConfiguration.forEnvironment("DEV",url,"sb_publishable_fake","com.isivoltpro.maginaolivo.dev"))
-        assertNull(AuthConfiguration.forEnvironment("PRODUCTION",url,"sb_publishable_fake","app"))
+        assertNotNull(AuthConfiguration.forEnvironment("STAGING",url,"sb_publishable_fake","com.isivoltpro.maginaolivo.staging"))
+        assertNotNull(AuthConfiguration.forEnvironment("PRODUCTION",url,"sb_publishable_fake","com.isivoltpro.maginaolivo"))
+        assertNull(AuthConfiguration.forEnvironment("UNKNOWN",url,"sb_publishable_fake","app"))
         listOf("http://abcdefghijklmnopqrst.supabase.co", "https://zzelvbcuxsboafibfxch.supabase.co", "$url/path", "$url?x=1", "https://user@abcdefghijklmnopqrst.supabase.co", "https://abcdefghijklmnopqrst.supabase.co.evil.test")
             .forEach { assertNull(it,AuthConfiguration.forEnvironment("DEV",it,"sb_publishable_fake","app")) }
         listOf("", "sb_secret_private", "not-a-key").forEach { assertNull(AuthConfiguration.forEnvironment("DEV",url,it,"app")) }
