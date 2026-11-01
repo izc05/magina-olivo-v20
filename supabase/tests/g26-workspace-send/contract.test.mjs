@@ -2,6 +2,7 @@
 // Reuses create_own_workspace + check_sync_operations (g2-sync-own-data proposal); adds no RPC.
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { extraProposals } from '../lib/extra-proposals.mjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -61,7 +62,7 @@ before(async()=>{
     ...['g1c-reservations.sql','g2-sync-own-data.sql','g2-parcel-bootstrap.sql'].map(name=>new URL(`../../proposals/${name}`,import.meta.url)),
     new URL('../../migrations/20261029044901_g26_workspace_authorization.sql',import.meta.url),
     new URL('../../proposals/g26-parent-receive-v1.sql',import.meta.url)];
-  sql(`BEGIN;\n${files.map(file=>readFileSync(file,'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
+  sql(`BEGIN;\n${files.map(file=>readFileSync(file,'utf8')).join('\n')}\n${extraProposals()}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
   for(let attempt=0;attempt<40;attempt++){
     if((await receipt(actors.A,randomUUID())).status===200) break;
     if(attempt===39) throw new Error('PostgREST did not reload');

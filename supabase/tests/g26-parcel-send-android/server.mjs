@@ -1,6 +1,7 @@
 // Disposable local Supabase fixture and TLS bridge for the G2.6 PARCEL sender.
 // Never point this at a remote project: the runner validates the local project ID and URL.
 import assert from 'node:assert/strict';
+import { extraProposals } from '../lib/extra-proposals.mjs';
 import { createServer } from 'node:https';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -52,7 +53,7 @@ const files = [...names.map(name => new URL(`../../migrations/${name}`, import.m
     .map(name => new URL(`../../proposals/${name}`, import.meta.url)),
   new URL('../../migrations/20261029044901_g26_workspace_authorization.sql', import.meta.url),
   new URL('../../proposals/g26-parent-receive-v1.sql', import.meta.url)];
-sql(`BEGIN;\n${files.map(file => readFileSync(file, 'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
+sql(`BEGIN;\n${files.map(file => readFileSync(file, 'utf8')).join('\n')}\n${extraProposals()}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
 
 // Nothing of A is seeded: A creates its WORKSPACE, FARM and PARCEL rows from Android.
 const owner = await account('a');

@@ -1,6 +1,7 @@
 // Native disposable Supabase only. The runner validates its local project ID.
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { extraProposals } from '../lib/extra-proposals.mjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -55,7 +56,7 @@ before(async()=>{
     ...['g1c-reservations.sql','g2-sync-own-data.sql','g2-parcel-bootstrap.sql'].map(name=>new URL(`../../proposals/${name}`,import.meta.url)),
     new URL('../../migrations/20261029044901_g26_workspace_authorization.sql',import.meta.url),
     new URL('../../proposals/g26-parent-receive-v1.sql',import.meta.url)];
-  sql(`BEGIN;\n${files.map(file=>readFileSync(file,'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
+  sql(`BEGIN;\n${files.map(file=>readFileSync(file,'utf8')).join('\n')}\n${extraProposals()}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
   Object.assign(f,{workspace:randomUUID(),farm1:randomUUID(),farm2:randomUUID(),deletedFarm:randomUUID(),
     parcel1:randomUUID(),parcel2:randomUUID(),deletedParcel:randomUUID(),m1:randomUUID(),m2:randomUUID(),
     deletedMembership:randomUUID(),foreignWorkspace:randomUUID(),foreignFarm:randomUUID(),foreignParcel:randomUUID()});

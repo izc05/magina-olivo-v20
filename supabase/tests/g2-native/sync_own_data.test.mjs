@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { randomUUID, createHash, createHmac } from 'node:crypto';
 import { validateTarget } from './safety.mjs';
+import { extraProposals, membershipsHardened } from '../lib/extra-proposals.mjs';
 
 const work = process.env.G2_NATIVE_WORK;
 assert.ok(work, 'Use the disposable run.sh runner');
@@ -75,7 +76,7 @@ before(async () => {
     readFileSync(new URL(`../../proposals/${name}`, import.meta.url), 'utf8')
   ).join('\n');
 
-  sql('BEGIN;\n' + baselineDDL + '\n' + proposalDDL + '\nCOMMIT; NOTIFY pgrst, \'reload schema\';');
+  sql('BEGIN;\n' + baselineDDL + '\n' + proposalDDL + '\n' + extraProposals() + '\nCOMMIT; NOTIFY pgrst, \'reload schema\';');
 
   // Seed workspaces, farms, and campaigns for Actor A and Actor B
   for (const a of Object.values(actors)) {
@@ -1324,7 +1325,8 @@ test('parcel bootstrap preserves all agronomy fields and exact instants with ato
   assert.equal(current.data.parcel.source_imported_at_exact,null);
   const inconsistent=await http(`/rest/v1/farm_parcel_memberships?id=eq.${p.memberships[0].id}`,{
     token:f.token,method:'PATCH',body:{valid_from_exact:'2027-01-01T00:00:00Z'}});
-  assert.equal(inconsistent.status,400);
+  // Without the G2.6 hardening the exact-instant trigger refuses it; with it, the direct write is not allowed at all.
+  assert.equal(inconsistent.status,membershipsHardened()?403:400,JSON.stringify(inconsistent.data));
   assert.equal((await readParcel(f)).data.memberships[0].valid_from_exact,p.memberships[0].validFrom);
   const receipt=await http('/rest/v1/rpc/check_sync_operations',{token:f.token,body:{p_operation_ids:[operation]}});
   assert.equal(receipt.status,200);assert.equal(receipt.data.confirmed_receipts[0].entity_type,'PARCEL');

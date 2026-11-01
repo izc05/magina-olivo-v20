@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { validateTarget } from './safety.mjs';
+import { extraProposals } from '../lib/extra-proposals.mjs';
 
 const work = process.env.G1C_NATIVE_WORK;
 assert.ok(work, 'Use the disposable run.sh runner');
@@ -92,7 +93,7 @@ before(async () => {
   const migrations = ['20261011120000_g0_auth_workspaces_shared_farms.sql','20261011120001_g0_agricultural_sync_schema.sql','20261011120002_g0_contracts_and_storage_rls.sql','20261016041222_g0_legacy_storage_parcel_hardening.sql','20261016041601_g0_aggregate_identity_guards.sql'];
   const hardening = process.env.MAGINA_COMBINED_NATIVE === '1'
     ? readFileSync(join(work, 'g0-hardening-772.sql'), 'utf8') : '';
-  sql('BEGIN;\n' + migrations.map(name => readFileSync(new URL(`../../migrations/${name}`, import.meta.url),'utf8')).join('\n') + '\n' + hardening + '\n' + readFileSync(new URL('../../proposals/g1c-reservations.sql',import.meta.url),'utf8') + '\nCOMMIT; NOTIFY pgrst,\'reload schema\';');
+  sql('BEGIN;\n' + migrations.map(name => readFileSync(new URL(`../../migrations/${name}`, import.meta.url),'utf8')).join('\n') + '\n' + hardening + '\n' + readFileSync(new URL('../../proposals/g1c-reservations.sql',import.meta.url),'utf8') + '\n' + extraProposals() + '\nCOMMIT; NOTIFY pgrst,\'reload schema\';');
   for (const a of Object.values(actors)) sql(`INSERT INTO public.workspaces(id,owner_user_id,name) VALUES('${a.workspace}','${a.id}','ephemeral native');`);
   let ready = false;
   for (let i=0;i<40;i++) {
