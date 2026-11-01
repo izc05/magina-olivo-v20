@@ -204,8 +204,13 @@ internal class ParentReceiveCoordinator(
             return Decision.Conflict("local_pending")
         return when {
             incoming.version < remote -> Decision.Conflict("stale_remote")
-            incoming.version == remote -> if (same() && local.updatedAt == incoming.updatedAt) Decision.Same
-                else Decision.Conflict("divergent_same_version")
+            incoming.version == remote -> when {
+                !same() -> Decision.Conflict("divergent_same_version")
+                local.updatedAt == incoming.updatedAt && local.createdAt == incoming.createdAt -> Decision.Same
+                // Same revision and content, only the server-assigned instants differ: a row this device
+                // created and sent. Adopting them loses nothing and makes later receives ALREADY_CURRENT.
+                else -> Decision.Update
+            }
             else -> Decision.Update
         }
     }

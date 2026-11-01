@@ -92,6 +92,28 @@ interface SyncOutboxDao {
     suspend fun quarantineCampaignCas(operationId: UUID, accountId: String,
         payloadJson: String, reason: String, nowEpochMillis: Long): Int
 
+    /** G2.6 WORKSPACE create: the bound payload is kept byte for byte so a retry replays the same operation. */
+    @Query("""
+        UPDATE sync_outbox SET status = 'FAILED', attempt_count = attempt_count + 1,
+            last_error_code = 'OUTCOME_UNKNOWN', last_error_message = NULL,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'WORKSPACE' AND operation = 'CREATE'
+          AND status IN ('PENDING', 'FAILED') AND account_id = :accountId
+          AND payload_json = :payloadJson
+    """)
+    suspend fun markWorkspaceCreateUnknown(operationId: UUID, accountId: String,
+        payloadJson: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = :reason,
+            last_error_message = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'WORKSPACE' AND operation = 'CREATE'
+          AND status IN ('PENDING', 'FAILED') AND account_id = :accountId
+          AND payload_json = :payloadJson
+    """)
+    suspend fun blockWorkspaceCreate(operationId: UUID, accountId: String,
+        payloadJson: String, reason: String, nowEpochMillis: Long): Int
+
     /** Keeps the old intent blocked and auditable; only an explicit decision can retire its blocker. */
     @Query("""
         UPDATE sync_outbox SET last_error_code = :resolvedReason, updated_at = :nowEpochMillis

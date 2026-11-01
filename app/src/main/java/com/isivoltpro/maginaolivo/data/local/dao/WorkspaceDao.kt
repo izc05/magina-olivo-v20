@@ -22,6 +22,7 @@ interface WorkspaceDao {
         AND (w.sync_status IN ('LOCAL_ONLY', 'PENDING', 'FAILED')
              OR EXISTS (SELECT 1 FROM sync_outbox o WHERE o.entity_type = 'WORKSPACE' AND o.entity_id = w.id))
         AND NOT EXISTS (SELECT 1 FROM deliveries d JOIN delivery_import_receipts r ON r.delivery_id = d.id WHERE d.workspace_id = w.id)
+        AND NOT EXISTS (SELECT 1 FROM sync_outbox o WHERE o.entity_type = 'WORKSPACE' AND o.entity_id = w.id AND o.account_id IS NOT NULL)
         ORDER BY w.created_at, w.id
     """)
     suspend fun listUnboundLocal(): List<WorkspaceEntity>

@@ -26,4 +26,13 @@ class CampaignHttpsScopeTest {
         assertFalse("update_own_campaign_v1" in names)
         assertFalse("sync_own_delivery_v2" in names)
     }
+
+    @Test fun workspaceSendScopeAllowsOnlyWorkspaceCreateAndItsReceipt() {
+        val names = HttpsDeliveryRpcTransport.RpcScope.WORKSPACE_SEND.allowedNames
+        assertEquals(setOf("create_own_workspace", "check_sync_operations"), names)
+        listOf("create_reserved_farm", "create_own_parcel", "update_own_campaign_v1", "sync_own_delivery_v2")
+            .forEach { assertFalse(it, it in names) }
+        HttpsDeliveryRpcTransport.RpcScope.entries.filter { it != HttpsDeliveryRpcTransport.RpcScope.WORKSPACE_SEND }
+            .forEach { assertFalse(it.name, "create_own_workspace" in it.allowedNames) }
+    }
 }

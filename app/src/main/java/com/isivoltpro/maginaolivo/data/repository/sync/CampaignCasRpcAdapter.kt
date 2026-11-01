@@ -80,30 +80,35 @@ internal class CampaignCasRpcAdapter(private val transport: DeliveryRpcTransport
 
     private suspend fun call(name: String, body: String, session: AuthSession): JsonObject {
         check(name in NAMES)
-        val response = try { transport.rpc(name, body, session.accessToken) }
-        catch (cancel: CancellationException) { throw cancel }
-        catch (failure: DeliveryRpcFailure) { throw failure }
-        catch (_: Exception) { throw DeliveryRpcFailure(DeliveryRpcError.NETWORK) }
-        if (response.status !in 200..299) {
-            val code = runCatching {
-                (Json.parseToJsonElement(response.body) as JsonObject).getValue("code").jsonPrimitive.content
-            }.getOrNull()
-            val error = when {
-                code == "23505" || response.status == 409 -> DeliveryRpcError.CONFLICT
-                code == "42501" || response.status in listOf(401,403) -> DeliveryRpcError.FORBIDDEN
-                code == "22023" || response.status == 400 -> DeliveryRpcError.INVALID_PAYLOAD
-                response.status == 408 || response.status == 429 || response.status >= 500 -> DeliveryRpcError.NETWORK
-                else -> DeliveryRpcError.PROTOCOL
-            }
-            throw DeliveryRpcFailure(error, response.status, code)
-        }
-        val parsed = runCatching { Json.parseToJsonElement(response.body) }.getOrNull()
-        return when (parsed) {
-            is JsonObject -> parsed
-            is JsonArray -> parsed.singleOrNull() as? JsonObject ?: throw protocol()
-            else -> throw protocol()
-        }
+        return transport.callRpcObject(name, body, session)
     }
 
     private fun protocol() = DeliveryRpcFailure(DeliveryRpcError.PROTOCOL)
+}
+
+/** Shared G2.6 status/SQLSTATE mapping. Any transport exception is an unknown outcome, never success. */
+internal suspend fun DeliveryRpcTransport.callRpcObject(name: String, body: String, session: AuthSession): JsonObject {
+    val response = try { rpc(name, body, session.accessToken) }
+    catch (cancel: CancellationException) { throw cancel }
+    catch (failure: DeliveryRpcFailure) { throw failure }
+    catch (_: Exception) { throw DeliveryRpcFailure(DeliveryRpcError.NETWORK) }
+    if (response.status !in 200..299) {
+        val code = runCatching {
+            (Json.parseToJsonElement(response.body) as JsonObject).getValue("code").jsonPrimitive.content
+        }.getOrNull()
+        val error = when {
+            code == "23505" || response.status == 409 -> DeliveryRpcError.CONFLICT
+            code == "42501" || response.status in listOf(401,403) -> DeliveryRpcError.FORBIDDEN
+            code == "22023" || response.status == 400 -> DeliveryRpcError.INVALID_PAYLOAD
+            response.status == 408 || response.status == 429 || response.status >= 500 -> DeliveryRpcError.NETWORK
+            else -> DeliveryRpcError.PROTOCOL
+        }
+        throw DeliveryRpcFailure(error, response.status, code)
+    }
+    val parsed = runCatching { Json.parseToJsonElement(response.body) }.getOrNull()
+    return when (parsed) {
+        is JsonObject -> parsed
+        is JsonArray -> parsed.singleOrNull() as? JsonObject ?: throw DeliveryRpcFailure(DeliveryRpcError.PROTOCOL)
+        else -> throw DeliveryRpcFailure(DeliveryRpcError.PROTOCOL)
+    }
 }

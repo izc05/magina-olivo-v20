@@ -152,8 +152,19 @@ class ArchitectureBoundaryTest {
             ".dispatch(").forEach { forbidden ->
             assertFalse("Parent receive probe must stay read-only: $forbidden", parentText.contains(forbidden))
         }
+        // G2.6 WORKSPACE send: creates and sends only WORKSPACE, then reads it back as parents.
+        val workspaceProbe = all.filter { it.name == "WorkspaceSendHttpsEphemeralTest.kt" }
+        assertEquals("Exactly one isolated WORKSPACE send HTTPS probe", 1, workspaceProbe.size)
+        assertTrue(workspaceProbe.single().invariantSeparatorsPath.contains("/androidTestDev/"))
+        val workspaceText = workspaceProbe.single().readText()
+        assertTrue(workspaceText.contains("WorkspaceSendCoordinator("))
+        assertTrue(workspaceText.contains("RpcScope.WORKSPACE_SEND"))
+        listOf("WorkManager", "CampaignCasCoordinator(", "RpcScope.CAMPAIGN_CAS", "RpcScope.DELIVERY",
+            ".dispatch(", "create_reserved_farm", "create_own_parcel").forEach { forbidden ->
+            assertFalse("WORKSPACE send probe must not send other entities: $forbidden", workspaceText.contains(forbidden))
+        }
         all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe || it in campaignProbe ||
-            it in parentProbe }.forEach { file ->
+            it in parentProbe || it in workspaceProbe }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +
@@ -322,7 +333,7 @@ class ArchitectureBoundaryTest {
         )
     }
 
-    /** G2.6 receivers are explicit QA entry points: no app source may construct them yet. */
+    /** G2.6 receivers and the WORKSPACE sender are explicit QA entry points: no app source may construct them yet. */
     @Test
     fun g26ReceiversStayUnwiredFromAppAndScheduler() {
         val app = sequenceOf(File("src"), File("app/src")).firstOrNull { it.exists() }
@@ -332,7 +343,7 @@ class ArchitectureBoundaryTest {
                 listOf("/main/java/", "/dev/java/", "/staging/java/", "/production/java/")
                     .any { it in file.invariantSeparatorsPath }
         }.toList()
-        listOf("ParentReceiveCoordinator", "CampaignReceiveCoordinator").forEach { receiver ->
+        listOf("ParentReceiveCoordinator", "CampaignReceiveCoordinator", "WorkspaceSendCoordinator").forEach { receiver ->
             appSources.filterNot { it.name == "$receiver.kt" }.forEach { file ->
                 assertFalse("${file.name} must not construct $receiver", file.readText().contains("$receiver("))
             }
