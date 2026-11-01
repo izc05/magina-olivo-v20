@@ -13,3 +13,6 @@ export function extraProposals() {
 
 /** True when the G2.6 membership hardening is part of the schema under test. */
 export const membershipsHardened = () => names().includes('g26-fpm-manage-hardening.sql');
+
+/** True when the G2.6 PARCEL mutation contract (which revokes direct parcel writes) is under test. */
+export const parcelWritesClosed = () => names().includes('g26-parcel-mutation-v1.sql');

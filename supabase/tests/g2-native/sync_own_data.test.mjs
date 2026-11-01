@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { randomUUID, createHash, createHmac } from 'node:crypto';
 import { validateTarget } from './safety.mjs';
-import { extraProposals, membershipsHardened } from '../lib/extra-proposals.mjs';
+import { extraProposals, membershipsHardened, parcelWritesClosed } from '../lib/extra-proposals.mjs';
 
 const work = process.env.G2_NATIVE_WORK;
 assert.ok(work, 'Use the disposable run.sh runner');
@@ -1197,7 +1197,9 @@ test('campaign bootstrap preserves complete historical snapshots atomically and 
   assert.equal(results.filter(result=>result.data.idempotent===false).length,1);
   const renamed=await http(`/rest/v1/parcels?id=eq.${f.parcel}`,{token:f.token,method:'PATCH',
     body:{display_name:'Renamed current parcel',managed_area_m2:5000}});
-  assert.equal(renamed.status,204);
+  // With the G2.6 PARCEL contract the direct write is closed; the rename then happens server-side.
+  assert.equal(renamed.status,parcelWritesClosed()?403:204);
+  if(parcelWritesClosed()) sql(`UPDATE public.parcels SET display_name='Renamed current parcel',managed_area_m2=5000 WHERE id='${f.parcel}';`);
   const restored=await readCampaign(f);assert.equal(restored.status,200,JSON.stringify(restored.data));
   assert.equal(restored.data.campaign.snapshot_format,1);assert.equal(restored.data.campaign.status,'CLOSED');
   assert.equal(restored.data.campaign.start_date,'2026-01-01');assert.equal(restored.data.campaign.end_date,'2026-06-30');
@@ -1319,7 +1321,9 @@ test('parcel bootstrap preserves all agronomy fields and exact instants with ato
   assert.equal(read.data.memberships[0].valid_until,null);
   const edit=await http(`/rest/v1/parcels?id=eq.${p.id}`,{token:f.token,method:'PATCH',
     body:{display_name:'Later name',version:2,source_imported_at:'2026-02-01T00:00:00Z'}});
-  assert.equal(edit.status,204,JSON.stringify(edit.data));
+  assert.equal(edit.status,parcelWritesClosed()?403:204,JSON.stringify(edit.data));
+  // The exact-instant trigger is still exercised by the same typed edit made server-side.
+  if(parcelWritesClosed()) sql(`UPDATE public.parcels SET display_name='Later name',version=2,source_imported_at='2026-02-01T00:00:00Z' WHERE id='${p.id}';`);
   const replay=await createParcel(f,operation);assert.equal(replay.status,200);assert.equal(replay.data.remote_version,1);
   const current=await readParcel(f);assert.equal(current.data.parcel.display_name,'Later name');
   assert.equal(current.data.parcel.source_imported_at_exact,null);
