@@ -15,11 +15,13 @@ g26_sanitize() {
 
 # g26_diagnostics <workdir> <server_pid|empty> <label>
 g26_diagnostics() {
-  local work="$1" pid="$2" label="$3"
+  local work="$1" pid="$2" label="$3" rc
+  # Runs from an EXIT trap under `set -e`: a failing probe must not abort the evidence itself.
+  set +e +o pipefail
   echo "::group::$label sanitized diagnostics"
   if [[ -n "$pid" ]]; then
     if kill -0 "$pid" 2>/dev/null; then echo "fixture process: running"; else
-      wait "$pid" 2>/dev/null; echo "fixture process: exited (status $?)"; fi
+      wait "$pid" 2>/dev/null; rc=$?; echo "fixture process: exited (status $rc)"; fi
   fi
   for log in server.log start.log instrument.out; do
     if [[ -s "$work/$log" ]]; then
