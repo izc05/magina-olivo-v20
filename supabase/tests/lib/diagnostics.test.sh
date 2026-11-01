@@ -22,4 +22,16 @@ done
 # Useful evidence survives.
 grep -qF '/auth/v1/admin/users: 502' <<<"$clean"
 grep -qF 'AssertionError' <<<"$clean"
+# The report survives a fixture that already exited with an error, as in an EXIT trap under set -e.
+work="$(mktemp -d)"
+printf '%s\n' "$raw" > "$work/server.log"
+( exit 3 ) & dead=$!
+sleep 1
+# Same shell as the runner's trap (the fixture is its child), still under set -e here.
+g26_diagnostics "$work" "$dead" canary > "$work/report"
+report="$(cat "$work/report")"
+rm -rf -- "$work"
+grep -qF 'fixture process: exited (status 3)' <<<"$report" || { echo 'missing exit status' >&2; exit 1; }
+grep -qF '/auth/v1/admin/users: 502' <<<"$report" || { echo 'missing evidence' >&2; exit 1; }
+if grep -qF -- "$jwt" <<<"$report"; then echo 'LEAK in report' >&2; exit 1; fi
 echo 'diagnostics sanitizer: ok'
