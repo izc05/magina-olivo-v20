@@ -13,7 +13,7 @@ server_pid=''
 cleanup() {
   local status=$?
   # Evidence first, while the fixture state is still observable; only the redacted view is printed.
-  if [[ $status -ne 0 ]]; then g26_diagnostics "$work" "$server_pid" "$(basename "$(dirname "$0")")"; fi
+  if [[ $status -ne 0 ]]; then g26_diagnostics "$work" "$server_pid" "$(basename "$(dirname "$0")")" "$project"; fi
   if [[ -n "$server_pid" ]]; then
     kill "$server_pid" >/dev/null 2>&1 || true
     wait "$server_pid" 2>/dev/null || true
