@@ -44,4 +44,13 @@ class CampaignHttpsScopeTest {
         HttpsDeliveryRpcTransport.RpcScope.entries.filter { it != HttpsDeliveryRpcTransport.RpcScope.FARM_SEND }
             .forEach { assertFalse(it.name, "create_reserved_farm" in it.allowedNames) }
     }
+
+    @Test fun parcelSendScopeAllowsOnlyParcelCreateAndReceipt() {
+        val names = HttpsDeliveryRpcTransport.RpcScope.PARCEL_SEND.allowedNames
+        assertEquals(setOf("create_own_parcel", "check_sync_operations"), names)
+        listOf("create_reserved_farm", "create_own_workspace", "update_own_campaign_v1", "sync_own_delivery_v2")
+            .forEach { assertFalse(it, it in names) }
+        HttpsDeliveryRpcTransport.RpcScope.entries.filter { it != HttpsDeliveryRpcTransport.RpcScope.PARCEL_SEND }
+            .forEach { assertFalse(it.name, "create_own_parcel" in it.allowedNames) }
+    }
 }

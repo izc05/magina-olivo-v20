@@ -37,6 +37,7 @@ internal class HttpsDeliveryRpcTransport(
         PARENT_RECEIVE(setOf(ParentReceiveCoordinator.RPC)),
         WORKSPACE_SEND(WorkspaceSendCoordinator.NAMES),
         FARM_SEND(FarmSendCoordinator.NAMES),
+        PARCEL_SEND(ParcelSendCoordinator.NAMES),
     }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =

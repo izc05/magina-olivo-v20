@@ -174,8 +174,19 @@ class ArchitectureBoundaryTest {
             ".dispatch(", "create_own_parcel", "create_own_campaign").forEach { forbidden ->
             assertFalse("FARM send probe must not send other entities: $forbidden", farmText.contains(forbidden))
         }
+        // G2.6 PARCEL send: creates only PARCEL aggregates (with their creation-time memberships).
+        val parcelProbe = all.filter { it.name == "ParcelSendHttpsEphemeralTest.kt" }
+        assertEquals("Exactly one isolated PARCEL send HTTPS probe", 1, parcelProbe.size)
+        assertTrue(parcelProbe.single().invariantSeparatorsPath.contains("/androidTestDev/"))
+        val parcelText = parcelProbe.single().readText()
+        assertTrue(parcelText.contains("ParcelSendCoordinator("))
+        assertTrue(parcelText.contains("RpcScope.PARCEL_SEND"))
+        listOf("WorkManager", "CampaignCasCoordinator(", "RpcScope.CAMPAIGN_CAS", "RpcScope.DELIVERY",
+            ".dispatch(", "create_own_campaign", "update_own_parcel", "delete_own_parcel").forEach { forbidden ->
+            assertFalse("PARCEL send probe must not send other entities: $forbidden", parcelText.contains(forbidden))
+        }
         all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe || it in campaignProbe ||
-            it in parentProbe || it in workspaceProbe || it in farmProbe }.forEach { file ->
+            it in parentProbe || it in workspaceProbe || it in farmProbe || it in parcelProbe }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +
@@ -344,7 +355,7 @@ class ArchitectureBoundaryTest {
         )
     }
 
-    /** G2.6 receivers and the WORKSPACE/FARM senders are explicit QA entry points: no app source may construct them yet. */
+    /** G2.6 receivers and the WORKSPACE/FARM/PARCEL senders are explicit QA entry points: no app source may construct them yet. */
     @Test
     fun g26ReceiversStayUnwiredFromAppAndScheduler() {
         val app = sequenceOf(File("src"), File("app/src")).firstOrNull { it.exists() }
@@ -355,7 +366,7 @@ class ArchitectureBoundaryTest {
                     .any { it in file.invariantSeparatorsPath }
         }.toList()
         listOf("ParentReceiveCoordinator", "CampaignReceiveCoordinator", "WorkspaceSendCoordinator",
-            "FarmSendCoordinator").forEach { receiver ->
+            "FarmSendCoordinator", "ParcelSendCoordinator").forEach { receiver ->
             appSources.filterNot { it.name == "$receiver.kt" }.forEach { file ->
                 assertFalse("${file.name} must not construct $receiver", file.readText().contains("$receiver("))
             }

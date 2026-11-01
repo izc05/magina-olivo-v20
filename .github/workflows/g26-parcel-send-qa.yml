@@ -1,0 +1,100 @@
+name: G2.6 PARCEL send QA isolated
+
+on:
+  pull_request:
+    branches: [codex/g26-farm-send]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parcel-send-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact source SHA
+        run: git rev-parse HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.4.1'
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: '2.120.0'
+      - name: Failure diagnostics never print secrets
+        run: bash supabase/tests/lib/diagnostics.test.sh
+      - name: SQL PARCEL aggregate create, receipt hash and isolation on disposable Supabase
+        run: bash supabase/tests/g26-parcel-send/run.sh
+      - name: JVM envelopes, parser, transport scopes and production boundary
+        run: |
+          gradle --no-daemon --max-workers=1 --no-parallel :app:testDevDebugUnitTest \
+            --tests '*ParcelCreateEnvelopeTest' --tests '*FarmCreateEnvelopeTest' --tests '*WorkspaceCreateEnvelopeTest' \
+            --tests '*ParentGraphParserTest' --tests '*CampaignCasRpcAdapterTest' \
+            --tests '*CampaignHttpsScopeTest' --tests '*ArchitectureBoundaryTest'
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+      - name: Real HTTPS A -> Supabase -> B PARCEL send on disposable API 35
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash supabase/tests/g26-parcel-send-android/run.sh
+
+  # #799, #798 and #797 HTTPS probes run back to back on one emulator: the sequence that exposed the
+  # 40-character project ID truncation must keep passing.
+  farm-workspace-parent-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact source SHA
+        run: git rev-parse HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.4.1'
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: '2.120.0'
+      - name: SQL FARM, WORKSPACE send and parent receive contracts on disposable Supabase
+        run: bash supabase/tests/g26-farm-send/run.sh && bash supabase/tests/g26-workspace-send/run.sh && bash supabase/tests/g26-parent-receive/run.sh
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+      - name: '#799, #798 then #797 real HTTPS probes, sequential on one disposable API 35'
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash supabase/tests/g26-farm-send-android/run.sh && bash supabase/tests/g26-workspace-send-android/run.sh && bash supabase/tests/g26-parent-receive-android/run.sh
