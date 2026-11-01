@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
+source supabase/tests/lib/diagnostics.sh
 command -v supabase >/dev/null
 command -v docker >/dev/null
 command -v openssl >/dev/null
@@ -10,7 +11,13 @@ work="$(mktemp -d)"
 project="magina-g26-parents-https-$(date +%s)-$$"
 server_pid=''
 cleanup() {
-  if [[ -n "$server_pid" ]]; then kill "$server_pid" >/dev/null 2>&1 || true; fi
+  local status=$?
+  # Evidence first, while the fixture state is still observable; only the redacted view is printed.
+  if [[ $status -ne 0 ]]; then g26_diagnostics "$work" "$server_pid" "$(basename "$(dirname "$0")")"; fi
+  if [[ -n "$server_pid" ]]; then
+    kill "$server_pid" >/dev/null 2>&1 || true
+    wait "$server_pid" 2>/dev/null || true
+  fi
   supabase stop --workdir "$work" --project-id "$project" --no-backup >/dev/null 2>&1 || true
   rm -f -- "$work/status.json" "$work/tls-key.pem" "$work/tls-cert.pem" \
     "$work/server.log" "$work/start.log" "$work/instrument.out"
@@ -25,10 +32,13 @@ config=config.replace(/^major_version = \d+$/m,'major_version = 17');
 writeFileSync(file,config);
 JS
 if ! supabase start --workdir "$work" --exclude studio,postgres-meta,imgproxy,realtime,edge-runtime,logflare,vector,supavisor > "$work/start.log" 2>&1; then
-  echo 'Disposable Supabase startup failed; private log retained in temporary directory' >&2
+  echo 'Disposable Supabase startup failed; sanitized diagnostics follow; raw logs are deleted' >&2
   exit 1
 fi
 supabase status --workdir "$work" --output json > "$work/status.json"
+if (ss -ltn 2>/dev/null || true) | grep -qE ':54443[[:space:]]'; then
+  echo 'Fixture port 54443 is already in use' >&2; exit 1
+fi
 openssl req -x509 -newkey rsa:2048 -nodes -keyout "$work/tls-key.pem" -out "$work/tls-cert.pem" \
   -subj '/CN=10.0.2.2' -addext 'subjectAltName=IP:10.0.2.2' -days 1 >/dev/null 2>&1
 G26_WORK="$work" G26_PROJECT="$project" G26_TLS_KEY="$work/tls-key.pem" \
@@ -38,7 +48,7 @@ server_pid=$!
 for attempt in $(seq 1 60); do
   if grep -q G26_HTTPS_READY "$work/server.log"; then break; fi
   if ! kill -0 "$server_pid" 2>/dev/null; then
-    echo 'Disposable HTTPS fixture failed; private log retained in temporary directory' >&2
+    echo 'Disposable HTTPS fixture failed; sanitized diagnostics follow; raw logs are deleted' >&2
     exit 1
   fi
   sleep 1

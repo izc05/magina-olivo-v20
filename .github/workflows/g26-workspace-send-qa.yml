@@ -31,6 +31,8 @@ jobs:
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
         with:
           version: '2.120.0'
+      - name: Failure diagnostics never print secrets
+        run: bash supabase/tests/lib/diagnostics.test.sh
       - name: SQL WORKSPACE create, receipt hash and isolation on disposable Supabase
         run: bash supabase/tests/g26-workspace-send/run.sh
       - name: JVM envelope, parser, transport scopes and production boundary
