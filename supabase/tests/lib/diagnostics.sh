@@ -31,7 +31,9 @@ g26_diagnostics() {
   done
   echo "--- listeners on fixture and Supabase ports ---"
   (ss -ltnp 2>/dev/null || true) | grep -E ':(54443|5432[0-9]|5433[0-9])[[:space:]]' | g26_sanitize || echo "(none)"
+  # Container names and states carry no secrets; long-string redaction would hide the project ID.
+  [[ -n "${4:-}" ]] && echo "expected database container: supabase_db_$4"
   echo "--- supabase containers ---"
-  (docker ps -a --format '{{.Names}} {{.Status}}' 2>/dev/null || true) | grep '^supabase_' | g26_sanitize || echo "(none)"
+  (docker ps -a --format '{{.Names}} {{.Status}}' 2>/dev/null || true) | grep -E '^supabase_[A-Za-z0-9_.-]+ [A-Za-z0-9 ()]+$' || echo "(none)"
   echo "::endgroup::"
 }
