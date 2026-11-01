@@ -9,7 +9,7 @@ import { join } from 'node:path';
 
 const work = process.env.G26_WORK;
 const project = process.env.G26_PROJECT;
-assert.match(project ?? '', /^magina-g26-ws-send-https-[0-9]+-[0-9]+$/);
+assert.match(project ?? '', /^mg26-ws-https-[0-9]+-[0-9]+$/);
 const status = JSON.parse(readFileSync(join(work, 'status.json'), 'utf8'));
 const api = new URL(status.API_URL);
 assert.equal(api.protocol, 'http:');

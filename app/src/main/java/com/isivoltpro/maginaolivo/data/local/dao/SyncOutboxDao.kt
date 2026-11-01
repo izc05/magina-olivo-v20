@@ -114,6 +114,37 @@ interface SyncOutboxDao {
     suspend fun blockWorkspaceCreate(operationId: UUID, accountId: String,
         payloadJson: String, reason: String, nowEpochMillis: Long): Int
 
+    /** G2.6 FARM create: binds the app's unbound CREATE marker once; farm_id enables G1b consent gating. */
+    @Query("""
+        UPDATE sync_outbox SET account_id = :accountId, farm_id = :farmId, payload_json = :payloadJson,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'FARM' AND operation = 'CREATE' AND entity_id = :farmId
+          AND status = 'PENDING' AND attempt_count = 0 AND payload_json IS NULL AND account_id IS NULL
+    """)
+    suspend fun stageFarmCreate(operationId: UUID, accountId: String, farmId: UUID,
+        payloadJson: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'FAILED', attempt_count = attempt_count + 1,
+            last_error_code = 'OUTCOME_UNKNOWN', last_error_message = NULL,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'FARM' AND operation = 'CREATE'
+          AND status IN ('PENDING', 'FAILED') AND account_id = :accountId
+          AND payload_json = :payloadJson
+    """)
+    suspend fun markFarmCreateUnknown(operationId: UUID, accountId: String,
+        payloadJson: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = :reason,
+            last_error_message = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'FARM' AND operation = 'CREATE'
+          AND status IN ('PENDING', 'FAILED') AND account_id = :accountId
+          AND payload_json = :payloadJson
+    """)
+    suspend fun blockFarmCreate(operationId: UUID, accountId: String,
+        payloadJson: String, reason: String, nowEpochMillis: Long): Int
+
     /** Keeps the old intent blocked and auditable; only an explicit decision can retire its blocker. */
     @Query("""
         UPDATE sync_outbox SET last_error_code = :resolvedReason, updated_at = :nowEpochMillis

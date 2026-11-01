@@ -35,4 +35,13 @@ class CampaignHttpsScopeTest {
         HttpsDeliveryRpcTransport.RpcScope.entries.filter { it != HttpsDeliveryRpcTransport.RpcScope.WORKSPACE_SEND }
             .forEach { assertFalse(it.name, "create_own_workspace" in it.allowedNames) }
     }
+
+    @Test fun farmSendScopeAllowsOnlyReservationFarmCreateAndReceipt() {
+        val names = HttpsDeliveryRpcTransport.RpcScope.FARM_SEND.allowedNames
+        assertEquals(setOf("reserve_local_farm_g1c", "create_reserved_farm", "check_sync_operations"), names)
+        listOf("create_own_parcel", "create_own_workspace", "update_own_campaign_v1", "sync_own_delivery_v2")
+            .forEach { assertFalse(it, it in names) }
+        HttpsDeliveryRpcTransport.RpcScope.entries.filter { it != HttpsDeliveryRpcTransport.RpcScope.FARM_SEND }
+            .forEach { assertFalse(it.name, "create_reserved_farm" in it.allowedNames) }
+    }
 }
