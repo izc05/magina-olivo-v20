@@ -2,7 +2,7 @@ name: G2.6 PARCEL mutation Android QA isolated
 
 on:
   pull_request:
-    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android]
+    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql]
   workflow_dispatch:
 
 permissions:
@@ -48,7 +48,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm || true
-      - name: Room PARCEL mutation sender and producer with #797-#800 Room regressions on disposable API 35
+      - name: Room PARCEL mutation sender, 2c-2 v2 receiver and memory, with #797-#807 Room regressions on disposable API 35
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 35

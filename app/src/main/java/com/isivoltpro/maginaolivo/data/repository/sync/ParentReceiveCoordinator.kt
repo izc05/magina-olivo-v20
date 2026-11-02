@@ -28,7 +28,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 
-internal enum class ParentReceiveOutcome { IMPORTED, ALREADY_CURRENT, CONFLICT, NOT_AUTHORIZED, OFFLINE, REJECTED }
+internal enum class ParentReceiveOutcome { IMPORTED, ALREADY_CURRENT, CONFLICT, NOT_AUTHORIZED, OFFLINE, REJECTED,
+    /** v2 only: the graph exceeds the contract (rows or bytes). Visible, never clipped, nothing written. */
+    TOO_LARGE }
 internal enum class ParentKind { WORKSPACE, FARM, PARCEL, MEMBERSHIP }
 internal data class ParentConflict(val kind: ParentKind, val id: UUID, val reason: String)
 

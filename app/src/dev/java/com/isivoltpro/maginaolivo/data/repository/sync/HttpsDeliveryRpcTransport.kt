@@ -30,11 +30,13 @@ internal class HttpsDeliveryRpcTransport(
     private val scope: RpcScope = RpcScope.DELIVERY,
 ) : DeliveryRpcTransport {
 
-    internal enum class RpcScope(val allowedNames: Set<String>) {
+    internal enum class RpcScope(val allowedNames: Set<String>, val maxResponseBytes: Int = MAX_RESPONSE_BYTES) {
         DELIVERY(DeliveryRpcAdapter.NAMES),
         CAMPAIGN_CAS(CampaignCasRpcAdapter.NAMES),
         CAMPAIGN_RECEIVE(setOf("get_own_campaign_receive_v1")),
         PARENT_RECEIVE(setOf(ParentReceiveCoordinator.RPC)),
+        /** 2c-2: the v2 parents graph has its own bound, shared with the SQL contract and the parser. */
+        PARENT_RECEIVE_V2(setOf(ParentReceiveV2Coordinator.RPC), PARENT_GRAPH_V2_MAX_BYTES),
         WORKSPACE_SEND(WorkspaceSendCoordinator.NAMES),
         FARM_SEND(FarmSendCoordinator.NAMES),
         PARCEL_SEND(ParcelSendCoordinator.NAMES),
@@ -60,19 +62,7 @@ internal class HttpsDeliveryRpcTransport(
 
                 val status = connection.responseCode
                 val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-                val output = ByteArrayOutputStream()
-                stream?.use { input ->
-                    val buffer = ByteArray(4096)
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        if (output.size() + count > MAX_RESPONSE_BYTES) {
-                            throw DeliveryRpcFailure(DeliveryRpcError.PROTOCOL, status)
-                        }
-                        output.write(buffer, 0, count)
-                    }
-                }
-                DeliveryRpcResponse(status, output.toString("UTF-8"))
+                DeliveryRpcResponse(status, readBounded(stream, scope.maxResponseBytes, status))
             } catch (_: IOException) {
                 // The outcome is unknown: the server may have committed before the cut.
                 throw DeliveryRpcFailure(DeliveryRpcError.NETWORK)
@@ -81,7 +71,28 @@ internal class HttpsDeliveryRpcTransport(
             }
         }
 
-    private companion object {
+    internal companion object {
         const val MAX_RESPONSE_BYTES = 1_048_576
+
+        /**
+         * Reads at most [limit] bytes of the real stream, whatever Content-Length says (missing or
+         * wrong). One byte more fails as RESPONSE_TOO_LARGE before anything is parsed.
+         */
+        fun readBounded(stream: java.io.InputStream?, limit: Int, status: Int): String {
+            val output = ByteArrayOutputStream()
+            stream?.use { input ->
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (output.size() + count > limit) {
+                        throw DeliveryRpcFailure(DeliveryRpcError.PROTOCOL, status,
+                            reason = ParentReceiveV2Coordinator.RESPONSE_TOO_LARGE)
+                    }
+                    output.write(buffer, 0, count)
+                }
+            }
+            return output.toString("UTF-8")
+        }
     }
 }
