@@ -60,7 +60,7 @@ class CachedOilMarketFeed(
             ) {
                 return@withContext
             }
-            val workspaceId = (workspaces.ensureLocalWorkspace() as? AppResult.Success)?.value ?: return@withContext
+            val workspaceId = (workspaces.activeWorkspace() as? AppResult.Success)?.value ?: return@withContext
             val raw = try {
                 withTimeout(timeoutMillis) { market.andaluciaJson(weeks) }
             } catch (cancelled: CancellationException) {

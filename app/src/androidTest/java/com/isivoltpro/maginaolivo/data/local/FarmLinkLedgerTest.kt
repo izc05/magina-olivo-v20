@@ -5,6 +5,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.isivoltpro.maginaolivo.data.repository.AndroidFarmLinkLedger
 import com.isivoltpro.maginaolivo.feature.accountlink.FarmChoice
 import com.isivoltpro.maginaolivo.feature.accountlink.FarmLinkConsent
+import com.isivoltpro.maginaolivo.feature.accountlink.FarmLinkReconsent
+import com.isivoltpro.maginaolivo.feature.accountlink.FarmLinkRevocation
 import java.io.File
 import java.io.IOException
 import java.time.Instant
@@ -64,5 +66,50 @@ class FarmLinkLedgerTest {
         val before=file.readBytes()
         try { store.append(consent(farms=listOf(farm.copy(id=UUID.randomUUID()))).copy(textVersion=999));fail("Unknown consent text") } catch (_:IOException) { }
         assertArrayEquals(before,file.readBytes())
+    }
+
+    private fun revocation(subject: String = "isolated-project|user-a") =
+        FarmLinkRevocation(UUID.randomUUID(), subject, farm.id, Instant.parse("2026-10-20T00:00:00Z"))
+    private fun renewal(after: UUID, at: Instant = Instant.parse("2026-10-21T00:00:00Z")) =
+        FarmLinkReconsent(UUID.randomUUID(), "isolated-project|user-a", farm.id, after, at)
+
+    @Test fun renewalIsOrderedByTheLedgerAndSurvivesRestart() {
+        val store = AndroidFarmLinkLedger(file); store.append(consent())
+        val revoked = store.revoke(revocation()).revocations.single()
+        assertEquals(1L, revoked.sequence)
+        // A device clock that went backwards does not matter: the sequence orders events.
+        val renewed = store.reconsent(renewal(revoked.operationId, Instant.parse("2026-01-01T00:00:00Z")))
+        assertEquals(setOf(farm.id), renewed.activeFarmIds)
+        val reopened = AndroidFarmLinkLedger(file).read()!!
+        assertEquals(2L, reopened.reconsents.single().sequence)
+        assertEquals(reopened.reconsents.single(), reopened.reconsentAfter(revoked.operationId))
+        val again = store.revoke(revocation())
+        assertEquals(3L, again.revocations.last().sequence)
+        assertEquals(setOf(farm.id), AndroidFarmLinkLedger(file).read()!!.revokedFarmIds)
+        assertNull(AndroidFarmLinkLedger(file).read()!!.reconsentAfter(revoked.operationId))
+    }
+
+    @Test fun renewalNeedsTheRevocationCurrentlyInForce() {
+        val store = AndroidFarmLinkLedger(file); store.append(consent())
+        try { store.reconsent(renewal(UUID.randomUUID())); fail("Nothing to renew") } catch (_: IOException) { }
+        val revoked = store.revoke(revocation()).revocations.single()
+        try { store.reconsent(renewal(UUID.randomUUID())); fail("Must name the revocation in force") } catch (_: IOException) { }
+        try { store.reconsent(renewal(revoked.operationId).copy(subject = "isolated-project|user-b")); fail("Other account") } catch (_: IOException) { }
+        val entry = renewal(revoked.operationId)
+        store.reconsent(entry); val before = file.readBytes()
+        assertEquals("Exact retry is idempotent", 1, store.reconsent(entry).reconsents.size)
+        assertArrayEquals(before, file.readBytes())
+        try { store.reconsent(renewal(revoked.operationId)); fail("Already renewed") } catch (_: IOException) { }
+    }
+
+    @Test fun formatTwoLedgerIsReadAndUpgradedWithoutLosingTheRevocation() {
+        val store = AndroidFarmLinkLedger(file); store.append(consent())
+        val revoked = store.revoke(revocation()).revocations.single()
+        assertTrue(file.readText().contains("\\\"format\\\":2"))
+        store.reconsent(renewal(revoked.operationId))
+        val upgraded = AndroidFarmLinkLedger(file).read()!!
+        assertTrue(file.readText().contains("\\\"format\\\":3"))
+        assertEquals(revoked, upgraded.revocations.single())
+        assertEquals(setOf(farm.id), upgraded.activeFarmIds)
     }
 }

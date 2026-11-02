@@ -89,6 +89,10 @@ data class AppCompositionRoot(
                 dispatchers = defaults.dispatchers,
                 regionalContext = defaults.regionalContext,
                 accountRepository = account,
+                issuer = BuildConfig.AUTH_PROJECT_URL,
+                authorizationRemote = if (BuildConfig.AUTH_PROJECT_URL.startsWith("https://") && BuildConfig.AUTH_PUBLIC_KEY.isNotBlank())
+                    com.isivoltpro.maginaolivo.data.repository.HttpsWorkspaceAuthorizationRemote(BuildConfig.AUTH_PROJECT_URL, BuildConfig.AUTH_PUBLIC_KEY)
+                else null,
             )
             val farmRepository = OfflineFirstFarmRepository(
                 database = database,
@@ -162,6 +166,7 @@ data class AppCompositionRoot(
                 defaults.idGenerator,
                 defaults.dispatchers,
                 workspaceRepository = workspaceRepository,
+                writeScope = farmLinks,
             )
             val machineRepository = OfflineFirstMachineRepository(
                 database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,

@@ -62,7 +62,7 @@ class LocalLinkBackupTest {
             copy.rawQuery("SELECT id,version,sync_status FROM farms", null).use { c ->
                 assertTrue(c.moveToFirst()); assertEquals("f", c.getString(0)); assertEquals(7, c.getInt(1)); assertEquals("PENDING", c.getString(2))
             }
-            assertEquals(26, copy.version)
+            assertEquals(MaginaOlivoDatabase.VERSION, copy.version)
             copy.rawQuery("SELECT net_grams,ticket_number FROM deliveries WHERE id='d'", null).use { c ->
                 assertTrue(c.moveToFirst()); assertEquals(3500000L,c.getLong(0)); assertEquals("T-101",c.getString(1))
             }

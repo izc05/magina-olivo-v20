@@ -8,5 +8,23 @@
                 <data android:scheme="${applicationId}" android:host="auth" android:path="/callback" />
             </intent-filter>
         </activity>
+        <!--
+          B2 gate only: a second OS process that competes for the delivery dispatch lease.
+          Dev flavor exclusively, never exported, no HTTP, no database. See
+          DeliveryDispatchLeaseProbeService.
+        -->
+        <service
+            android:name="com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLeaseProbeService"
+            android:process=":leaseprobe"
+            android:exported="false" />
+        <!--
+          B1 gate only: the process that gets killed. It holds the dispatch lease and the open
+          database so the host can send a real kill -9 to a live owner. Dev flavor exclusively,
+          never exported, no HTTP. See DeliveryDispatchDeathProbeService.
+        -->
+        <service
+            android:name="com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchDeathProbeService"
+            android:process=":deathprobe"
+            android:exported="false" />
     </application>
 </manifest>

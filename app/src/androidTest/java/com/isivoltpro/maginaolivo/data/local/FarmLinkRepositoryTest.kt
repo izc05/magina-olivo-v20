@@ -7,6 +7,7 @@ import com.isivoltpro.maginaolivo.feature.account.*
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineStart
@@ -63,8 +64,11 @@ class FarmLinkRepositoryTest {
     @Test fun logoutAndOtherAccountCannotReadPreviewOrReassignAnyFarm()=runBlocking {
         seed();val repository=repo();val selected=repository.choices().take(1)
         val id=account.state.value.userId!!;repository.consent(id,selected,true)
+        assertTrue(repository.isFarmConsented(selected.single().id, id))
         account.logout(false);assertFalse(repository.accessAllowed())
+        assertFalse("A stale caller identity cannot authorize a logged-out device", repository.isFarmConsented(selected.single().id, id))
         account.login("b@example.test","password42",true);assertFalse(repository.accessAllowed())
+        assertFalse("A stale explicit userId must not bypass the current account", repository.isFarmConsented(selected.single().id, id))
         try { repository.choices();fail("Other account must not see farm names") } catch (_:IOException) { }
         try { repository.consent(id,selected,true);fail("Stale A selection must not bind B") } catch (_:IOException) { }
         assertEquals(1,store.read()!!.consents.size)
@@ -106,6 +110,206 @@ class FarmLinkRepositoryTest {
         val auth=AccountRepository(api,broken)
         assertFalse(FarmLinkDeviceAccess.runIfAllowed(store,auth,"fixture-project",false) { fail("No private access with broken identity");true })
     }
+
+    @Test fun g23OutboxRespectsG1bConsentAndBlocksOnRevocation()=runBlocking {
+        seed()
+        val repository = repo()
+        val id = account.state.value.userId!!
+        val choices = repository.choices()
+        val consentedFarm = choices[0]
+        val unconsentedFarm = choices[1]
+
+        // Only consentedFarm is consented
+        repository.consent(id, listOf(consentedFarm), true)
+        assertTrue(repository.isFarmConsented(consentedFarm.id))
+        assertFalse(repository.isFarmConsented(unconsentedFarm.id))
+
+        // Enqueue operation for consented farm
+        val opConsentedId = UUID.randomUUID()
+        database.syncOutboxDao().insert(
+            com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+                id = opConsentedId,
+                entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+                entityId = UUID.randomUUID(),
+                operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+                payloadVersion = 1,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING,
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now(),
+                accountId = id.toString(),
+                farmId = consentedFarm.id,
+                payloadJson = "{\"test\":true}"
+            )
+        )
+
+        // Enqueue operation for unconsented farm
+        val opUnconsentedId = UUID.randomUUID()
+        database.syncOutboxDao().insert(
+            com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+                id = opUnconsentedId,
+                entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+                entityId = UUID.randomUUID(),
+                operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+                payloadVersion = 1,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING,
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now(),
+                accountId = id.toString(),
+                farmId = unconsentedFarm.id,
+                payloadJson = "{\"test\":false}"
+            )
+        )
+
+        // Also insert FAILED and PROCESSING operations for consented farm
+        val opFailedId = UUID.randomUUID()
+        database.syncOutboxDao().insert(
+            com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+                id = opFailedId,
+                entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+                entityId = UUID.randomUUID(),
+                operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+                payloadVersion = 1,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.FAILED,
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now(),
+                accountId = id.toString(),
+                farmId = consentedFarm.id,
+                payloadJson = "{\"test\":true}"
+            )
+        )
+        val opProcessingId = UUID.randomUUID()
+        database.syncOutboxDao().insert(
+            com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+                id = opProcessingId,
+                entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+                entityId = UUID.randomUUID(),
+                operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+                payloadVersion = 1,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PROCESSING,
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now(),
+                accountId = id.toString(),
+                farmId = consentedFarm.id,
+                payloadJson = "{\"test\":true}"
+            )
+        )
+
+        val pendingConsented = database.syncOutboxDao().listPendingForFarm(consentedFarm.id)
+        assertEquals(2, pendingConsented.size) // PENDING + FAILED
+
+        // Revoke consent for consented farm -> PENDING, FAILED and PROCESSING operations become BLOCKED
+        repository.revokeConsentForFarm(consentedFarm.id)
+        assertFalse("Revoked consent must be unavailable immediately", repository.isFarmConsented(consentedFarm.id))
+        val restored = LocalFarmLinkRepository(context, database, account, "fixture-project", AndroidFarmLinkLedger(file))
+        assertFalse("Revocation must remain effective after reopening the ledger", restored.isFarmConsented(consentedFarm.id))
+        assertEquals(1, restored.state.value.ledger!!.revocations.size)
+        assertEquals(setOf(consentedFarm.id), restored.state.value.ledger!!.revokedFarmIds)
+        // Repeated revocation must not append another operation or alter the original receipt.
+        repository.revokeConsentForFarm(consentedFarm.id)
+        assertEquals(1, AndroidFarmLinkLedger(file).read()!!.revocations.size)
+        val afterRevocationPending = database.syncOutboxDao().findById(opConsentedId)
+        val afterRevocationFailed = database.syncOutboxDao().findById(opFailedId)
+        val afterRevocationProcessing = database.syncOutboxDao().findById(opProcessingId)
+        assertNotNull(afterRevocationPending)
+        assertNotNull(afterRevocationFailed)
+        assertNotNull(afterRevocationProcessing)
+        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED, afterRevocationPending!!.status)
+        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED, afterRevocationFailed!!.status)
+        assertEquals(com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED, afterRevocationProcessing!!.status)
+
+        // Ready queue for account excludes BLOCKED items
+        val ready = database.syncOutboxDao().listReadyForAccount(id.toString(), System.currentTimeMillis())
+        assertTrue("Ready operations must not contain blocked consented farm operations", ready.none { it.farmId == consentedFarm.id })
+    }
+
+    @Test fun g23RevocationInAnotherRepositoryInstanceInvalidatesCachedConsent()=runBlocking {
+        seed()
+        val first = repo()
+        val userId = account.state.value.userId!!
+        val selected = first.choices().first()
+        first.consent(userId, listOf(selected), true)
+        assertTrue(first.isFarmConsented(selected.id))
+
+        // A second instance can revoke the same on-disk ledger, e.g. after account
+        // repository recreation. A cached grant in the first instance must not survive.
+        val second = LocalFarmLinkRepository(context, database, account, "fixture-project", AndroidFarmLinkLedger(file))
+        second.revokeConsentForFarm(selected.id)
+        assertFalse("An outdated repository must reread durable revocation before authorizing", first.isFarmConsented(selected.id))
+        assertFalse(LocalFarmLinkRepository(context, database, account, "fixture-project", AndroidFarmLinkLedger(file)).isFarmConsented(selected.id))
+    }
+
+    /**
+     * Two locally persisted snapshots of one Pesada must not be sent out of order.
+     * An ambiguous group waits for G2.4 explicit ACK/rebase instead of dropping
+     * the FAILED payload or letting a new CREATE race the old attempt.
+     */
+    @Test fun g23ReadyQueueQuarantinesAmbiguousAggregateAndKeepsOtherFarmsReady()=runBlocking {
+        seed()
+        val userId = account.state.value.userId!!.toString()
+        val farms = repo().choices()
+        val firstFarm = farms[0].id
+        val independentFarm = farms[1].id
+        val delivery = UUID.randomUUID()
+        val otherDelivery = UUID.randomUUID()
+        val oldOperation = UUID.randomUUID()
+        val newerOperation = UUID.randomUUID()
+        val independentOperation = UUID.randomUUID()
+        val at = java.time.Instant.parse("2026-11-18T08:00:00Z")
+        val older = com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(
+            id = oldOperation,
+            entityType = com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY,
+            entityId = delivery,
+            operation = com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.CREATE,
+            payloadVersion = 1,
+            status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.FAILED,
+            createdAt = at,
+            updatedAt = at,
+            accountId = userId,
+            farmId = firstFarm,
+            payloadJson = "{\"id\":\"$delivery\",\"netGrams\":2500000}",
+        )
+        val newer = older.copy(
+            id = newerOperation,
+            status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING,
+            payloadJson = "{\"id\":\"$delivery\",\"netGrams\":3000000}",
+            updatedAt = at.plusSeconds(10),
+            createdAt = at.plusSeconds(10),
+        )
+        val independent = older.copy(
+            id = independentOperation,
+            entityId = otherDelivery,
+            farmId = independentFarm,
+            payloadJson = "{\"id\":\"$otherDelivery\",\"netGrams\":1000000}",
+            status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.PENDING,
+        )
+        val outbox = database.syncOutboxDao()
+        outbox.insert(older)
+        outbox.insert(newer)
+        outbox.insert(independent)
+
+        val eligible = outbox.listReadyForAccount(userId, at.plusSeconds(20).toEpochMilli())
+        assertEquals(listOf(independentOperation), eligible.map { it.id })
+        assertEquals(listOf(independentOperation), outbox.observeReady(at.plusSeconds(20).toEpochMilli()).first().map { it.id })
+        assertEquals(setOf(oldOperation, newerOperation), outbox.listForEntity(
+            com.isivoltpro.maginaolivo.data.local.model.SyncEntityType.DELIVERY, delivery
+        ).map { it.id }.toSet())
+
+        // Even a single PROCESSING sibling (possibly awaiting ACK) prevents the later
+        // PENDING snapshot from being dispatched.
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='PROCESSING' WHERE id=?",
+            arrayOf(oldOperation.toString()),
+        )
+        assertEquals(listOf(independentOperation), outbox.listReadyForAccount(userId, at.plusSeconds(20).toEpochMilli()).map { it.id })
+
+        // A BLOCKED sibling from revoked consent must not be bypassed either.
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status='BLOCKED' WHERE id=?",
+            arrayOf(oldOperation.toString()),
+        )
+        assertEquals(listOf(independentOperation), outbox.listReadyForAccount(userId, at.plusSeconds(20).toEpochMilli()).map { it.id })
+    }
+
     private fun fingerprint(): String {
         val db=database.openHelper.readableDatabase
         val tables=mutableListOf<String>()

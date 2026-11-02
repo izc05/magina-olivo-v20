@@ -1,4 +1,5 @@
--- Candidate only; not a migration or deployment artifact.
+-- DEV candidate only; not a migration or deployment artifact. A different Supabase
+-- project needs its own reviewed issuer literal before this proposal can be reused.
 -- NO DEPLOY: native JWT/PostgREST and concurrent PostgreSQL validation pending.
 CREATE SCHEMA magina_g1c_private;
 REVOKE ALL ON SCHEMA magina_g1c_private FROM PUBLIC,anon,authenticated;
@@ -40,9 +41,9 @@ BEGIN
  IF (claims->>'exp')::numeric<=extract(epoch FROM now()) THEN
   RAISE EXCEPTION 'reservation denied' USING ERRCODE='42501'; END IF;
  token_issuer:=claims->>'iss';
- IF token_issuer IS NULL OR token_issuer !~ '^https://[^/?#]+/auth/v1$' THEN
+ IF token_issuer IS DISTINCT FROM 'https://zubpicdibqbmewxeurhm.supabase.co/auth/v1' THEN
    RAISE EXCEPTION 'reservation denied' USING ERRCODE='42501'; END IF;
- token_issuer:=regexp_replace(token_issuer,'/auth/v1$','');
+ token_issuer:='https://zubpicdibqbmewxeurhm.supabase.co';
  IF p_request IS NULL OR jsonb_typeof(p_request)<>'object'
  OR (SELECT count(*) FROM jsonb_object_keys(p_request))<>8
  OR NOT p_request ?& ARRAY['payloadVersion','operationId','farmId','localWorkspaceId','consentId','consentTextVersion','manifestSha256','aggregateVersion']

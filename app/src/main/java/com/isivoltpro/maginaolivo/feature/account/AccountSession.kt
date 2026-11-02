@@ -5,6 +5,11 @@ import java.util.UUID
 import kotlinx.coroutines.flow.StateFlow
 
 enum class AccountStatus { UNCONFIGURED, SIGNED_OUT, CHECKING, SIGNED_IN, OFFLINE, EXPIRED, RECOVERY }
+sealed interface WorkspaceSession {
+    data class Authenticated(val accountId: UUID) : WorkspaceSession
+    data object SignedOut : WorkspaceSession
+    data object Expired : WorkspaceSession
+}
 data class AccountState(
     val status: AccountStatus = AccountStatus.SIGNED_OUT,
     val email: String? = null,

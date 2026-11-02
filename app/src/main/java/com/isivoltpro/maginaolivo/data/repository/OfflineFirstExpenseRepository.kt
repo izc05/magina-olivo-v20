@@ -20,14 +20,18 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.PurchaseLine
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.util.UUID
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class OfflineFirstExpenseRepository(
     private val database: MaginaOlivoDatabase,
     private val workspaceRepository: WorkspaceRepository,
@@ -38,68 +42,62 @@ class OfflineFirstExpenseRepository(
     private val costs = DayCostLedger(database, idGenerator)
 
     private val writer = ExpenseLedgerWriter(database, idGenerator)
+    private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
 
     override fun observeAll(): Flow<List<Expense>> =
-        flow {
-            when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
-                is AppResult.Failure -> throw IllegalStateException("active_workspace_unavailable")
-                is AppResult.Success -> emitAll(
-                    database.expenseDao().observeForWorkspace(workspace.value)
-                        .map { rows -> rows.map { it.toDomain() } },
-                )
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(emptyList())
+            } else {
+                database.expenseDao().observeForWorkspace(active)
+                    .map { rows -> rows.map { it.toDomain() } }
             }
         }.flowOn(dispatchers.io)
 
     // #467: UUID-scoped reads first prove that their owner belongs to the active Workspace.
     override fun observeForActivity(activityId: UUID): Flow<List<Expense>> =
-        flow {
-            val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
-                is AppResult.Failure -> return@flow emit(emptyList())
-                is AppResult.Success -> workspace.value
-            }
-            val activity = database.activityDao().findById(activityId)
-            if (activity == null || activity.workspaceId != active) {
-                emit(emptyList())
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(emptyList())
             } else {
-                emitAll(
+                val activity = database.activityDao().findById(activityId)
+                if (activity == null || activity.workspaceId != active) {
+                    flowOf(emptyList())
+                } else {
                     database.expenseDao().observeForActivity(activityId)
-                        .map { rows -> rows.filter { it.workspaceId == active }.map { it.toDomain() } },
-                )
+                        .map { rows -> rows.filter { it.workspaceId == active }.map { it.toDomain() } }
+                }
             }
         }.flowOn(dispatchers.io)
 
     override fun observeForHarvest(harvestId: UUID): Flow<List<Expense>> =
-        flow {
-            val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
-                is AppResult.Failure -> return@flow emit(emptyList())
-                is AppResult.Success -> workspace.value
-            }
-            val harvest = database.harvestDao().findById(harvestId)
-            if (harvest == null || harvest.workspaceId != active) {
-                emit(emptyList())
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(emptyList())
             } else {
-                emitAll(
+                val harvest = database.harvestDao().findById(harvestId)
+                if (harvest == null || harvest.workspaceId != active) {
+                    flowOf(emptyList())
+                } else {
                     database.expenseDao().observeForHarvest(harvestId)
-                        .map { rows -> rows.filter { it.workspaceId == active }.map { it.toDomain() } },
-                )
+                        .map { rows -> rows.filter { it.workspaceId == active }.map { it.toDomain() } }
+                }
             }
         }.flowOn(dispatchers.io)
 
     override fun observe(id: UUID): Flow<Expense?> =
-        flow {
-            val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
-                is AppResult.Failure -> return@flow emit(null)
-                is AppResult.Success -> workspace.value
-            }
-            emitAll(
+        workspaceScope.observe().flatMapLatest { active ->
+            if (active == null) {
+                flowOf(null)
+            } else {
                 combine(
                     database.expenseDao().observeById(id),
                     database.expenseDao().observePurchaseForExpense(id),
                     database.expenseDao().observeItemsForExpense(id),
                 ) { expense, purchase, items ->
                     expense?.takeIf { it.workspaceId == active }?.toDomain(purchase, items)
-                },
-            )
+                }
+            }
         }.flowOn(dispatchers.io)
 
     override suspend fun create(draft: ExpenseDraft): AppResult<UUID> {

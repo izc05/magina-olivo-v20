@@ -11,23 +11,28 @@ import kotlinx.coroutines.flow.map
 /**
  * #615: one boundary for operations initiated from the currently active agricultural experience.
  *
- * Production injects [WorkspaceRepository]. The database fallback keeps low-level repository tests
- * and explicit local workers working without pretending another Workspace is the visual session.
+ * Production injects [WorkspaceRepository]. The low-level fallback is deliberately unavailable:
+ * a global first-row query cannot prove which identity owns an agricultural workspace.
  */
 internal class ActiveWorkspaceScope(
     private val database: MaginaOlivoDatabase,
     private val workspaces: WorkspaceRepository?,
 ) {
     suspend fun resolve(): AppResult<UUID> {
-        if (workspaces != null) return workspaces.ensureLocalWorkspace()
+        if (workspaces != null) {
+            return workspaces.activeWorkspace()
+        }
         val active = database.workspaceDao().findFirstActive()
             ?: return AppResult.Failure(AppError.NotFound("workspace"))
         return AppResult.Success(active.id)
     }
 
     fun observe(): Flow<UUID?> =
-        workspaces?.observeLocalWorkspace()
-            ?: database.workspaceDao().observeFirstActive().map { it?.id }
+        if (workspaces != null) {
+            workspaces.observeLocalWorkspace()
+        } else {
+            database.workspaceDao().observeFirstActive().map { it?.id }
+        }
 
     suspend fun mismatch(workspaceId: UUID): AppResult.Failure? =
         when (val active = resolve()) {

@@ -376,7 +376,8 @@ fun AppNavigation(
                 com.isivoltpro.maginaolivo.feature.account.AccountRoute(compositionRoot.accountRepository,
                     onBack={navController.popBackStack()},
                     simulationAllowed=com.isivoltpro.maginaolivo.BuildConfig.DEBUG && compositionRoot.environment==AppEnvironment.DEV,
-                    farmLinks=compositionRoot.farmLinks)
+                    farmLinks=compositionRoot.farmLinks,
+                    workspaces=compositionRoot.localPersistence?.workspaceRepository)
             }
             composable(AppDestination.AgronomicPeople) {
                 val persistence = compositionRoot.localPersistence

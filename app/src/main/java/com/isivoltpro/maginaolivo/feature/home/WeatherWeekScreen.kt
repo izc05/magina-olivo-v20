@@ -100,7 +100,7 @@ class WeatherWeekViewModel(
     val state: StateFlow<WeatherWeekUiState> = mutableState.asStateFlow()
 
     init {
-        val locations = flow { emit(workspaces.ensureLocalWorkspace()) }
+        val locations = workspaces.observeActiveWorkspace()
             .flatMapLatest { result ->
                 when (result) {
                     is AppResult.Success -> farms.observeActive(result.value)

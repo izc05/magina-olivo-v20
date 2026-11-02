@@ -11,7 +11,9 @@ camelCase fields (`payloadVersion`, `operationId`, `farmId`, `localWorkspaceId`,
 `consentId`, `consentTextVersion`, `manifestSha256`, `aggregateVersion`) and
 `p_remote_workspace` UUID. Extra actor/hash fields are rejected. Actor authority
 comes exclusively from `auth.uid()`; issuer comes from gateway-verified JWT
-`iss`, normalizing its `/auth/v1` suffix to the project's HTTPS URL. SQL fixture
+`iss`. The DEV-only candidate requires the exact literal
+`https://zubpicdibqbmewxeurhm.supabase.co/auth/v1` and returns the exact project
+base URL; a different project requires a separately reviewed issuer configuration. SQL fixture
 claims are synthetic, trusted test inputs, not proof of JWT verification.
 SQL additionally requires role `authenticated`, subject equal to `auth.uid()`,
 future numeric `exp`, and a session not marked anonymous. A Supabase anonymous
@@ -80,8 +82,9 @@ in-memory connection cannot prove PostgreSQL concurrency. Before any deploy:
   candidate only checks positive version and binds its value into the payload
   hash: unknown version 999 is currently accepted. It does not verify consent
   evidence, manifest contents, or a source aggregate, and cannot authorize import.
-- HTTPS-only issuer normalization currently excludes native loopback HTTP JWTs.
-  A DEV mapping must be designed and tested separately before native HTTP QA.
+- The literal HTTPS DEV issuer excludes native loopback HTTP JWTs. The native
+  fixture signs synthetic HTTPS claims with a disposable key; a real confirmed
+  DEV session must still prove its literal `iss` before persistent deployment.
 - Recheck effective workspace authorization and deletion/revocation in real sessions.
 - Review a migration generated through the approved deployment workflow separately.
 

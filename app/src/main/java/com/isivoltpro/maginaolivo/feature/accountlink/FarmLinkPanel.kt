@@ -36,18 +36,21 @@ fun FarmLinkPanel(repository: LocalFarmLinkRepository, userId: UUID) {
         HorizontalDivider()
         Text("Fincas y cuenta",style=MaterialTheme.typography.titleLarge,color=MoColors.current.primaryText)
         local.ledger?.let {
-            Text("${it.farmIds.size} fincas preparadas en este móvil. Pendiente de confirmar en el servidor. No se han enviado datos.",Modifier.testTag("farm-link-pending"),color=MoSurfaceTokens.secondaryText)
+            Text("${it.activeFarmIds.size} fincas preparadas en este móvil. Pendiente de confirmar en el servidor. No se han enviado datos.",Modifier.testTag("farm-link-pending"),color=MoSurfaceTokens.secondaryText)
+            if (it.revokedFarmIds.isNotEmpty()) Text("${it.revokedFarmIds.size} fincas con vinculación revocada; no se enviarán sus datos.",color=MoSurfaceTokens.secondaryText)
             Text("Todas las fincas de este móvil están protegidas con esta cuenta, incluidas las no seleccionadas. Para abrirlas después de cerrar sesión, vuelve a entrar con esta misma cuenta.",Modifier.testTag("farm-link-protection-scope"),color=MoSurfaceTokens.secondaryText)
         }
         Text("Elige las fincas que quieres asociar a esta cuenta. Se conservarán tus registros, fotos y documentos.",color=MoSurfaceTokens.secondaryText)
         val known=local.ledger?.farmIds.orEmpty()
+        val revoked=local.ledger?.revokedFarmIds.orEmpty()
         choices?.forEach { farm ->
             val prepared=farm.id in known
-            Row(Modifier.fillMaxWidth().toggleable(value=prepared || farm.id in selected,enabled=!busy && !prepared,role=Role.Checkbox,
+            val blocked=farm.id in revoked
+            Row(Modifier.fillMaxWidth().toggleable(value=(prepared && !blocked) || farm.id in selected,enabled=!busy && !prepared,role=Role.Checkbox,
                 onValueChange={ checked -> selected=if(checked)selected+farm.id else selected-farm.id;accepted=false })
                 .padding(vertical=MoSpacing.sm).testTag("farm-link-choice-${farm.id}"),verticalAlignment=Alignment.CenterVertically) {
-                Checkbox(checked=prepared || farm.id in selected,onCheckedChange=null,enabled=!busy && !prepared)
-                Text(if(prepared)"${farm.name} · pendiente de confirmar" else farm.name,color=MoColors.current.bodyText)
+                Checkbox(checked=(prepared && !blocked) || farm.id in selected,onCheckedChange=null,enabled=!busy && !prepared)
+                Text(if(blocked)"${farm.name} · vinculación revocada" else if(prepared)"${farm.name} · pendiente de confirmar" else farm.name,color=MoColors.current.bodyText)
             }
         }
         if(choices?.isEmpty()==true)Text("Todavía no hay fincas para seleccionar.",color=MoSurfaceTokens.secondaryText)

@@ -25,8 +25,17 @@ class MainActivitySmokeTest {
             .outerRule(ClearOnboardingStateRule())
             .around(composeRule)
 
+    private fun awaitOnboarding() {
+        // MainActivity performs Room/account startup asynchronously before navigation appears.
+        // Wait for the actual onboarding screen; do not bypass its visibility assertions.
+        composeRule.waitUntil(30_000) {
+            composeRule.onAllNodesWithTag("onboarding-root").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
     @Test
     fun launcherShowsOnboardingReference() {
+        awaitOnboarding()
         composeRule.onNodeWithTag("onboarding-root").assertIsDisplayed()
         // The official wordmark is an image (Codex brand pass); it is announced by its name.
         composeRule.onNodeWithContentDescription("Mágina Olivo").assertIsDisplayed()
@@ -35,6 +44,7 @@ class MainActivitySmokeTest {
 
     @Test
     fun skipOnboardingShowsHomeReference() {
+        awaitOnboarding()
         composeRule.onNodeWithText("Saltar").performClick()
 
         composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()

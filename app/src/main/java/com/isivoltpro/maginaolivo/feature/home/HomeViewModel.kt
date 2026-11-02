@@ -176,7 +176,7 @@ class HomeViewModel(
                     isLoading = previous.today == null && previous.farms.isEmpty(),
                     localReadError = null,
                 )
-                flow { emit(workspaces.ensureLocalWorkspace()) }.flatMapLatest { result ->
+                workspaces.observeActiveWorkspace().flatMapLatest { result ->
                     when (result) {
                         is AppResult.Success -> combine(
                             farms.observeActive(result.value),
@@ -215,7 +215,7 @@ class HomeViewModel(
                             emit(null)
                         }
                         is AppResult.Failure -> flow {
-                            mutableState.value = mutableState.value.copy(
+                            mutableState.value = HomeUiState(
                                 isLoading = false,
                                 localReadError = LOCAL_READ_ERROR,
                             )
