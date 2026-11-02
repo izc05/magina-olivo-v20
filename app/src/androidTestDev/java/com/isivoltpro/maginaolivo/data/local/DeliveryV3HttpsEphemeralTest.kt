@@ -29,6 +29,7 @@ import com.isivoltpro.maginaolivo.data.repository.LegacyDeliveryRoute
 import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDeliveryRepository
 import com.isivoltpro.maginaolivo.data.repository.ServerWorkspaceOwnerVerifier
+import com.isivoltpro.maginaolivo.data.repository.V3RecoveryCauses
 import com.isivoltpro.maginaolivo.data.repository.deliveryOriginCreatedAt
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchWorker
@@ -152,7 +153,7 @@ class DeliveryV3HttpsEphemeralTest {
     }
 
     private class Device(val db: MaginaOlivoDatabase, val account: AccountRepository, val links: LocalFarmLinkRepository,
-        val workspace: WorkspaceRepository)
+        val workspace: WorkspaceRepository, val ledger: File)
 
     private suspend fun device(name: String, actorKey: String, tokenKey: String, graph: Graph, server: Boolean): Device {
         val db = MaginaOlivoDatabase.create(context, name).also { opened += it }
@@ -170,7 +171,7 @@ class DeliveryV3HttpsEphemeralTest {
         val workspace = object : WorkspaceRepository {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(graph.workspace)
         }
-        return Device(db, account, links, workspace)
+        return Device(db, account, links, workspace, ledger)
     }
 
     private fun repository(device: Device, at: Instant, route: DeliveryPayloadRoute) = OfflineFirstDeliveryRepository(
@@ -283,6 +284,44 @@ class DeliveryV3HttpsEphemeralTest {
         assertEquals(0, remote(op.entityId).getInt("rows"))
         assertTrue(member.links.state.value.ledger != null)
         Log.i("G808", "G808-MEMBER outcome=NOT_AUTHORIZED serverRows=0 version=${kept.payloadVersion}")
+    }
+
+    @Test fun aHeldPesadaIsConfirmedOnlyByAStrictV3HeadAfterASessionRotation() = runBlocking<Unit> {
+        val graph = Graph()
+        val owner = device(names[0], "actor", "token", graph, server = true)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(2))
+        val day = LocalDate.now(zone).minusDays(3)
+        val kept = create(owner, graph, before, graph.active, day, 1_300_000)
+        val edited = create(owner, graph, before, graph.active, day, 1_400_000)
+        placeJornada(owner, graph, kept)
+        assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(owner).dispatch(kept.id, lease))
+        assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(owner).dispatch(edited.id, lease))
+
+        // Someone writes the second Pesada outside the receipt protocol: its receipt is no longer the head.
+        fetch("/__g26_admin/touch?id=${edited.entityId}", "POST")
+        assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(owner).resolveAwaitingHead(edited.id, lease))
+        val stillHeld = owner.db.syncOutboxDao().findById(edited.id)!!
+        assertEquals(DeliveryRetentionCodes.V3_ACK_AWAITING_HEAD, stillHeld.lastErrorCode)
+        assertEquals(V3RecoveryCauses.HEAD_SUPERSEDED, stillHeld.lastErrorMessage)
+        assertEquals(edited.payloadJson, stillHeld.payloadJson)
+
+        // The session rotates (a new login of the same user); the SAME operation is confirmed by its strict head.
+        val actor = UUID.fromString(fixture.getString("actor"))
+        val rotatedStore = MemoryAccountSessionStore().apply { write(AccountRecord(session = session(actor, "rotatedToken"))) }
+        val rotated = AccountRepository(SupabaseAuthApi(config, HttpsAuthTransport(config)), rotatedStore)
+        rotated.resume(true)
+        assertEquals(actor, rotated.state.value.userId)
+        val links = LocalFarmLinkRepository(context, owner.db, rotated, issuer, AndroidFarmLinkLedger(owner.ledger),
+            ServerWorkspaceOwnerVerifier(authorizations, issuer))
+        val recovering = DeliveryDispatchWorker(owner.db, links, DeliveryRpcAdapter(transport))
+        assertEquals(DispatchOutcome.SYNCED, recovering.resolveAwaitingHead(kept.id, lease))
+        assertEquals(DispatchOutcome.SYNCED, recovering.resolveAwaitingHead(kept.id, lease))
+        val confirmed = owner.db.deliveryDao().findById(kept.entityId)!!
+        assertEquals(SyncStatus.SYNCED, confirmed.metadata.syncStatus)
+        assertEquals(1L, confirmed.metadata.remoteVersion)
+        assertEquals(OutboxStatus.CONFIRMED, owner.db.syncOutboxDao().findById(kept.id)!!.status)
+        assertEquals(1, remote(kept.entityId).getInt("receipts"))
+        Log.i("G808", "G808-RECOVERY kept=SYNCED edited=${stillHeld.lastErrorMessage} rotated=true")
     }
 
     private fun session(actor: UUID, key: String): AuthSession {

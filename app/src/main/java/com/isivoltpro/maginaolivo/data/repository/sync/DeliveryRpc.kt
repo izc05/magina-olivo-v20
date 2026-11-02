@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -94,6 +95,19 @@ internal class RemoteDeliveryAggregate(
     val destinationName: String?,
     val netGrams: Long?,
     val parcels: List<RemoteDeliveryParcelShare>,
+)
+
+/**
+ * #808 `get_own_delivery_head_v3`: the head of the CURRENT version for the current workspace owner.
+ * The head_* fields name the single applied receipt of this actor at that version, or are all null.
+ */
+internal class DeliveryHeadV3(
+    val deliveryId: UUID,
+    val version: Long,
+    val deleted: Boolean,
+    val headOperationId: UUID?,
+    val headPayloadVersion: Int?,
+    val headPayloadHash: String?,
 )
 
 /** What `sync_own_delivery_v2` reports. The authorized hash is NOT here: it is read per operation. */
@@ -181,6 +195,26 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
         val root = objectOf(call(GET_OWN_DELIVERY_V2, """{"p_delivery_id":${quote(deliveryId.toString())}}""", session))
         val delivery = root["delivery"] as? JsonObject ?: return null to null
         return long(delivery, "version") to text(root, "head_payload_hash")
+    }
+
+    /**
+     * #808: strict parse of `get_own_delivery_head_v3`. Anything outside the contract is PROTOCOL, never
+     * a head: a wrong id, a non-boolean `deleted`, a malformed UUID, or head fields that are only partly null.
+     */
+    suspend fun getOwnDeliveryHeadV3(session: AuthSession, deliveryId: UUID): DeliveryHeadV3 {
+        val root = objectOf(call(GET_OWN_DELIVERY_HEAD_V3, """{"p_delivery_id":${quote(deliveryId.toString())}}""", session))
+        if (long(root, "contract_version") != 1L) throw protocol()
+        val id = uuid(root, "delivery_id") ?: throw protocol()
+        if (id != deliveryId) throw protocol()
+        val deleted = (root["deleted"] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull ?: throw protocol()
+        val version = long(root, "version")?.takeIf { it >= 1L } ?: throw protocol()
+        val nulls = listOf("head_operation_id", "head_payload_version", "head_payload_hash").count { root[it] == null || root[it] == JsonNull }
+        if (nulls != 0 && nulls != 3) throw protocol()
+        if (nulls == 3) return DeliveryHeadV3(id, version, deleted, null, null, null)
+        val operation = uuid(root, "head_operation_id") ?: throw protocol()
+        val payloadVersion = long(root, "head_payload_version")?.toInt() ?: throw protocol()
+        val hash = text(root, "head_payload_hash")?.takeIf { HASH.matches(it) } ?: throw protocol()
+        return DeliveryHeadV3(id, version, deleted, operation, payloadVersion, hash)
     }
 
     /**
@@ -321,6 +355,9 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
         private val REVIEW_CODES = setOf("22023", "42501")
         const val CHECK_SYNC_OPERATIONS = "check_sync_operations"
         const val GET_OWN_DELIVERY_V2 = "get_own_delivery_v2"
+        /** #808 strict HEAD read (disposable proposal), used only to resolve V3_ACK_AWAITING_HEAD. */
+        const val GET_OWN_DELIVERY_HEAD_V3 = "get_own_delivery_head_v3"
+        private val HASH = Regex("^[0-9a-f]{64}$")
         const val GET_OWN_DELIVERY_RECEIVE_V1 = "get_own_delivery_receive_v1"
 
         /** The matrix caps `check_sync_operations` at 200 operation ids per call. */
@@ -331,6 +368,7 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
             SYNC_OWN_DELIVERY_V3,
             CHECK_SYNC_OPERATIONS,
             GET_OWN_DELIVERY_V2,
+            GET_OWN_DELIVERY_HEAD_V3,
             GET_OWN_DELIVERY_RECEIVE_V1,
         )
     }

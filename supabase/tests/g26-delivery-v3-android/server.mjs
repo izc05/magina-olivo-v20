@@ -40,7 +40,9 @@ const account = async label => {
   const password = `Fixture!${randomUUID()}`;
   const user = await request('/auth/v1/admin/users', { email, password, email_confirm: true }, status.SERVICE_ROLE_KEY, true);
   const login = await request('/auth/v1/token?grant_type=password', { email, password });
-  return { id: user.id, token: jwt(login.access_token) };
+  // A second, independent login of the same user: the device's session rotation.
+  const again = await request('/auth/v1/token?grant_type=password', { email, password });
+  return { id: user.id, token: jwt(login.access_token), rotated: jwt(again.access_token) };
 };
 
 const names = ['20261011120000_g0_auth_workspaces_shared_farms.sql',
@@ -52,7 +54,8 @@ const files = [...names.map(name => new URL(`../../migrations/${name}`, import.m
   ...['g1c-reservations.sql', 'g2-sync-own-data.sql', 'g2-parcel-bootstrap.sql']
     .map(name => new URL(`../../proposals/${name}`, import.meta.url)),
   new URL('../../migrations/20261029044901_g26_workspace_authorization.sql', import.meta.url),
-  ...['g26-parent-receive-v1.sql', 'g26-fpm-manage-hardening.sql', 'g26-parcel-mutation-v1.sql', 'g26-historical-writers-v1.sql']
+  ...['g26-parent-receive-v1.sql', 'g26-fpm-manage-hardening.sql', 'g26-parcel-mutation-v1.sql', 'g26-historical-writers-v1.sql',
+    'g26-delivery-head-v3.sql']
     .map(name => new URL(`../../proposals/${name}`, import.meta.url))];
 sql(`BEGIN;\n${files.map(file => readFileSync(file, 'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
 
@@ -67,7 +70,8 @@ for (let attempt = 0; attempt < 40; attempt++) {
   if (attempt === 39) throw new Error('PostgREST did not expose sync_own_delivery_v3');
   await new Promise(resolve => setTimeout(resolve, 250));
 }
-const fixture = { actor: owner.id, token: owner.token, member: member.id, memberToken: member.token, anonKey: status.ANON_KEY };
+const fixture = { actor: owner.id, token: owner.token, rotatedToken: owner.rotated, member: member.id, memberToken: member.token,
+  anonKey: status.ANON_KEY };
 process.stdout.write(`G808-HOST ${sql(`SELECT version();`)}\n`);
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -156,6 +160,13 @@ const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
       v3Mode = mode; return done();
     }
     if (url.pathname === '/__g26_admin/delivery') return json(200, delivery(url.searchParams.get('id') ?? ''));
+    // A write outside the receipt protocol: it moves the version, so the held receipt is no longer the head.
+    if (incoming.method === 'POST' && url.pathname === '/__g26_admin/touch') {
+      const id = url.searchParams.get('id') ?? '';
+      assert.match(id, uuid);
+      sql(`UPDATE public.deliveries SET notes='fuera de protocolo' WHERE id=${q(id)};`);
+      return done();
+    }
   } catch (error) {
     process.stdout.write(`fixture admin error: ${String(error?.message ?? error).slice(0, 300)}\n`);
     return json(500, {});
