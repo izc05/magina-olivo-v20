@@ -15,7 +15,7 @@ adb shell pm clear com.isivoltpro.maginaolivo.dev >/dev/null
 adb logcat -c
 base=com.isivoltpro.maginaolivo.data.local
 adb shell am instrument -w -e class \
-  $base.ParcelMutationSendRoomTest,$base.ParcelArchiveCausalOrderRoomTest,$base.CampaignCasRoomTest,$base.ParcelSendRoomTest,$base.FarmSendRoomTest,$base.WorkspaceSendRoomTest,$base.ParentReceiveRoomTest,$base.OfflineFirstFarmRepositoryTest,$base.CoreWorkspaceBoundaryContractTest,$base.CampaignLifecycleContractTest,$base.OfflineFirstCampaignRepositoryTest,$base.ParentReceiveV2RoomTest,$base.ParentReceiveV2MemoryTest,$base.ParcelConvergenceRoomTest \
+  $base.ParcelMutationSendRoomTest,$base.ParcelArchiveCausalOrderRoomTest,$base.CampaignCasRoomTest,$base.ParcelSendRoomTest,$base.FarmSendRoomTest,$base.WorkspaceSendRoomTest,$base.ParentReceiveRoomTest,$base.OfflineFirstFarmRepositoryTest,$base.CoreWorkspaceBoundaryContractTest,$base.CampaignLifecycleContractTest,$base.OfflineFirstCampaignRepositoryTest,$base.ParentReceiveV2RoomTest,$base.ParentReceiveV2MemoryTest,$base.ParcelConvergenceRoomTest,$base.CampaignHistoryReceiveRoomTest \
   com.isivoltpro.maginaolivo.dev.test/androidx.test.runner.AndroidJUnitRunner \
   > "$work/instrument.out"
 cat "$work/instrument.out"
@@ -23,4 +23,4 @@ cat "$work/instrument.out"
 adb logcat -d -s G26MEM:I | grep G26-MEM || echo 'G26-MEM no lines'
 # 2c-3 convergence evidence: per scene, A/B/server hashes and outbox states.
 adb logcat -d -s G26CONV:I | grep G26-CONV || echo 'G26-CONV no lines'
-grep -q 'OK (122 tests)' "$work/instrument.out"
+grep -q 'OK (131 tests)' "$work/instrument.out"

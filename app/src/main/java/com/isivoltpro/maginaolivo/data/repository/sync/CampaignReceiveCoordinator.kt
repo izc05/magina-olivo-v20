@@ -5,8 +5,11 @@ import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
+import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
+import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
+import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.WorkspaceAuthorizationContract
@@ -14,6 +17,7 @@ import com.isivoltpro.maginaolivo.feature.account.AccountRepository
 import com.isivoltpro.maginaolivo.feature.account.AuthSession
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
@@ -23,7 +27,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 
-internal enum class CampaignReceiveOutcome { IMPORTED, UPDATED, ALREADY_CURRENT, CONFLICT, NOT_AUTHORIZED, PARENTS_MISSING }
+internal enum class CampaignReceiveOutcome { IMPORTED, UPDATED, ALREADY_CURRENT, CONFLICT, NOT_AUTHORIZED, PARENTS_MISSING,
+    /** H7: a campaign that is not demonstrably CLOSED over an archived farm or parcel. Nothing is written. */
+    ARCHIVED_PARENT_INCOMPATIBLE }
 
 /** Explicit QA entry point; no app composition root or scheduler constructs this class. */
 internal class CampaignReceiveCoordinator(
@@ -49,18 +55,47 @@ internal class CampaignReceiveCoordinator(
                     return@withTransaction CampaignReceiveOutcome.NOT_AUTHORIZED
                 val workspace = database.workspaceDao().findById(campaign.workspaceId)
                 val farm = database.farmDao().findById(campaign.farmId)
+                // H7: an archive is status ARCHIVED *and* its instant; a bare tombstone or an ARCHIVED row
+                // without instant is incoherent and never accepted as a parent.
                 if (workspace == null || workspace.metadata.deletedAt != null ||
-                    farm == null || farm.workspaceId != campaign.workspaceId || farm.metadata.deletedAt != null ||
+                    farm == null || farm.workspaceId != campaign.workspaceId ||
+                    (farm.status == FarmStatus.ARCHIVED) != (farm.metadata.deletedAt != null) ||
                     farm.metadata.syncStatus != SyncStatus.SYNCED ||
                     database.syncOutboxDao().listForEntity(SyncEntityType.FARM, farm.id)
                         .any { it.status != OutboxStatus.CONFIRMED })
                     return@withTransaction CampaignReceiveOutcome.PARENTS_MISSING
+                val parents = mutableListOf<ParcelEntity>()
                 for (snapshot in incoming.snapshots) {
                     val parcel = database.parcelDao().findById(snapshot.parcelId)
                     if (parcel == null || parcel.workspaceId != campaign.workspaceId ||
-                        parcel.metadata.deletedAt != null || parcel.metadata.syncStatus != SyncStatus.SYNCED ||
+                        (parcel.status == RecordStatus.ARCHIVED) != (parcel.metadata.deletedAt != null) ||
+                        parcel.metadata.syncStatus != SyncStatus.SYNCED ||
                         database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcel.id)
                             .any { it.status != OutboxStatus.CONFIRMED })
+                        return@withTransaction CampaignReceiveOutcome.PARENTS_MISSING
+                    parents += parcel
+                }
+                val farmArchived = farm.status == FarmStatus.ARCHIVED
+                val archivedParcels = parents.filter { it.status == RecordStatus.ARCHIVED }
+                if (farmArchived || archivedParcels.isNotEmpty()) {
+                    // Only a demonstrably closed campaign can hang from archived parents. HARVEST is running
+                    // (isRunning) and is never inferred closed from its dates; PREPARATION/ACTIVE neither.
+                    if (!demonstrablyClosed(campaign)) return@withTransaction CampaignReceiveOutcome.ARCHIVED_PARENT_INCOMPATIBLE
+                    // Archived parents must be exactly the confirmed remote revision (v2 receiver, 2c-2).
+                    if ((if (farmArchived) listOf(farm.metadata) else emptyList()).plus(archivedParcels.map { it.metadata })
+                            .any { it.remoteVersion == null || it.version != it.remoteVersion })
+                        return@withTransaction CampaignReceiveOutcome.PARENTS_MISSING
+                    // Historical justification: each parcel had a non-deleted period in the campaign farm that
+                    // overlaps the campaign dates. Periods are read, never closed, moved or invented.
+                    val zone = runCatching { ZoneId.of(workspace.timezone) }.getOrNull()
+                        ?: return@withTransaction CampaignReceiveOutcome.PARENTS_MISSING
+                    val from = campaign.startDate.atStartOfDay(zone).toInstant()
+                    val until = campaign.endDate!!.plusDays(1).atStartOfDay(zone).toInstant()
+                    if (parents.any { parcel -> database.parcelDao().listMemberships(parcel.id).none { period ->
+                            period.metadata.deletedAt == null && period.farmId == campaign.farmId &&
+                                period.workspaceId == campaign.workspaceId && period.validFrom.isBefore(until) &&
+                                (period.validUntil == null || period.validUntil.isAfter(from))
+                        } })
                         return@withTransaction CampaignReceiveOutcome.PARENTS_MISSING
                 }
                 if (database.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
@@ -130,6 +165,10 @@ internal class CampaignReceiveCoordinator(
                 it.farmIdAtStart == campaign.farmId })
         return Incoming(root.string("issuer"), root.uuid("subject"), campaign, snapshots)
     }
+
+    /** CLOSED with an end date not before its start: the only campaign status provably finished (H7). */
+    private fun demonstrablyClosed(c: CampaignEntity) =
+        c.status == CampaignStatus.CLOSED && c.endDate != null && !c.endDate.isBefore(c.startDate)
 
     private data class Incoming(val issuer: String, val subject: UUID, val campaign: CampaignEntity,
         val snapshots: List<CampaignParcelSnapshotEntity>)
