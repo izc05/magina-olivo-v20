@@ -141,8 +141,11 @@ internal suspend fun MaginaOlivoDatabase.applyConfirmedDeliveryReceipt(
 
     val siblings = outbox.listForEntity(SyncEntityType.DELIVERY, receipt.deliveryId)
         .any { it.id != op.id && it.status != OutboxStatus.CONFIRMED }
-    val snapshotStillCurrent = current.metadata.deletedAt == null &&
-        buildDeliveryPayloadJson(current, op.baseRemoteVersion, deliveryDao().listParcels(current.id)) == op.payloadJson
+    // #808: a v3 operation is compared with the v3 snapshot of the current row; v1/v2 exactly as before.
+    val currentShares = deliveryDao().listParcels(current.id)
+    val rebuilt = if (op.payloadVersion == 3) buildDeliveryPayloadJsonV3(current, currentShares)
+        else buildDeliveryPayloadJson(current, op.baseRemoteVersion, currentShares)
+    val snapshotStillCurrent = current.metadata.deletedAt == null && rebuilt == op.payloadJson
     val remoteNotSuperseded = (current.metadata.remoteVersion ?: 0L) <= receipt.remoteVersion
 
     if (outbox.markConfirmed(op.id, at.toEpochMilli()) != 1) {
