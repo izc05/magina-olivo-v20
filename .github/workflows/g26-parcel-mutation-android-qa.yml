@@ -72,6 +72,10 @@ jobs:
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
         with:
           version: '2.120.0'
+      - name: '2c-1 parents v2 read contract (own schema, disposable)'
+        env:
+          MAGINA_EXTRA_PROPOSALS: ''
+        run: bash supabase/tests/g26-parent-receive-v2/run.sh
       - name: '#802 hardening contract'
         env:
           MAGINA_EXTRA_PROPOSALS: ''
