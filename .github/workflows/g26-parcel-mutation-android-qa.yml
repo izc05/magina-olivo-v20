@@ -2,7 +2,7 @@ name: G2.6 PARCEL mutation Android QA isolated
 
 on:
   pull_request:
-    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3, codex/g26-campaign-history-h7]
+    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3, codex/g26-campaign-history-h7, codex/g26-808-design]
   workflow_dispatch:
 
 permissions:
@@ -72,6 +72,10 @@ jobs:
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
         with:
           version: '2.120.0'
+      - name: '#808 historical writers v3/v2 contract (own schema, disposable, HTTP and pinned TLS)'
+        env:
+          MAGINA_EXTRA_PROPOSALS: ''
+        run: bash supabase/tests/g26-historical-writers/run.sh
       - name: '2c-1 parents v2 read contract (own schema, disposable)'
         env:
           MAGINA_EXTRA_PROPOSALS: ''
@@ -81,6 +85,10 @@ jobs:
           MAGINA_EXTRA_PROPOSALS: ''
         run: bash supabase/tests/g26-fpm-hardening/run.sh
       - name: G2 native own-data sync with #802 and the PARCEL contract
+        run: bash supabase/tests/g2-native/run.sh
+      - name: 'G2 native legacy writers with the #808 proposal appended (regression of v1/v2)'
+        env:
+          MAGINA_EXTRA_PROPOSALS: g26-fpm-manage-hardening.sql,g26-parcel-mutation-v1.sql,g26-historical-writers-v1.sql
         run: bash supabase/tests/g2-native/run.sh
       - name: '#797 to #800 SQL contracts with #802 and the PARCEL contract'
         run: |
