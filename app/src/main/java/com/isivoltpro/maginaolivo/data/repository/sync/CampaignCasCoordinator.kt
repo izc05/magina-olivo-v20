@@ -2,8 +2,11 @@ package com.isivoltpro.maginaolivo.data.repository.sync
 
 import androidx.room.withTransaction
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
+import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
+import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.buildCampaignCasEnvelope
@@ -13,6 +16,30 @@ import com.isivoltpro.maginaolivo.feature.account.AccountRepository
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
+
+/**
+ * Whether the parcel's confirmed remote version still stands, so a campaign CAS may be staged over it.
+ * - No unconfirmed PARCEL marker: the parcel must be SYNCED (unchanged rule).
+ * - G2.6 2b causal order: exactly one later ARCHIVE that was never bound, attempted or sent leaves the
+ *   remote version untouched. It does not block the CAS. R1 holds that ARCHIVE until this CAS is
+ *   confirmed, so a pending campaign close reaches the server before the archive.
+ * - Anything else refuses: UPDATE, RESTORE, legacy DELETE, a staged or attempted ARCHIVE, a conflict.
+ * Authorization and version checks of the CAS are not affected.
+ */
+internal fun parcelRemoteStateConfirmed(parcel: ParcelEntity, markers: List<SyncOutboxEntity>): Boolean {
+    val open = markers.filter { it.status != OutboxStatus.CONFIRMED }
+    if (open.isEmpty()) return parcel.metadata.syncStatus == SyncStatus.SYNCED
+    val archive = open.singleOrNull() ?: return false
+    val remote = parcel.metadata.remoteVersion ?: return false
+    return remote >= 1 && archive.id == markers.last().id &&
+        parcel.metadata.syncStatus == SyncStatus.PENDING &&
+        parcel.status == RecordStatus.ARCHIVED && parcel.metadata.deletedAt != null &&
+        archive.operation == OutboxOperation.ARCHIVE && archive.status == OutboxStatus.PENDING &&
+        archive.accountId == null && archive.payloadJson == null && archive.baseRemoteVersion == null &&
+        archive.attemptCount == 0 && archive.lastErrorCode in UNSENT_ARCHIVE_CODES
+}
+
+private val UNSENT_ARCHIVE_CODES = setOf(null, "WAITING_DEPENDENCIES", "RESOLVED_REVIEW")
 
 internal enum class CampaignCasOutcome {
     STAGED, SYNCED, NEEDS_REBASE, CONFLICT, OUTCOME_UNKNOWN, NOT_AUTHORIZED, REJECTED
@@ -56,9 +83,9 @@ internal class CampaignCasCoordinator(
                 if (snapshots.any { snapshot ->
                     val parcel = database.parcelDao().findById(snapshot.parcelId)
                     snapshot.metadata.syncStatus != SyncStatus.SYNCED || snapshot.metadata.deletedAt != null ||
-                        parcel?.workspaceId != campaign.workspaceId || parcel.metadata.syncStatus != SyncStatus.SYNCED ||
-                        database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, snapshot.parcelId)
-                            .any { it.status != OutboxStatus.CONFIRMED }
+                        parcel?.workspaceId != campaign.workspaceId ||
+                        !parcelRemoteStateConfirmed(parcel,
+                            database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, snapshot.parcelId))
                 }) return@withTransaction CampaignCasOutcome.REJECTED
                 val payload = buildCampaignCasEnvelope(campaign, issuer, campaign.metadata.remoteVersion)
                 if (database.syncOutboxDao().stageCampaignCas(op.id, userId.toString(), campaign.farmId,

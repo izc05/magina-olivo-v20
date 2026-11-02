@@ -62,8 +62,10 @@ internal enum class DeliveryRpcError {
     PROTOCOL,
 }
 
-internal class DeliveryRpcFailure(val error: DeliveryRpcError, val status: Int? = null, val code: String? = null) :
-    Exception("DeliveryRpcFailure(error=$error, status=$status, code=$code)") {
+/** [reason] is the server's typed conflict token (e.g. PARCEL_VERSION_CONFLICT) when its message carries one. */
+internal class DeliveryRpcFailure(val error: DeliveryRpcError, val status: Int? = null, val code: String? = null,
+    val reason: String? = null) :
+    Exception("DeliveryRpcFailure(error=$error, status=$status, code=$code, reason=$reason)") {
 
     /** True when the server's own record is the only way to learn what happened. */
     val outcomeUnknown: Boolean get() = error == DeliveryRpcError.NETWORK || error == DeliveryRpcError.PROTOCOL

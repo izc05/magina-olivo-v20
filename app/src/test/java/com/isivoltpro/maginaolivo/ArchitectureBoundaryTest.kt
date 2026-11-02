@@ -366,7 +366,7 @@ class ArchitectureBoundaryTest {
                     .any { it in file.invariantSeparatorsPath }
         }.toList()
         listOf("ParentReceiveCoordinator", "CampaignReceiveCoordinator", "WorkspaceSendCoordinator",
-            "FarmSendCoordinator", "ParcelSendCoordinator").forEach { receiver ->
+            "FarmSendCoordinator", "ParcelSendCoordinator", "ParcelMutationSendCoordinator").forEach { receiver ->
             appSources.filterNot { it.name == "$receiver.kt" }.forEach { file ->
                 assertFalse("${file.name} must not construct $receiver", file.readText().contains("$receiver("))
             }

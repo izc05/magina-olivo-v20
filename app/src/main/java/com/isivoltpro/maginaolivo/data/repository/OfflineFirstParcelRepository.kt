@@ -218,7 +218,7 @@ class OfflineFirstParcelRepository(
                 metadata = current.metadata.next(now).copy(deletedAt = now),
             ),
         )
-        enqueue(parcelId, OutboxOperation.DELETE, now)
+        enqueue(parcelId, OutboxOperation.ARCHIVE, now)
         AppResult.Success(Unit)
     }
 
@@ -256,7 +256,7 @@ class OfflineFirstParcelRepository(
         database.parcelDao().upsert(
             current.copy(status = RecordStatus.ACTIVE, metadata = current.metadata.next(now).copy(deletedAt = null)),
         )
-        enqueue(parcelId, OutboxOperation.UPDATE, now)
+        enqueue(parcelId, OutboxOperation.RESTORE, now)
         AppResult.Success(Unit)
     }
 

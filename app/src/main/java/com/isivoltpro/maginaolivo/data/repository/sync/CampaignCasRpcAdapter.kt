@@ -86,6 +86,8 @@ internal class CampaignCasRpcAdapter(private val transport: DeliveryRpcTransport
     private fun protocol() = DeliveryRpcFailure(DeliveryRpcError.PROTOCOL)
 }
 
+private val CONFLICT_REASON = Regex("conflict: ([A-Z][A-Z_]{2,63})$")
+
 /** Shared G2.6 status/SQLSTATE mapping. Any transport exception is an unknown outcome, never success. */
 internal suspend fun DeliveryRpcTransport.callRpcObject(name: String, body: String, session: AuthSession): JsonObject {
     val response = try { rpc(name, body, session.accessToken) }
@@ -93,9 +95,11 @@ internal suspend fun DeliveryRpcTransport.callRpcObject(name: String, body: Stri
     catch (failure: DeliveryRpcFailure) { throw failure }
     catch (_: Exception) { throw DeliveryRpcFailure(DeliveryRpcError.NETWORK) }
     if (response.status !in 200..299) {
-        val code = runCatching {
-            (Json.parseToJsonElement(response.body) as JsonObject).getValue("code").jsonPrimitive.content
-        }.getOrNull()
+        val body = runCatching { Json.parseToJsonElement(response.body) as JsonObject }.getOrNull()
+        val code = runCatching { body!!.getValue("code").jsonPrimitive.content }.getOrNull()
+        // Only an UPPER_SNAKE token after "conflict: " is kept: never free text from the server.
+        val reason = runCatching { body!!.getValue("message").jsonPrimitive.content }.getOrNull()
+            ?.let { CONFLICT_REASON.find(it)?.groupValues?.get(1) }
         val error = when {
             code == "23505" || response.status == 409 -> DeliveryRpcError.CONFLICT
             code == "42501" || response.status in listOf(401,403) -> DeliveryRpcError.FORBIDDEN
@@ -103,7 +107,7 @@ internal suspend fun DeliveryRpcTransport.callRpcObject(name: String, body: Stri
             response.status == 408 || response.status == 429 || response.status >= 500 -> DeliveryRpcError.NETWORK
             else -> DeliveryRpcError.PROTOCOL
         }
-        throw DeliveryRpcFailure(error, response.status, code)
+        throw DeliveryRpcFailure(error, response.status, code, reason)
     }
     val parsed = runCatching { Json.parseToJsonElement(response.body) }.getOrNull()
     return when (parsed) {

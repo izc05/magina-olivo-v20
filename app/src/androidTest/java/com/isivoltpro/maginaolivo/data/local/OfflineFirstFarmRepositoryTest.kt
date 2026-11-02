@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.data.local
 
+import com.isivoltpro.maginaolivo.core.regional.RegionalContext
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
 import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
 import android.content.Context
@@ -17,6 +18,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceSelectionEntity
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
@@ -74,7 +76,7 @@ class OfflineFirstFarmRepositoryTest {
 
         val firstDatabase = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            firstDatabase.workspaceDao().upsert(workspace(workspaceId, createdAt))
+            seedSelectedWorkspace(firstDatabase, workspaceId, createdAt)
             val repository = repository(
                 database = firstDatabase,
                 now = createdAt,
@@ -205,7 +207,7 @@ class OfflineFirstFarmRepositoryTest {
         )
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
             val repository = repository(database, TEST_INSTANT, ids)
             assertEquals(
                 AppResult.Success(farmId),
@@ -261,7 +263,7 @@ class OfflineFirstFarmRepositoryTest {
         val parcelId = uuid("40000000-0000-0000-0000-000000000030")
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
             database.farmDao().upsert(
                 com.isivoltpro.maginaolivo.data.local.entity.FarmEntity(
                     id = farmId,
@@ -373,7 +375,7 @@ class OfflineFirstFarmRepositoryTest {
         val parcelId = uuid("40000000-0000-0000-0000-000000000080")
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
             assertEquals(
                 AppResult.Success(farmId),
                 repository(
@@ -414,7 +416,7 @@ class OfflineFirstFarmRepositoryTest {
             assertEquals(AppResult.Success(Unit), restored.restore(parcelId, farmId))
             assertEquals(2, restored.membershipHistory(parcelId).size)
             assertEquals(
-                listOf(OutboxOperation.CREATE, OutboxOperation.DELETE, OutboxOperation.UPDATE),
+                listOf(OutboxOperation.CREATE, OutboxOperation.ARCHIVE, OutboxOperation.RESTORE),
                 database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelId).map { it.operation },
             )
         } finally {
@@ -429,7 +431,7 @@ class OfflineFirstFarmRepositoryTest {
         val parcelId = uuid("40000000-0000-0000-0000-000000000090")
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
             repository(database, TEST_INSTANT, listOf(farmId, uuid("30000000-0000-0000-0000-000000000090")))
                 .create(NewFarm(workspaceId, "Cortijo"))
             val parcels = OfflineFirstParcelRepository(
@@ -469,7 +471,7 @@ class OfflineFirstFarmRepositoryTest {
         val importedId = uuid("40000000-0000-0000-0000-000000000181")
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
             repository(database, TEST_INSTANT, listOf(farmId, uuid("30000000-0000-0000-0000-000000000180")))
                 .create(NewFarm(workspaceId, "Cortijo"))
             val parcels = OfflineFirstParcelRepository(
@@ -526,9 +528,9 @@ class OfflineFirstFarmRepositoryTest {
         val workspaceId = uuid("10000000-0000-0000-0000-000000000188")
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
             val random = object : IdGenerator { override fun newId(): UUID = UUID.randomUUID() }
-            val farms = OfflineFirstFarmRepository(database, FixedClock(TEST_INSTANT), random, TestDispatchers)
+            val farms = repository(database, TEST_INSTANT, random)
             val farmId = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
             val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
             val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
@@ -598,9 +600,9 @@ class OfflineFirstFarmRepositoryTest {
         val workspaceId = uuid("10000000-0000-0000-0000-000000000190")
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
             val random = object : IdGenerator { override fun newId(): UUID = UUID.randomUUID() }
-            val farms = OfflineFirstFarmRepository(database, FixedClock(TEST_INSTANT), random, TestDispatchers)
+            val farms = repository(database, TEST_INSTANT, random)
             val farmA = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
             val farmB = (farms.create(NewFarm(workspaceId, "La Loma")) as AppResult.Success).value
             val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
@@ -662,7 +664,7 @@ class OfflineFirstFarmRepositoryTest {
         val expenseId = uuid("80000000-0000-0000-0000-000000000427")
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
             val farms = repository(
                 database,
                 TEST_INSTANT,
@@ -749,9 +751,9 @@ class OfflineFirstFarmRepositoryTest {
         val activityId = uuid("70000000-0000-0000-0000-000000000437")
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
-            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
             val random = object : IdGenerator { override fun newId(): UUID = UUID.randomUUID() }
-            val farms = OfflineFirstFarmRepository(database, FixedClock(TEST_INSTANT), random, TestDispatchers)
+            val farms = repository(database, TEST_INSTANT, random)
             val createdFarm = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
             val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
             val createdParcel = (parcels.create(NewParcel(createdFarm, "Parcela Norte")) as AppResult.Success).value
@@ -853,12 +855,28 @@ class OfflineFirstFarmRepositoryTest {
         database: MaginaOlivoDatabase,
         now: Instant,
         ids: List<UUID>,
+    ) = repository(database, now, QueuedIdGenerator(ids))
+
+    private fun repository(
+        database: MaginaOlivoDatabase,
+        now: Instant,
+        idGenerator: IdGenerator,
     ) = OfflineFirstFarmRepository(
         database = database,
         clock = FixedClock(now),
-        idGenerator = QueuedIdGenerator(ids),
+        idGenerator = idGenerator,
         dispatchers = TestDispatchers,
+        // #615/958953be: farm writes resolve the active workspace through the real fail-closed
+        // repository; with no session it only accepts the explicitly persisted local selection.
+        workspaceRepository = LocalWorkspaceRepository(database, FixedClock(now), QueuedIdGenerator(emptyList()),
+            TestDispatchers, RegionalContext.spainDefault()),
     )
+
+    /** An unbound local workspace plus its explicit signed-out selection ("" issuer, "" account). */
+    private suspend fun seedSelectedWorkspace(database: MaginaOlivoDatabase, id: UUID, now: Instant) {
+        database.workspaceDao().upsert(workspace(id, now))
+        database.workspaceSelectionDao().upsert(WorkspaceSelectionEntity("", "", id))
+    }
 
     private fun workspace(
         id: UUID,

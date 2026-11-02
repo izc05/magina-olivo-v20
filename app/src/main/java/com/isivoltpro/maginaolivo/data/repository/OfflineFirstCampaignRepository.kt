@@ -16,6 +16,7 @@ import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.data.local.model.CampaignWithSnapshots
 import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
+import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
@@ -254,10 +255,19 @@ class OfflineFirstCampaignRepository(
 
     private suspend fun enqueue(id: UUID, requested: OutboxOperation, now: Instant) {
         val existing = database.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
-        val operation = if (existing.any { it.operation == OutboxOperation.CREATE } && requested != OutboxOperation.DELETE) OutboxOperation.CREATE else requested
+        // Coalesce into CREATE only while the remote CREATE is unconfirmed. After it, a change is a
+        // CAS UPDATE: a second CREATE could never be sent and would hold a parcel ARCHIVE forever (G2.6 2b).
+        val createOpen = existing.any { it.operation == OutboxOperation.CREATE && it.status != OutboxStatus.CONFIRMED }
+        val operation = if (createOpen && requested != OutboxOperation.DELETE) OutboxOperation.CREATE else requested
         // A staged or attempted CAS operation has immutable bytes and UUID. A later local edit
         // must leave it available for receipt recovery, even when the HTTP response was lost.
         database.syncOutboxDao().deleteUnstagedCampaignMarkers(id)
+        // One aggregate, one pending CREATE: a never-prepared CREATE already covers later local edits
+        // (regression of 8f025c7fd, which stopped replacing it). A prepared or attempted CREATE is kept
+        // as it is and the edit is queued after it, as before.
+        if (operation == OutboxOperation.CREATE && existing.any { it.operation == OutboxOperation.CREATE &&
+                it.status == OutboxStatus.PENDING && it.attemptCount == 0 && it.payloadJson == null && it.accountId == null }
+        ) return
         database.syncOutboxDao().insert(SyncOutboxEntity(idGenerator.newId(), SyncEntityType.CAMPAIGN, id, operation, 1, createdAt = now, updatedAt = now))
     }
 

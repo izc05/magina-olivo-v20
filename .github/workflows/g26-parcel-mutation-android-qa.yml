@@ -1,0 +1,124 @@
+name: G2.6 PARCEL mutation Android QA isolated
+
+on:
+  pull_request:
+    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Regression suites run with #802 and the #805 PARCEL contract appended to their own schema.
+env:
+  MAGINA_EXTRA_PROPOSALS: g26-fpm-manage-hardening.sql,g26-parcel-mutation-v1.sql
+
+jobs:
+  producer-sender:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact source SHA
+        run: git rev-parse HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.4.1'
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: '2.120.0'
+      - name: Failure diagnostics never print secrets
+        run: bash supabase/tests/lib/diagnostics.test.sh
+      - name: '#805 SQL contract, including the shared Android hash literal'
+        env:
+          MAGINA_EXTRA_PROPOSALS: ''
+        run: bash supabase/tests/g26-parcel-mutation/run.sh
+      - name: Full JVM suite (envelopes, classification, transport, production boundary)
+        run: gradle --no-daemon --max-workers=1 --no-parallel :app:testDevDebugUnitTest
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+      - name: Room PARCEL mutation sender and producer with #797-#800 Room regressions on disposable API 35
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash supabase/tests/g26-parcel-mutation-android/run.sh
+
+  sql-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: '2.120.0'
+      - name: '#802 hardening contract'
+        env:
+          MAGINA_EXTRA_PROPOSALS: ''
+        run: bash supabase/tests/g26-fpm-hardening/run.sh
+      - name: G2 native own-data sync with #802 and the PARCEL contract
+        run: bash supabase/tests/g2-native/run.sh
+      - name: '#797 to #800 SQL contracts with #802 and the PARCEL contract'
+        run: |
+          bash supabase/tests/g26-parent-receive/run.sh
+          bash supabase/tests/g26-workspace-send/run.sh
+          bash supabase/tests/g26-farm-send/run.sh
+          bash supabase/tests/g26-parcel-send/run.sh
+
+  https-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact source SHA
+        run: git rev-parse HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.4.1'
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: '2.120.0'
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+      - name: '#800, #799, #798 then #797 real HTTPS probes with #802 and the PARCEL contract, on one disposable API 35'
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash supabase/tests/g26-parcel-send-android/run.sh && bash supabase/tests/g26-farm-send-android/run.sh && bash supabase/tests/g26-workspace-send-android/run.sh && bash supabase/tests/g26-parent-receive-android/run.sh

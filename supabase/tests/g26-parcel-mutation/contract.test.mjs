@@ -171,6 +171,17 @@ test('UPDATE: owner CAS 1->2, receipt hash is the canonical envelope, membership
   assert.equal(receipts(p.id),'3');
 });
 
+test('the Android hash literal of every kind is already PostgreSQL canonical JSONB (ParcelMutationEnvelopeTest)',()=>{
+  const lines=readFileSync(new URL('../../../app/src/test/resources/g26-parcel-mutation-canonical.txt',import.meta.url),'utf8')
+    .split(String.fromCharCode(10)).map(line=>line.trimEnd()).filter(Boolean);
+  assert.deepEqual(lines.map(line=>JSON.parse(line).kind),['UPDATE','ARCHIVE','RESTORE']);
+  for(const line of lines) assert.equal(canonicalOf(JSON.parse(line)),line);
+  // The server hashes jsonb_build_object(kind, parcelId, expectedVersion, mutation): the same canonical text.
+  const [update]=lines.map(line=>JSON.parse(line));
+  assert.equal(sql(`SELECT jsonb_build_object('kind',${q(update.kind)},'parcelId',${q(update.parcelId)},
+    'expectedVersion',${update.expectedVersion}::bigint,'mutation',${q(JSON.stringify(update.mutation))}::jsonb)::text;`),lines[0]);
+});
+
 test('UPDATE validation: closed 19-field payload, no status change, invalid values rejected without writing',async()=>{
   const p=await parcel(actors.A,f.ws,f.north);
   for(const body of [{...fields(),status:'ARCHIVED'},{...fields(),memberships:[]},(({notes,...rest})=>rest)(fields()),

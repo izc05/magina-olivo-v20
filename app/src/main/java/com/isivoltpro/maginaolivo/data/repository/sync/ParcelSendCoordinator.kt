@@ -332,7 +332,7 @@ private val PARCEL_KEYS = setOf("id", "workspaceId", "displayName", "source", "s
 private val INSTANT = Regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]([.][0-9]{1,9})?Z$")
 private val DECIMAL = Regex("^(0|[1-9][0-9]*)([.][0-9]+)?$")
 
-private fun instantText(value: Instant): String = value.toString().also { require(INSTANT.matches(it)) }
+internal fun instantText(value: Instant): String = value.toString().also { require(INSTANT.matches(it)) }
 
 /** Plain decimal text: PostgreSQL keeps it byte for byte as numeric JSONB, unlike exponent notation. */
 @OptIn(ExperimentalSerializationApi::class)
@@ -392,17 +392,19 @@ internal fun parcelPayload(parcel: ParcelEntity, memberships: List<FarmParcelMem
     }.also { require(it.toString().toByteArray(Charsets.UTF_8).size <= 4 * 1024 * 1024) }
 }
 
+/** One parcel field as PostgreSQL's canonical JSONB text renders it: plain decimals, quoted text. */
+internal fun parcelFieldScalar(key: String, value: JsonElement): String = when {
+    value == JsonNull -> "null"
+    key in NUMBERS -> (value as JsonPrimitive).also { require(!it.isString) }.content.also {
+        require(DECIMAL.matches(it) && (key != "oliveTreeCount" || !it.contains('.')))
+    }
+    else -> pgScalar(value, text = true, nullable = false)
+}
+
 /** Hash matches the server's sha256(p_parcel::text) over PostgreSQL's canonical JSONB text. */
 internal fun parcelCreateHash(parcel: JsonObject): String {
-    fun scalar(key: String, value: JsonElement): String = when {
-        value == JsonNull -> "null"
-        key in NUMBERS -> (value as JsonPrimitive).also { require(!it.isString) }.content.also {
-            require(DECIMAL.matches(it) && (key != "oliveTreeCount" || !it.contains('.')))
-        }
-        else -> pgScalar(value, text = true, nullable = false)
-    }
     val canonical = pgObject(parcel) { key, value ->
-        if (key != "memberships") scalar(key, value)
+        if (key != "memberships") parcelFieldScalar(key, value)
         else (value as JsonArray).joinToString(", ", "[", "]") { item ->
             pgObject(item as JsonObject) { field, element ->
                 pgScalar(element, text = true, nullable = field in setOf("validUntil", "deletedAt"))

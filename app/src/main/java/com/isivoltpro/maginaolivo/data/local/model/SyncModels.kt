@@ -14,6 +14,10 @@ enum class OutboxOperation {
     UPDATE,
     DELETE,
     UPLOAD_ATTACHMENT,
+    /** G2.6 PARCEL: closes the current membership and archives the parcel (legacy markers used DELETE). */
+    ARCHIVE,
+    /** G2.6 PARCEL: reactivates an archived parcel with a new membership (legacy markers used UPDATE). */
+    RESTORE,
 }
 
 enum class SyncEntityType {
