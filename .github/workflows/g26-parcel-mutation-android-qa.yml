@@ -2,7 +2,7 @@ name: G2.6 PARCEL mutation Android QA isolated
 
 on:
   pull_request:
-    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql]
+    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android]
   workflow_dispatch:
 
 permissions:
@@ -125,4 +125,4 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: bash supabase/tests/g26-parcel-send-android/run.sh && bash supabase/tests/g26-farm-send-android/run.sh && bash supabase/tests/g26-workspace-send-android/run.sh && bash supabase/tests/g26-parent-receive-android/run.sh
+          script: bash supabase/tests/g26-convergence-android/run.sh && bash supabase/tests/g26-parcel-send-android/run.sh && bash supabase/tests/g26-farm-send-android/run.sh && bash supabase/tests/g26-workspace-send-android/run.sh && bash supabase/tests/g26-parent-receive-android/run.sh

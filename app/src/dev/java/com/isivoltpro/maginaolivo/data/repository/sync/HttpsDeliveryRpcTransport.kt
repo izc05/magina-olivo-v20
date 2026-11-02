@@ -40,6 +40,8 @@ internal class HttpsDeliveryRpcTransport(
         WORKSPACE_SEND(WorkspaceSendCoordinator.NAMES),
         FARM_SEND(FarmSendCoordinator.NAMES),
         PARCEL_SEND(ParcelSendCoordinator.NAMES),
+        /** 2c-3: #805 update/archive/restore and their receipts, only for the disposable convergence probe. */
+        PARCEL_MUTATION_SEND(ParcelMutationSendCoordinator.NAMES),
     }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =

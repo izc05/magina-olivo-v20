@@ -185,8 +185,21 @@ class ArchitectureBoundaryTest {
             ".dispatch(", "create_own_campaign", "update_own_parcel", "delete_own_parcel").forEach { forbidden ->
             assertFalse("PARCEL send probe must not send other entities: $forbidden", parcelText.contains(forbidden))
         }
+        // G2.6 2c-3 convergence: parcel mutations (#805) from A and the v2 parents read (#812) on B, over a
+        // disposable Supabase only. No campaign, delivery, worker or dispatch.
+        val convergenceProbe = all.filter { it.name == "ParcelConvergenceHttpsEphemeralTest.kt" }
+        assertEquals("Exactly one isolated convergence HTTPS probe", 1, convergenceProbe.size)
+        assertTrue(convergenceProbe.single().invariantSeparatorsPath.contains("/androidTestDev/"))
+        val convergenceText = convergenceProbe.single().readText()
+        assertTrue(convergenceText.contains("ParentReceiveV2Coordinator("))
+        assertTrue(convergenceText.contains("RpcScope.PARENT_RECEIVE_V2"))
+        assertTrue(convergenceText.contains("RpcScope.PARCEL_MUTATION_SEND"))
+        listOf("WorkManager", "CampaignCasCoordinator(", "RpcScope.CAMPAIGN_CAS", "RpcScope.DELIVERY",
+            ".dispatch(", "create_own_campaign", "DeliveryDispatchWorker(").forEach { forbidden ->
+            assertFalse("Convergence probe must stay within parcels and parents: $forbidden", convergenceText.contains(forbidden))
+        }
         all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe || it in campaignProbe ||
-            it in parentProbe || it in workspaceProbe || it in farmProbe || it in parcelProbe }.forEach { file ->
+            it in parentProbe || it in workspaceProbe || it in farmProbe || it in parcelProbe || it in convergenceProbe }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +
