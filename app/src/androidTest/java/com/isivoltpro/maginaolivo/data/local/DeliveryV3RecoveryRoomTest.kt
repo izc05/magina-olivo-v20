@@ -181,7 +181,7 @@ class DeliveryV3RecoveryRoomTest {
         return op
     }
 
-    private fun assertStillHeld(op: SyncOutboxEntity, cause: String?) {
+    private suspend fun assertStillHeld(op: SyncOutboxEntity, cause: String?) {
         val row = db.syncOutboxDao().findById(op.id)!!
         assertEquals(OutboxStatus.BLOCKED, row.status)
         assertEquals(DeliveryRetentionCodes.V3_ACK_AWAITING_HEAD, row.lastErrorCode)
