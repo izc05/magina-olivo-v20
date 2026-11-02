@@ -299,6 +299,61 @@ interface SyncOutboxDao {
     @Query("DELETE FROM sync_outbox WHERE entity_type = :entityType AND entity_id = :entityId AND status = 'PENDING'")
     suspend fun deleteOnlyPendingForEntity(entityType: SyncEntityType, entityId: UUID)
 
+    /** #808 HARVEST: a later marker replaces only the unbound one; a staged Jornada keeps its UUID and bytes. */
+    @Query("""
+        DELETE FROM sync_outbox WHERE entity_type = :entityType AND entity_id = :entityId AND status = 'PENDING'
+          AND payload_json IS NULL AND account_id IS NULL
+    """)
+    suspend fun deleteUnstagedPendingForEntity(entityType: SyncEntityType, entityId: UUID)
+
+    /** #808: freezes ONCE the account, farm and envelope of an unbound HARVEST marker. */
+    @Query("""
+        UPDATE sync_outbox SET account_id = :accountId, farm_id = :farmId, payload_json = :payloadJson,
+            payload_version = 1, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'HARVEST' AND status = 'PENDING' AND attempt_count = 0
+          AND payload_json IS NULL AND account_id IS NULL
+    """)
+    suspend fun stageHarvest(operationId: UUID, accountId: String, farmId: UUID, payloadJson: String, nowEpochMillis: Long): Int
+
+    /** #808: an unbound HARVEST marker that needs no request is resolved, never sent and never deleted. */
+    @Query("""
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = :code, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'HARVEST' AND status = 'PENDING' AND attempt_count = 0
+          AND payload_json IS NULL AND account_id IS NULL
+    """)
+    suspend fun resolveUnstagedHarvest(operationId: UUID, code: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'FAILED', attempt_count = attempt_count + 1, next_attempt_at = NULL,
+            last_error_code = 'OUTCOME_UNKNOWN', updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'HARVEST' AND status IN ('PENDING', 'FAILED')
+          AND account_id = :accountId AND payload_json = :payloadJson
+    """)
+    suspend fun markHarvestUnknown(operationId: UUID, accountId: String, payloadJson: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = :code, last_error_message = :message,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'HARVEST' AND status IN ('PENDING', 'FAILED')
+          AND account_id = :accountId AND payload_json = :payloadJson
+    """)
+    suspend fun blockHarvest(operationId: UUID, accountId: String, payloadJson: String, code: String, message: String?,
+        nowEpochMillis: Long): Int
+
+    /** #808 audit: a retained HARVEST operation changes code only from the exact expected one. */
+    @Query("""
+        UPDATE sync_outbox SET last_error_code = :to, last_error_message = :message, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'HARVEST' AND status = 'BLOCKED' AND last_error_code = :from
+    """)
+    suspend fun relabelHarvestRetention(operationId: UUID, from: String, to: String, message: String, nowEpochMillis: Long): Int
+
+    /** #808 rebase: only a never-attempted PENDING Pesada marker may have its bytes rebuilt (same operation id). */
+    @Query("""
+        UPDATE sync_outbox SET payload_json = :payloadJson, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'DELIVERY' AND status = 'PENDING' AND attempt_count = 0
+    """)
+    suspend fun rebaseUnsentDeliveryPayload(operationId: UUID, payloadJson: String, nowEpochMillis: Long): Int
+
     /**
      * Records a failed attempt on the upload intents of one entity. The intent stays in the
      * queue, so a later attempt can retry it; nothing here touches the entity itself.

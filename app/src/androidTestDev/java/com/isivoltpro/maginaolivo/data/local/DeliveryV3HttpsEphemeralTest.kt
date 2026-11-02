@@ -35,6 +35,8 @@ import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchWorker
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcAdapter
 import com.isivoltpro.maginaolivo.data.repository.sync.DispatchOutcome
 import com.isivoltpro.maginaolivo.data.repository.sync.HttpsDeliveryRpcTransport
+import com.isivoltpro.maginaolivo.data.repository.sync.HarvestSendCoordinator
+import com.isivoltpro.maginaolivo.data.repository.sync.HarvestSendOutcome
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
@@ -131,15 +133,16 @@ class DeliveryV3HttpsEphemeralTest {
         val archivedSnapshot: UUID = UUID.randomUUID(), val activeSnapshot: UUID = UUID.randomUUID())
 
     /** The same graph on the server (owner's) and in this device's Room. */
-    private suspend fun seed(graph: Graph, db: MaginaOlivoDatabase, server: Boolean) {
+    private suspend fun seed(graph: Graph, db: MaginaOlivoDatabase, server: Boolean, owner: UUID) {
         if (server) {
             fetch("/__g26_admin/seed", "POST", JSONObject().put("workspace", "${graph.workspace}").put("farm", "${graph.farm}")
                 .put("campaign", "${graph.campaign}").put("parcels", JSONArray()
                     .put(JSONObject().put("id", "${graph.archived}").put("name", "Norte").put("snapshot", "${graph.archivedSnapshot}"))
                     .put(JSONObject().put("id", "${graph.active}").put("name", "Sur").put("snapshot", "${graph.activeSnapshot}"))).toString())
         }
-        val meta = LocalMetadata(Instant.now(), Instant.now())
-        db.workspaceDao().upsert(WorkspaceEntity(graph.workspace, "Olivar QA", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta))
+        // Parents already confirmed by their own senders (#798-#800 and the campaign): workspace, farm, campaign.
+        val meta = LocalMetadata(Instant.now(), Instant.now(), syncStatus = SyncStatus.SYNCED, remoteVersion = 1L)
+        db.workspaceDao().upsert(WorkspaceEntity(graph.workspace, "Olivar QA", owner, "ES", "Europe/Madrid", "es-ES", "EUR", meta))
         db.farmDao().upsert(FarmEntity(graph.farm, graph.workspace, "La Solana", metadata = meta))
         db.parcelDao().upsert(ParcelEntity(graph.archived, graph.workspace, "Norte", source = "MANUAL", metadata = meta))
         db.parcelDao().upsert(ParcelEntity(graph.active, graph.workspace, "Sur", source = "MANUAL", metadata = meta))
@@ -152,12 +155,12 @@ class DeliveryV3HttpsEphemeralTest {
     }
 
     private class Device(val db: MaginaOlivoDatabase, val account: AccountRepository, val links: LocalFarmLinkRepository,
-        val workspace: WorkspaceRepository)
+        val workspace: WorkspaceRepository, val actor: UUID)
 
     private suspend fun device(name: String, actorKey: String, tokenKey: String, graph: Graph, server: Boolean): Device {
         val db = MaginaOlivoDatabase.create(context, name).also { opened += it }
-        seed(graph, db, server)
         val actor = UUID.fromString(fixture.getString(actorKey))
+        seed(graph, db, server, UUID.fromString(fixture.getString("actor")))
         val store = MemoryAccountSessionStore().apply { write(AccountRecord(session = session(actor, tokenKey))) }
         val account = AccountRepository(SupabaseAuthApi(config, HttpsAuthTransport(config)), store)
         // Publishes the stored session after /auth/v1/user validates it, so field writes are attributed.
@@ -170,7 +173,7 @@ class DeliveryV3HttpsEphemeralTest {
         val workspace = object : WorkspaceRepository {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(graph.workspace)
         }
-        return Device(db, account, links, workspace)
+        return Device(db, account, links, workspace, actor)
     }
 
     private fun repository(device: Device, at: Instant, route: DeliveryPayloadRoute) = OfflineFirstDeliveryRepository(
@@ -189,12 +192,31 @@ class DeliveryV3HttpsEphemeralTest {
         return device.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
     }
 
-    /** No Jornada sender exists yet: the fixture places the Pesada's Jornada with the device's id. */
-    private suspend fun placeJornada(device: Device, graph: Graph, op: SyncOutboxEntity) {
-        val delivery = device.db.deliveryDao().findById(op.entityId)!!
-        fetch("/__g26_admin/harvest", "POST", JSONObject().put("id", "${delivery.harvestId}").put("workspace", "${graph.workspace}")
-            .put("farm", "${graph.farm}").put("campaign", "${graph.campaign}").put("day", "${delivery.deliveryDate}").toString())
+    /** The Jornada sender (#808, #823 RPCs) from this device: nothing is placed by the fixture. */
+    private fun harvests(device: Device) = HarvestSendCoordinator(device.db, device.account, issuer,
+        HttpsDeliveryRpcTransport(config, scope = HttpsDeliveryRpcTransport.RpcScope.HARVEST_SEND),
+        { device.links.ledgerFor(it) }, ServerWorkspaceOwnerVerifier(authorizations, issuer), RandomIds)
+
+    private suspend fun jornadaOf(device: Device, op: SyncOutboxEntity): UUID = device.db.deliveryDao().findById(op.entityId)!!.harvestId!!
+
+    private suspend fun stageJornada(device: Device, op: SyncOutboxEntity): Pair<UUID, HarvestSendOutcome> {
+        val jornada = jornadaOf(device, op)
+        val marker = device.db.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, jornada)
+            .single { it.status == OutboxStatus.PENDING && it.payloadJson == null }
+        return marker.id to harvests(device).stage(marker.id)
     }
+
+    private suspend fun sendJornada(device: Device, op: SyncOutboxEntity): UUID {
+        val (marker, staged) = stageJornada(device, op)
+        assertEquals(HarvestSendOutcome.STAGED, staged)
+        val sent = harvests(device).send(marker, lease)
+        assertTrue("$sent", sent == HarvestSendOutcome.SYNCED || sent == HarvestSendOutcome.CONFIRMED_LOCAL_PENDING)
+        val jornada = jornadaOf(device, op)
+        assertEquals(1L, device.db.harvestDao().findById(jornada)!!.metadata.remoteVersion)
+        return jornada
+    }
+
+    private fun remoteJornada(id: UUID) = JSONObject(fetch("/__g26_admin/harvest_state?id=$id", "GET"))
 
     private fun worker(device: Device) = DeliveryDispatchWorker(device.db, device.links, DeliveryRpcAdapter(transport))
     private fun remote(id: UUID) = JSONObject(fetch("/__g26_admin/delivery?id=$id", "GET"))
@@ -213,7 +235,10 @@ class DeliveryV3HttpsEphemeralTest {
         val legacy = create(owner, graph, before, graph.active, day, 700_000, route = LegacyDeliveryRoute)
         val ambiguous = create(owner, graph, now, graph.active, LocalDate.parse("2026-10-25"), 600_000, time = LocalTime.of(2, 30))
         assertEquals(listOf(3, 3, 3, 2, 3), listOf(historical, late, lost, legacy, ambiguous).map { it.payloadVersion })
-        placeJornada(owner, graph, historical)
+        // Causal order: no Pesada goes before its Jornada is confirmed by receipt and HEAD.
+        assertEquals(DispatchOutcome.PARENT_NOT_SYNCED, worker(owner).dispatch(historical.id, lease))
+        val jornada = sendJornada(owner, historical)
+        sendJornada(owner, ambiguous)
 
         // A archives the parcel yesterday (real #805 RPC); B still sees it active.
         val archivedAt = now.minus(Duration.ofDays(1))
@@ -263,6 +288,8 @@ class DeliveryV3HttpsEphemeralTest {
         assertEquals(DispatchOutcome.SYNCED, worker(owner).dispatch(legacy.id, lease))
         assertEquals(2, remote(legacy.entityId).getInt("payloadVersion"))
         assertEquals(SyncStatus.SYNCED, owner.db.deliveryDao().findById(legacy.entityId)!!.metadata.syncStatus)
+        // The server derives the AUTO_DAY kilos from every live Pesada it holds (the late one never arrived).
+        assertEquals(2_800_000L + 900_000L + 700_000L, remoteJornada(jornada).getLong("weight"))
         Log.i("G808", "G808-SUMMARY historical=AWAITING_HEAD late=REVIEW dst=REVIEW lost=AWAITING_HEAD legacy=SYNCED")
     }
 
@@ -274,6 +301,12 @@ class DeliveryV3HttpsEphemeralTest {
         // A stale hint chose v3 on the member's device: the fresh server check refuses it.
         val op = create(member, graph, now, graph.active, LocalDate.now(zone).minusDays(1), 500_000)
         assertEquals(3, op.payloadVersion)
+        // The member cannot send the Jornada either: it does not own the workspace.
+        assertEquals(HarvestSendOutcome.NOT_AUTHORIZED, stageJornada(member, op).second)
+        // Even with its Jornada taken as confirmed, the v3 Pesada is refused before any request, never redirected.
+        member.db.harvestDao().findById(jornadaOf(member, op))!!.let {
+            member.db.harvestDao().upsert(it.copy(metadata = it.metadata.copy(remoteVersion = 1L)))
+        }
         assertEquals(DispatchOutcome.NOT_AUTHORIZED, worker(member).dispatch(op.id, lease))
         assertNull(member.db.deliveryDispatchPrepareDao().findByOperation(op.id))
         val kept = member.db.syncOutboxDao().findById(op.id)!!
@@ -283,6 +316,44 @@ class DeliveryV3HttpsEphemeralTest {
         assertEquals(0, remote(op.entityId).getInt("rows"))
         assertTrue(member.links.state.value.ledger != null)
         Log.i("G808", "G808-MEMBER outcome=NOT_AUTHORIZED serverRows=0 version=${kept.payloadVersion}")
+    }
+
+    @Test fun twoPhonesShareOneAutoDayAndSendPesadasWithoutAFixtureJornada() = runBlocking<Unit> {
+        val graph = Graph()
+        val a = device(names[0], "actor", "token", graph, server = true)
+        val b = device(names[1], "actor", "token", graph, server = false)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(1))
+        val day = LocalDate.now(zone).minusDays(2)
+        // Both phones, offline, record Pesadas of the same day: two local AUTO_DAY rows with different ids.
+        val a2 = create(a, graph, before, graph.active, day, 700_000, route = LegacyDeliveryRoute)
+        val a3 = create(a, graph, before, graph.active, day, 800_000)
+        val b3 = create(b, graph, before, graph.active, day, 900_000)
+        val canonical = jornadaOf(a, a2)
+        val losing = jornadaOf(b, b3)
+        assertTrue(canonical != losing)
+        assertEquals(DispatchOutcome.PARENT_NOT_SYNCED, worker(b).dispatch(b3.id, lease))
+
+        // A: real Jornada through its RPC, confirmed by receipt and HEAD; then its v2 and v3 Pesadas.
+        assertEquals(canonical, sendJornada(a, a2))
+        assertEquals(DispatchOutcome.SYNCED, worker(a).dispatch(a2.id, lease))
+        assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(a).dispatch(a3.id, lease))
+        assertEquals(1_500_000L, remoteJornada(canonical).getLong("weight"))
+
+        // B: the server already holds the canonical AUTO_DAY. Never a second one; B rebases its unsent Pesada.
+        val (marker, staged) = stageJornada(b, b3)
+        assertEquals(HarvestSendOutcome.STAGED, staged)
+        assertEquals(HarvestSendOutcome.AUTO_DAY_EXISTS, harvests(b).send(marker, lease))
+        assertEquals("harvest_id=$canonical;version=1", b.db.syncOutboxDao().findById(marker)!!.lastErrorMessage)
+        assertEquals(0, remoteJornada(losing).getInt("rows"))
+        assertEquals(HarvestSendOutcome.REBASED, harvests(b).rebaseOntoCanonical(marker))
+        assertEquals(canonical, jornadaOf(b, b3))
+        assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(b).dispatch(b3.id, lease))
+        assertEquals(canonical.toString(), remote(b3.entityId).getString("harvestId"))
+        val server = remoteJornada(canonical)
+        assertEquals(2_400_000L, server.getLong("weight"))
+        assertEquals(1, server.getInt("rows")); assertEquals(1, server.getInt("version"))
+        assertEquals(0, remoteJornada(losing).getInt("rows"))
+        Log.i("G808", "G808-JORNADA canonical=1 losingOnServer=0 weight=${server.getLong("weight")} rebased=true")
     }
 
     private fun session(actor: UUID, key: String): AuthSession {

@@ -78,6 +78,9 @@ internal enum class DispatchOutcome {
 
     /** #808 v3 only. `sync review: <CAUSE>`: BLOCKED as SYNC_REVIEW:<CAUSE>, kept for explicit review. */
     REVIEW_HELD,
+
+    /** #808 causal order: the Pesada's Jornada is not confirmed by the server yet. Nothing claimed or sent. */
+    PARENT_NOT_SYNCED,
 }
 
 internal class DeliveryDispatchWorker(
@@ -113,6 +116,15 @@ internal class DeliveryDispatchWorker(
         // #808: a v3 operation (frozen by its producer) goes to sync_own_delivery_v3; v1 is still refused.
         if (candidate.payloadVersion !in SENDABLE_VERSIONS) return DispatchOutcome.REJECTED
         if (candidate.payloadJson == null) return DispatchOutcome.REJECTED
+        // #808 causal order: parents -> Jornada confirmed -> Pesada. A Jornada counts once a receipt (or an
+        // audited adoption) gave it a remote version; later derived-kilos markers never block, so no wait cycle.
+        val pesada = database.deliveryDao().findById(candidate.entityId) ?: return DispatchOutcome.REJECTED
+        pesada.harvestId?.let { jornadaId ->
+            val jornada = database.harvestDao().findById(jornadaId)
+            if (jornada == null || jornada.metadata.deletedAt != null || jornada.metadata.remoteVersion == null) {
+                return DispatchOutcome.PARENT_NOT_SYNCED
+            }
+        }
 
         // 1. Durable record first. Anything other than these two outcomes means we do not send.
         val prepared = try {

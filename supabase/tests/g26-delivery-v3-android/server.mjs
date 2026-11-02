@@ -51,8 +51,10 @@ const names = ['20261011120000_g0_auth_workspaces_shared_farms.sql',
 const files = [...names.map(name => new URL(`../../migrations/${name}`, import.meta.url)),
   ...['g1c-reservations.sql', 'g2-sync-own-data.sql', 'g2-parcel-bootstrap.sql']
     .map(name => new URL(`../../proposals/${name}`, import.meta.url)),
+  new URL('../../migrations/20261027155737_g25_receive_bundle_contract.sql', import.meta.url),
   new URL('../../migrations/20261029044901_g26_workspace_authorization.sql', import.meta.url),
-  ...['g26-parent-receive-v1.sql', 'g26-fpm-manage-hardening.sql', 'g26-parcel-mutation-v1.sql', 'g26-historical-writers-v1.sql']
+  ...['g26-parent-receive-v1.sql', 'g26-fpm-manage-hardening.sql', 'g26-parcel-mutation-v1.sql', 'g26-historical-writers-v1.sql',
+    'g26-delivery-head-v3.sql', 'g26-harvest-writer-v1.sql']
     .map(name => new URL(`../../proposals/${name}`, import.meta.url))];
 sql(`BEGIN;\n${files.map(file => readFileSync(file, 'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
 
@@ -102,12 +104,16 @@ async function seed(body) {
          VALUES (${q(workspace)},${q(member.id)},'EDITOR',ARRAY['read','write']);`);
 }
 
-/** The Jornada of a Pesada: there is no Jornada sender yet, so the fixture places it (documented blocker). */
-function harvest({ id, workspace, farm, campaign, day }) {
-  for (const value of [id, workspace, farm, campaign]) assert.match(value, uuid);
-  assert.match(day, date);
-  sql(`INSERT INTO public.harvests(id,workspace_id,farm_id,campaign_id,harvest_date,weight_grams,recorded_by_user_id)
-       VALUES (${q(id)},${q(workspace)},${q(farm)},${q(campaign)},${q(day)},0,${q(owner.id)}) ON CONFLICT (id) DO NOTHING;`);
+/** Read-only server state of a Jornada. Jornadas are created only by the device, through sync_own_harvest_v1. */
+function harvestState(id) {
+  assert.match(id, uuid);
+  const [rows, weight, version, deleted, parcels] = sql(`SELECT
+    (SELECT count(*) FROM public.harvests WHERE id=${q(id)}),
+    (SELECT coalesce(max(weight_grams),0) FROM public.harvests WHERE id=${q(id)}),
+    (SELECT coalesce(max(version),0) FROM public.harvests WHERE id=${q(id)}),
+    (SELECT count(*) FROM public.harvests WHERE id=${q(id)} AND deleted_at IS NOT NULL),
+    (SELECT count(*) FROM public.harvest_parcels WHERE harvest_id=${q(id)});`).split('|');
+  return { rows: Number(rows), weight: Number(weight), version: Number(version), deleted: Number(deleted), parcels: Number(parcels) };
 }
 
 async function archive(parcel, at) {
@@ -120,16 +126,17 @@ async function archive(parcel, at) {
 
 function delivery(id) {
   assert.match(id, uuid);
-  const [rows, version, receipts, payloadVersion, hash, origin, parcels] = sql(`SELECT
+  const [rows, version, receipts, payloadVersion, hash, origin, parcels, harvestId] = sql(`SELECT
     (SELECT count(*) FROM public.deliveries WHERE id=${q(id)}),
     (SELECT coalesce(max(version),0) FROM public.deliveries WHERE id=${q(id)}),
     (SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_type='DELIVERY' AND entity_id=${q(id)}),
     (SELECT coalesce(max(payload_version),0) FROM magina_g2_private.sync_operations WHERE entity_type='DELIVERY' AND entity_id=${q(id)}),
     (SELECT coalesce(max(payload_hash),'') FROM magina_g2_private.sync_operations WHERE entity_type='DELIVERY' AND entity_id=${q(id)}),
     (SELECT coalesce(max(origin_created_at_exact),'') FROM magina_g2_private.fact_origins WHERE entity_id=${q(id)}),
-    (SELECT count(*) FROM public.delivery_parcels WHERE delivery_id=${q(id)});`).split('|');
+    (SELECT count(*) FROM public.delivery_parcels WHERE delivery_id=${q(id)}),
+    (SELECT coalesce(max(harvest_id::text),'') FROM public.deliveries WHERE id=${q(id)});`).split('|');
   return { rows: Number(rows), version: Number(version), receipts: Number(receipts), payloadVersion: Number(payloadVersion),
-    hash, origin, parcels: Number(parcels) };
+    hash, origin, parcels: Number(parcels), harvestId };
 }
 
 const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
@@ -146,7 +153,7 @@ const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
   try {
     if (url.pathname === '/__g26_fixture') return json(200, fixture);
     if (incoming.method === 'POST' && url.pathname === '/__g26_admin/seed') { await seed(JSON.parse(raw.toString('utf8'))); return done(); }
-    if (incoming.method === 'POST' && url.pathname === '/__g26_admin/harvest') { harvest(JSON.parse(raw.toString('utf8'))); return done(); }
+    if (url.pathname === '/__g26_admin/harvest_state') return json(200, harvestState(url.searchParams.get('id') ?? ''));
     if (incoming.method === 'POST' && url.pathname === '/__g26_admin/archive') {
       await archive(url.searchParams.get('parcel') ?? '', url.searchParams.get('at') ?? ''); return done();
     }

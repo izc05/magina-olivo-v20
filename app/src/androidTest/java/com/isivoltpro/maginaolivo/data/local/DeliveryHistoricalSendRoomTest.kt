@@ -153,6 +153,12 @@ class DeliveryHistoricalSendRoomTest {
             is AppResult.Success -> result.value
             is AppResult.Failure -> error("create failed: ${result.error}")
         }
+        // #808 causal order: these tests start where the Jornada sender left off, with the Jornada confirmed.
+        device.db.deliveryDao().findById(id)?.harvestId?.let { jornada ->
+            device.db.harvestDao().findById(jornada)?.let {
+                device.db.harvestDao().upsert(it.copy(metadata = it.metadata.copy(remoteVersion = it.metadata.remoteVersion ?: 1L)))
+            }
+        }
         return device.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single { it.status == OutboxStatus.PENDING }
     }
 

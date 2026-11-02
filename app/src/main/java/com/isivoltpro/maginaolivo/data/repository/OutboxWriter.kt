@@ -60,7 +60,9 @@ internal suspend fun MaginaOlivoDatabase.enqueueCollapsed(
     val operationId = if (isIdenticalPending) pendingExisting!!.id else idGenerator.newId()
     val createdAt = if (isIdenticalPending) pendingExisting!!.createdAt else now
 
-    dao.deleteOnlyPendingForEntity(entityType, entityId)
+    // #808: a staged HARVEST operation is never replaced by a later reconciliation marker.
+    if (entityType == SyncEntityType.HARVEST) dao.deleteUnstagedPendingForEntity(entityType, entityId)
+    else dao.deleteOnlyPendingForEntity(entityType, entityId)
     dao.insert(
         SyncOutboxEntity(
             id = operationId,

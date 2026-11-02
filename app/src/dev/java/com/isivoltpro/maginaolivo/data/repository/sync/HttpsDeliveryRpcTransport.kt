@@ -42,6 +42,8 @@ internal class HttpsDeliveryRpcTransport(
         PARCEL_SEND(ParcelSendCoordinator.NAMES),
         /** 2c-3: #805 update/archive/restore and their receipts, only for the disposable convergence probe. */
         PARCEL_MUTATION_SEND(ParcelMutationSendCoordinator.NAMES),
+        /** #808: Jornada writer, receipts and HEAD, only for the disposable Pesada v3 probe. */
+        HARVEST_SEND(HarvestSendCoordinator.NAMES),
     }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =

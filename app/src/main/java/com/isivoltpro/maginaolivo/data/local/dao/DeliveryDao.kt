@@ -68,4 +68,8 @@ interface DeliveryDao {
 
     @Query("SELECT * FROM deliveries WHERE harvest_id = :harvestId AND deleted_at IS NULL")
     suspend fun listLiveForHarvest(harvestId: UUID): List<DeliveryEntity>
+
+    /** #808 rebase: every Pesada of a Jornada, deleted ones included. */
+    @Query("SELECT * FROM deliveries WHERE harvest_id = :harvestId")
+    suspend fun listAllForHarvest(harvestId: UUID): List<DeliveryEntity>
 }
