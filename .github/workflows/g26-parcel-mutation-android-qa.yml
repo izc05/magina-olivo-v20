@@ -2,7 +2,7 @@ name: G2.6 PARCEL mutation Android QA isolated
 
 on:
   pull_request:
-    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3, codex/g26-campaign-history-h7, codex/g26-808-design, codex/g26-808-sql, codex/g26-808-android]
+    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3, codex/g26-campaign-history-h7, codex/g26-808-design, codex/g26-808-sql, codex/g26-808-android, codex/g26-808-head-v3]
   workflow_dispatch:
 
 permissions:
@@ -72,6 +72,10 @@ jobs:
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
         with:
           version: '2.120.0'
+      - name: '#808 Jornadas (HARVEST) writer, AUTO_DAY identity and derivation contract (own schema, disposable)'
+        env:
+          MAGINA_EXTRA_PROPOSALS: ''
+        run: bash supabase/tests/g26-harvest-writer/run.sh
       - name: '#808 HEAD v3 read contract (own schema, disposable)'
         env:
           MAGINA_EXTRA_PROPOSALS: ''
