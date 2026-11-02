@@ -40,7 +40,9 @@ const account = async label => {
   const password = `Fixture!${randomUUID()}`;
   const user = await request('/auth/v1/admin/users', { email, password, email_confirm: true }, status.SERVICE_ROLE_KEY, true);
   const login = await request('/auth/v1/token?grant_type=password', { email, password });
-  return { id: user.id, token: jwt(login.access_token) };
+  // A second, independent login of the same user: the device's session rotation.
+  const again = await request('/auth/v1/token?grant_type=password', { email, password });
+  return { id: user.id, token: jwt(login.access_token), rotated: jwt(again.access_token) };
 };
 
 const names = ['20261011120000_g0_auth_workspaces_shared_farms.sql',
@@ -69,7 +71,8 @@ for (let attempt = 0; attempt < 40; attempt++) {
   if (attempt === 39) throw new Error('PostgREST did not expose sync_own_delivery_v3');
   await new Promise(resolve => setTimeout(resolve, 250));
 }
-const fixture = { actor: owner.id, token: owner.token, member: member.id, memberToken: member.token, anonKey: status.ANON_KEY };
+const fixture = { actor: owner.id, token: owner.token, rotatedToken: owner.rotated, member: member.id, memberToken: member.token,
+  anonKey: status.ANON_KEY };
 process.stdout.write(`G808-HOST ${sql(`SELECT version();`)}\n`);
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -159,10 +162,17 @@ const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
     }
     if (incoming.method === 'POST' && url.pathname === '/__g26_admin/v3_mode') {
       const mode = url.searchParams.get('mode');
-      if (!['normal', 'drop'].includes(mode)) return json(400, {});
+      if (!['normal', 'drop', 'harvest_drop'].includes(mode)) return json(400, {});
       v3Mode = mode; return done();
     }
     if (url.pathname === '/__g26_admin/delivery') return json(200, delivery(url.searchParams.get('id') ?? ''));
+    // A write outside the receipt protocol: it moves the version, so the held receipt is no longer the head.
+    if (incoming.method === 'POST' && url.pathname === '/__g26_admin/touch') {
+      const id = url.searchParams.get('id') ?? '';
+      assert.match(id, uuid);
+      sql(`UPDATE public.deliveries SET notes='fuera de protocolo' WHERE id=${q(id)};`);
+      return done();
+    }
   } catch (error) {
     process.stdout.write(`fixture admin error: ${String(error?.message ?? error).slice(0, 300)}\n`);
     return json(500, {});
@@ -180,7 +190,8 @@ const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
     });
     const body = Buffer.from(await response.arrayBuffer());
     // A lost response AFTER the server committed: the device must recover it by the same UUID.
-    if (url.pathname === '/rest/v1/rpc/sync_own_delivery_v3' && v3Mode === 'drop') {
+    if ((url.pathname === '/rest/v1/rpc/sync_own_delivery_v3' && v3Mode === 'drop') ||
+      (url.pathname === '/rest/v1/rpc/sync_own_harvest_v1' && v3Mode === 'harvest_drop')) {
       incoming.socket.destroy(); return;
     }
     outgoing.writeHead(response.status, { 'Content-Type': 'application/json' });

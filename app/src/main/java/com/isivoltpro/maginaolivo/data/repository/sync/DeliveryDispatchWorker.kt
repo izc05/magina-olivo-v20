@@ -7,6 +7,10 @@ import com.isivoltpro.maginaolivo.data.repository.AuthenticatedDeliveryAck
 import com.isivoltpro.maginaolivo.data.repository.DeliveryRetention
 import com.isivoltpro.maginaolivo.data.repository.DeliveryRetentionCodes
 import com.isivoltpro.maginaolivo.data.repository.RetentionOutcome
+import com.isivoltpro.maginaolivo.data.repository.V3HeadEvidence
+import com.isivoltpro.maginaolivo.data.repository.V3RecoveryCauses
+import com.isivoltpro.maginaolivo.data.repository.V3ResolveOutcome
+import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
 import com.isivoltpro.maginaolivo.data.repository.PrepareOutcome
 import com.isivoltpro.maginaolivo.feature.account.AuthFailure
@@ -305,6 +309,77 @@ internal class DeliveryDispatchWorker(
             AckCorrelationOutcome.NOT_PREPARED,
             AckCorrelationOutcome.REJECTED,
             -> DispatchOutcome.REJECTED
+        }
+    }
+
+    /**
+     * #808: resolves ONE operation held as V3_ACK_AWAITING_HEAD, by its SAME UUID. Nothing is sent: it
+     * reads this actor's receipt and `get_own_delivery_head_v3` and confirms ONLY on a simultaneous
+     * strict match (receipt and HEAD name this operation, this Pesada, version 3, the receipt's version
+     * is the current one, the prepared hash everywhere, not deleted) for the server-confirmed current
+     * owner. Otherwise the operation stays held with its cause. Never wired in shipped code.
+     */
+    suspend fun resolveAwaitingHead(operationId: UUID, lease: DeliveryDispatchLease): DispatchOutcome {
+        lease.requireOpen()
+        val op = database.syncOutboxDao().findById(operationId) ?: return DispatchOutcome.REJECTED
+        if (op.entityType != SyncEntityType.DELIVERY || op.payloadVersion != DELIVERY_PAYLOAD_VERSION_V3) {
+            return DispatchOutcome.REJECTED
+        }
+        val prepared = database.deliveryDispatchPrepareDao().findByOperation(operationId) ?: return DispatchOutcome.REJECTED
+        if (op.status == OutboxStatus.CONFIRMED) return DispatchOutcome.SYNCED
+        if (op.status != OutboxStatus.BLOCKED || op.lastErrorCode != DeliveryRetentionCodes.V3_ACK_AWAITING_HEAD) {
+            return DispatchOutcome.REJECTED
+        }
+        var transportFailure: DeliveryRpcFailure? = null
+        val outcome = try {
+            lease.withActiveRequest {
+                links.resolveAwaitingV3Delivery(operationId, lease, { session ->
+                    val receipt = try {
+                        rpc.checkSyncOperations(session, listOf(operationId))[operationId]
+                    } catch (failure: DeliveryRpcFailure) {
+                        transportFailure = failure
+                        return@resolveAwaitingV3Delivery null
+                    } ?: return@resolveAwaitingV3Delivery V3HeadEvidence.Hold(V3RecoveryCauses.NO_RECEIPT)
+                    if (receipt.operationId != operationId || receipt.entityType != SyncEntityType.DELIVERY ||
+                        receipt.deliveryId != op.entityId || receipt.accountId != prepared.accountId ||
+                        receipt.payloadVersion != DELIVERY_PAYLOAD_VERSION_V3 || receipt.payloadHash != prepared.payloadHash ||
+                        receipt.remoteVersion < 1L
+                    ) {
+                        return@resolveAwaitingV3Delivery V3HeadEvidence.Hold(V3RecoveryCauses.RECEIPT_MISMATCH)
+                    }
+                    val head = try {
+                        rpc.getOwnDeliveryHeadV3(session, op.entityId)
+                    } catch (failure: DeliveryRpcFailure) {
+                        transportFailure = failure
+                        return@resolveAwaitingV3Delivery null
+                    }
+                    when {
+                        head.deleted -> V3HeadEvidence.Hold(V3RecoveryCauses.DELETED)
+                        head.version != receipt.remoteVersion -> V3HeadEvidence.Hold(V3RecoveryCauses.HEAD_SUPERSEDED)
+                        head.headOperationId == null -> V3HeadEvidence.Hold(V3RecoveryCauses.HEAD_NULL)
+                        head.headOperationId != operationId -> V3HeadEvidence.Hold(V3RecoveryCauses.HEAD_SUPERSEDED)
+                        head.headPayloadVersion != DELIVERY_PAYLOAD_VERSION_V3 || head.headPayloadHash != prepared.payloadHash ->
+                            V3HeadEvidence.Hold(V3RecoveryCauses.HEAD_MISMATCH)
+                        else -> V3HeadEvidence.Confirm(receipt.remoteVersion)
+                    }
+                }, now())
+            }
+        } catch (failure: AuthFailure) {
+            return notAuthorized(failure)
+        }
+        transportFailure?.let { failure ->
+            return when {
+                failure.outcomeUnknown -> DispatchOutcome.OUTCOME_UNKNOWN
+                failure.error == DeliveryRpcError.FORBIDDEN -> DispatchOutcome.NOT_AUTHORIZED
+                else -> DispatchOutcome.OUTCOME_UNKNOWN
+            }
+        }
+        return when (outcome) {
+            V3ResolveOutcome.SYNCED, V3ResolveOutcome.ALREADY_CONFIRMED -> DispatchOutcome.SYNCED
+            V3ResolveOutcome.NEEDS_REBASE -> DispatchOutcome.NEEDS_REBASE
+            V3ResolveOutcome.HELD -> DispatchOutcome.V3_ACK_AWAITING_HEAD
+            V3ResolveOutcome.NOT_AUTHORIZED -> DispatchOutcome.NOT_AUTHORIZED
+            V3ResolveOutcome.REJECTED -> DispatchOutcome.REJECTED
         }
     }
 

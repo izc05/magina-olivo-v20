@@ -308,6 +308,32 @@ class ArchitectureBoundaryTest {
     }
 
     /**
+     * Cross gate #822 + #824: the v3 HEAD recovery and the AUTO_DAY rebase stay off. No shipped file
+     * calls them; each name may appear only in the files that define or forward it.
+     */
+    @Test
+    fun theV3RecoveryAndTheJornadaRebaseAreNeverCalledFromShippedCode() {
+        val app = sequenceOf(File("src"), File("app/src")).firstOrNull { it.exists() }
+        assertTrue("Could not locate the app source sets", app != null)
+        val shipped = app!!.walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .filter { file -> listOf("/main/java/", "/staging/java/", "/production/java/", "/dev/java/")
+                .any { it in file.invariantSeparatorsPath } }
+            .toList()
+        assertTrue("No shipped Kotlin sources found", shipped.isNotEmpty())
+        val allowed = mapOf(
+            ".resolveAwaitingHead(" to emptySet(),
+            "resolveAwaitingV3Delivery(" to setOf("DeliveryV3Recovery.kt", "LocalFarmLinkRepository.kt", "DeliveryDispatchWorker.kt"),
+            "rebaseOntoCanonical(" to setOf("HarvestSendCoordinator.kt"),
+        )
+        shipped.forEach { file ->
+            val text = file.readText()
+            allowed.forEach { (name, owners) ->
+                if (file.name !in owners) assertFalse("${file.name} must not call the #808 $name", text.contains(name))
+            }
+        }
+    }
+
+    /**
      * The exception is one file wide, not one package wide. No other file of the sync package, in
      * any source set, may name the backend or its routes. A second file needing it needs its own
      * authorization.

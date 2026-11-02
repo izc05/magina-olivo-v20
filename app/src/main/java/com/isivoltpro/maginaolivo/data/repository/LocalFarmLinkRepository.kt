@@ -230,6 +230,36 @@ class LocalFarmLinkRepository(
     } }
 
     /**
+     * #808 recovery of a held v3 Pesada. The fresh server owner check runs first, with the verified
+     * session; [fetch] then reads the receipt and the v3 HEAD. The confirmation or the recorded cause is
+     * written under the local identity lock and refused if the account changed meanwhile. Without an
+     * owner verifier (production) nothing is read or written.
+     */
+    internal suspend fun resolveAwaitingV3Delivery(
+        operationId: UUID,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        fetch: suspend (com.isivoltpro.maginaolivo.feature.account.AuthSession) -> V3HeadEvidence?,
+        at: Instant = Instant.now(),
+    ): V3ResolveOutcome {
+        val verifier = ownerVerifier ?: return V3ResolveOutcome.NOT_AUTHORIZED
+        return account.withServerVerifiedIdentity({ session ->
+            val workspace = withContext(Dispatchers.IO) {
+                database.syncOutboxDao().findById(operationId)?.farmId?.let { database.farmDao().findById(it) }?.workspaceId
+            } ?: return@withServerVerifiedIdentity null
+            if (!verifier.isCurrentOwner(session, workspace)) V3HeadEvidence.Hold(V3RecoveryCauses.NOT_OWNER) else fetch(session)
+        }) { userId, evidence -> withContext(Dispatchers.IO) {
+            if (evidence == null) return@withContext V3ResolveOutcome.NOT_AUTHORIZED
+            val farm = database.syncOutboxDao().findById(operationId)?.farmId?.let { database.farmDao().findById(it) }
+                ?: return@withContext V3ResolveOutcome.REJECTED
+            database.resolveAwaitingV3Delivery(
+                lease, operationId,
+                DispatchIdentity(userId.toString(), issuer, subject(userId), farm.workspaceId),
+                ledgerFor(userId), evidence, at,
+            )
+        } }
+    }
+
+    /**
      * G2.4: after a brutal close, reacquiring the OS lock proves no conforming sender still
      * owns these intents. Their PREPARE records settle as OUTCOME_UNKNOWN and the SAME UUID,
      * bytes and base version stay eligible, so the server's idempotency decides. Nothing is

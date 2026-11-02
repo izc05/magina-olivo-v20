@@ -481,6 +481,30 @@ interface SyncOutboxDao {
         nowEpochMillis: Long,
     ): Int
 
+    /** #808 recovery: records why a held v3 operation could not be confirmed; it stays BLOCKED as it is. */
+    @Query(
+        """
+        UPDATE sync_outbox SET last_error_message = :cause, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND account_id = :accountId AND entity_type = 'DELIVERY'
+          AND payload_version = 3 AND status = 'BLOCKED' AND last_error_code = 'V3_ACK_AWAITING_HEAD'
+        """,
+    )
+    suspend fun annotateAwaitingHead(operationId: UUID, accountId: String, cause: String, nowEpochMillis: Long): Int
+
+    /**
+     * #808 recovery, inside the confirming transaction only: the held v3 operation goes back to
+     * PROCESSING so the normal receipt path can confirm it. If that path refuses, the transaction rolls back.
+     */
+    @Query(
+        """
+        UPDATE sync_outbox SET status = 'PROCESSING', last_error_code = NULL, last_error_message = NULL,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND account_id = :accountId AND entity_type = 'DELIVERY'
+          AND payload_version = 3 AND status = 'BLOCKED' AND last_error_code = 'V3_ACK_AWAITING_HEAD'
+        """,
+    )
+    suspend fun reopenAwaitingHeadForConfirmation(operationId: UUID, accountId: String, nowEpochMillis: Long): Int
+
     /** Only a new owner of the SAME OS lock can resolve this protocol's interrupted claim. */
     @Query(
         """

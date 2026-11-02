@@ -29,12 +29,14 @@ import com.isivoltpro.maginaolivo.data.repository.LegacyDeliveryRoute
 import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDeliveryRepository
 import com.isivoltpro.maginaolivo.data.repository.ServerWorkspaceOwnerVerifier
+import com.isivoltpro.maginaolivo.data.repository.V3RecoveryCauses
 import com.isivoltpro.maginaolivo.data.repository.deliveryOriginCreatedAt
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchWorker
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcAdapter
 import com.isivoltpro.maginaolivo.data.repository.sync.DispatchOutcome
 import com.isivoltpro.maginaolivo.data.repository.sync.HttpsDeliveryRpcTransport
+import com.isivoltpro.maginaolivo.data.repository.sync.HarvestCodes
 import com.isivoltpro.maginaolivo.data.repository.sync.HarvestSendCoordinator
 import com.isivoltpro.maginaolivo.data.repository.sync.HarvestSendOutcome
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
@@ -79,8 +81,10 @@ import org.junit.runner.RunWith
  * Explicit DEV-only probe for #808: the Pesada v3 writer (`sync_own_delivery_v3`, #818 proposal)
  * against a disposable local Supabase with a pinned test certificate. Real Room, real producer,
  * real PREPARE with a fresh server owner check, real HTTPS. No receiver, no scheduler, no campaign
- * sender. The server parents (and the Jornada, which has no sender yet) are placed by the fixture
- * with the ids the device already holds; the archive goes through the real #805 RPC.
+ * sender. The server parents are placed by the fixture with the ids the device already holds; the
+ * archive goes through the real #805 RPC. The Jornada is NEVER placed by the fixture: Android sends it
+ * (#824, `sync_own_harvest_v1`), and a held v3 Pesada is recovered through `get_own_delivery_head_v3`
+ * (#822). Cross gate #822 + #824: Jornada -> Pesada v3 -> HEAD v3 recovery -> SYNCED, on one server.
  */
 @RunWith(AndroidJUnit4::class)
 class DeliveryV3HttpsEphemeralTest {
@@ -88,7 +92,7 @@ class DeliveryV3HttpsEphemeralTest {
     private val issuer = "https://zubpicdibqbmewxeurhm.supabase.co"
     private val endpoint = "https://10.0.2.2:54443"
     private val zone = ZoneId.of("Europe/Madrid")
-    private val names = List(2) { "g808-v3-https-$it-${UUID.randomUUID()}" }
+    private val names = List(3) {"g808-v3-https-$it-${UUID.randomUUID()}" }
     private val ledgers = mutableListOf<File>()
     private val opened = mutableListOf<MaginaOlivoDatabase>()
     private lateinit var originalTls: SSLSocketFactory
@@ -155,7 +159,7 @@ class DeliveryV3HttpsEphemeralTest {
     }
 
     private class Device(val db: MaginaOlivoDatabase, val account: AccountRepository, val links: LocalFarmLinkRepository,
-        val workspace: WorkspaceRepository, val actor: UUID)
+        val workspace: WorkspaceRepository, val actor: UUID, val ledger: File)
 
     private suspend fun device(name: String, actorKey: String, tokenKey: String, graph: Graph, server: Boolean): Device {
         val db = MaginaOlivoDatabase.create(context, name).also { opened += it }
@@ -173,7 +177,7 @@ class DeliveryV3HttpsEphemeralTest {
         val workspace = object : WorkspaceRepository {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(graph.workspace)
         }
-        return Device(db, account, links, workspace, actor)
+        return Device(db, account, links, workspace, actor, ledger)
     }
 
     private fun repository(device: Device, at: Instant, route: DeliveryPayloadRoute) = OfflineFirstDeliveryRepository(
@@ -220,6 +224,27 @@ class DeliveryV3HttpsEphemeralTest {
 
     private fun worker(device: Device) = DeliveryDispatchWorker(device.db, device.links, DeliveryRpcAdapter(transport))
     private fun remote(id: UUID) = JSONObject(fetch("/__g26_admin/delivery?id=$id", "GET"))
+
+    /**
+     * Cross gate: the SAME operation ended CONFIRMED with its frozen bytes, the Pesada is SYNCED at the
+     * receipt's version under THIS Jornada, and nothing was duplicated: one outbox operation, one server
+     * row, one receipt.
+     */
+    private suspend fun assertRecovered(device: Device, op: SyncOutboxEntity, jornada: UUID) {
+        val local = device.db.deliveryDao().findById(op.entityId)!!
+        assertEquals(SyncStatus.SYNCED, local.metadata.syncStatus)
+        assertEquals(1L, local.metadata.remoteVersion)
+        assertEquals(jornada, local.harvestId)
+        val row = device.db.syncOutboxDao().findById(op.id)!!
+        assertEquals(OutboxStatus.CONFIRMED, row.status)
+        assertEquals(op.id, row.id)
+        assertEquals(op.payloadJson, row.payloadJson)
+        assertEquals(1, device.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, op.entityId).size)
+        val server = remote(op.entityId)
+        assertEquals(1, server.getInt("rows")); assertEquals(1, server.getInt("receipts"))
+        assertEquals(jornada.toString(), server.getString("harvestId"))
+        assertEquals(1, device.db.harvestDao().findById(jornada)!!.metadata.remoteVersion?.toInt())
+    }
 
     @Test fun ownerSendsHistoricalPesadasOverHttpsAndNothingIsConfirmedWithoutAV3Head() = runBlocking<Unit> {
         val graph = Graph()
@@ -291,6 +316,26 @@ class DeliveryV3HttpsEphemeralTest {
         // The server derives the AUTO_DAY kilos from every live Pesada it holds (the late one never arrived).
         assertEquals(2_800_000L + 900_000L + 700_000L, remoteJornada(jornada).getLong("weight"))
         Log.i("G808", "G808-SUMMARY historical=AWAITING_HEAD late=REVIEW dst=REVIEW lost=AWAITING_HEAD legacy=SYNCED")
+
+        // 6. Cross #822 + #824. A held v3 is never re-sent by dispatch: not claimable, nothing on the wire.
+        assertEquals(DispatchOutcome.REJECTED, restarted.dispatch(historical.id, lease))
+        assertEquals(1, remote(historical.entityId).getInt("receipts"))
+        assertEquals(historical.payloadJson, owner.db.syncOutboxDao().findById(historical.id)!!.payloadJson)
+        // After the restart (between the send and the HEAD read), both held Pesadas of the Jornada Android
+        // created are recovered by their SAME operations through get_own_delivery_head_v3.
+        for (op in listOf(historical, lost)) {
+            assertEquals(DispatchOutcome.SYNCED, restarted.resolveAwaitingHead(op.id, lease))
+            assertEquals(op.payloadJson, owner.db.syncOutboxDao().findById(op.id)!!.payloadJson)
+            assertRecovered(owner, op, jornada)
+        }
+        // Idempotent: a second resolution reads nothing new and confirms nothing twice.
+        assertEquals(DispatchOutcome.SYNCED, restarted.resolveAwaitingHead(historical.id, lease))
+        assertEquals(1, remote(historical.entityId).getInt("receipts"))
+        val serverDay = remoteJornada(jornada)
+        assertEquals(1, serverDay.getInt("rows")); assertEquals(1, serverDay.getInt("version"))
+        assertEquals(2_800_000L + 900_000L + 700_000L, serverDay.getLong("weight"))
+        Log.i("G808", "G808-CROSS-FLOW jornada=ANDROID historical=SYNCED lost=SYNCED legacy=SYNCED " +
+            "jornadaRows=${serverDay.getInt("rows")} weight=${serverDay.getLong("weight")}")
     }
 
     @Test fun aMemberWithWritePermissionNeverPreparesV3AndIsNotRedirected() = runBlocking<Unit> {
@@ -345,8 +390,12 @@ class DeliveryV3HttpsEphemeralTest {
         assertEquals(HarvestSendOutcome.AUTO_DAY_EXISTS, harvests(b).send(marker, lease))
         assertEquals("harvest_id=$canonical;version=1", b.db.syncOutboxDao().findById(marker)!!.lastErrorMessage)
         assertEquals(0, remoteJornada(losing).getInt("rows"))
+        val bRefused = b.db.syncOutboxDao().findById(marker)!!
         assertEquals(HarvestSendOutcome.REBASED, harvests(b).rebaseOntoCanonical(marker))
         assertEquals(canonical, jornadaOf(b, b3))
+        // The rebase rebuilt only the Jornada id of the never-prepared Pesada: same operation, same kilos.
+        val rebasedB3 = b.db.syncOutboxDao().findById(b3.id)!!
+        assertEquals(b3.id, rebasedB3.id)
         assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(b).dispatch(b3.id, lease))
         assertEquals(canonical.toString(), remote(b3.entityId).getString("harvestId"))
         val server = remoteJornada(canonical)
@@ -354,6 +403,117 @@ class DeliveryV3HttpsEphemeralTest {
         assertEquals(1, server.getInt("rows")); assertEquals(1, server.getInt("version"))
         assertEquals(0, remoteJornada(losing).getInt("rows"))
         Log.i("G808", "G808-JORNADA canonical=1 losingOnServer=0 weight=${server.getLong("weight")} rebased=true")
+
+        // Phone C, offline the same day. Its Jornada CREATE reaches the server, is refused (AUTO_DAY_EXISTS)
+        // and the answer is lost. While the outcome is UNKNOWN nothing is rebased: marker UUID and bytes, its
+        // day and its unsent Pesada stay exactly as they were, and the Pesada is never prepared.
+        val c = device(names[2], "actor", "token", graph, server = false)
+        val c3 = create(c, graph, before, graph.active, day, 600_000)
+        val losingC = jornadaOf(c, c3)
+        val (cMarker, cStaged) = stageJornada(c, c3)
+        assertEquals(HarvestSendOutcome.STAGED, cStaged)
+        val frozen = c.db.syncOutboxDao().findById(cMarker)!!
+        fetch("/__g26_admin/v3_mode?mode=harvest_drop", "POST")
+        assertEquals(HarvestSendOutcome.OUTCOME_UNKNOWN, harvests(c).send(cMarker, lease))
+        fetch("/__g26_admin/v3_mode?mode=normal", "POST")
+        assertEquals(0, remoteJornada(losingC).getInt("rows"))
+        assertEquals(HarvestSendOutcome.REJECTED, harvests(c).rebaseOntoCanonical(cMarker))
+        val unknown = c.db.syncOutboxDao().findById(cMarker)!!
+        assertEquals(frozen.id, unknown.id); assertEquals(frozen.payloadJson, unknown.payloadJson)
+        assertEquals("OUTCOME_UNKNOWN", unknown.lastErrorCode)
+        assertEquals(losingC, jornadaOf(c, c3))
+        assertEquals(c3.payloadJson, c.db.syncOutboxDao().findById(c3.id)!!.payloadJson)
+        assertEquals(DispatchOutcome.PARENT_NOT_SYNCED, worker(c).dispatch(c3.id, lease))
+        assertNull(c.db.deliveryDispatchPrepareDao().findByOperation(c3.id))
+        // The retry with the SAME UUID and bytes learns the refusal; only then is the never-prepared Pesada rebased.
+        assertEquals(HarvestSendOutcome.AUTO_DAY_EXISTS, harvests(c).send(cMarker, lease))
+        val cRefused = c.db.syncOutboxDao().findById(cMarker)!!
+        assertEquals(frozen.payloadJson, cRefused.payloadJson)
+        assertEquals(HarvestSendOutcome.REBASED, harvests(c).rebaseOntoCanonical(cMarker))
+        val rebasedC3 = c.db.syncOutboxDao().findById(c3.id)!!
+        assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(c).dispatch(c3.id, lease))
+
+        // Cross #822 + #824: every held v3 Pesada of the ONE canonical day is recovered through
+        // get_own_delivery_head_v3, by its SAME operation, on its own phone.
+        assertEquals(DispatchOutcome.SYNCED, worker(a).resolveAwaitingHead(a3.id, lease))
+        assertEquals(DispatchOutcome.SYNCED, worker(b).resolveAwaitingHead(b3.id, lease))
+        assertEquals(DispatchOutcome.SYNCED, worker(c).resolveAwaitingHead(c3.id, lease))
+        assertRecovered(a, a2, canonical)
+        assertRecovered(a, a3, canonical)
+        assertRecovered(b, rebasedB3, canonical)
+        assertRecovered(c, rebasedC3, canonical)
+        // The losing days never reached the server; their CREATEs are kept, audited, with their bytes.
+        for ((device, refused) in listOf(b to bRefused, c to cRefused)) {
+            val kept = device.db.syncOutboxDao().findById(refused.id)!!
+            assertEquals(OutboxStatus.BLOCKED, kept.status)
+            assertEquals(HarvestCodes.AUTO_DAY_REBASED, kept.lastErrorCode)
+            assertEquals(refused.payloadJson, kept.payloadJson)
+            assertEquals(0, remoteJornada(kept.entityId).getInt("rows"))
+        }
+        val total = remoteJornada(canonical)
+        assertEquals(1, total.getInt("rows")); assertEquals(1, total.getInt("version"))
+        assertEquals(700_000L + 800_000L + 900_000L + 600_000L, total.getLong("weight"))
+        Log.i("G808", "G808-CROSS-PHONES phones=3 jornadaRows=${total.getInt("rows")} weight=${total.getLong("weight")} " +
+            "unknownRebased=false retriedRebased=true v3Recovered=3")
+    }
+
+    @Test fun aHeldPesadaIsConfirmedOnlyByAStrictV3HeadAfterASessionRotation() = runBlocking<Unit> {
+        val graph = Graph()
+        val owner = device(names[0], "actor", "token", graph, server = true)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(2))
+        val day = LocalDate.now(zone).minusDays(3)
+        val kept = create(owner, graph, before, graph.active, day, 1_300_000)
+        val edited = create(owner, graph, before, graph.active, day, 1_400_000)
+        val rebase = create(owner, graph, before, graph.active, day, 1_500_000)
+        // #822 placed this Jornada through the fixture; in the cross gate Android sends it (#824).
+        val jornada = sendJornada(owner, kept)
+        assertEquals(jornada, jornadaOf(owner, edited)); assertEquals(jornada, jornadaOf(owner, rebase))
+        for (op in listOf(kept, edited, rebase)) {
+            assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(owner).dispatch(op.id, lease))
+        }
+
+        // Someone writes the second Pesada outside the receipt protocol: its receipt is no longer the head.
+        fetch("/__g26_admin/touch?id=${edited.entityId}", "POST")
+        assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(owner).resolveAwaitingHead(edited.id, lease))
+        val stillHeld = owner.db.syncOutboxDao().findById(edited.id)!!
+        assertEquals(DeliveryRetentionCodes.V3_ACK_AWAITING_HEAD, stillHeld.lastErrorCode)
+        assertEquals(V3RecoveryCauses.HEAD_SUPERSEDED, stillHeld.lastErrorMessage)
+        assertEquals(edited.payloadJson, stillHeld.payloadJson)
+        assertEquals(SyncStatus.PENDING, owner.db.deliveryDao().findById(edited.entityId)!!.metadata.syncStatus)
+
+        // The third Pesada is edited locally after the hold: the strict head confirms it as NEEDS_REBASE, never SYNCED.
+        val later = before.plus(Duration.ofHours(1))
+        val draft = DeliveryDraft(farmId = graph.farm, deliveryDate = day, destinationOrganizationId = null,
+            destinationName = "Cooperativa San Isidro", netGrams = 1_550_000, shares = listOf(DeliveryShareInput(graph.active, null)),
+            origin = PesadaOrigin.TREE)
+        assertTrue(repository(owner, later, HistoricalDeliveryRoute { _, _ -> true }).update(rebase.entityId, draft) is AppResult.Success)
+        assertEquals(DispatchOutcome.NEEDS_REBASE, worker(owner).resolveAwaitingHead(rebase.id, lease))
+        assertEquals(SyncStatus.CONFLICT, owner.db.deliveryDao().findById(rebase.entityId)!!.metadata.syncStatus)
+        assertEquals(OutboxStatus.CONFIRMED, owner.db.syncOutboxDao().findById(rebase.id)!!.status)
+        assertEquals(1, remote(rebase.entityId).getInt("receipts"))
+
+        // The session rotates (a new login of the same user); the SAME operation is confirmed by its strict head.
+        val actor = UUID.fromString(fixture.getString("actor"))
+        val rotatedStore = MemoryAccountSessionStore().apply { write(AccountRecord(session = session(actor, "rotatedToken"))) }
+        val rotated = AccountRepository(SupabaseAuthApi(config, HttpsAuthTransport(config)), rotatedStore)
+        rotated.resume(true)
+        assertEquals(actor, rotated.state.value.userId)
+        val links = LocalFarmLinkRepository(context, owner.db, rotated, issuer, AndroidFarmLinkLedger(owner.ledger),
+            ServerWorkspaceOwnerVerifier(authorizations, issuer))
+        val recovering = DeliveryDispatchWorker(owner.db, links, DeliveryRpcAdapter(transport))
+        assertEquals(DispatchOutcome.SYNCED, recovering.resolveAwaitingHead(kept.id, lease))
+        assertEquals(DispatchOutcome.SYNCED, recovering.resolveAwaitingHead(kept.id, lease))
+        assertRecovered(owner, kept, jornada)
+        // A different issuer reading the same session never confirms: the held operation is not its to touch.
+        val foreign = LocalFarmLinkRepository(context, owner.db, rotated, "https://otro-proyecto.supabase.co",
+            AndroidFarmLinkLedger(owner.ledger), ServerWorkspaceOwnerVerifier(authorizations, issuer))
+        val foreignOutcome = DeliveryDispatchWorker(owner.db, foreign, DeliveryRpcAdapter(transport)).resolveAwaitingHead(edited.id, lease)
+        assertTrue("$foreignOutcome", foreignOutcome != DispatchOutcome.SYNCED && foreignOutcome != DispatchOutcome.NEEDS_REBASE)
+        val untouched = owner.db.syncOutboxDao().findById(edited.id)!!
+        assertEquals(OutboxStatus.BLOCKED, untouched.status); assertEquals(edited.payloadJson, untouched.payloadJson)
+        assertEquals(1, remoteJornada(jornada).getInt("rows"))
+        Log.i("G808", "G808-RECOVERY kept=SYNCED edited=${stillHeld.lastErrorMessage} localEdit=NEEDS_REBASE rotated=true " +
+            "foreignIssuer=$foreignOutcome")
     }
 
     private fun session(actor: UUID, key: String): AuthSession {

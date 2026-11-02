@@ -160,6 +160,36 @@ class DeliveryV3TransportTest {
         assertNull(failureFor(403, "42501", "xsync review: AFTER_ARCHIVE").reviewCause)
     }
 
+    private fun headAdapter(body: String) = DeliveryRpcAdapter(Recorder { DeliveryRpcResponse(200, body) })
+    private val hash = "a".repeat(64)
+    private fun headBody(id: UUID = deliveryId, version: String = "2", deleted: String = "false", op: String = "\"$operationId\"",
+        pv: String = "3", h: String = "\"$hash\"", contract: String = "1") =
+        """{"contract_version":$contract,"delivery_id":"$id","version":$version,"snapshot_format":2,"deleted":$deleted,
+           "head_operation_id":$op,"head_payload_version":$pv,"head_payload_hash":$h}"""
+
+    @Test
+    fun theV3HeadIsParsedStrictlyAndAPartialOrForeignHeadIsNeverAHead() = runBlocking {
+        val full = headAdapter(headBody()).getOwnDeliveryHeadV3(session, deliveryId)
+        assertEquals(operationId, full.headOperationId); assertEquals(3, full.headPayloadVersion)
+        assertEquals(hash, full.headPayloadHash); assertEquals(2L, full.version); assertFalse(full.deleted)
+        val none = headAdapter(headBody(op = "null", pv = "null", h = "null")).getOwnDeliveryHeadV3(session, deliveryId)
+        assertNull(none.headOperationId); assertNull(none.headPayloadHash)
+        assertTrue(headAdapter(headBody(deleted = "true", op = "null", pv = "null", h = "null")).getOwnDeliveryHeadV3(session, deliveryId).deleted)
+        val bad = listOf(
+            headBody(id = UUID.randomUUID()), headBody(contract = "2"), headBody(deleted = "\"false\""), headBody(version = "0"),
+            headBody(op = "null"), headBody(h = "null"), headBody(pv = "null"), headBody(op = "\"no-uuid\""),
+            headBody(h = "\"ABC\""), """{"contract_version":1}""",
+        )
+        for (body in bad) {
+            try {
+                headAdapter(body).getOwnDeliveryHeadV3(session, deliveryId)
+                fail("Cabecera fuera de contrato aceptada: $body")
+            } catch (failure: DeliveryRpcFailure) {
+                assertEquals(body, DeliveryRpcError.PROTOCOL, failure.error)
+            }
+        }
+    }
+
     private val issuer = "https://issuer.test"
     private val now = Instant.parse("2026-11-02T10:00:00Z")
     private fun contract(subject: UUID = userId, workspace: UUID, role: String, permissions: String = """"read","write","manage_members"""",
