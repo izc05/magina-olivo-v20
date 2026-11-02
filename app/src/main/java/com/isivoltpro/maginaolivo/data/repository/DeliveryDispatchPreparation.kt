@@ -23,6 +23,11 @@ internal data class DispatchIdentity(
     val subject: String,
     val localWorkspaceId: UUID,
     val remoteWorkspaceId: UUID? = null,
+    /**
+     * #808: the workspace whose OWNER the server confirmed for this session, fresh, during this
+     * PREPARE. Required for a v3 operation; never set from local data.
+     */
+    val ownerVerifiedWorkspaceId: UUID? = null,
 )
 
 internal enum class PrepareOutcome {
@@ -112,7 +117,7 @@ internal suspend fun MaginaOlivoDatabase.prepareDeliveryDispatch(
     if (op.entityType != SyncEntityType.DELIVERY ||
         op.operation !in setOf(OutboxOperation.CREATE, OutboxOperation.UPDATE) ||
         op.accountId == null || op.accountId != identity.accountId ||
-        payload.isBlank() || op.payloadVersion !in 1..2 ||
+        payload.isBlank() || op.payloadVersion !in 1..3 ||
         (op.operation == OutboxOperation.CREATE && op.baseRemoteVersion != null) ||
         (op.operation == OutboxOperation.UPDATE &&
             (op.baseRemoteVersion == null || op.baseRemoteVersion < 1L))
@@ -130,6 +135,19 @@ internal suspend fun MaginaOlivoDatabase.prepareDeliveryDispatch(
         farmRow.workspaceId != identity.localWorkspaceId
     ) {
         return@withTransaction PrepareOutcome.REJECTED
+    }
+
+    // #808 v3: only a NEW Pesada (CREATE), with the SAME originCreatedAt as its local record, and only
+    // for the workspace's current owner as the server just confirmed. A non-owner's v3 operation is
+    // refused here and stays queued as it is: it is never converted or redirected to v2.
+    if (op.payloadVersion == 3) {
+        if (op.operation != OutboxOperation.CREATE) return@withTransaction PrepareOutcome.REJECTED
+        if (deliveryV3Origin(payload) != deliveryOriginCreatedAt(delivery.metadata.createdAt)) {
+            return@withTransaction PrepareOutcome.REJECTED
+        }
+        if (identity.ownerVerifiedWorkspaceId == null || identity.ownerVerifiedWorkspaceId != farmRow.workspaceId) {
+            return@withTransaction PrepareOutcome.NOT_AUTHORIZED
+        }
     }
 
     // Consent, re-checked here and named in the record: a revoked farm is never prepared.
@@ -357,4 +375,63 @@ internal suspend fun MaginaOlivoDatabase.settleAbandonedPreparedDispatches(
     }
     lease.requireHeld()
     settled
+}
+
+/** The `originCreatedAt` of a v3 payload, normalized like [deliveryOriginCreatedAt]; null if absent or malformed. */
+internal fun deliveryV3Origin(payload: String): String? = try {
+    val value = (kotlinx.serialization.json.Json.parseToJsonElement(payload) as? kotlinx.serialization.json.JsonObject)
+        ?.get("originCreatedAt") as? kotlinx.serialization.json.JsonPrimitive
+    value?.takeIf { it.isString }?.content?.let { deliveryOriginCreatedAt(Instant.parse(it)) }
+} catch (_: RuntimeException) {
+    null
+}
+
+/** #808: what a v3 dispatch leaves behind when it must not, or cannot yet, confirm. */
+internal data class DeliveryRetention(val code: String, val review: Boolean)
+
+internal enum class RetentionOutcome { HELD, ALREADY_HELD, NONE, REJECTED }
+
+/**
+ * #808: keeps a v3 operation BLOCKED with a traceable code, in ONE transaction, under the live lease.
+ *
+ * - `SYNC_REVIEW:<CAUSE>`: the server asked for explicit review. The PREPARE settles as REVIEW.
+ * - [DeliveryRetentionCodes.V3_ACK_AWAITING_HEAD]: the server's receipt matches the prepared bytes,
+ *   but there is no v3-compatible HEAD read, so it is NOT an ACK. The PREPARE stays unsettled, so the
+ *   SAME operation can be confirmed later once a strict HEAD read exists.
+ *
+ * Nothing is deleted or rewritten: same UUID, bytes, version and RPC. The Pesada stays PENDING.
+ */
+internal suspend fun MaginaOlivoDatabase.retainPreparedDelivery(
+    lease: DeliveryDispatchLease,
+    operationId: UUID,
+    accountId: String,
+    retention: DeliveryRetention,
+    at: Instant,
+): RetentionOutcome = withTransaction {
+    lease.requireOpen()
+    val prepareDao = deliveryDispatchPrepareDao()
+    val outbox = syncOutboxDao()
+    val prepared = prepareDao.findByOperation(operationId) ?: return@withTransaction RetentionOutcome.REJECTED
+    val op = outbox.findById(operationId) ?: return@withTransaction RetentionOutcome.REJECTED
+    val payload = op.payloadJson ?: return@withTransaction RetentionOutcome.REJECTED
+    if (accountId.isBlank() || prepared.accountId != accountId || op.accountId != accountId ||
+        op.entityType != SyncEntityType.DELIVERY || op.payloadVersion != 3 || prepared.payloadVersion != 3 ||
+        deliveryPayloadHash(payload, 3) != prepared.payloadHash ||
+        !(retention.code == DeliveryRetentionCodes.V3_ACK_AWAITING_HEAD ||
+            (retention.review && retention.code.startsWith(DeliveryRetentionCodes.REVIEW_PREFIX)))
+    ) {
+        return@withTransaction RetentionOutcome.REJECTED
+    }
+    if (op.status == OutboxStatus.BLOCKED && op.lastErrorCode == retention.code) {
+        return@withTransaction RetentionOutcome.ALREADY_HELD
+    }
+    val millis = at.toEpochMilli()
+    if (outbox.holdDeliveryForRetention(operationId, accountId, lease.claimMarker(), retention.code, millis) != 1) {
+        return@withTransaction RetentionOutcome.REJECTED
+    }
+    if (retention.review) {
+        check(prepareDao.settle(operationId, DeliveryDispatchPrepareEntity.SETTLED_REVIEW, millis) == 1)
+    }
+    lease.requireHeld()
+    RetentionOutcome.HELD
 }

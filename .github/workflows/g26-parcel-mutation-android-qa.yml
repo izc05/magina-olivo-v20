@@ -2,7 +2,7 @@ name: G2.6 PARCEL mutation Android QA isolated
 
 on:
   pull_request:
-    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3, codex/g26-campaign-history-h7, codex/g26-808-design]
+    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3, codex/g26-campaign-history-h7, codex/g26-808-design, codex/g26-808-sql]
   workflow_dispatch:
 
 permissions:
@@ -124,7 +124,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm || true
-      - name: '#800, #799, #798 then #797 real HTTPS probes with #802 and the PARCEL contract, on one disposable API 35'
+      - name: '#808 Pesada v3 HTTPS probe, then #800, #799, #798 and #797 real HTTPS probes, on one disposable API 35'
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 35
@@ -133,4 +133,4 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: bash supabase/tests/g26-convergence-android/run.sh && bash supabase/tests/g26-parcel-send-android/run.sh && bash supabase/tests/g26-farm-send-android/run.sh && bash supabase/tests/g26-workspace-send-android/run.sh && bash supabase/tests/g26-parent-receive-android/run.sh
+          script: bash supabase/tests/g26-delivery-v3-android/run.sh && bash supabase/tests/g26-convergence-android/run.sh && bash supabase/tests/g26-parcel-send-android/run.sh && bash supabase/tests/g26-farm-send-android/run.sh && bash supabase/tests/g26-workspace-send-android/run.sh && bash supabase/tests/g26-parent-receive-android/run.sh

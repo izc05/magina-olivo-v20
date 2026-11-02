@@ -80,5 +80,7 @@ data class DeliveryDispatchPrepareEntity(
         const val SETTLED_HELD = "HELD"
         const val SETTLED_CONFLICT = "CONFLICT"
         const val SETTLED_UNKNOWN = "OUTCOME_UNKNOWN"
+        /** #808: the server asked for explicit review (`sync review: <CAUSE>`). Terminal; the operation stays BLOCKED. */
+        const val SETTLED_REVIEW = "REVIEW"
     }
 }

@@ -369,7 +369,7 @@ interface SyncOutboxDao {
         WHERE id = :operationId AND account_id = :accountId AND farm_id = :farmId
           AND account_id != '' AND payload_json IS NOT NULL AND payload_json != ''
           AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE')
-          AND payload_version IN (1, 2) AND status = 'FAILED'
+          AND payload_version IN (1, 2, 3) AND status = 'FAILED'
           AND (next_attempt_at IS NULL OR next_attempt_at <= :nowEpochMillis)
           AND NOT EXISTS (
               SELECT 1 FROM sync_outbox sibling
@@ -401,6 +401,30 @@ interface SyncOutboxDao {
         """,
     )
     suspend fun markDeliveryLeaseClaim(operationId: UUID, accountId: String, farmId: UUID, claimMarker: String): Int
+
+    /**
+     * #808: a v3 Delivery leaves dispatch as BLOCKED with a traceable code (review, or awaiting a
+     * v3-compatible HEAD read). Only from its live claim (PROCESSING under this lease, or BLOCKED by a
+     * consent revocation that arrived while this request was in flight) or from an interrupted claim
+     * (FAILED/OUTCOME_UNKNOWN). UUID, bytes, version and base version are untouched.
+     */
+    @Query(
+        """
+        UPDATE sync_outbox SET status = 'BLOCKED', next_attempt_at = NULL,
+            last_error_code = :code, last_error_message = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND account_id = :accountId AND account_id != ''
+          AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE') AND payload_version = 3
+          AND ((status IN ('PROCESSING', 'BLOCKED') AND last_error_code = :claimMarker)
+               OR (status = 'FAILED' AND last_error_code = 'OUTCOME_UNKNOWN'))
+        """,
+    )
+    suspend fun holdDeliveryForRetention(
+        operationId: UUID,
+        accountId: String,
+        claimMarker: String,
+        code: String,
+        nowEpochMillis: Long,
+    ): Int
 
     /** Only a new owner of the SAME OS lock can resolve this protocol's interrupted claim. */
     @Query(
@@ -521,6 +545,8 @@ interface SyncOutboxDao {
           AND account_id != '' AND payload_json IS NOT NULL AND payload_json != ''
           AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE') AND status = 'BLOCKED'
           AND (last_error_code IS NULL OR last_error_code != 'RECEIPT_CONFLICT')
+          AND (last_error_code IS NULL OR (last_error_code != 'V3_ACK_AWAITING_HEAD'
+               AND substr(last_error_code, 1, 12) != 'SYNC_REVIEW:'))
           AND NOT EXISTS (SELECT 1 FROM delivery_held_receipts held WHERE held.operation_id = sync_outbox.id)
         """,
     )
@@ -538,7 +564,7 @@ interface SyncOutboxDao {
         WHERE id = :operationId AND account_id = :accountId AND farm_id = :farmId
           AND account_id != '' AND payload_json IS NOT NULL AND payload_json != ''
           AND entity_type = 'DELIVERY' AND operation IN ('CREATE', 'UPDATE')
-          AND payload_version IN (1, 2) AND status IN ('PENDING', 'FAILED')
+          AND payload_version IN (1, 2, 3) AND status IN ('PENDING', 'FAILED')
           AND NOT EXISTS (
               SELECT 1 FROM sync_outbox sibling
               WHERE sibling.entity_type = sync_outbox.entity_type

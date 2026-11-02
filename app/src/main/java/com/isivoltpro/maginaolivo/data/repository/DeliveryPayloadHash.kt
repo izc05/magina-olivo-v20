@@ -7,17 +7,32 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+/**
+ * #808 v3 (`sync_own_delivery_v3`): a closed object of 19 keys, ALL present. The v2 fields plus
+ * `originCreatedAt`; the optional ones are explicit nulls, exactly as the server validates them.
+ */
+internal val DELIVERY_V3_REQUIRED_TEXT = setOf("id", "farmId", "campaignId", "deliveryDate", "destinationName",
+    "source", "originCreatedAt")
+internal val DELIVERY_V3_NULLABLE_TEXT = setOf("destinationOrganizationId", "deliveryNumber", "ticketNumber", "notes",
+    "harvestId", "deliveryTime", "harvestOrigin")
+internal val DELIVERY_V3_NULLABLE_INTEGERS = setOf("grossGrams", "tareGrams", "baseVersion")
+internal val DELIVERY_V3_KEYS = DELIVERY_V3_REQUIRED_TEXT + DELIVERY_V3_NULLABLE_TEXT + DELIVERY_V3_NULLABLE_INTEGERS +
+    setOf("netGrams", "parcels")
+
 /** Restricted JSONB byte contract for DeliveryWriter snapshots, not upload authorization. */
 internal fun deliveryPayloadHash(payload: String, payloadVersion: Int = 1): String? = try {
-    check(payloadVersion in 1..2 && payload.length <= 65_536)
+    check(payloadVersion in 1..3 && payload.length <= 65_536)
     val value = Json.parseToJsonElement(payload) as? JsonObject ?: error("Object required")
-    val text = setOf("id", "farmId", "campaignId", "deliveryDate", "destinationName",
-        "deliveryNumber", "ticketNumber", "source", "notes", "harvestId", "deliveryTime", "harvestOrigin") +
-        if (payloadVersion == 2) setOf("destinationOrganizationId") else emptySet()
+    val text = if (payloadVersion == 3) DELIVERY_V3_REQUIRED_TEXT + DELIVERY_V3_NULLABLE_TEXT else
+        setOf("id", "farmId", "campaignId", "deliveryDate", "destinationName",
+            "deliveryNumber", "ticketNumber", "source", "notes", "harvestId", "deliveryTime", "harvestOrigin") +
+            if (payloadVersion == 2) setOf("destinationOrganizationId") else emptySet()
     val integers = setOf("netGrams", "grossGrams", "tareGrams", "baseVersion")
-    val allowed = text + integers + if (payloadVersion == 2) setOf("parcels") else emptySet()
+    val allowed = text + integers + if (payloadVersion >= 2) setOf("parcels") else emptySet()
     check(value.isNotEmpty() && value.keys.all { it in allowed })
-    if (payloadVersion == 2) check("parcels" in value)
+    if (payloadVersion >= 2) check("parcels" in value)
+    if (payloadVersion == 3) check(value.keys == DELIVERY_V3_KEYS)
+    val nullable = if (payloadVersion == 3) DELIVERY_V3_NULLABLE_TEXT + DELIVERY_V3_NULLABLE_INTEGERS else emptySet()
     val rendered = pgObject(value) { key, element ->
         if (key == "parcels") {
             val parcels = element as? JsonArray ?: error("Array required")
@@ -30,7 +45,7 @@ internal fun deliveryPayloadHash(payload: String, payloadVersion: Int = 1): Stri
                     pgScalar(scalar, name in strings, name in setOf("campaignParcelId", "weightGrams"))
                 }
             }
-        } else pgScalar(element, key in text, false)
+        } else pgScalar(element, key in text, key in nullable)
     }
     MessageDigest.getInstance("SHA-256").digest(rendered.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it.toInt() and 255) }

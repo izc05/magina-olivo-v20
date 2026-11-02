@@ -198,8 +198,21 @@ class ArchitectureBoundaryTest {
             ".dispatch(", "create_own_campaign", "DeliveryDispatchWorker(").forEach { forbidden ->
             assertFalse("Convergence probe must stay within parcels and parents: $forbidden", convergenceText.contains(forbidden))
         }
+        // #808 Android transport: the v3 Pesada writer against a disposable server only. It may wire the
+        // dispatch worker (that is what it proves), but never the receiver, a scheduler or campaigns.
+        val deliveryV3Probe = all.filter { it.name == "DeliveryV3HttpsEphemeralTest.kt" }
+        assertEquals("Exactly one isolated Pesada v3 HTTPS probe", 1, deliveryV3Probe.size)
+        assertTrue(deliveryV3Probe.single().invariantSeparatorsPath.contains("/androidTestDev/"))
+        val deliveryV3Text = deliveryV3Probe.single().readText()
+        assertTrue(deliveryV3Text.contains("DeliveryDispatchWorker("))
+        assertTrue(deliveryV3Text.contains("RpcScope.DELIVERY"))
+        listOf("WorkManager", "CampaignCasCoordinator(", "RpcScope.CAMPAIGN_CAS", "create_own_campaign",
+            ".readOwnDeliveryReceiveBundle(", ".receiveDeliveryBundle(", ".runSingleDispatch(").forEach { forbidden ->
+            assertFalse("Pesada v3 probe must stay a writer probe: $forbidden", deliveryV3Text.contains(forbidden))
+        }
         all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe || it in campaignProbe ||
-            it in parentProbe || it in workspaceProbe || it in farmProbe || it in parcelProbe || it in convergenceProbe }.forEach { file ->
+            it in parentProbe || it in workspaceProbe || it in farmProbe || it in parcelProbe || it in convergenceProbe ||
+            it in deliveryV3Probe }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +
@@ -266,6 +279,30 @@ class ArchitectureBoundaryTest {
                     "while sending is unauthorized",
                 file.readText().contains("DeliveryDrill"),
             )
+        }
+    }
+
+    /**
+     * #808: the v3 Pesada route is OFF in every shipped build. Production code never constructs the
+     * historical route or the server owner check, so every new Pesada stays on v2 and no v3 operation
+     * can be prepared. Turning it on is a visible diff that starts by making this test red.
+     */
+    @Test
+    fun theHistoricalPesadaRouteIsNeverWiredInShippedCode() {
+        val app = sequenceOf(File("src"), File("app/src")).firstOrNull { it.exists() }
+        assertTrue("Could not locate the app source sets", app != null)
+        val shipped = app!!.walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .filter { file -> listOf("/main/java/", "/staging/java/", "/production/java/", "/dev/java/")
+                .any { it in file.invariantSeparatorsPath } }
+            .filterNot { it.name == "DeliveryHistoricalRoute.kt" }
+            .toList()
+        assertTrue("No shipped Kotlin sources found", shipped.isNotEmpty())
+        shipped.forEach { file ->
+            val text = file.readText()
+            listOf("HistoricalDeliveryRoute(", "ServerWorkspaceOwnerVerifier(", "ownerVerifier =", "payloadRoute =")
+                .forEach { forbidden ->
+                    assertFalse("${file.name} must not wire the #808 v3 route: $forbidden", text.contains(forbidden))
+                }
         }
     }
 

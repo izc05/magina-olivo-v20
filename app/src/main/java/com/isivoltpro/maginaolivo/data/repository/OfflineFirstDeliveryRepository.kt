@@ -52,10 +52,12 @@ class OfflineFirstDeliveryRepository(
     private val dispatchers: AppDispatchers,
     private val workspaceRepository: WorkspaceRepository? = null,
     private val writeScope: DeliveryWriteScope = LocalOnlyDeliveryWriteScope,
+    /** #808: payload version of new Pesadas. Production never overrides it: v2 ([LegacyDeliveryRoute]). */
+    private val payloadRoute: DeliveryPayloadRoute = LegacyDeliveryRoute,
     /** Test override only; production derives the calendar from the persisted Workspace. */
     private val zoneId: (() -> ZoneId)? = null,
 ) : DeliveryRepository {
-    private val writer = DeliveryWriter(database, idGenerator)
+    private val writer = DeliveryWriter(database, idGenerator, payloadRoute)
     private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
 
     override fun observeAll(): Flow<List<Delivery>> =

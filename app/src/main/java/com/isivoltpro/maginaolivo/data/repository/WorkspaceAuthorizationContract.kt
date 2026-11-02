@@ -20,6 +20,8 @@ internal data class AuthorizedWorkspace(
     val permissions: Set<String>,
     val expiresAt: Instant,
     val version: Long,
+    /** The server's `role` (OWNER, VIEWER, EDITOR, MANAGER). Only OWNER may use the #808 writers. */
+    val role: String? = null,
 )
 
 /** Parsed server evidence. Neither Room owner UUIDs nor G2.5 receipts enter this contract. */
@@ -55,6 +57,7 @@ internal data class WorkspaceAuthorizationContract(
                     permissions,
                     Instant.parse(row.getValue("authorization_expires_at").jsonPrimitive.content),
                     row.getValue("grant_version").jsonPrimitive.long.also { require(it > 0) },
+                    (row["role"] as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content?.take(32),
                 )
             }
             require(grants.size <= 256 && grants.map { it.id }.distinct().size == grants.size)

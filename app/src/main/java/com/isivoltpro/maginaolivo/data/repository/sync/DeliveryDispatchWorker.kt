@@ -4,6 +4,9 @@ import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.AckCorrelationOutcome
 import com.isivoltpro.maginaolivo.data.repository.AuthenticatedDeliveryAck
+import com.isivoltpro.maginaolivo.data.repository.DeliveryRetention
+import com.isivoltpro.maginaolivo.data.repository.DeliveryRetentionCodes
+import com.isivoltpro.maginaolivo.data.repository.RetentionOutcome
 import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
 import com.isivoltpro.maginaolivo.data.repository.PrepareOutcome
 import com.isivoltpro.maginaolivo.feature.account.AuthFailure
@@ -65,6 +68,16 @@ internal enum class DispatchOutcome {
      * This is NOT a failure.
      */
     OUTCOME_UNKNOWN,
+
+    /**
+     * #808 v3 only. The server's receipt matches this device's prepared bytes, but there is no
+     * v3-compatible HEAD read yet, so it is NOT confirmed: the operation is BLOCKED as
+     * V3_ACK_AWAITING_HEAD, the Pesada stays PENDING, and the SAME operation can be confirmed later.
+     */
+    V3_ACK_AWAITING_HEAD,
+
+    /** #808 v3 only. `sync review: <CAUSE>`: BLOCKED as SYNC_REVIEW:<CAUSE>, kept for explicit review. */
+    REVIEW_HELD,
 }
 
 internal class DeliveryDispatchWorker(
@@ -97,7 +110,8 @@ internal class DeliveryDispatchWorker(
         val candidate = database.syncOutboxDao().findById(operationId)
             ?: return DispatchOutcome.REJECTED
         if (candidate.entityType != SyncEntityType.DELIVERY) return DispatchOutcome.REJECTED
-        if (candidate.payloadVersion != DELIVERY_PAYLOAD_VERSION_V2) return DispatchOutcome.REJECTED
+        // #808: a v3 operation (frozen by its producer) goes to sync_own_delivery_v3; v1 is still refused.
+        if (candidate.payloadVersion !in SENDABLE_VERSIONS) return DispatchOutcome.REJECTED
         if (candidate.payloadJson == null) return DispatchOutcome.REJECTED
 
         // 1. Durable record first. Anything other than these two outcomes means we do not send.
@@ -118,7 +132,7 @@ internal class DeliveryDispatchWorker(
             ?: return DispatchOutcome.REJECTED
         val payload = operation.payloadJson ?: return DispatchOutcome.REJECTED
         if (operation.entityType != SyncEntityType.DELIVERY ||
-            operation.payloadVersion != DELIVERY_PAYLOAD_VERSION_V2
+            operation.payloadVersion != candidate.payloadVersion
         ) {
             return DispatchOutcome.REJECTED
         }
@@ -127,7 +141,11 @@ internal class DeliveryDispatchWorker(
         // 2. The request, its confirmation and the persistence of its result are ONE unit of
         //    ownership. The lease cannot be released while any part of this is running.
         return lease.withActiveRequest {
-            sendAndCorrelate(operationId, deliveryId, payload)
+            if (operation.payloadVersion == DELIVERY_PAYLOAD_VERSION_V3) {
+                sendAndRetainV3(operationId, deliveryId, payload, lease)
+            } else {
+                sendAndCorrelate(operationId, deliveryId, payload)
+            }
         }
     }
 
@@ -141,7 +159,11 @@ internal class DeliveryDispatchWorker(
         val operation = database.syncOutboxDao().findById(operationId) ?: return DispatchOutcome.REJECTED
         if (operation.entityType != SyncEntityType.DELIVERY) return DispatchOutcome.REJECTED
         return lease.withActiveRequest {
-            sendAndCorrelate(operationId, operation.entityId, payload = null)
+            if (operation.payloadVersion == DELIVERY_PAYLOAD_VERSION_V3) {
+                sendAndRetainV3(operationId, operation.entityId, payload = null, lease = lease)
+            } else {
+                sendAndCorrelate(operationId, operation.entityId, payload = null)
+            }
         }
     }
 
@@ -283,9 +305,103 @@ internal class DeliveryDispatchWorker(
         return links.settleInterruptedDeliveryDispatches(farmId, lease, now())
     }
 
+    /**
+     * #808 v3. Same ownership as v2 (verified identity, live lease, durable PREPARE), but it NEVER
+     * produces an ACK: `get_own_delivery_v2` cannot point at a v3 receipt (its `head_payload_hash` is
+     * null for them), and confirming without that strict HEAD check is forbidden. So:
+     *
+     * - the receipt read with `check_sync_operations` must report DELIVERY, this Pesada, this account,
+     *   payload version 3 and EXACTLY the prepared hash; then the operation is BLOCKED as
+     *   V3_ACK_AWAITING_HEAD (evidence kept, nothing confirmed, nothing re-sent);
+     * - `sync review: <CAUSE>` is BLOCKED as SYNC_REVIEW:<CAUSE>, with the bytes untouched;
+     * - a cut connection or no receipt stays OUTCOME_UNKNOWN, as in v2: same UUID and bytes later.
+     */
+    private suspend fun sendAndRetainV3(
+        operationId: UUID,
+        deliveryId: UUID,
+        payload: String?,
+        lease: DeliveryDispatchLease,
+    ): DispatchOutcome {
+        val prepared = database.deliveryDispatchPrepareDao().findByOperation(operationId)
+            ?: return DispatchOutcome.REJECTED
+        if (prepared.payloadVersion != DELIVERY_PAYLOAD_VERSION_V3 || prepared.deliveryId != deliveryId) {
+            return DispatchOutcome.REJECTED
+        }
+        var mismatch = false
+        var review = false
+        var noReceipt = false
+        var transportFailure: DeliveryRpcFailure? = null
+
+        val outcome = try {
+            links.retainDeliveryDispatch(operationId, lease, { session ->
+                if (payload != null) {
+                    try {
+                        val written = rpc.syncOwnDelivery(session, operationId, payload, DELIVERY_PAYLOAD_VERSION_V3)
+                        if (written.entityId != deliveryId) {
+                            mismatch = true
+                            return@retainDeliveryDispatch null
+                        }
+                    } catch (failure: DeliveryRpcFailure) {
+                        val cause = failure.reviewCause
+                        if (cause != null) {
+                            review = true
+                            return@retainDeliveryDispatch DeliveryRetention(DeliveryRetentionCodes.REVIEW_PREFIX + cause, true)
+                        }
+                        // A duplicate means the server already holds it: read what it recorded.
+                        if (failure.error != DeliveryRpcError.CONFLICT) {
+                            transportFailure = failure
+                            return@retainDeliveryDispatch null
+                        }
+                    }
+                }
+                val receipt = try {
+                    rpc.checkSyncOperations(session, listOf(operationId))[operationId]
+                } catch (failure: DeliveryRpcFailure) {
+                    transportFailure = failure
+                    return@retainDeliveryDispatch null
+                }
+                if (receipt == null) {
+                    noReceipt = true
+                    return@retainDeliveryDispatch null
+                }
+                if (receipt.entityType != SyncEntityType.DELIVERY || receipt.deliveryId != deliveryId ||
+                    receipt.accountId != prepared.accountId || receipt.payloadVersion != DELIVERY_PAYLOAD_VERSION_V3 ||
+                    receipt.payloadHash != prepared.payloadHash || receipt.remoteVersion < 1L
+                ) {
+                    mismatch = true
+                    return@retainDeliveryDispatch null
+                }
+                DeliveryRetention(DeliveryRetentionCodes.V3_ACK_AWAITING_HEAD, false)
+            }, now())
+        } catch (failure: AuthFailure) {
+            return notAuthorized(failure)
+        }
+
+        if (mismatch) return DispatchOutcome.CONFLICT
+        transportFailure?.let { failure ->
+            return when {
+                failure.outcomeUnknown -> DispatchOutcome.OUTCOME_UNKNOWN
+                failure.error == DeliveryRpcError.FORBIDDEN -> DispatchOutcome.NOT_AUTHORIZED
+                failure.error == DeliveryRpcError.INVALID_PAYLOAD -> DispatchOutcome.REJECTED
+                else -> DispatchOutcome.OUTCOME_UNKNOWN
+            }
+        }
+        if (noReceipt) return DispatchOutcome.OUTCOME_UNKNOWN
+        return when (outcome) {
+            RetentionOutcome.HELD, RetentionOutcome.ALREADY_HELD ->
+                if (review) DispatchOutcome.REVIEW_HELD else DispatchOutcome.V3_ACK_AWAITING_HEAD
+            RetentionOutcome.NONE -> DispatchOutcome.OUTCOME_UNKNOWN
+            RetentionOutcome.REJECTED -> DispatchOutcome.REJECTED
+        }
+    }
+
     private companion object {
         /** `sync_own_delivery_v2` and its receipt are v2 only; a v1 snapshot is never sent. */
         const val DELIVERY_PAYLOAD_VERSION_V2 = 2
+
+        /** #808: `sync_own_delivery_v3`, only for operations frozen as version 3 by their producer. */
+        const val DELIVERY_PAYLOAD_VERSION_V3 = 3
+        val SENDABLE_VERSIONS = setOf(DELIVERY_PAYLOAD_VERSION_V2, DELIVERY_PAYLOAD_VERSION_V3)
     }
 
     private fun notAuthorized(failure: AuthFailure): DispatchOutcome = when (failure.kind) {

@@ -64,8 +64,14 @@ internal enum class DeliveryRpcError {
 
 /** [reason] is the server's typed conflict token (e.g. PARCEL_VERSION_CONFLICT) when its message carries one. */
 internal class DeliveryRpcFailure(val error: DeliveryRpcError, val status: Int? = null, val code: String? = null,
-    val reason: String? = null) :
-    Exception("DeliveryRpcFailure(error=$error, status=$status, code=$code, reason=$reason)") {
+    val reason: String? = null,
+    /**
+     * #808: the cause of a server `sync review: <CAUSE>` rejection (SQLSTATE 22023 or 42501). The fact
+     * must be KEPT for explicit review: never confirmed, deleted, retried in a loop or rewritten.
+     * Only the v3 writers emit it; [error] keeps its usual value so other callers are unaffected.
+     */
+    val reviewCause: String? = null) :
+    Exception("DeliveryRpcFailure(error=$error, status=$status, code=$code, reason=$reason, review=$reviewCause)") {
 
     /** True when the server's own record is the only way to learn what happened. */
     val outcomeUnknown: Boolean get() = error == DeliveryRpcError.NETWORK || error == DeliveryRpcError.PROTOCOL
@@ -108,17 +114,26 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
         session: AuthSession,
         operationId: UUID,
         payloadJson: String,
+        payloadVersion: Int = 2,
     ): SyncOwnDeliveryResult {
+        // #808: the RPC follows from the operation's frozen payload version, never from the session.
+        val name = when (payloadVersion) {
+            2 -> SYNC_OWN_DELIVERY_V2
+            3 -> SYNC_OWN_DELIVERY_V3
+            else -> throw protocol()
+        }
         val body = """{"p_operation_id":${quote(operationId.toString())},"p_delivery":$payloadJson}"""
-        val root = objectOf(call(SYNC_OWN_DELIVERY_V2, body, session))
+        val root = objectOf(call(name, body, session))
         val reported = uuid(root, "operation_id") ?: throw protocol()
         if (reported != operationId) throw protocol()
-        return SyncOwnDeliveryResult(
+        val result = SyncOwnDeliveryResult(
             operationId = reported,
             entityId = uuid(root, "entity_id") ?: throw protocol(),
             remoteVersion = long(root, "remote_version") ?: throw protocol(),
             payloadVersion = (long(root, "payload_version") ?: throw protocol()).toInt(),
         )
+        if (payloadVersion == 3 && result.payloadVersion != 3) throw protocol()
+        return result
     }
 
     /**
@@ -266,10 +281,13 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
     }
 
     private fun failureFor(response: DeliveryRpcResponse): DeliveryRpcFailure {
-        val code = runCatching {
-            (Json.parseToJsonElement(response.body) as? JsonObject)?.get("code")?.jsonPrimitive?.contentOrNull
-        }.getOrNull()
-        val error = when {
+        val error = runCatching { Json.parseToJsonElement(response.body) as? JsonObject }.getOrNull()
+        val code = runCatching { error?.get("code")?.jsonPrimitive?.contentOrNull }.getOrNull()
+        // #808 typed token "sync <class>: <CAUSE>". Legacy messages do not match and keep reason null.
+        val token = runCatching { error?.get("message")?.jsonPrimitive?.contentOrNull }.getOrNull()
+            ?.let { TYPED_MESSAGE.matchEntire(it) }
+        val reviewCause = token?.takeIf { it.groupValues[1] == "review" && code in REVIEW_CODES }?.groupValues?.get(2)
+        val kind = when {
             code == "23505" || response.status == 409 -> DeliveryRpcError.CONFLICT
             code == "42501" || response.status == 403 -> DeliveryRpcError.FORBIDDEN
             code == "22023" || response.status == 400 -> DeliveryRpcError.INVALID_PAYLOAD
@@ -277,7 +295,7 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
                 DeliveryRpcError.NETWORK
             else -> DeliveryRpcError.PROTOCOL
         }
-        return DeliveryRpcFailure(error, response.status, code)
+        return DeliveryRpcFailure(kind, response.status, code, token?.groupValues?.get(2), reviewCause)
     }
 
     private fun protocol() = DeliveryRpcFailure(DeliveryRpcError.PROTOCOL)
@@ -297,6 +315,10 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
 
     companion object {
         const val SYNC_OWN_DELIVERY_V2 = "sync_own_delivery_v2"
+        /** #808 historical writer (disposable proposal). Only operations frozen as payload version 3. */
+        const val SYNC_OWN_DELIVERY_V3 = "sync_own_delivery_v3"
+        private val TYPED_MESSAGE = Regex("^sync (review|denied|invalid|conflict): ([A-Z][A-Z_]{0,63})$")
+        private val REVIEW_CODES = setOf("22023", "42501")
         const val CHECK_SYNC_OPERATIONS = "check_sync_operations"
         const val GET_OWN_DELIVERY_V2 = "get_own_delivery_v2"
         const val GET_OWN_DELIVERY_RECEIVE_V1 = "get_own_delivery_receive_v1"
@@ -306,6 +328,7 @@ internal class DeliveryRpcAdapter(private val transport: DeliveryRpcTransport) {
 
         val NAMES = setOf(
             SYNC_OWN_DELIVERY_V2,
+            SYNC_OWN_DELIVERY_V3,
             CHECK_SYNC_OPERATIONS,
             GET_OWN_DELIVERY_V2,
             GET_OWN_DELIVERY_RECEIVE_V1,

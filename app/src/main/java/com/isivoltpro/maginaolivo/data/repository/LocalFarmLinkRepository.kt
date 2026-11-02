@@ -22,6 +22,11 @@ class LocalFarmLinkRepository(
     private val account: AccountRepository,
     private val issuer: String,
     private val store: FarmLinkLedgerStore = AndroidFarmLinkLedger.forContext(context),
+    /**
+     * #808: fresh server check that the session owns the workspace, required to PREPARE a v3 Pesada.
+     * Null in production: no v3 operation can be prepared until a later owner decision wires it.
+     */
+    private val ownerVerifier: WorkspaceOwnerVerifier? = null,
 ) : DeliveryWriteScope {
     private val mutable = MutableStateFlow(load())
     val state: StateFlow<FarmLinkLocalState> = mutable
@@ -155,7 +160,14 @@ class LocalFarmLinkRepository(
         lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
         remoteWorkspaceId: UUID? = null,
         at: Instant = Instant.now(),
-    ): PrepareOutcome = account.withServerVerifiedIdentity({ Unit }) { userId, _ -> withContext(Dispatchers.IO) {
+    ): PrepareOutcome = account.withServerVerifiedIdentity({ session ->
+        // #808: a v3 operation needs the server's fresh word that this session owns the farm's
+        // workspace, read with the verified session before any write. v1/v2 never ask.
+        val staged = withContext(Dispatchers.IO) { database.syncOutboxDao().findById(operationId) }
+        val workspace = staged?.takeIf { it.payloadVersion == 3 }?.farmId
+            ?.let { withContext(Dispatchers.IO) { database.farmDao().findById(it) } }?.workspaceId
+        workspace?.takeIf { ownerVerifier?.isCurrentOwner(session, it) == true }
+    }) { userId, ownerWorkspace -> withContext(Dispatchers.IO) {
         val operation = database.syncOutboxDao().findById(operationId)
         val farm = operation?.farmId?.let { database.farmDao().findById(it) }
         if (operation == null || farm == null) return@withContext PrepareOutcome.REJECTED
@@ -168,6 +180,7 @@ class LocalFarmLinkRepository(
                 subject = subject(userId),
                 localWorkspaceId = farm.workspaceId,
                 remoteWorkspaceId = remoteWorkspaceId,
+                ownerVerifiedWorkspaceId = ownerWorkspace,
             ),
             ledgerFor(userId),
             at,
@@ -199,6 +212,21 @@ class LocalFarmLinkRepository(
             ledgerFor(userId),
             at,
         )
+    } }
+
+    /**
+     * #808: the only entry point that leaves a v3 Pesada BLOCKED for review or awaiting a strict HEAD
+     * read. [fetch] performs the authenticated requests with the verified session; the retention is
+     * then written under the local identity lock, and refused if the account changed meanwhile.
+     */
+    internal suspend fun retainDeliveryDispatch(
+        operationId: UUID,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        fetch: suspend (com.isivoltpro.maginaolivo.feature.account.AuthSession) -> DeliveryRetention?,
+        at: Instant = Instant.now(),
+    ): RetentionOutcome = account.withServerVerifiedIdentity(fetch) { userId, retention -> withContext(Dispatchers.IO) {
+        if (retention == null) return@withContext RetentionOutcome.NONE
+        database.retainPreparedDelivery(lease, operationId, userId.toString(), retention, at)
     } }
 
     /**

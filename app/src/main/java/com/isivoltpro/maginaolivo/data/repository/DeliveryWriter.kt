@@ -35,6 +35,8 @@ internal class DeliveryConflict(val code: String) : RuntimeException(code)
 internal class DeliveryWriter(
     private val database: MaginaOlivoDatabase,
     private val idGenerator: IdGenerator,
+    /** #808: production keeps [LegacyDeliveryRoute] (v2). */
+    private val route: DeliveryPayloadRoute = LegacyDeliveryRoute,
 ) {
     private val jornadas = JornadaLedger(database, idGenerator)
 
@@ -68,7 +70,14 @@ internal class DeliveryWriter(
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
-        val payloadJson = buildDeliveryPayloadJson(row, baseRemoteVersion = null, shares = database.deliveryDao().listParcels(row.id))
+        // #808: the version is chosen once, here, for this new operation, and frozen with it.
+        val version = route.createVersion(farm.workspaceId, accountId)
+        val shares = database.deliveryDao().listParcels(row.id)
+        val payloadJson = if (version == 3) {
+            buildDeliveryPayloadJsonV3(row, shares)
+        } else {
+            buildDeliveryPayloadJson(row, baseRemoteVersion = null, shares = shares)
+        }
         database.enqueueCollapsed(
             idGenerator = idGenerator,
             entityType = SyncEntityType.DELIVERY,
@@ -77,7 +86,7 @@ internal class DeliveryWriter(
             now = now,
             accountId = accountId,
             payloadJson = payloadJson,
-            payloadVersion = 2,
+            payloadVersion = version,
             farmId = row.farmId,
             baseRemoteVersion = null,
         )
@@ -121,7 +130,20 @@ internal class DeliveryWriter(
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
-        val payloadJson = buildDeliveryPayloadJson(row, baseRemoteVersion = current.metadata.remoteVersion, shares = database.deliveryDao().listParcels(row.id))
+        // #808: an edit before the v3 CREATE is confirmed collapses into a CREATE and keeps v3, with the
+        // SAME originCreatedAt (the Pesada's creation, never this edit). Every other edit stays on v2:
+        // a v3 UPDATE needs a trustworthy origin for rows this device did not create, deferred.
+        val shares = database.deliveryDao().listParcels(row.id)
+        val keepsV3 = current.metadata.remoteVersion == null &&
+            database.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, row.id).any {
+                it.operation == OutboxOperation.CREATE && it.payloadVersion == 3 &&
+                    it.status != com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.CONFIRMED
+            }
+        val payloadJson = if (keepsV3) {
+            buildDeliveryPayloadJsonV3(row, shares)
+        } else {
+            buildDeliveryPayloadJson(row, baseRemoteVersion = current.metadata.remoteVersion, shares = shares)
+        }
         database.enqueueCollapsed(
             idGenerator = idGenerator,
             entityType = SyncEntityType.DELIVERY,
@@ -130,7 +152,7 @@ internal class DeliveryWriter(
             now = now,
             accountId = accountId,
             payloadJson = payloadJson,
-            payloadVersion = 2,
+            payloadVersion = if (keepsV3) 3 else 2,
             farmId = row.farmId,
             baseRemoteVersion = current.metadata.remoteVersion,
         )
@@ -269,3 +291,44 @@ internal fun buildDeliveryPayloadJson(row: DeliveryEntity, baseRemoteVersion: Lo
     return json.toString()
 }
 
+/**
+ * #808 v3 snapshot for `sync_own_delivery_v3`: the v2 fields with EVERY optional key present as an
+ * explicit null, plus `originCreatedAt` (the Pesada's local creation instant). Only for a CREATE,
+ * so `baseVersion` is always null. The hash contract is [deliveryPayloadHash] with version 3.
+ */
+internal fun buildDeliveryPayloadJsonV3(row: DeliveryEntity, shares: List<DeliveryParcelEntity>): String {
+    val json = JSONObject()
+    fun nullable(value: Any?) = value ?: JSONObject.NULL
+    json.put("id", row.id.toString())
+    json.put("farmId", row.farmId.toString())
+    json.put("campaignId", row.campaignId.toString())
+    json.put("deliveryDate", row.deliveryDate.toString())
+    json.put("destinationName", row.destinationName)
+    json.put("destinationOrganizationId", nullable(row.destinationOrganizationId?.toString()))
+    json.put("netGrams", row.netGrams)
+    json.put("grossGrams", nullable(row.grossGrams))
+    json.put("tareGrams", nullable(row.tareGrams))
+    json.put("deliveryNumber", nullable(row.deliveryNumber))
+    json.put("ticketNumber", nullable(row.ticketNumber))
+    json.put("source", row.source)
+    json.put("notes", nullable(row.notes))
+    json.put("harvestId", nullable(row.harvestId?.toString()))
+    json.put("deliveryTime", nullable(row.deliveryTime))
+    json.put("harvestOrigin", nullable(row.origin))
+    json.put("baseVersion", JSONObject.NULL)
+    val parcels = JSONArray()
+    shares.sortedBy { it.parcelId.toString() }.forEach { share ->
+        check(share.deliveryId == row.id && share.workspaceId == row.workspaceId)
+        parcels.put(JSONObject().apply {
+            put("id", share.id.toString())
+            put("parcelId", share.parcelId.toString())
+            put("campaignParcelId", share.campaignParcelId?.toString() ?: JSONObject.NULL)
+            put("parcelNameAtDelivery", share.parcelNameAtDelivery)
+            put("weightGrams", share.weightGrams ?: JSONObject.NULL)
+            put("allocationMode", share.allocationMode)
+        })
+    }
+    json.put("parcels", parcels)
+    json.put("originCreatedAt", deliveryOriginCreatedAt(row.metadata.createdAt))
+    return json.toString()
+}

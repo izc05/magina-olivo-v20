@@ -213,7 +213,9 @@ class DeliveryRpcAdapterTest {
         adapter.checkSyncOperations(session, listOf(operationId))
         assertEquals(setOf(DeliveryRpcAdapter.CHECK_SYNC_OPERATIONS), transport.calls.map { it.first }.toSet())
         assertEquals(
-            setOf("sync_own_delivery_v2", "check_sync_operations", "get_own_delivery_v2", "get_own_delivery_receive_v1"),
+            // #808 adds only the v3 writer; reads (and the v2 HEAD) are unchanged.
+            setOf("sync_own_delivery_v2", "sync_own_delivery_v3", "check_sync_operations", "get_own_delivery_v2",
+                "get_own_delivery_receive_v1"),
             DeliveryRpcAdapter.NAMES,
         )
     }
