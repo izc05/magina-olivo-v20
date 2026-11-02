@@ -225,8 +225,24 @@ class OfflineFirstCampaignRepository(
     override suspend fun archivePreparation(id: UUID): AppResult<Unit> = mutate(id, "archive_campaign", allowArchived = true) { current, now ->
         if (current.metadata.deletedAt != null) return@mutate AppResult.Success(Unit)
         if (current.status != CampaignStatus.PREPARATION) return@mutate conflict("protected_campaign")
+        // 2c-4 (C14, #810 §4.2.a): the campaign never left this device only when its single marker is
+        // a CREATE that was never prepared, bound or attempted. Then it is annulled locally in this
+        // same transaction (kept for audit as BLOCKED + RESOLVED_LOCAL_ANNULLED) and no DELETE is queued.
+        // Anything else (prepared, attempted, in flight, unknown, confirmed, other markers) keeps the
+        // previous path: a missing receipt never proves the server has nothing.
+        val markers = database.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
+        val create = markers.singleOrNull()?.takeIf {
+            it.operation == OutboxOperation.CREATE && it.status == OutboxStatus.PENDING && it.attemptCount == 0 &&
+                it.accountId == null && it.payloadJson == null && it.baseRemoteVersion == null
+        }
         database.campaignDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
-        enqueue(id, OutboxOperation.DELETE, now)
+        if (create != null) {
+            // Re-checked by the UPDATE itself; any mismatch aborts and rolls the archive back too.
+            if (database.syncOutboxDao().annulNeverSentCampaignCreate(create.id, id, now.toEpochMilli()) != 1)
+                throw AnnulmentRaced()
+        } else {
+            enqueue(id, OutboxOperation.DELETE, now)
+        }
         AppResult.Success(Unit)
     }
 
@@ -303,6 +319,8 @@ class OfflineFirstCampaignRepository(
     private fun String?.normalized() = this?.trim()?.ifEmpty { null }
     private fun conflict(code: String): AppResult.Failure = AppResult.Failure(AppError.Conflict(code))
     private class InvalidSelection(message: String) : RuntimeException(message)
+    /** The CREATE changed between the read and the annulment: the whole archive is rolled back. */
+    private class AnnulmentRaced : RuntimeException("campaign create annulment raced")
     private fun CampaignWithSnapshots.toDomain() = Campaign(campaign.id, campaign.workspaceId, campaign.farmId,
         campaign.name, campaign.startDate, campaign.endDate, campaign.status, campaign.notes,
         snapshots.map { CampaignParcelSnapshot(it.parcelId, it.farmNameAtStart, it.parcelNameAtStart,

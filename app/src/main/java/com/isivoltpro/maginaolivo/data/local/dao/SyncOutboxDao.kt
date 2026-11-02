@@ -57,6 +57,21 @@ interface SyncOutboxDao {
     @Query("DELETE FROM sync_outbox WHERE entity_type = :entityType AND entity_id = :entityId AND status IN ('PENDING', 'FAILED')")
     suspend fun deletePendingForEntity(entityType: SyncEntityType, entityId: UUID)
 
+    /**
+     * 2c-4 (C14): the local annulment of a CAMPAIGN CREATE that provably never left the device. Every
+     * condition is re-checked here; the row is kept (id, dates, payload absence) for audit.
+     */
+    @Query("""
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = 'RESOLVED_LOCAL_ANNULLED',
+            last_error_message = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'CAMPAIGN' AND entity_id = :campaignId AND operation = 'CREATE'
+          AND status = 'PENDING' AND attempt_count = 0 AND payload_json IS NULL AND account_id IS NULL
+          AND base_remote_version IS NULL
+          AND NOT EXISTS (SELECT 1 FROM sync_outbox sibling WHERE sibling.entity_type = 'CAMPAIGN'
+              AND sibling.entity_id = :campaignId AND sibling.id != :operationId)
+    """)
+    suspend fun annulNeverSentCampaignCreate(operationId: UUID, campaignId: UUID, nowEpochMillis: Long): Int
+
     /** A local edit may replace only a never prepared CAMPAIGN marker. */
     @Query("DELETE FROM sync_outbox WHERE entity_type = 'CAMPAIGN' AND entity_id = :campaignId AND operation = 'UPDATE' AND status = 'PENDING' AND attempt_count = 0 AND payload_json IS NULL AND account_id IS NULL")
     suspend fun deleteUnstagedCampaignMarkers(campaignId: UUID)
@@ -249,10 +264,14 @@ interface SyncOutboxDao {
      * - HARVEST and ACTIVITY have no server writer in G2.6. Their markers stay PENDING and do not
      *   hold the ARCHIVE. They are not synchronized.
      */
+    // 2c-4 (#815 D4): only these explicitly enumerated, already-decided CAMPAIGN blockers stop holding
+    // the ARCHIVE. Never a LIKE: FAILED, PROCESSING, PENDING, other BLOCKED codes, DELIVERY and EXPENSE stay.
     @Query("""
         SELECT * FROM sync_outbox
         WHERE status != 'CONFIRMED' AND (
-            (entity_type = 'CAMPAIGN' AND entity_id IN (SELECT campaign_id FROM campaign_parcels WHERE parcel_id = :parcelId))
+            (entity_type = 'CAMPAIGN' AND entity_id IN (SELECT campaign_id FROM campaign_parcels WHERE parcel_id = :parcelId)
+             AND NOT (status = 'BLOCKED' AND coalesce(last_error_code, '') IN
+                 ('RESOLVED_LOCAL_ANNULLED', 'RESOLVED_CAS_CONFLICT', 'RESOLVED_NEEDS_REBASE')))
          OR (entity_type = 'DELIVERY' AND entity_id IN (SELECT delivery_id FROM delivery_parcels WHERE parcel_id = :parcelId))
          OR (entity_type = 'EXPENSE' AND entity_id IN (SELECT id FROM expenses WHERE parcel_id = :parcelId)))
         ORDER BY created_at, id

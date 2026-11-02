@@ -2,7 +2,7 @@ name: G2.6 PARCEL mutation Android QA isolated
 
 on:
   pull_request:
-    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3]
+    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3, codex/g26-campaign-history-h7]
   workflow_dispatch:
 
 permissions:
