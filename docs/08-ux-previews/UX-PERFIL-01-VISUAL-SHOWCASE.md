@@ -18,6 +18,12 @@ Para revisar interactivamente la comparativa estricta entre las **capturas reale
   * `actual_perfil_screen.png` (Pantalla actual de `ProfileScreen.kt`)
   * `actual_mi_olivar.png` (Pantalla actual de `Mi Campo`)
   * `actual_cuaderno.png` (Pantalla actual de `Cuaderno`)
+- Capturas de la propuesta evolucionada en dispositivo Pixel 393dp (xx-hdpi):
+  * `propuesta_inicio_con_avatar_y_magina_ia.png` (Inicio con avatar superior derecho de 48dp y 4ª pestaña Mágina IA, manteniendo el botón central «+» elevado)
+  * `propuesta_panel_perfil_claro_top.png` (Nuevo panel Perfil/Cuenta - Vista superior: cuenta, fincas, datos y herramientas en modo claro)
+  * `propuesta_panel_perfil_claro_scrolled.png` (Nuevo panel Perfil/Cuenta - Vista inferior: herramientas de olivar, ajustes, offline «Siempre», ayuda y cerrar sesión)
+  * `propuesta_panel_perfil_oscuro.png` (Nuevo panel Perfil/Cuenta - Modo oscuro contrastado)
+  * `propuesta_panel_perfil_local_guest.png` (Nuevo panel Perfil/Cuenta - Modo local / invitado sin cuenta sincronizada)
 
 ---
 
