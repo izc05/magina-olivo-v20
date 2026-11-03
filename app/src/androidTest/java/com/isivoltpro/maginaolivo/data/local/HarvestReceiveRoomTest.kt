@@ -32,7 +32,10 @@ import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcTransport
 import com.isivoltpro.maginaolivo.data.repository.sync.HarvestReceiveCoordinator
 import com.isivoltpro.maginaolivo.data.repository.sync.HarvestReceiveOutcome
 import com.isivoltpro.maginaolivo.data.repository.sync.HarvestReceiveVerifier
+import com.isivoltpro.maginaolivo.data.repository.sync.HarvestReceiveReport
 import com.isivoltpro.maginaolivo.data.repository.sync.ReceiveCauses
+import com.isivoltpro.maginaolivo.data.repository.sync.ReceiveCursor
+import com.isivoltpro.maginaolivo.data.repository.sync.ReceiveLimit
 import com.isivoltpro.maginaolivo.data.repository.sync.ReceiveHoldCauses
 import com.isivoltpro.maginaolivo.data.repository.sync.deliveryDeleteHash
 import com.isivoltpro.maginaolivo.data.repository.sync.harvestOwnFingerprint
@@ -585,6 +588,178 @@ class HarvestReceiveRoomTest {
         assertEquals(y.id, db.deliveryDao().findById(p.id)!!.harvestId)
         assertEquals(serverDerived(server, x.id), localDerived(x.id)); assertEquals(serverDerived(server, y.id), localDerived(y.id))
         assertEquals(0, outboxCount())
+    }
+
+    // ------------------------------------------------------------------------------- R3-e-limit: receive in passes
+
+    /** [n] MANUAL Jornadas, one Pesada each; ids from [prefix] (24 chars + 12 hex) to place them in the order, or random. */
+    private fun FakeR2.bulk(n: Int, prefix: String? = null, unverified: Boolean = false): List<SHarvest> = (0 until n).map { i ->
+        val id = prefix?.let { UUID.fromString(it + "%012x".format(i)) } ?: UUID.randomUUID()
+        val h = SHarvest(id, d3, "MANUAL", weight = 10_000L + i, ownOverride = if (unverified) "1".repeat(64) else null)
+        harvests += h; pesadas += SPesada(UUID.randomUUID(), h.id, d3, 1_000L + i, listOf(exact(north, 1_000L + i))); h
+    }
+
+    /** A whole series: passes until the end (or a non-PARTIAL outcome); never more passes than the guard. */
+    private fun series(server: FakeR2, limit: ReceiveLimit, start: ReceiveCursor? = null, guard: Int = 1_000): List<HarvestReceiveReport> = runBlocking {
+        val out = mutableListOf<HarvestReceiveReport>(); var cursor = start
+        do {
+            val r = receiver(server).receive(workspaceId, farmId, campaignId, limit, cursor); out += r; cursor = r.next
+            check(out.size <= guard) { "series did not end" }
+        } while (r.outcome == HarvestReceiveOutcome.PARTIAL)
+        out
+    }
+
+    /** Order-independent content (rows sorted; derived parcel ids replaced by their identity) with the account normalised. */
+    private fun content(): String = (data.filter { it != "harvest_parcels" }.map { "SELECT * FROM $it" } +
+        "SELECT harvest_id, parcel_id, weight_grams, allocation_mode FROM harvest_parcels").joinToString("\n") { q ->
+        db.openHelper.writableDatabase.query(q).use { c ->
+            buildList { while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { if (c.isNull(it)) "∅" else c.getString(it) }) }
+                .sorted().joinToString(";")
+        }
+    }.replace(userId.toString(), "U")
+
+    private val low = "00000000-0000-0000-0000-"
+    private val high = "ffffffff-ffff-ffff-ffff-"
+
+    @Test fun l1ALargeCampaignArrivesInPassesEqualToASinglePass() = runBlocking<Unit> {
+        setup(); val server = standard().apply { bulk(247) }
+        val passes = series(server, ReceiveLimit(maxBundles = 100))
+        assertEquals(listOf(HarvestReceiveOutcome.PARTIAL, HarvestReceiveOutcome.PARTIAL, HarvestReceiveOutcome.IMPORTED), passes.map { it.outcome })
+        assertEquals(listOf(100, 100, 50), passes.map { it.bundlesRead })
+        assertNull(passes.last().next); assertTrue(passes.all { it.held.isEmpty() && it.oversizedGroups == 0 })
+        assertEquals(250 + 254, db.syncReceiveReceiptDao().count()); assertEquals(0, outboxCount())
+        val batched = content()
+        // The same server received in ONE unbounded pass on a fresh device gives exactly the same content.
+        db.close(); context.deleteDatabase(name)
+        listOf(ledgerFile, File(ledgerFile.path + ".bak"), File(ledgerFile.path + ".new")).forEach { it.delete() }
+        setup()
+        val single = receiver(server).receive(workspaceId, farmId, campaignId, ReceiveLimit.UNBOUNDED)
+        assertEquals(HarvestReceiveOutcome.IMPORTED, single.outcome); assertEquals(250, single.bundlesRead); assertNull(single.next)
+        assertEquals(batched, content())
+    }
+
+    @Test fun l2ACutInTheSecondPassKeepsTheFirstAndResumesWithoutDuplicates() = runBlocking<Unit> {
+        setup(); val server = standard().apply { bulk(247) }
+        val limit = ReceiveLimit(maxBundles = 100)
+        val first = receiver(server).receive(workspaceId, farmId, campaignId, limit)
+        assertEquals(HarvestReceiveOutcome.PARTIAL, first.outcome); val cursor = first.next!!
+        val afterFirst = dump(*data)
+        assertEquals(100, first.applied.size)
+        // Airplane mode at the 2nd bundle of the 2nd pass: nothing of that pass written, the first pass stays.
+        var bundles = 0
+        server.failOn = { name, _ -> name == "get_own_harvest_bundle_v1" && ++bundles == 2 }
+        assertEquals(HarvestReceiveOutcome.OFFLINE, receiver(server).receive(workspaceId, farmId, campaignId, limit, cursor).outcome)
+        assertEquals(afterFirst, dump(*data))
+        server.failOn = null
+        // Resume with the same cursor: the series ends with everything once.
+        val rest = series(server, limit, cursor)
+        assertEquals(listOf(HarvestReceiveOutcome.PARTIAL, HarvestReceiveOutcome.IMPORTED), rest.map { it.outcome })
+        assertEquals(504, db.syncReceiveReceiptDao().count()); assertEquals(0, outboxCount())
+        // A cursor lost (null): the new series reads nothing and writes nothing.
+        val state = dump(*data); val read = server.bundles()
+        val again = series(server, limit)
+        assertEquals(listOf(HarvestReceiveOutcome.ALREADY_CURRENT), again.map { it.outcome })
+        assertEquals(read, server.bundles()); assertEquals(state, dump(*data))
+    }
+
+    @Test fun l3RetainedJornadasNeverStallTheSeries() = runBlocking<Unit> {
+        setup(); val server = FakeR2()
+        server.bulk(150, low, unverified = true); val good = server.bulk(100, high)
+        val passes = series(server, ReceiveLimit(maxBundles = 100))
+        assertEquals(listOf(HarvestReceiveOutcome.PARTIAL, HarvestReceiveOutcome.PARTIAL, HarvestReceiveOutcome.IMPORTED), passes.map { it.outcome })
+        assertEquals(listOf(0, 50, 50), passes.map { it.applied.size })
+        assertTrue(good.all { db.harvestDao().findById(it.id) != null })
+        assertEquals(150, holds().count { it.cause == ReceiveHoldCauses.UNVERIFIED })
+        // A new series re-reads only what is retained, writes nothing and duplicates no hold.
+        val state = dump(*data); val held = dump("sync_receive_holds")
+        val again = series(server, ReceiveLimit(maxBundles = 100))
+        assertEquals(listOf(HarvestReceiveOutcome.PARTIAL, HarvestReceiveOutcome.HELD), again.map { it.outcome })
+        assertEquals(listOf(100, 50), again.map { it.bundlesRead })
+        assertEquals(state, dump(*data)); assertEquals(held, dump("sync_receive_holds")); assertEquals(0, outboxCount())
+    }
+
+    @Test fun l4ACursorOfAnotherScopeOrAccountIsDiscardedOrRefused() = runBlocking<Unit> {
+        setup(); val server = standard().apply { bulk(247) }
+        val limit = ReceiveLimit(maxBundles = 100)
+        val end = ReceiveCursor(ISSUER, userId, workspaceId, farmId, campaignId, UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"))
+        // Control: the device's own cursor past the last group is honoured (nothing left in this series, nothing read).
+        val honoured = receiver(server).receive(workspaceId, farmId, campaignId, limit, end)
+        assertEquals(0, honoured.bundlesRead); assertNull(honoured.next)
+        // The same cursor of another issuer, account, workspace, farm or campaign is discarded: the series starts over.
+        for (foreign in listOf(end.copy(issuer = "https://otro.example"), end.copy(accountId = UUID.randomUUID()),
+            end.copy(workspaceId = UUID.randomUUID()), end.copy(farmId = UUID.randomUUID()), end.copy(campaignId = UUID.randomUUID()))) {
+            val r = receiver(server).receive(workspaceId, farmId, campaignId, ReceiveLimit(maxBundles = 1), foreign)
+            assertEquals("$foreign", HarvestReceiveOutcome.PARTIAL, r.outcome)
+            assertEquals("$foreign", end.copy(after = r.next!!.after), r.next)   // the new cursor is the device's own
+        }
+        // Another account on the device, even with a valid-looking cursor: refused before any request.
+        val stranger = AccountRepository(object : AccountAuthApi by SimulatedAccountAuthApi() { override val simulated = false }, MemoryAccountSessionStore())
+        stranger.login("otra@example.test", "password42", true)
+        val calls = server.names.size
+        assertEquals(HarvestReceiveOutcome.NOT_AUTHORIZED, receiver(server, accountRepo = stranger).receive(workspaceId, farmId, campaignId, limit, end).outcome)
+        assertEquals(calls, server.names.size)
+    }
+
+    @Test fun l5TheByteLimitStillAdvancesOneWholeGroupPerPass() = runBlocking<Unit> {
+        setup(); val server = standard().apply { bulk(2) }
+        val passes = series(server, ReceiveLimit(maxBytes = 1))
+        assertEquals(5, passes.size)
+        assertTrue(passes.all { it.bundlesRead == 1 && it.oversizedGroups == 1 && it.bundleBytes > 1 })
+        assertEquals(HarvestReceiveOutcome.IMPORTED, passes.last().outcome)
+        assertEquals(5, server.harvests.count { db.harvestDao().findById(it.id) != null }); assertEquals(0, outboxCount())
+    }
+
+    @Test fun l6APendingChangeOrConflictInALaterPassIsRetainedAndTheRestApplies() = runBlocking<Unit> {
+        setup(); val server = FakeR2(); val days = server.bulk(150, low)
+        series(server, ReceiveLimit.UNBOUNDED)
+        // The server moves on for 120 Pesadas; the device has a pending change on #110 and a CONFLICT on #115 (2nd pass).
+        val moved = days.take(120).map { d -> server.pesadas.single { it.harvestId == d.id } }
+        for (p in moved) { p.version = 2; p.net += 7; p.parcels = listOf(exact(north, p.net)) }
+        val pending = moved[110]; val conflict = moved[115]
+        db.openHelper.writableDatabase.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,last_error_code,created_at,updated_at) VALUES (?, 'DELIVERY', ?, 'UPDATE', 2, 'PENDING', 0, NULL, 1000, 1000)",
+            arrayOf<Any?>(UUID.randomUUID().toString(), pending.id.toString()))
+        db.deliveryDao().findById(conflict.id)!!.let { db.deliveryDao().upsert(it.copy(metadata = it.metadata.copy(syncStatus = SyncStatus.CONFLICT))) }
+        val protectedBefore = listOf(pending.id, conflict.id).map { db.deliveryDao().findById(it) to db.deliveryDao().listParcels(it) }
+        val passes = series(server, ReceiveLimit(maxBundles = 100))
+        assertEquals(listOf(HarvestReceiveOutcome.PARTIAL, HarvestReceiveOutcome.IMPORTED), passes.map { it.outcome })
+        assertEquals(setOf(pending.id, conflict.id), passes.flatMap { it.held }.filter { it.cause == ReceiveCauses.REMOTE_AHEAD }.map { it.entityId }.toSet())
+        assertEquals(protectedBefore, listOf(pending.id, conflict.id).map { db.deliveryDao().findById(it) to db.deliveryDao().listParcels(it) })
+        assertEquals(118, moved.count { db.deliveryDao().findById(it.id)!!.metadata.remoteVersion == 2L })
+        assertEquals(1, outboxCount())   // only the device's own pending operation
+        // MANUAL Jornadas keep their typed kilos (J-D2).
+        assertTrue(days.all { db.harvestDao().findById(it.id)!!.weightGrams == it.weight })
+    }
+
+    @Test fun l7RemoteMissingAndNoJornadaAreDecidedOnTheWholeManifestEveryPassWithoutDuplicates() = runBlocking<Unit> {
+        setup(); val server = standard()
+        val loose = SPesada(UUID.randomUUID(), null, d2, 50_000, listOf(exact(north, 50_000))); server.pesadas += loose
+        series(server, ReceiveLimit.UNBOUNDED)
+        val gone = server.harvests[2]; server.harvests.remove(gone); server.pesadas.removeAll { it.harvestId == gone.id }
+        server.bulk(150)
+        val passes = series(server, ReceiveLimit(maxBundles = 100))
+        assertEquals(2, passes.size)
+        for (r in passes) {
+            assertTrue(r.held.any { it.cause == ReceiveCauses.REMOTE_MISSING && it.entityId == gone.id })
+            assertTrue(r.held.any { it.cause == ReceiveCauses.NO_JORNADA && it.entityId == loose.id })
+        }
+        assertEquals(1, holds().count { it.cause == ReceiveCauses.REMOTE_MISSING && it.entityId == gone.id })
+        assertEquals(1, holds().count { it.cause == ReceiveCauses.NO_JORNADA && it.entityId == loose.id })
+        assertNotNull(db.harvestDao().findById(gone.id)); assertNull(db.deliveryDao().findById(loose.id))
+    }
+
+    @Test fun l8AMovedPesadaKeepsXAndYInOneGroupOverThePassLimitAndTheSeriesEnds() = runBlocking<Unit> {
+        setup(); val server = standard(); receive(server)
+        val (x, y, p) = moveToY(server)
+        val m = server.harvests[2]; m.version = 2; m.weight = 4_000_000; m.headOp = UUID.randomUUID()
+        val passes = series(server, ReceiveLimit(maxBundles = 1))
+        // Two groups: {X, Y} read whole although over the limit (oversized, never split) and {M}; one pass each, no loop.
+        assertEquals(2, passes.size); assertEquals(1, passes.sumOf { it.oversizedGroups })
+        val xy = passes.single { x.id in it.applied }
+        assertEquals(setOf(x.id, y.id), xy.applied.toSet()); assertEquals(2, xy.bundlesRead)
+        assertEquals(y.id, db.deliveryDao().findById(p.id)!!.harvestId)
+        assertEquals(serverDerived(server, x.id), localDerived(x.id)); assertEquals(serverDerived(server, y.id), localDerived(y.id))
+        assertEquals(4_000_000L, db.harvestDao().findById(m.id)!!.weightGrams)
+        assertEquals(HarvestReceiveOutcome.IMPORTED, passes.last().outcome); assertEquals(0, outboxCount())
     }
 
     @Test fun m4TheRepeatIsIdempotentAndAMoveThatEmptiesAndDeletesTheSourceApplies() = runBlocking<Unit> {

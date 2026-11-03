@@ -46,13 +46,42 @@ internal enum class HarvestReceiveOutcome {
     TOO_LARGE,
     /** Out of contract (PROTOCOL): nothing written. */
     REJECTED,
+    /**
+     * R3-e-limit: this pass applied and/or retained what it read and more Jornadas remain after [HarvestReceiveReport.next];
+     * the next pass of the series passes that cursor back. Never means data was dropped.
+     */
+    PARTIAL,
 }
+
+/**
+ * R3-e-limit: one pass reads at most [maxBundles] bundles, and stops reading new groups once [maxBytes] of bundle bodies
+ * were read. A group (Jornadas linked by a moved Pesada) is NEVER split: the first group of a pass is always read whole,
+ * even over the limit (counted in [HarvestReceiveReport.oversizedGroups]), so every pass advances and no series loops.
+ */
+internal data class ReceiveLimit(val maxBundles: Int = 100, val maxBytes: Long = 1L shl 20) {
+    init { require(maxBundles >= 1 && maxBytes >= 1) { "limits must be positive" } }
+    companion object { val UNBOUNDED = ReceiveLimit(Int.MAX_VALUE, Long.MAX_VALUE) }
+}
+
+/**
+ * R3-e-limit: where the next pass of a series continues (groups whose greatest Jornada id is after [after]). Bound to the
+ * issuer, account, workspace, farm and campaign that produced it: any mismatch discards it and the series starts over.
+ * Kept in memory by the caller, never persisted: losing it only costs re-reading what is still retained.
+ */
+internal data class ReceiveCursor(val issuer: String, val accountId: UUID, val workspaceId: UUID, val farmId: UUID,
+    val campaignId: UUID, val after: UUID)
 
 internal data class HarvestReceiveReport(
     val outcome: HarvestReceiveOutcome,
     val applied: List<UUID> = emptyList(),
     val held: List<SyncReceiveHoldEntity> = emptyList(),
     val bundlesRead: Int = 0,
+    /** R3-e-limit: the cursor of the next pass, or null when this pass reached the end of the series. */
+    val next: ReceiveCursor? = null,
+    /** R3-e-limit: characters of bundle bodies read by this pass (UTF-8 JSON, ~bytes). */
+    val bundleBytes: Long = 0,
+    /** R3-e-limit: groups read whole although over the limit (never split). */
+    val oversizedGroups: Int = 0,
 )
 
 /** Receive hold causes (design §5) decided by the receiver itself. */
@@ -83,6 +112,9 @@ internal object ReceiveCauses {
  * - R3-e-fix: a Pesada the server lists under Y while this device links it to X moved X -> Y. X (same version, only its
  *   derived fingerprint moved) is read too, and X and Y are ONE group: decided together, applied in ONE transaction, every
  *   AUTO_DAY of the group derived after all writes and checked against the server. Any hold of a member applies nothing.
+ * - R3-e-limit: a pass reads whole groups after its cursor up to [ReceiveLimit] (100 bundles / 1 MiB by default; at least
+ *   one group, never split), applies them group by group as above and returns [HarvestReceiveOutcome.PARTIAL] with the next
+ *   cursor while more remain. The manifest is always read whole. A cut loses at most the pass being read.
  * - Never an outbox operation, never a local deletion, never a resolved hold.
  */
 internal class HarvestReceiveCoordinator(
@@ -107,9 +139,16 @@ internal class HarvestReceiveCoordinator(
     private class Diverged(val bundle: HarvestBundle, val detail: String) : Exception()
 
     /** R3-e-fix: Jornadas linked by a Pesada that changed Jornada are one group, applied in ONE transaction. */
-    private data class Read(val manifest: HarvestManifest, val groups: List<List<HarvestBundle>>)
+    private data class Read(val manifest: HarvestManifest, val groups: List<List<HarvestBundle>>, val next: ReceiveCursor?,
+        val bytes: Long, val oversized: Int)
 
-    suspend fun receive(workspaceId: UUID, farmId: UUID, campaignId: UUID): HarvestReceiveReport {
+    /**
+     * One pass. With the defaults a campaign larger than [limit] is received over several passes: each returns [PARTIAL]
+     * and a [ReceiveCursor] until the last one (next == null). Every pass re-reads the full manifest (REMOTE_MISSING and
+     * NO_JORNADA are always decided on all of it) and re-checks identity, ownership and consent.
+     */
+    suspend fun receive(workspaceId: UUID, farmId: UUID, campaignId: UUID, limit: ReceiveLimit = ReceiveLimit(),
+        resumeAfter: ReceiveCursor? = null): HarvestReceiveReport {
         val verifier = ownerVerifier ?: return HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
         if (issuer.isBlank() || tokenIssuer.isBlank()) return HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
         val userId = account.state.value.userId ?: return HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
@@ -125,7 +164,10 @@ internal class HarvestReceiveCoordinator(
         return try {
             account.withServerVerifiedIdentity(remote = { session ->
                 if (session.userId != userId || !verifier.isCurrentOwner(session, workspaceId)) throw Unauthorized()
-                read(session, ManifestRequest(tokenIssuer, session.userId, workspaceId, farmId, campaignId), bounds)
+                // A cursor of another identity or scope is discarded: the series starts over (never skips, never leaks).
+                val cursor = resumeAfter?.takeIf { it.issuer == issuer && it.accountId == session.userId && it.workspaceId == workspaceId &&
+                    it.farmId == farmId && it.campaignId == campaignId }
+                read(session, ManifestRequest(tokenIssuer, session.userId, workspaceId, farmId, campaignId), bounds, limit, cursor)
             }) { verified, read ->
                 if (verified != userId || read.manifest.request.accountId != verified) HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
                 else commit(verified, read)
@@ -142,7 +184,8 @@ internal class HarvestReceiveCoordinator(
 
     // ------------------------------------------------------------------------------------------------------- read
 
-    private suspend fun read(session: AuthSession, request: ManifestRequest, bounds: Pair<LocalDate, LocalDate>): Read {
+    private suspend fun read(session: AuthSession, request: ManifestRequest, bounds: Pair<LocalDate, LocalDate>, limit: ReceiveLimit,
+        cursor: ReceiveCursor?): Read {
         val manifest = manifest(session, request, bounds)
         val inManifest = manifest.harvests.map { it.id }.toSet()
         // R3-e-fix: a Pesada the server lists under Y while this device still links it to X has moved X -> Y. X keeps its
@@ -153,23 +196,37 @@ internal class HarvestReceiveCoordinator(
         }
         val sources = moves.map { it.first }.toSet()
         val wanted = manifest.harvests.filter { it.id in sources || differs(session.userId, it, manifest.deliveries.filter { d -> d.harvestId == it.id }) }
-        val bundles = wanted.sortedBy { it.id.toString() }.map { h ->
-            val body = call(session, HarvestReceiveContract.BUNDLE_RPC, """{"p_harvest_id":"${h.id}"}""")
-            HarvestReceiveParser.parseBundle(body, BundleRequest(tokenIssuer, session.userId, h.id, request.workspaceId, request.farmId, request.campaignId))
+        // R3-e-limit: groups are formed BEFORE any bundle is read, so a group is never split across passes. Ordered by their
+        // greatest Jornada id; the pass takes the groups after the cursor, whole, until the limit (always at least one).
+        val after = cursor?.after?.toString() ?: ""
+        val pending = groups(wanted.map { it.id }, moves).filter { it.last().toString() > after }
+        val chosen = mutableListOf<List<HarvestBundle>>()
+        var count = 0; var bytes = 0L; var oversized = 0
+        for (group in pending) {
+            if (chosen.isNotEmpty() && (count + group.size > limit.maxBundles || bytes >= limit.maxBytes)) break
+            var groupBytes = 0L
+            chosen += group.map { id ->
+                val body = call(session, HarvestReceiveContract.BUNDLE_RPC, """{"p_harvest_id":"$id"}""")
+                groupBytes += body.length
+                HarvestReceiveParser.parseBundle(body, BundleRequest(tokenIssuer, session.userId, id, request.workspaceId, request.farmId, request.campaignId))
+            }
+            if (group.size > limit.maxBundles || groupBytes > limit.maxBytes) oversized++
+            count += group.size; bytes += groupBytes
         }
-        return Read(manifest, groups(bundles, moves))
+        val next = if (pending.size > chosen.size) ReceiveCursor(issuer, session.userId, request.workspaceId, request.farmId,
+            request.campaignId, chosen.last().last().harvest.id) else null
+        return Read(manifest, chosen, next, bytes, oversized)
     }
 
-    /** Connected components of the moves among the bundles read; deterministic order (by the smallest Jornada id). */
-    private fun groups(bundles: List<HarvestBundle>, moves: List<Pair<UUID, UUID>>): List<List<HarvestBundle>> {
-        val root = bundles.associate { it.harvest.id to it.harvest.id }.toMutableMap()
+    /** Connected components of the moves among the wanted Jornadas; each sorted, groups ordered by their greatest id. */
+    private fun groups(ids: List<UUID>, moves: List<Pair<UUID, UUID>>): List<List<UUID>> {
+        val root = ids.associateWith { it }.toMutableMap()
         fun find(id: UUID): UUID { var r = id; while (root.getValue(r) != r) r = root.getValue(r); return r }
         for ((from, to) in moves) if (from in root && to in root) {
             val (a, b) = listOf(find(from), find(to)).sortedBy { it.toString() }
             if (a != b) root[b] = a
         }
-        return bundles.groupBy { find(it.harvest.id) }.values.map { g -> g.sortedBy { it.harvest.id.toString() } }
-            .sortedBy { it.first().harvest.id.toString() }
+        return ids.groupBy { find(it) }.values.map { g -> g.sortedBy { it.toString() } }.sortedBy { it.last().toString() }
     }
 
     /** D1: the whole manifest, or (on 54000) the exact union of date halves, recursively; a single day over the limit is TOO_LARGE. */
@@ -247,11 +304,12 @@ internal class HarvestReceiveCoordinator(
         }
         database.withTransaction { holds.forEach { database.syncReceiveHoldDao().observe(it) } }
         val outcome = when {
+            read.next != null -> HarvestReceiveOutcome.PARTIAL
             applied.isNotEmpty() -> HarvestReceiveOutcome.IMPORTED
             holds.isNotEmpty() -> HarvestReceiveOutcome.HELD
             else -> HarvestReceiveOutcome.ALREADY_CURRENT
         }
-        return HarvestReceiveReport(outcome, applied, holds, read.groups.sumOf { it.size })
+        return HarvestReceiveReport(outcome, applied, holds, read.groups.sumOf { it.size }, read.next, read.bytes, read.oversized)
     }
 
     private sealed interface Decision {

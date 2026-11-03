@@ -39,6 +39,8 @@ import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcResponse
 import com.isivoltpro.maginaolivo.data.repository.sync.HarvestReceiveCoordinator
 import com.isivoltpro.maginaolivo.data.repository.sync.HarvestReceiveOutcome
+import com.isivoltpro.maginaolivo.data.repository.sync.ReceiveCursor
+import com.isivoltpro.maginaolivo.data.repository.sync.ReceiveLimit
 import com.isivoltpro.maginaolivo.data.repository.sync.deliveryDeleteHash
 import com.isivoltpro.maginaolivo.data.repository.enqueueCollapsed
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
@@ -939,7 +941,7 @@ class DeliveryV3HttpsEphemeralTest {
         val wire = CountingReceive()
         val runtime = Runtime.getRuntime(); runtime.gc()
         val heapBefore = runtime.totalMemory() - runtime.freeMemory(); val started = System.nanoTime()
-        val report = receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign)
+        val report = receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign, ReceiveLimit.UNBOUNDED)
         val millis = (System.nanoTime() - started) / 1_000_000; val heapAfter = runtime.totalMemory() - runtime.freeMemory()
         val manifests = wire.names.count { it == "get_own_harvest_manifest_v1" }
         val bundles = wire.names.count { it == "get_own_harvest_bundle_v1" }
@@ -951,6 +953,62 @@ class DeliveryV3HttpsEphemeralTest {
         assertEquals(1, b.db.harvestDao().listLiveForCampaign(graph.campaign).size)
         assertEquals(0, outboxCount(b))
         Log.i("G808", "G808-R3D-H3 manifests=$manifests bundles=$bundles bytes=${wire.bytes} ms=$millis heapDeltaKiB=${(heapAfter - heapBefore) / 1024}")
+    }
+
+    /**
+     * H4 (R3-e-limit): the H3 campaign (2001 MANUAL rows without a v2 head + 1 AUTO_DAY) received in passes of 200 against
+     * the real server: per pass requests, bytes, time and heap; a cut in the 3rd pass resumes with the cursor; the result
+     * equals the single pass (2001 UNVERIFIED, the AUTO_DAY applied, no outbox) and a new series writes nothing.
+     */
+    @Test fun r3eH4ALargeCampaignIsReceivedInPassesAndResumes() = runBlocking<Unit> {
+        val graph = Graph()
+        val a = device(names[0], "actor", "token", graph, server = true)
+        val b = device(names[1], "actor", "token", graph, server = false)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(1))
+        val p = sentPesada(a, graph, before, LocalDate.now(zone).minusDays(2), 900_000, graph.active to 900_000L)
+        val auto = sendJornada(a, p); confirmV3(a, p)
+        fetch("/__g26_admin/bulk_manual?workspace=${graph.workspace}&farm=${graph.farm}&campaign=${graph.campaign}&count=2001", "POST")
+        val limit = ReceiveLimit(maxBundles = 200)
+        val wire = CountingReceive()
+        val runtime = Runtime.getRuntime()
+        val held = mutableSetOf<UUID>(); val applied = mutableSetOf<UUID>()
+        var cursor: ReceiveCursor? = null; var passes = 0; var peakHeapKiB = 0L; var maxPassMs = 0L; var resumed = false
+        val started = System.nanoTime()
+        while (true) {
+            val calls = wire.names.size; val bytes = wire.bytes
+            runtime.gc(); val heapBefore = runtime.totalMemory() - runtime.freeMemory(); val t0 = System.nanoTime()
+            if (passes == 2 && !resumed) wire.cutOnBundle = wire.names.count { it == "get_own_harvest_bundle_v1" } + 5
+            val r = receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign, limit, cursor)
+            val ms = (System.nanoTime() - t0) / 1_000_000; val heap = (runtime.totalMemory() - runtime.freeMemory() - heapBefore) / 1024
+            if (r.outcome == HarvestReceiveOutcome.OFFLINE) {
+                // Cut inside the 3rd pass: nothing of it written; the same cursor resumes.
+                resumed = true; wire.cutOnBundle = 0
+                Log.i("G808", "G808-R3E-H4 pass=${passes + 1} OFFLINE resumeWith=${cursor?.after}")
+                continue
+            }
+            passes++; peakHeapKiB = maxOf(peakHeapKiB, heap); maxPassMs = maxOf(maxPassMs, ms)
+            assertTrue("${r.bundlesRead}", r.bundlesRead <= 200)
+            held += r.held.filter { it.cause == "UNVERIFIED" }.map { it.entityId }; applied += r.applied
+            Log.i("G808", "G808-R3E-H4 pass=$passes outcome=${r.outcome} calls=${wire.names.size - calls} bundles=${r.bundlesRead} bytes=${wire.bytes - bytes} ms=$ms heapDeltaKiB=$heap")
+            cursor = r.next
+            if (r.outcome != HarvestReceiveOutcome.PARTIAL) break
+            check(passes < 100)
+        }
+        val totalMs = (System.nanoTime() - started) / 1_000_000
+        assertTrue(resumed)
+        assertEquals(11, passes)
+        assertEquals(2001, held.size); assertEquals(setOf(auto), applied)
+        assertNotNull(b.db.harvestDao().findById(auto))
+        assertEquals(1, b.db.harvestDao().listLiveForCampaign(graph.campaign).size)
+        assertEquals(0, outboxCount(b))
+        val manifests = wire.names.count { it == "get_own_harvest_manifest_v1" }; val bundles = wire.names.count { it == "get_own_harvest_bundle_v1" }
+        Log.i("G808", "G808-R3E-H4 total passes=$passes manifests=$manifests bundles=$bundles bytes=${wire.bytes} ms=$totalMs maxPassMs=$maxPassMs peakHeapDeltaKiB=$peakHeapKiB resumed=$resumed")
+        // A new series re-reads only the retained rows and writes nothing.
+        val snapshot = dump(b)
+        var again: ReceiveCursor? = null
+        do { val r = receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign, limit, again); again = r.next
+            assertTrue(r.applied.isEmpty()) } while (again != null)
+        assertEquals(snapshot, dump(b)); assertEquals(0, outboxCount(b))
     }
 
     private fun session(actor: UUID, key: String): AuthSession {
