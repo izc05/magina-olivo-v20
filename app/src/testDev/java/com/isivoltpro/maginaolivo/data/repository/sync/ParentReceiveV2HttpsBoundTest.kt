@@ -32,7 +32,11 @@ class ParentReceiveV2HttpsBoundTest {
     @Test fun onlyTheV2ParentsScopeHasTheEightMebibyteBound() {
         assertEquals(PARENT_GRAPH_V2_MAX_BYTES, HttpsDeliveryRpcTransport.RpcScope.PARENT_RECEIVE_V2.maxResponseBytes)
         assertEquals(setOf(ParentReceiveV2Coordinator.RPC), HttpsDeliveryRpcTransport.RpcScope.PARENT_RECEIVE_V2.allowedNames)
-        HttpsDeliveryRpcTransport.RpcScope.entries.filter { it != HttpsDeliveryRpcTransport.RpcScope.PARENT_RECEIVE_V2 }
+        // #808 R3-b: the Jornada receive scope carries the R2 contract bound (4 MiB), and only its two RPCs.
+        assertEquals(HarvestReceiveContract.MAX_BYTES, HttpsDeliveryRpcTransport.RpcScope.HARVEST_RECEIVE.maxResponseBytes)
+        assertEquals(HarvestReceiveContract.NAMES, HttpsDeliveryRpcTransport.RpcScope.HARVEST_RECEIVE.allowedNames)
+        HttpsDeliveryRpcTransport.RpcScope.entries
+            .filter { it != HttpsDeliveryRpcTransport.RpcScope.PARENT_RECEIVE_V2 && it != HttpsDeliveryRpcTransport.RpcScope.HARVEST_RECEIVE }
             .forEach { assertEquals(it.name, HttpsDeliveryRpcTransport.MAX_RESPONSE_BYTES, it.maxResponseBytes) }
     }
 }

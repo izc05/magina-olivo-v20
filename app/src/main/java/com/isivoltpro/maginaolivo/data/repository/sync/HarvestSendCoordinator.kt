@@ -474,9 +474,9 @@ private fun kotlinx.serialization.json.JsonElement?.bool(): Boolean? = (this as?
 
 internal enum class HarvestKind { CREATE, UPDATE, DELETE }
 
-private val HARVEST_TEXT = setOf("id", "farmId", "campaignId", "harvestDate", "dayOrigin", "destination", "notes",
+internal val HARVEST_TEXT = setOf("id", "farmId", "campaignId", "harvestDate", "dayOrigin", "destination", "notes",
     "collectionMethod", "machineryText")
-private val HARVEST_NULLABLE = setOf("campaignId", "weightGrams", "destination", "notes", "collectionMethod", "workerCount",
+internal val HARVEST_NULLABLE = setOf("campaignId", "weightGrams", "destination", "notes", "collectionMethod", "workerCount",
     "machineryText", "baseVersion")
 internal val HARVEST_KEYS = HARVEST_TEXT + setOf("weightGrams", "workerCount", "baseVersion")
 

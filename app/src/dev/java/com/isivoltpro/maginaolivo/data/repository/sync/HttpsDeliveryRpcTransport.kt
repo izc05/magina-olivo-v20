@@ -46,6 +46,8 @@ internal class HttpsDeliveryRpcTransport(
         HARVEST_SEND(HarvestSendCoordinator.NAMES),
         /** #808 R1-a: Pesada logical delete, its receipt and delete HEAD, only for the disposable probe. */
         DELIVERY_DELETE(DeliveryDeleteCoordinator.NAMES),
+        /** #808 R3: R2 receive manifest and bundle (4 MiB bound shared with the SQL contract), only for disposable probes. */
+        HARVEST_RECEIVE(HarvestReceiveContract.NAMES, HarvestReceiveContract.MAX_BYTES),
     }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =
