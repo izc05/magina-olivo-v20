@@ -10,6 +10,7 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryEntity
+import com.isivoltpro.maginaolivo.data.local.entity.DeliveryHeldReceiptEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
@@ -121,7 +122,7 @@ class HarvestReceiveRoomTest {
     // -------------------------------------------------------------------------------------------- the fake R2 server
 
     class SParcel(val id: UUID, val parcelId: UUID, val weight: Long?, val mode: String, val name: String)
-    class SPesada(val id: UUID, var harvestId: UUID?, val date: LocalDate, var net: Long, var parcels: List<SParcel>, var version: Long = 1,
+    class SPesada(val id: UUID, var harvestId: UUID?, var date: LocalDate, var net: Long, var parcels: List<SParcel>, var version: Long = 1,
         var deletedAt: Instant? = null, var recordedBy: UUID? = null, val origin: Instant = Instant.parse("2026-11-18T07:00:01.250Z"),
         var headOverride: ((JSONObject?) -> JSONObject?)? = null)
     class SHarvest(val id: UUID, val date: LocalDate, val dayOrigin: String, var weight: Long = 0, var notes: String? = null, var version: Long = 1,
@@ -477,6 +478,138 @@ class HarvestReceiveRoomTest {
         assertTrue(report.held.any { it.entityId == p.id && it.cause == ReceiveCauses.REMOTE_BEHIND })
         assertEquals(before, dump(*data))
         assertEquals(2L, db.syncReceiveReceiptDao().find(ISSUER, userId.toString(), "DELIVERY", p.id)!!.remoteVersion)
+    }
+
+    // ------------------------------------------------------------------------------- R3-e-fix: a Pesada changes Jornada
+
+    /** The derived kilos and split of [harvest] exactly as the server rule (and its bundle) computes them. */
+    private fun serverDerived(server: FakeR2, harvest: UUID): Pair<Long, List<Triple<UUID, Long?, String>>> {
+        val live = server.pesadas.filter { it.harvestId == harvest && it.deletedAt == null }
+        return live.sumOf { it.net } to AutoDaySplit.derive(live.flatMap { p -> p.parcels.map {
+            AutoDaySplit.Share(it.parcelId, HarvestAllocation.valueOf(it.mode), it.weight) } })
+            .sortedBy { it.parcelId.toString() }.map { Triple(it.parcelId, it.weightGrams, it.allocation.name) }
+    }
+    private suspend fun localDerived(harvest: UUID): Pair<Long, List<Triple<UUID, Long?, String>>> =
+        db.harvestDao().findById(harvest)!!.weightGrams!! to db.harvestDao().listParcels(harvest).sortedBy { it.parcelId.toString() }
+            .map { Triple(it.parcelId, it.weightGrams, it.allocationMode) }
+
+    /** The sender changes a Pesada's date: it moves X -> Y. On the server X keeps its version (only its derived fingerprint moves). */
+    private fun moveToY(server: FakeR2): Triple<SHarvest, SHarvest, SPesada> {
+        val (x, y) = server.harvests
+        val p = server.pesadas.first { it.harvestId == x.id && it.deletedAt == null && it.version == 2L }
+        p.harvestId = y.id; p.date = y.date; p.version += 1
+        return Triple(x, y, p)
+    }
+
+    @Test fun m1APesadaMovedToAnotherJornadaLeavesBothDaysEqualToTheServer() = runBlocking<Unit> {
+        setup(); val server = standard(); receive(server)
+        val (x, y, p) = moveToY(server)
+        assertEquals(1_500_000L, localDerived(x.id).first)
+        val outbox = outboxCount()
+        val report = receive(server)
+        assertEquals("${report.outcome} ${report.held.map { it.cause + ":" + it.entityId }}", HarvestReceiveOutcome.IMPORTED, report.outcome)
+        assertTrue(report.held.isEmpty())
+        assertEquals(y.id, db.deliveryDao().findById(p.id)!!.harvestId)
+        assertEquals(p.version, db.deliveryDao().findById(p.id)!!.metadata.remoteVersion)
+        // Both days end with the server's kilos and split: the source no longer counts the Pesada that left it.
+        assertEquals(serverDerived(server, y.id), localDerived(y.id))
+        assertEquals(serverDerived(server, x.id), localDerived(x.id))
+        assertEquals(1_000_000L, localDerived(x.id).first)
+        assertEquals(outbox, outboxCount())
+    }
+
+    @Test fun m2APendingChangeConflictOrHeldReceiptOnTheMovedPesadaOrItsSourceAppliesNothingOfEither() = runBlocking<Unit> {
+        setup(); val server = standard(); receive(server)
+        val (x, y, p) = moveToY(server)
+        val sql = db.openHelper.writableDatabase
+        suspend fun check(label: String, cause: String, on: UUID) {
+            val before = dump(*data)
+            val report = receive(server)
+            assertEquals(label, HarvestReceiveOutcome.HELD, report.outcome)
+            assertTrue("$label ${report.held.map { it.cause + ":" + it.entityId }}", report.held.any { it.cause == cause && it.entityId == on })
+            assertEquals(label, before, dump(*data))
+            assertEquals(label, x.id, db.deliveryDao().findById(p.id)!!.harvestId)       // the Pesada never left X
+            assertEquals(label, 1_500_000L, localDerived(x.id).first)   // X untouched
+            assertEquals(label, 900_000L, localDerived(y.id).first)     // Y untouched
+        }
+        // A pending local change of the moved Pesada, or of its source Jornada.
+        for ((type, id, cause) in listOf(Triple("DELIVERY", p.id, ReceiveCauses.REMOTE_AHEAD), Triple("HARVEST", x.id, ReceiveCauses.LOCAL_PENDING))) {
+            val op = UUID.randomUUID()
+            sql.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,last_error_code,created_at,updated_at) VALUES (?, ?, ?, 'UPDATE', 2, 'PENDING', 0, NULL, 1000, 1000)",
+                arrayOf<Any?>(op.toString(), type, id.toString()))
+            check("pending $type", cause, id)
+            sql.execSQL("DELETE FROM sync_outbox WHERE id = ?", arrayOf<Any>(op.toString()))
+        }
+        // A local CONFLICT on the moved Pesada.
+        val row = db.deliveryDao().findById(p.id)!!
+        db.deliveryDao().upsert(row.copy(metadata = row.metadata.copy(syncStatus = SyncStatus.CONFLICT)))
+        check("conflict", ReceiveCauses.REMOTE_AHEAD, p.id)
+        db.deliveryDao().upsert(row)
+        // A held (unreconciled) receipt of the moved Pesada.
+        val held = UUID.randomUUID()
+        db.deliveryHeldReceiptDao().insert(DeliveryHeldReceiptEntity(held, p.id, userId.toString(), farmId, 2, "a".repeat(64), 2, UUID.randomUUID(),
+            receivedAt = now))
+        check("held receipt", ReceiveCauses.REMOTE_AHEAD, p.id)
+        sql.execSQL("DELETE FROM delivery_held_receipts WHERE operation_id = ?", arrayOf<Any>(held.toString()))
+        // Once clean, the same call moves it: both days equal to the server, no outbox.
+        assertEquals(HarvestReceiveOutcome.IMPORTED, receive(server).outcome)
+        assertEquals(serverDerived(server, x.id), localDerived(x.id)); assertEquals(serverDerived(server, y.id), localDerived(y.id))
+        assertEquals(0, outboxCount())
+        assertTrue(holds().all { it.resolvedAt == null })
+    }
+
+    @Test fun m3AnInterruptionOrADivergenceBetweenXAndYWritesNeitherAndARestartConverges() = runBlocking<Unit> {
+        setup(); val server = standard(); receive(server)
+        val (x, y, p) = moveToY(server)
+        val before = dump(*data)
+        // Cut on the second bundle (X and Y are both read): nothing written.
+        var bundles = 0
+        server.failOn = { name, _ -> name == "get_own_harvest_bundle_v1" && ++bundles == 2 }
+        assertEquals(HarvestReceiveOutcome.OFFLINE, receive(server).outcome)
+        assertEquals(before, dump(*data))
+        server.failOn = null
+        // A failure AFTER Y's writes, while deriving X (an extra local Pesada makes X diverge): the whole group rolls back.
+        val extra = db.deliveryDao().findById(server.pesadas.first { it.harvestId == x.id && it.deletedAt == null }.id)!!.copy(id = UUID.randomUUID())
+        db.deliveryDao().upsert(extra)
+        val withExtra = dump(*data)
+        val report = receive(server)
+        assertTrue("${report.held.map { it.cause + ":" + it.entityId }}", report.held.any { it.cause == ReceiveHoldCauses.WEIGHT_DIVERGENT && it.entityId == x.id })
+        assertTrue(report.applied.isEmpty())
+        assertEquals(withExtra, dump(*data))
+        assertEquals(x.id, db.deliveryDao().findById(p.id)!!.harvestId)
+        db.openHelper.writableDatabase.execSQL("DELETE FROM deliveries WHERE id = ?", arrayOf<Any>(extra.id.toString()))
+        assertEquals(before, dump(*data))
+        // The process dies and restarts: a new database handle; the same call converges once.
+        db.close(); db = MaginaOlivoDatabase.create(context, name); setup(openDb = false)
+        assertEquals(HarvestReceiveOutcome.IMPORTED, receive(server).outcome)
+        assertEquals(y.id, db.deliveryDao().findById(p.id)!!.harvestId)
+        assertEquals(serverDerived(server, x.id), localDerived(x.id)); assertEquals(serverDerived(server, y.id), localDerived(y.id))
+        assertEquals(0, outboxCount())
+    }
+
+    @Test fun m4TheRepeatIsIdempotentAndAMoveThatEmptiesAndDeletesTheSourceApplies() = runBlocking<Unit> {
+        setup(); val server = standard(); receive(server)
+        val (x, y, _) = moveToY(server)
+        val fpBefore = db.syncReceiveReceiptDao().find(ISSUER, userId.toString(), "HARVEST", x.id)!!
+        assertEquals(HarvestReceiveOutcome.IMPORTED, receive(server).outcome)
+        val fpAfter = db.syncReceiveReceiptDao().find(ISSUER, userId.toString(), "HARVEST", x.id)!!
+        assertEquals(fpBefore.remoteVersion, fpAfter.remoteVersion)              // X kept its version ...
+        assertTrue(fpBefore.derivedFingerprint != fpAfter.derivedFingerprint)    // ... only its derived fingerprint moved
+        // The repeat reads nothing and writes nothing.
+        val state = dump(*data); val holdState = dump("sync_receive_holds"); val read = server.bundles()
+        assertEquals(HarvestReceiveOutcome.ALREADY_CURRENT, receive(server).outcome)
+        assertEquals(read, server.bundles()); assertEquals(state, dump(*data)); assertEquals(holdState, dump("sync_receive_holds"))
+        // The last live Pesada of X moves too and the server deletes the empty X: applied, never LOCAL_DEPENDENTS.
+        val last = server.pesadas.single { it.harvestId == x.id && it.deletedAt == null }
+        last.harvestId = y.id; last.date = y.date; last.version += 1
+        x.version += 1; x.deletedAt = now; x.headOp = UUID.randomUUID()
+        val report = receive(server)
+        assertEquals("${report.held.map { it.cause + ":" + it.entityId }}", HarvestReceiveOutcome.IMPORTED, report.outcome)
+        assertNotNull(db.harvestDao().findById(x.id)!!.metadata.deletedAt)
+        assertTrue(db.harvestDao().listParcels(x.id).isEmpty())
+        assertEquals(y.id, db.deliveryDao().findById(last.id)!!.harvestId)
+        assertEquals(serverDerived(server, y.id), localDerived(y.id))
+        assertEquals(0, outboxCount())
     }
 
     private data class FixedClock(val value: Instant) : AppClock {

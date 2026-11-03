@@ -822,6 +822,66 @@ class DeliveryV3HttpsEphemeralTest {
     }
 
     /**
+     * H5 (R3-e-fix): A changes a Pesada's date, so it moves from the AUTO_DAY X to the AUTO_DAY Y of the new date, against the
+     * real server. B, which had received X with the Pesada inside, receives again: both Jornadas end with the server's kilos
+     * and split (X no longer counts the Pesada), the Pesada is under Y at the server's version, the receipts follow the
+     * server's own and derived fingerprints, a repeat writes nothing and B creates no outbox.
+     */
+    @Test fun r3eH5APesadaMovedByItsDateLeavesBothJornadasEqualToTheServer() = runBlocking<Unit> {
+        val graph = Graph()
+        val a = device(names[0], "actor", "token", graph, server = true)
+        val b = device(names[1], "actor", "token", graph, server = false)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(1))
+        val day = LocalDate.now(zone).minusDays(2)
+        val p1 = sentPesada(a, graph, before, day, 1_000_000, graph.active to 600_000L, graph.archived to 400_000L)
+        val p2 = sentPesada(a, graph, before, day, 500_000, graph.active to 500_000L)
+        val x = sendJornada(a, p1)
+        for (op in listOf(p1, p2)) confirmV3(a, op)
+        assertEquals(HarvestReceiveOutcome.IMPORTED, receiver(b, CountingReceive()).receive(graph.workspace, graph.farm, graph.campaign).outcome)
+        assertEquals(1_500_000L, b.db.harvestDao().findById(x)!!.weightGrams)
+        val receipts = b.db.syncReceiveReceiptDao(); val account = b.actor.toString()
+        val xReceipt = receipts.find(issuer, account, "HARVEST", x)!!
+        val xVersion = remoteJornada(x).getLong("version")
+
+        // A changes p2's date: it moves to the AUTO_DAY of the previous day (Y), sent in causal order (Y, then the Pesada).
+        val move = DeliveryDraft(farmId = graph.farm, deliveryDate = day.minusDays(1), destinationOrganizationId = null,
+            destinationName = "Cooperativa San Isidro", netGrams = 500_000, shares = listOf(DeliveryShareInput(graph.active, 500_000)),
+            origin = PesadaOrigin.TREE)
+        assertTrue(repository(a, before.plus(Duration.ofHours(1)), HistoricalDeliveryRoute { _, _ -> true }).update(p2.entityId, move) is AppResult.Success)
+        val y = a.db.deliveryDao().findById(p2.entityId)!!.harvestId!!
+        assertTrue(y != x)
+        val moveOp = a.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, p2.entityId).single { it.status == OutboxStatus.PENDING }
+        assertEquals(y, sendJornada(a, moveOp))
+        assertEquals(DispatchOutcome.SYNCED, worker(a).dispatch(moveOp.id, lease))
+        val xVersionAfter = remoteJornada(x).getLong("version")
+        assertEquals(1_000_000L, remoteJornada(x).getLong("weight")); assertEquals(500_000L, remoteJornada(y).getLong("weight"))
+
+        // B receives the move.
+        val wire = CountingReceive()
+        val report = receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign)
+        assertEquals("${report.outcome} ${report.held.map { it.cause + ":" + it.entityId }}", HarvestReceiveOutcome.IMPORTED, report.outcome)
+        assertTrue(report.held.isEmpty())
+        val moved = b.db.deliveryDao().findById(p2.entityId)!!
+        assertEquals(y, moved.harvestId); assertEquals(remote(p2.entityId).getLong("version"), moved.metadata.remoteVersion)
+        for (j in listOf(x, y)) {
+            assertEquals("$j", remoteJornada(j).getLong("weight"), b.db.harvestDao().findById(j)!!.weightGrams)
+            assertEquals("$j", serverSplit(j), localSplit(b, j))
+            assertEquals("$j", remoteJornada(j).getLong("version"), b.db.harvestDao().findById(j)!!.metadata.remoteVersion)
+        }
+        assertEquals(1_000_000L, b.db.harvestDao().findById(x)!!.weightGrams)
+        val xAfter = receipts.find(issuer, account, "HARVEST", x)!!
+        assertEquals(xVersionAfter, xAfter.remoteVersion)
+        assertTrue(xAfter.derivedFingerprint != xReceipt.derivedFingerprint)
+        assertNotNull(receipts.find(issuer, account, "HARVEST", y)!!.derivedFingerprint)
+        // The repeat reads no bundle and writes nothing.
+        val snapshot = dump(b); val bundles = wire.names.count { it == "get_own_harvest_bundle_v1" }
+        assertEquals(HarvestReceiveOutcome.ALREADY_CURRENT, receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign).outcome)
+        assertEquals(bundles, wire.names.count { it == "get_own_harvest_bundle_v1" }); assertEquals(snapshot, dump(b))
+        assertEquals(0, outboxCount(b))
+        Log.i("G808", "G808-R3E-H5 xVersion=$xVersion->$xVersionAfter bundles=$bundles x=1000000 y=500000 repeated=ALREADY_CURRENT outboxB=0")
+    }
+
+    /**
      * H2 (#834): B's pending local change is never overwritten (REMOTE_AHEAD); a cut connection writes nothing and a
      * restart (new Room handle) receives once; another account on the device sees and reads nothing.
      */

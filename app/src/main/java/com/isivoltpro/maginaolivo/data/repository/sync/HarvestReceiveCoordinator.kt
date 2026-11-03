@@ -80,6 +80,9 @@ internal object ReceiveCauses {
  *   nothing of that Jornada is written (all or nothing) and the holds are recorded. Otherwise ONE Room transaction writes
  *   the Jornada, its Pesadas and parcels with their remote UUIDs and versions, derives an AUTO_DAY locally (never imported,
  *   D5), checks it against the server, and records the receive receipts. A MANUAL keeps its typed kilos (D6, J-D2).
+ * - R3-e-fix: a Pesada the server lists under Y while this device links it to X moved X -> Y. X (same version, only its
+ *   derived fingerprint moved) is read too, and X and Y are ONE group: decided together, applied in ONE transaction, every
+ *   AUTO_DAY of the group derived after all writes and checked against the server. Any hold of a member applies nothing.
  * - Never an outbox operation, never a local deletion, never a resolved hold.
  */
 internal class HarvestReceiveCoordinator(
@@ -101,9 +104,10 @@ internal class HarvestReceiveCoordinator(
     private class Offline : Exception()
     private class TooLarge : Exception()
     private class Unauthorized : Exception()
-    private class Diverged(val detail: String) : Exception()
+    private class Diverged(val bundle: HarvestBundle, val detail: String) : Exception()
 
-    private data class Read(val manifest: HarvestManifest, val bundles: List<HarvestBundle>)
+    /** R3-e-fix: Jornadas linked by a Pesada that changed Jornada are one group, applied in ONE transaction. */
+    private data class Read(val manifest: HarvestManifest, val groups: List<List<HarvestBundle>>)
 
     suspend fun receive(workspaceId: UUID, farmId: UUID, campaignId: UUID): HarvestReceiveReport {
         val verifier = ownerVerifier ?: return HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
@@ -140,12 +144,32 @@ internal class HarvestReceiveCoordinator(
 
     private suspend fun read(session: AuthSession, request: ManifestRequest, bounds: Pair<LocalDate, LocalDate>): Read {
         val manifest = manifest(session, request, bounds)
-        val wanted = manifest.harvests.filter { differs(session.userId, it, manifest.deliveries.filter { d -> d.harvestId == it.id }) }
+        val inManifest = manifest.harvests.map { it.id }.toSet()
+        // R3-e-fix: a Pesada the server lists under Y while this device still links it to X has moved X -> Y. X keeps its
+        // version on the server (only its derived fingerprint moves), so it never "differs" by itself: it is read with Y.
+        val moves = manifest.deliveries.mapNotNull { d ->
+            val from = database.deliveryDao().findById(d.id)?.harvestId
+            if (from != null && d.harvestId != null && from != d.harvestId && from in inManifest) from to d.harvestId else null
+        }
+        val sources = moves.map { it.first }.toSet()
+        val wanted = manifest.harvests.filter { it.id in sources || differs(session.userId, it, manifest.deliveries.filter { d -> d.harvestId == it.id }) }
         val bundles = wanted.sortedBy { it.id.toString() }.map { h ->
             val body = call(session, HarvestReceiveContract.BUNDLE_RPC, """{"p_harvest_id":"${h.id}"}""")
             HarvestReceiveParser.parseBundle(body, BundleRequest(tokenIssuer, session.userId, h.id, request.workspaceId, request.farmId, request.campaignId))
         }
-        return Read(manifest, bundles)
+        return Read(manifest, groups(bundles, moves))
+    }
+
+    /** Connected components of the moves among the bundles read; deterministic order (by the smallest Jornada id). */
+    private fun groups(bundles: List<HarvestBundle>, moves: List<Pair<UUID, UUID>>): List<List<HarvestBundle>> {
+        val root = bundles.associate { it.harvest.id to it.harvest.id }.toMutableMap()
+        fun find(id: UUID): UUID { var r = id; while (root.getValue(r) != r) r = root.getValue(r); return r }
+        for ((from, to) in moves) if (from in root && to in root) {
+            val (a, b) = listOf(find(from), find(to)).sortedBy { it.toString() }
+            if (a != b) root[b] = a
+        }
+        return bundles.groupBy { find(it.harvest.id) }.values.map { g -> g.sortedBy { it.harvest.id.toString() } }
+            .sortedBy { it.first().harvest.id.toString() }
     }
 
     /** D1: the whole manifest, or (on 54000) the exact union of date halves, recursively; a single day over the limit is TOO_LARGE. */
@@ -202,9 +226,9 @@ internal class HarvestReceiveCoordinator(
         val account = accountId.toString()
         val holds = mutableListOf<SyncReceiveHoldEntity>()
         val applied = mutableListOf<UUID>()
-        for (bundle in read.bundles) {
-            val result = applyJornada(account, bundle)
-            if (result.isEmpty()) applied += bundle.harvest.id else holds += result
+        for (group in read.groups) {
+            val result = applyGroup(account, group)
+            if (result.isEmpty()) applied += group.map { it.harvest.id } else holds += result
         }
         // A Pesada without a Jornada has no bundle (R2 aclaración 1): never inserted, never given a Jornada.
         for (d in read.manifest.deliveries.filter { it.harvestId == null }) {
@@ -227,7 +251,7 @@ internal class HarvestReceiveCoordinator(
             holds.isNotEmpty() -> HarvestReceiveOutcome.HELD
             else -> HarvestReceiveOutcome.ALREADY_CURRENT
         }
-        return HarvestReceiveReport(outcome, applied, holds, read.bundles.size)
+        return HarvestReceiveReport(outcome, applied, holds, read.groups.sumOf { it.size })
     }
 
     private sealed interface Decision {
@@ -237,80 +261,103 @@ internal class HarvestReceiveCoordinator(
         data class Hold(val cause: String) : Decision
     }
 
+    private class Plan(val bundle: HarvestBundle, val localDay: HarvestEntity?, val dayDecision: Decision,
+        val decisions: Map<ReceivedDelivery, Decision>, val receipts: List<SyncReceiveReceiptEntity>)
+
     /**
-     * Returns the holds of this Jornada; empty means it was applied in ONE transaction. Any hold means nothing of it was
-     * written (all or nothing), only the holds.
+     * Returns the holds of this group (one Jornada, or the Jornadas a moved Pesada links); empty means the whole group was
+     * applied in ONE transaction. Any hold of any member means nothing of the group was written (all or nothing), only the
+     * holds: a Pesada never leaves X without X being re-derived in the same transaction (R3-e-fix).
      */
-    private suspend fun applyJornada(account: String, bundle: HarvestBundle): List<SyncReceiveHoldEntity> {
-        val h = bundle.harvest
-        val verdict = HarvestReceiveVerifier.verify(bundle)
-        if (!verdict.verified) return verdict.holds.map { (cause, detail) ->
-            hold(account, HARVEST, h.id, cause, h.id, database.harvestDao().findById(h.id)?.metadata?.remoteVersion, h.version,
-                bundle.head.headPayloadHash ?: bundle.head.ownFingerprint, detail)
+    private suspend fun applyGroup(account: String, group: List<HarvestBundle>): List<SyncReceiveHoldEntity> {
+        val unverified = group.flatMap { bundle ->
+            val h = bundle.harvest
+            val verdict = HarvestReceiveVerifier.verify(bundle)
+            if (verdict.verified) emptyList() else verdict.holds.map { (cause, detail) ->
+                hold(account, HARVEST, h.id, cause, h.id, database.harvestDao().findById(h.id)?.metadata?.remoteVersion, h.version,
+                    bundle.head.headPayloadHash ?: bundle.head.ownFingerprint, detail)
+            }
         }
+        if (unverified.isNotEmpty()) return unverified
         val at = now()
         val holds = mutableListOf<SyncReceiveHoldEntity>()
         try {
             database.withTransaction {
-                // D3: parents first. A Parcel of any Pesada must exist locally.
-                val parcels = bundle.deliveries.flatMap { it.parcels }.map { it.parcelId }.toSet()
-                val campaign = h.campaignId?.let { database.campaignDao().findById(it) }
-                val inCampaign = h.campaignId?.let { id -> database.harvestDao().listCampaignParcels(id).map { it.parcelId }.toSet() }.orEmpty()
-                if (campaign == null || campaign.metadata.remoteVersion == null ||
-                    parcels.any { database.parcelDao().findById(it) == null || it !in inCampaign }) {
-                    holds += hold(account, HARVEST, h.id, ReceiveCauses.PARENT_MISSING, h.id, null, h.version, null, null)
-                    return@withTransaction
-                }
-                val localDay = database.harvestDao().findById(h.id)
-                val dayDecision = decide(localDay?.metadata, open(SyncEntityType.HARVEST, h.id), h.version) { sameHarvest(localDay!!, h) }
-                if (dayDecision is Decision.Hold) holds += hold(account, HARVEST, h.id, dayDecision.cause, h.id, localDay?.metadata?.remoteVersion,
-                    h.version, bundle.head.ownFingerprint, null)
-                // A remote delete never removes what this device still records on that day.
-                if (h.deletedAt != null && localDay != null && localDay.metadata.deletedAt == null && hasDependents(localDay, bundle)) {
-                    holds += hold(account, HARVEST, h.id, ReceiveCauses.LOCAL_DEPENDENTS, h.id, localDay.metadata.remoteVersion, h.version, null, null)
-                }
-                val decisions = bundle.deliveries.associateWith { d ->
-                    val local = database.deliveryDao().findById(d.id)
-                    val decision = decide(local?.metadata, open(SyncEntityType.DELIVERY, d.id) || prepared(d.id), d.version) {
-                        sameDelivery(local!!, d)
-                    }
-                    if (decision is Decision.Hold) holds += hold(account, DELIVERY, d.id, decision.cause, h.id, local?.metadata?.remoteVersion,
-                        d.version, d.head?.payloadHash, null)
-                    decision
-                }
-                // Receive receipts must never go back nor be rewritten (R3-a correction).
-                val receipts = receiptsFor(account, bundle, at)
-                for (r in receipts) {
-                    val existing = database.syncReceiveReceiptDao().find(r.issuer, r.accountId, r.entityType, r.entityId) ?: continue
-                    if (r.remoteVersion < existing.remoteVersion) holds += hold(account, r.entityType, r.entityId, ReceiveCauses.REMOTE_BEHIND,
-                        h.id, existing.remoteVersion, r.remoteVersion, r.headPayloadHash, null)
-                    // Same version: only the derived fingerprint may move (R1-c); anything else is a rewrite.
-                    else if (r.remoteVersion == existing.remoteVersion &&
-                        existing.copy(derivedFingerprint = r.derivedFingerprint) != r.copy(receivedAt = existing.receivedAt))
-                        holds += hold(account, r.entityType, r.entityId, ReceiveCauses.REMOTE_REWRITTEN, h.id, existing.remoteVersion,
-                            r.remoteVersion, r.headPayloadHash ?: r.ownFingerprint, "stored_hash=${existing.headPayloadHash ?: existing.ownFingerprint}")
-                }
+                val plans = group.mapNotNull { plan(account, it, group, at, holds) }
                 if (holds.isNotEmpty()) return@withTransaction
-                // ---- every unit is applicable: write the Jornada as one unit
-                if (dayDecision != Decision.Same) writeHarvest(localDay, h, at)
-                for ((d, decision) in decisions) if (decision != Decision.Same) writeDelivery(d, at)
-                if (h.dayOrigin == AUTO_DAY && h.deletedAt == null) {
+                // ---- every unit of every member is applicable: write the group as one unit
+                for (p in plans) {
+                    if (p.dayDecision != Decision.Same) writeHarvest(p.localDay, p.bundle.harvest, at)
+                    for ((d, decision) in p.decisions) if (decision != Decision.Same) writeDelivery(d, at)
+                }
+                // Derived after ALL writes: the source of a moved Pesada no longer counts it, the destination does.
+                for (p in plans) {
+                    val h = p.bundle.harvest
+                    if (h.dayOrigin != AUTO_DAY || h.deletedAt != null) continue
                     val derived = JornadaLedger(database, idGenerator).deriveForReceive(h.id, at)!!
                     val split = database.harvestDao().listParcels(h.id).sortedBy { it.parcelId.toString() }
                         .map { Triple(it.parcelId, it.weightGrams, it.allocationMode) }
-                    if (derived.weightGrams != bundle.serverWeightGrams ||
-                        split != bundle.serverParcels.map { Triple(it.parcelId, it.weightGrams, it.allocationMode) })
-                        throw Diverged("server=${bundle.serverWeightGrams};local=${derived.weightGrams}")
+                    if (derived.weightGrams != p.bundle.serverWeightGrams ||
+                        split != p.bundle.serverParcels.map { Triple(it.parcelId, it.weightGrams, it.allocationMode) })
+                        throw Diverged(p.bundle, "server=${p.bundle.serverWeightGrams};local=${derived.weightGrams}")
                 }
-                for (r in receipts) check(database.recordReceiveEvidence(r) in setOf(ReceiptRecordOutcome.INSERTED,
+                for (p in plans) for (r in p.receipts) check(database.recordReceiveEvidence(r) in setOf(ReceiptRecordOutcome.INSERTED,
                     ReceiptRecordOutcome.UPDATED, ReceiptRecordOutcome.UNCHANGED))
             }
         } catch (divergent: Diverged) {
-            // Rolled back entirely: the derived day would not match the server. Nothing of the Jornada was written.
-            holds += hold(account, HARVEST, h.id, ReceiveHoldCauses.WEIGHT_DIVERGENT, h.id, null, h.version, bundle.head.derivedFingerprint,
-                divergent.detail)
+            // Rolled back entirely: a derived day would not match the server. Nothing of the group was written.
+            val h = divergent.bundle.harvest
+            holds += hold(account, HARVEST, h.id, ReceiveHoldCauses.WEIGHT_DIVERGENT, h.id, null, h.version,
+                divergent.bundle.head.derivedFingerprint, divergent.detail)
         }
         return holds
+    }
+
+    /** The decisions of one member, inside the group's transaction; null (with its holds added) when it cannot be applied. */
+    private suspend fun plan(account: String, bundle: HarvestBundle, group: List<HarvestBundle>, at: Instant,
+        holds: MutableList<SyncReceiveHoldEntity>): Plan? {
+        val h = bundle.harvest
+        val before = holds.size
+        // D3: parents first. A Parcel of any Pesada must exist locally.
+        val parcels = bundle.deliveries.flatMap { it.parcels }.map { it.parcelId }.toSet()
+        val campaign = h.campaignId?.let { database.campaignDao().findById(it) }
+        val inCampaign = h.campaignId?.let { id -> database.harvestDao().listCampaignParcels(id).map { it.parcelId }.toSet() }.orEmpty()
+        if (campaign == null || campaign.metadata.remoteVersion == null ||
+            parcels.any { database.parcelDao().findById(it) == null || it !in inCampaign }) {
+            holds += hold(account, HARVEST, h.id, ReceiveCauses.PARENT_MISSING, h.id, null, h.version, null, null)
+            return null
+        }
+        val localDay = database.harvestDao().findById(h.id)
+        val dayDecision = decide(localDay?.metadata, open(SyncEntityType.HARVEST, h.id), h.version) { sameHarvest(localDay!!, h) }
+        if (dayDecision is Decision.Hold) holds += hold(account, HARVEST, h.id, dayDecision.cause, h.id, localDay?.metadata?.remoteVersion,
+            h.version, bundle.head.ownFingerprint, null)
+        // A remote delete never removes what this device still records on that day (a Pesada the group moves away excepted).
+        val leaving = group.filter { it !== bundle }.flatMap { other -> other.deliveries.map { it.id } }.toSet()
+        if (h.deletedAt != null && localDay != null && localDay.metadata.deletedAt == null && hasDependents(localDay, bundle, leaving)) {
+            holds += hold(account, HARVEST, h.id, ReceiveCauses.LOCAL_DEPENDENTS, h.id, localDay.metadata.remoteVersion, h.version, null, null)
+        }
+        val decisions = bundle.deliveries.associateWith { d ->
+            val local = database.deliveryDao().findById(d.id)
+            val decision = decide(local?.metadata, open(SyncEntityType.DELIVERY, d.id) || prepared(d.id), d.version) {
+                sameDelivery(local!!, d)
+            }
+            if (decision is Decision.Hold) holds += hold(account, DELIVERY, d.id, decision.cause, h.id, local?.metadata?.remoteVersion,
+                d.version, d.head?.payloadHash, null)
+            decision
+        }
+        // Receive receipts must never go back nor be rewritten (R3-a correction).
+        val receipts = receiptsFor(account, bundle, at)
+        for (r in receipts) {
+            val existing = database.syncReceiveReceiptDao().find(r.issuer, r.accountId, r.entityType, r.entityId) ?: continue
+            if (r.remoteVersion < existing.remoteVersion) holds += hold(account, r.entityType, r.entityId, ReceiveCauses.REMOTE_BEHIND,
+                h.id, existing.remoteVersion, r.remoteVersion, r.headPayloadHash, null)
+            // Same version: only the derived fingerprint may move (R1-c); anything else is a rewrite.
+            else if (r.remoteVersion == existing.remoteVersion &&
+                existing.copy(derivedFingerprint = r.derivedFingerprint) != r.copy(receivedAt = existing.receivedAt))
+                holds += hold(account, r.entityType, r.entityId, ReceiveCauses.REMOTE_REWRITTEN, h.id, existing.remoteVersion,
+                    r.remoteVersion, r.headPayloadHash ?: r.ownFingerprint, "stored_hash=${existing.headPayloadHash ?: existing.ownFingerprint}")
+        }
+        return if (holds.size == before) Plan(bundle, localDay, dayDecision, decisions, receipts) else null
     }
 
     /** D7: clean = no open outbox operation, PREPARE or held receipt, not CONFLICT, and confirmed by the server once. */
@@ -337,13 +384,13 @@ internal class HarvestReceiveCoordinator(
     private suspend fun prepared(deliveryId: UUID) =
         database.deliveryDispatchPrepareDao().listForDelivery(deliveryId).any { it.settledAt == null }
 
-    private suspend fun hasDependents(day: HarvestEntity, bundle: HarvestBundle): Boolean {
+    private suspend fun hasDependents(day: HarvestEntity, bundle: HarvestBundle, leaving: Set<UUID> = emptySet()): Boolean {
         val remoteDeleted = bundle.deliveries.filter { it.deletedAt != null }.map { it.id }.toSet()
         return day.collectionMethod != null || day.workerCount != null || day.machineryText != null || day.notes != null ||
             database.labourDao().listForHarvest(day.id).isNotEmpty() || database.equipmentDao().listForHarvest(day.id).isNotEmpty() ||
             database.expenseDao().listForHarvest(day.id).isNotEmpty() ||
             database.documentDao().countLiveForOwner(AttachmentOwnerType.HARVEST.name, day.id) > 0 ||
-            database.deliveryDao().listLiveForHarvest(day.id).any { it.id !in remoteDeleted }
+            database.deliveryDao().listLiveForHarvest(day.id).any { it.id !in remoteDeleted && it.id !in leaving }
     }
 
     private fun sameHarvest(local: HarvestEntity, h: ReceivedHarvest): Boolean {
