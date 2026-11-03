@@ -1,5 +1,16 @@
 # Línea base de las pruebas de contrato antiguas (Jornadas, Pesadas y Jornadas manuales), 2026-11-03
 
+> **Corrección (auditoría previa a A ↔ B, 2026-11-03):** el recuento de **47 de 113** de este documento es **erróneo**. La salida de `am instrument` (sin `-r`) se cortaba hacia los 220 KB y solo se contaban los 47 primeros fallos de la lista final.
+>
+> El recuento en modo crudo (`-r`, por prueba) sobre `b8bc6144a` da **109 de 113**:
+> - Jornada: 11/11;
+> - Delivery: 84/87;
+> - Harvest: 14/15.
+>
+> Por tanto, la comparación «idéntica en todas las versiones» de abajo tampoco es válida.
+>
+> Con la infraestructura de test corregida (experimento local, sin commit) solo quedan **3** fallos, todos expectativas que cambia la enmienda J. Clasificación y propuesta: `docs/07-plans/G2.6-808-AUDIT-R3E-2026-11-03.md`. El resto del documento se conserva como registro histórico.
+
 - **Encargo del propietario (#837):** documentar los fallos de `JornadaPesadasContractTest`, `DeliveryContractTest` y `HarvestContractTest` comparándolos con la base anterior, sin deshabilitar ni relajar ninguna aserción.
 - **Ejecución:** emulador de QA aislado `MaginaOlivo_LocalQA_Disposable_API35` (API 35, limpio, único dispositivo, con la guarda superada), con `pm clear` antes de cada pasada y las mismas tres clases en las dos versiones.
 
