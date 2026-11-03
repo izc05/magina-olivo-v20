@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.data.repository.sync
 
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.AckCorrelationOutcome
 import com.isivoltpro.maginaolivo.data.repository.AuthenticatedDeliveryAck
@@ -117,6 +118,8 @@ internal class DeliveryDispatchWorker(
         val candidate = database.syncOutboxDao().findById(operationId)
             ?: return DispatchOutcome.REJECTED
         if (candidate.entityType != SyncEntityType.DELIVERY) return DispatchOutcome.REJECTED
+        // #808 R1-a: a Pesada DELETE belongs to DeliveryDeleteCoordinator only; its receipt is never a write ACK.
+        if (candidate.operation == OutboxOperation.DELETE) return DispatchOutcome.REJECTED
         // #808: a v3 operation (frozen by its producer) goes to sync_own_delivery_v3; v1 is still refused.
         if (candidate.payloadVersion !in SENDABLE_VERSIONS) return DispatchOutcome.REJECTED
         if (candidate.payloadJson == null) return DispatchOutcome.REJECTED
@@ -173,7 +176,9 @@ internal class DeliveryDispatchWorker(
     suspend fun recoverLostResponse(operationId: UUID, lease: DeliveryDispatchLease): DispatchOutcome {
         lease.requireOpen()
         val operation = database.syncOutboxDao().findById(operationId) ?: return DispatchOutcome.REJECTED
-        if (operation.entityType != SyncEntityType.DELIVERY) return DispatchOutcome.REJECTED
+        if (operation.entityType != SyncEntityType.DELIVERY || operation.operation == OutboxOperation.DELETE) {
+            return DispatchOutcome.REJECTED
+        }
         return lease.withActiveRequest {
             if (operation.payloadVersion == DELIVERY_PAYLOAD_VERSION_V3) {
                 sendAndRetainV3(operationId, operation.entityId, payload = null, lease = lease)
@@ -322,7 +327,9 @@ internal class DeliveryDispatchWorker(
     suspend fun resolveAwaitingHead(operationId: UUID, lease: DeliveryDispatchLease): DispatchOutcome {
         lease.requireOpen()
         val op = database.syncOutboxDao().findById(operationId) ?: return DispatchOutcome.REJECTED
-        if (op.entityType != SyncEntityType.DELIVERY || op.payloadVersion != DELIVERY_PAYLOAD_VERSION_V3) {
+        if (op.entityType != SyncEntityType.DELIVERY || op.payloadVersion != DELIVERY_PAYLOAD_VERSION_V3 ||
+            op.operation == OutboxOperation.DELETE
+        ) {
             return DispatchOutcome.REJECTED
         }
         val prepared = database.deliveryDispatchPrepareDao().findByOperation(operationId) ?: return DispatchOutcome.REJECTED

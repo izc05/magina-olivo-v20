@@ -56,7 +56,7 @@ const files = [...names.map(name => new URL(`../../migrations/${name}`, import.m
   new URL('../../migrations/20261027155737_g25_receive_bundle_contract.sql', import.meta.url),
   new URL('../../migrations/20261029044901_g26_workspace_authorization.sql', import.meta.url),
   ...['g26-parent-receive-v1.sql', 'g26-fpm-manage-hardening.sql', 'g26-parcel-mutation-v1.sql', 'g26-historical-writers-v1.sql',
-    'g26-delivery-head-v3.sql', 'g26-harvest-writer-v1.sql']
+    'g26-delivery-head-v3.sql', 'g26-harvest-writer-v1.sql', 'g26-delivery-delete-v1.sql']
     .map(name => new URL(`../../proposals/${name}`, import.meta.url))];
 sql(`BEGIN;\n${files.map(file => readFileSync(file, 'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
 
@@ -129,7 +129,7 @@ async function archive(parcel, at) {
 
 function delivery(id) {
   assert.match(id, uuid);
-  const [rows, version, receipts, payloadVersion, hash, origin, parcels, harvestId] = sql(`SELECT
+  const [rows, version, receipts, payloadVersion, hash, origin, parcels, harvestId, deleted] = sql(`SELECT
     (SELECT count(*) FROM public.deliveries WHERE id=${q(id)}),
     (SELECT coalesce(max(version),0) FROM public.deliveries WHERE id=${q(id)}),
     (SELECT count(*) FROM magina_g2_private.sync_operations WHERE entity_type='DELIVERY' AND entity_id=${q(id)}),
@@ -137,9 +137,10 @@ function delivery(id) {
     (SELECT coalesce(max(payload_hash),'') FROM magina_g2_private.sync_operations WHERE entity_type='DELIVERY' AND entity_id=${q(id)}),
     (SELECT coalesce(max(origin_created_at_exact),'') FROM magina_g2_private.fact_origins WHERE entity_id=${q(id)}),
     (SELECT count(*) FROM public.delivery_parcels WHERE delivery_id=${q(id)}),
-    (SELECT coalesce(max(harvest_id::text),'') FROM public.deliveries WHERE id=${q(id)});`).split('|');
+    (SELECT coalesce(max(harvest_id::text),'') FROM public.deliveries WHERE id=${q(id)}),
+    (SELECT count(*) FROM public.deliveries WHERE id=${q(id)} AND deleted_at IS NOT NULL);`).split('|');
   return { rows: Number(rows), version: Number(version), receipts: Number(receipts), payloadVersion: Number(payloadVersion),
-    hash, origin, parcels: Number(parcels), harvestId };
+    hash, origin, parcels: Number(parcels), harvestId, deleted: Number(deleted) };
 }
 
 const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
@@ -162,7 +163,7 @@ const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
     }
     if (incoming.method === 'POST' && url.pathname === '/__g26_admin/v3_mode') {
       const mode = url.searchParams.get('mode');
-      if (!['normal', 'drop', 'harvest_drop'].includes(mode)) return json(400, {});
+      if (!['normal', 'drop', 'harvest_drop', 'delete_drop'].includes(mode)) return json(400, {});
       v3Mode = mode; return done();
     }
     if (url.pathname === '/__g26_admin/delivery') return json(200, delivery(url.searchParams.get('id') ?? ''));
@@ -191,7 +192,8 @@ const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
     const body = Buffer.from(await response.arrayBuffer());
     // A lost response AFTER the server committed: the device must recover it by the same UUID.
     if ((url.pathname === '/rest/v1/rpc/sync_own_delivery_v3' && v3Mode === 'drop') ||
-      (url.pathname === '/rest/v1/rpc/sync_own_harvest_v1' && v3Mode === 'harvest_drop')) {
+      (url.pathname === '/rest/v1/rpc/sync_own_harvest_v1' && v3Mode === 'harvest_drop') ||
+      (url.pathname === '/rest/v1/rpc/delete_own_delivery_v1' && v3Mode === 'delete_drop')) {
       incoming.socket.destroy(); return;
     }
     outgoing.writeHead(response.status, { 'Content-Type': 'application/json' });

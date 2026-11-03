@@ -340,6 +340,46 @@ interface SyncOutboxDao {
     suspend fun blockHarvest(operationId: UUID, accountId: String, payloadJson: String, code: String, message: String?,
         nowEpochMillis: Long): Int
 
+    /**
+     * #808 R1-a: freezes ONCE the account, farm and envelope of the unbound DELETE marker of a Pesada. Also from
+     * BLOCKED/NEEDS_REBASE: a delete has no snapshot to rebase, only an expected version chosen now.
+     */
+    @Query("""
+        UPDATE sync_outbox SET account_id = :accountId, farm_id = :farmId, payload_json = :payloadJson,
+            payload_version = 3, status = 'PENDING', last_error_code = NULL, last_error_message = NULL,
+            next_attempt_at = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'DELIVERY' AND operation = 'DELETE' AND attempt_count = 0
+          AND payload_json IS NULL AND account_id IS NULL
+          AND (status = 'PENDING' OR (status = 'BLOCKED' AND last_error_code = 'NEEDS_REBASE'))
+    """)
+    suspend fun stageDeliveryDelete(operationId: UUID, accountId: String, farmId: UUID, payloadJson: String, nowEpochMillis: Long): Int
+
+    /** #808 R1-a: an unbound DELETE marker that needs no request is resolved (BLOCKED with its code), never deleted. */
+    @Query("""
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = :code, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'DELIVERY' AND operation = 'DELETE' AND attempt_count = 0
+          AND payload_json IS NULL AND account_id IS NULL
+          AND (status = 'PENDING' OR (status = 'BLOCKED' AND last_error_code = 'NEEDS_REBASE'))
+    """)
+    suspend fun resolveUnstagedDeliveryDelete(operationId: UUID, code: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'FAILED', attempt_count = attempt_count + 1, next_attempt_at = NULL,
+            last_error_code = 'OUTCOME_UNKNOWN', updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'DELIVERY' AND operation = 'DELETE' AND status IN ('PENDING', 'FAILED')
+          AND account_id = :accountId AND payload_json = :payloadJson
+    """)
+    suspend fun markDeliveryDeleteUnknown(operationId: UUID, accountId: String, payloadJson: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = :code, last_error_message = :message,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'DELIVERY' AND operation = 'DELETE' AND status IN ('PENDING', 'FAILED')
+          AND account_id = :accountId AND payload_json = :payloadJson
+    """)
+    suspend fun blockDeliveryDelete(operationId: UUID, accountId: String, payloadJson: String, code: String, message: String?,
+        nowEpochMillis: Long): Int
+
     /** #808 audit: a retained HARVEST operation changes code only from the exact expected one. */
     @Query("""
         UPDATE sync_outbox SET last_error_code = :to, last_error_message = :message, updated_at = :nowEpochMillis

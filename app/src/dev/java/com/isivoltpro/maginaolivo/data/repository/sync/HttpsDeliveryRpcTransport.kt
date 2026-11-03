@@ -44,6 +44,8 @@ internal class HttpsDeliveryRpcTransport(
         PARCEL_MUTATION_SEND(ParcelMutationSendCoordinator.NAMES),
         /** #808: Jornada writer, receipts and HEAD, only for the disposable Pesada v3 probe. */
         HARVEST_SEND(HarvestSendCoordinator.NAMES),
+        /** #808 R1-a: Pesada logical delete, its receipt and delete HEAD, only for the disposable probe. */
+        DELIVERY_DELETE(DeliveryDeleteCoordinator.NAMES),
     }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =

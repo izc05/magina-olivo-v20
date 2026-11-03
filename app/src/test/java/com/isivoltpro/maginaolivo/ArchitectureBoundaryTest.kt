@@ -294,13 +294,13 @@ class ArchitectureBoundaryTest {
         val shipped = app!!.walkTopDown().filter { it.isFile && it.extension == "kt" }
             .filter { file -> listOf("/main/java/", "/staging/java/", "/production/java/", "/dev/java/")
                 .any { it in file.invariantSeparatorsPath } }
-            .filterNot { it.name == "DeliveryHistoricalRoute.kt" || it.name == "HarvestSendCoordinator.kt" }
+            .filterNot { it.name in setOf("DeliveryHistoricalRoute.kt", "HarvestSendCoordinator.kt", "DeliveryDeleteCoordinator.kt") }
             .toList()
         assertTrue("No shipped Kotlin sources found", shipped.isNotEmpty())
         shipped.forEach { file ->
             val text = file.readText()
             listOf("HistoricalDeliveryRoute(", "ServerWorkspaceOwnerVerifier(", "ownerVerifier =", "payloadRoute =",
-                "HarvestSendCoordinator(")
+                "HarvestSendCoordinator(", "DeliveryDeleteCoordinator(")
                 .forEach { forbidden ->
                     assertFalse("${file.name} must not wire the #808 v3 route: $forbidden", text.contains(forbidden))
                 }

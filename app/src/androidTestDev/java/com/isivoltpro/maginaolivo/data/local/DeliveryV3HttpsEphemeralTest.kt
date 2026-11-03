@@ -32,6 +32,9 @@ import com.isivoltpro.maginaolivo.data.repository.ServerWorkspaceOwnerVerifier
 import com.isivoltpro.maginaolivo.data.repository.V3RecoveryCauses
 import com.isivoltpro.maginaolivo.data.repository.WorkspaceOwnerVerifier
 import com.isivoltpro.maginaolivo.data.repository.deliveryOriginCreatedAt
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDeleteCodes
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDeleteCoordinator
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDeleteOutcome
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchWorker
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcAdapter
@@ -534,6 +537,84 @@ class DeliveryV3HttpsEphemeralTest {
         assertEquals(1, remoteJornada(jornada).getInt("rows"))
         Log.i("G808", "G808-RECOVERY kept=SYNCED edited=${stillHeld.lastErrorMessage} localEdit=NEEDS_REBASE rotated=true " +
             "foreignIssuer=$foreignOutcome")
+    }
+
+    /**
+     * #808 R1-a Android: the logical delete of a Pesada against the real `delete_own_delivery_v1` (R1-a SQL
+     * proposal). Confirmed only by this actor's receipt and `get_own_delivery_delete_head_v1`; the server
+     * recomputes the AUTO_DAY; a lost response is resolved by the SAME operation without a second delete; a stale
+     * version is retained with its cause and nothing changes on the server.
+     */
+    @Test fun ownerDeletesPesadasOverHttpsWithReceiptHeadRecoveryAndCas() = runBlocking<Unit> {
+        val graph = Graph()
+        val owner = device(names[0], "actor", "token", graph, server = true)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(1))
+        val day = LocalDate.now(zone).minusDays(2)
+        val a = create(owner, graph, before, graph.active, day, 1_000_000)
+        val b = create(owner, graph, before, graph.active, day, 600_000)
+        val c = create(owner, graph, before, graph.active, day, 400_000)
+        val jornada = sendJornada(owner, a)
+        for (op in listOf(a, b, c)) {
+            assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(owner).dispatch(op.id, lease))
+            assertEquals(DispatchOutcome.SYNCED, worker(owner).resolveAwaitingHead(op.id, lease))
+        }
+        assertEquals(2_000_000L, remoteJornada(jornada).getLong("weight"))
+        val deletes = DeliveryDeleteCoordinator(owner.db, owner.account, issuer,
+            HttpsDeliveryRpcTransport(config, scope = HttpsDeliveryRpcTransport.RpcScope.DELIVERY_DELETE),
+            { owner.links.ledgerFor(it) }, ServerWorkspaceOwnerVerifier(authorizations, issuer))
+        val repo = repository(owner, before.plus(Duration.ofHours(1)), HistoricalDeliveryRoute { _, _ -> true })
+        suspend fun marker(op: SyncOutboxEntity): SyncOutboxEntity {
+            assertTrue(repo.delete(op.entityId) is AppResult.Success)
+            return owner.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, op.entityId)
+                .single { it.operation == com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.DELETE }
+        }
+
+        // 1. A delete confirmed by the real receipt and delete HEAD; the server recomputes the AUTO_DAY.
+        val mb = marker(b)
+        assertEquals(DeliveryDeleteOutcome.STAGED, deletes.stage(mb.id))
+        val frozen = owner.db.syncOutboxDao().findById(mb.id)!!
+        assertEquals(DeliveryDeleteOutcome.SYNCED, deletes.send(mb.id, lease))
+        val serverB = remote(b.entityId)
+        assertEquals(1, serverB.getInt("rows")); assertEquals(1, serverB.getInt("deleted"))
+        assertEquals(2, serverB.getInt("version")); assertEquals(2, serverB.getInt("receipts"))
+        assertEquals(1, serverB.getInt("parcels"))
+        val local = owner.db.deliveryDao().findById(b.entityId)!!
+        assertEquals(2L, local.metadata.remoteVersion); assertEquals(SyncStatus.SYNCED, local.metadata.syncStatus)
+        assertEquals(OutboxStatus.CONFIRMED, owner.db.syncOutboxDao().findById(mb.id)!!.status)
+        assertEquals(frozen.payloadJson, owner.db.syncOutboxDao().findById(mb.id)!!.payloadJson)
+        assertEquals(1_400_000L, remoteJornada(jornada).getLong("weight"))
+        assertEquals(1_400_000L, owner.db.harvestDao().findById(jornada)!!.weightGrams)
+        assertEquals(1, remoteJornada(jornada).getInt("version"))
+
+        // 2. The answer is lost after the commit: OUTCOME_UNKNOWN, then the SAME operation is confirmed from its
+        //    receipt and delete HEAD, with no second delete (still two receipts for this Pesada).
+        val mc = marker(c)
+        assertEquals(DeliveryDeleteOutcome.STAGED, deletes.stage(mc.id))
+        fetch("/__g26_admin/v3_mode?mode=delete_drop", "POST")
+        assertEquals(DeliveryDeleteOutcome.OUTCOME_UNKNOWN, deletes.send(mc.id, lease))
+        fetch("/__g26_admin/v3_mode?mode=normal", "POST")
+        assertEquals(1, remote(c.entityId).getInt("deleted"))
+        assertEquals("OUTCOME_UNKNOWN", owner.db.syncOutboxDao().findById(mc.id)!!.lastErrorCode)
+        assertEquals(DeliveryDeleteOutcome.SYNCED, deletes.send(mc.id, lease))
+        assertEquals(2, remote(c.entityId).getInt("receipts"))
+        assertEquals(1, owner.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, c.entityId)
+            .count { it.operation == com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.DELETE })
+        assertEquals(1_000_000L, remoteJornada(jornada).getLong("weight"))
+
+        // 3. Someone wrote the last Pesada outside this device (version 2): STALE_VERSION, retained, nothing deleted.
+        fetch("/__g26_admin/touch?id=${a.entityId}", "POST")
+        val ma = marker(a)
+        assertEquals(DeliveryDeleteOutcome.STAGED, deletes.stage(ma.id))
+        assertEquals(DeliveryDeleteOutcome.CONFLICT, deletes.send(ma.id, lease))
+        val held = owner.db.syncOutboxDao().findById(ma.id)!!
+        assertEquals(OutboxStatus.BLOCKED, held.status)
+        assertEquals("${DeliveryDeleteCodes.CONFLICT_PREFIX}STALE_VERSION", held.lastErrorCode)
+        assertEquals("remote_version=2", held.lastErrorMessage)
+        val serverA = remote(a.entityId)
+        assertEquals(0, serverA.getInt("deleted")); assertEquals(2, serverA.getInt("version"))
+        assertEquals(1_000_000L, remoteJornada(jornada).getLong("weight"))
+        Log.i("G808", "G808-DELETE synced=2 lostRecovered=true receiptsC=${remote(c.entityId).getInt("receipts")} " +
+            "stale=${held.lastErrorCode} weight=${remoteJornada(jornada).getLong("weight")}")
     }
 
     private fun session(actor: UUID, key: String): AuthSession {

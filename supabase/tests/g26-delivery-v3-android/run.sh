@@ -71,4 +71,4 @@ adb shell am instrument -w -e class \
   > "$work/instrument.out"
 cat "$work/instrument.out"
 adb logcat -d -s G808:I | grep G808- || echo 'G808 no lines'
-grep -q 'OK (4 tests)' "$work/instrument.out"
+grep -q 'OK (5 tests)' "$work/instrument.out"
