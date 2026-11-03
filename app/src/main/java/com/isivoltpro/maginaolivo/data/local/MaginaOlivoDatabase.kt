@@ -81,7 +81,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.IrrigationCommunityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CommunityWaterNoticeEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PersonalIrrigationPlanEntity
 
-private const val DATABASE_VERSION = 33
+private const val DATABASE_VERSION = 34
 
 @Database(
     entities = [
@@ -141,6 +141,8 @@ private const val DATABASE_VERSION = 33
         com.isivoltpro.maginaolivo.data.local.entity.DeliveryHeldReceiptEntity::class,
         com.isivoltpro.maginaolivo.data.local.entity.DeliveryDispatchPrepareEntity::class,
         com.isivoltpro.maginaolivo.data.local.entity.DeliveryImportReceiptEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.SyncReceiveReceiptEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.SyncReceiveHoldEntity::class,
     ],
     version = DATABASE_VERSION,
     exportSchema = true,
@@ -169,6 +171,11 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun deliveryDispatchPrepareDao(): com.isivoltpro.maginaolivo.data.local.dao.DeliveryDispatchPrepareDao
 
     abstract fun deliveryImportReceiptDao(): com.isivoltpro.maginaolivo.data.local.dao.DeliveryImportReceiptDao
+
+    /** #808 R3-a: receive evidence and holds (empty until the R3-c receiver exists). */
+    abstract fun syncReceiveReceiptDao(): com.isivoltpro.maginaolivo.data.local.dao.SyncReceiveReceiptDao
+
+    abstract fun syncReceiveHoldDao(): com.isivoltpro.maginaolivo.data.local.dao.SyncReceiveHoldDao
 
     abstract fun expenseDao(): ExpenseDao
 
