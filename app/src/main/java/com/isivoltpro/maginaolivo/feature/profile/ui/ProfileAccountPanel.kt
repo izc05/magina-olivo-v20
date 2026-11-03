@@ -77,7 +77,6 @@ fun ProfileAccountPanel(
     farmMemberships: List<MockFarmMembership>,
     receivedInvitationsCount: Int = 1,
     notificationsEnabled: Boolean = true,
-    remindersEnabled: Boolean = true,
     appVersion: String = "1.0.0 (Prototipo)",
     onDismiss: () -> Unit = {},
     onEditLocation: () -> Unit = {},
@@ -85,11 +84,8 @@ fun ProfileAccountPanel(
     onMachinery: () -> Unit = {},
     onAgronomicPeople: () -> Unit = {},
     onInvitations: () -> Unit = {},
-    onFarmSelected: (MockFarmMembership) -> Unit = {},
-    onManageFarms: () -> Unit = {},
     onAccountSettings: () -> Unit = {},
     onToggleNotifications: () -> Unit = {},
-    onToggleReminders: () -> Unit = {},
     onToggleAppearance: () -> Unit = {},
     onHelp: (String) -> Unit = {},
     onLogoutOrLogin: () -> Unit = {},
@@ -209,10 +205,7 @@ fun ProfileAccountPanel(
         MoSectionHeader("Mis explotaciones y roles (Prototipo)")
 
         farmMemberships.forEach { membership ->
-            FarmMembershipCard(
-                membership = membership,
-                onClick = { onFarmSelected(membership) },
-            )
+            FarmMembershipCard(membership = membership)
         }
 
         // Acceso a invitaciones recibidas
@@ -336,20 +329,6 @@ fun ProfileAccountPanel(
                 MoStatusChip(
                     text = if (notificationsEnabled) "Activas" else "Inactivas",
                     tone = if (notificationsEnabled) MoStatusTone.Success else MoStatusTone.Warning,
-                )
-            },
-        )
-
-        MoCompactListItem(
-            title = "Recordatorios de trabajo",
-            subtitle = if (remindersEnabled) "Avisos al empezar o terminar la jornada" else "Desactivados",
-            icon = MoIcons.Calendar,
-            onClick = onToggleReminders,
-            modifier = Modifier.testTag("profile-reminders-item"),
-            trailing = {
-                MoStatusChip(
-                    text = if (remindersEnabled) "Activos" else "Inactivos",
-                    tone = if (remindersEnabled) MoStatusTone.Success else MoStatusTone.Neutral,
                 )
             },
         )

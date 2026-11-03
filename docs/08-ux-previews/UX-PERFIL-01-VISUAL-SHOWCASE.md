@@ -180,3 +180,5 @@ Regla de diseño: `InvitationLifecycle.grantsAccess` solo es `true` en `ACTIVE_C
 ## 6. Registro de CI
 
 - SHA `2d67bd563`: la ejecución **push** de Android CI tuvo un `ComposeTimeoutException` en un test instrumentado de autenticación (fallo histórico, no corregido por código en esta PR). La ejecución **pull_request** del mismo SHA terminó en verde: Foundation, Gate 3 Emulator y Gate 3 Evidence.
+
+- SHA `b73c35c9d`: Gate 3 Evidence falló en `ArchitectureBoundaryTest.infrastructureOutsideAuthorizedAuthRemainsBlocked` porque un comentario KDoc de `CollaborationScopeUi.kt` nombraba el backend prohibido. Corregido en el commit siguiente; además se retiraron `remindersEnabled`/`onToggleReminders` de `ProfileAccountPanel` (`ReminderSettings` completo sigue siendo requisito de integración) y todas las acciones de invitación quedan deshabilitadas y rotuladas «(prototipo)».

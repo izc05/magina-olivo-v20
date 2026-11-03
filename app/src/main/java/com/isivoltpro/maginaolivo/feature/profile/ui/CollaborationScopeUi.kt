@@ -51,7 +51,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
  *
  * PROTOTIPO UX EXCLUSIVAMENTE. Nada de este archivo:
  *  - concede, comprueba ni persiste permisos;
- *  - llama a Supabase, Auth o Room;
+ *  - llama al backend remoto, Auth o Room;
  *  - está enlazado desde AppNavigation.
  * Los datos son ficticios. Un permiso solo se muestra como «Activo» cuando el estado simulado es
  * ACTIVE_CONFIRMED, que en la integración real exigirá confirmación del servidor.
@@ -289,7 +289,7 @@ fun CreateInvitationPrototype(modifier: Modifier = Modifier) {
         ChoiceGroup("3 · Alcance", listOf("Toda la finca", "Parcelas concretas"), scope) { scope = it }
         ChoiceGroup("4 · Duración", listOf("Campaña actual", "Hasta una fecha", "Sin caducidad"), duration) { duration = it }
         ChoiceGroup("5 · Compartir por", listOf("Enlace", "WhatsApp", "Código QR"), channel) { channel = it }
-        MoPrimaryButton(text = "Crear invitación (prototipo)", onClick = {}, modifier = Modifier.fillMaxWidth().testTag("invite-create-btn"))
+        MoPrimaryButton(text = "Crear invitación · prototipo sin envío", onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth().testTag("invite-create-btn"))
     }
 }
 
@@ -322,17 +322,17 @@ fun InvitationLifecycleCard(item: MockInvitationItem, modifier: Modifier = Modif
 
             when {
                 item.incoming && item.lifecycle == InvitationLifecycle.PENDING_RECIPIENT -> Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-                    MoPrimaryButton(text = "Aceptar", onClick = {}, modifier = Modifier.weight(1f))
-                    MoSecondaryButton(text = "Rechazar", onClick = {}, modifier = Modifier.weight(1f))
+                    MoPrimaryButton(text = "Aceptar (prototipo)", onClick = {}, enabled = false, modifier = Modifier.weight(1f))
+                    MoSecondaryButton(text = "Rechazar (prototipo)", onClick = {}, enabled = false, modifier = Modifier.weight(1f))
                 }
                 !item.incoming && item.lifecycle == InvitationLifecycle.PENDING_RECIPIENT ->
-                    MoTertiaryButton(text = "Cancelar invitación", onClick = {}, modifier = Modifier.fillMaxWidth())
+                    MoTertiaryButton(text = "Cancelar invitación (prototipo)", onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth())
                 !item.incoming && item.lifecycle == InvitationLifecycle.ACTIVE_CONFIRMED ->
-                    MoTertiaryButton(text = "Revocar acceso", onClick = {}, modifier = Modifier.fillMaxWidth())
+                    MoTertiaryButton(text = "Revocar acceso (prototipo)", onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth())
                 item.lifecycle == InvitationLifecycle.ERROR ->
-                    MoSecondaryButton(text = "Reintentar", onClick = {}, modifier = Modifier.fillMaxWidth())
+                    MoSecondaryButton(text = "Reintentar (prototipo)", onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth())
                 item.lifecycle == InvitationLifecycle.EXPIRED && !item.incoming ->
-                    MoTertiaryButton(text = "Volver a invitar", onClick = {}, modifier = Modifier.fillMaxWidth())
+                    MoTertiaryButton(text = "Volver a invitar (prototipo)", onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth())
                 else -> Unit
             }
         }
@@ -362,9 +362,8 @@ fun InvitationsInboxPrototype(modifier: Modifier = Modifier, startOnReceived: Bo
         if (!showReceived) {
             MoCompactListItem(
                 title = "Invitar colaborador",
-                subtitle = "Finca, rol, alcance y duración",
+                subtitle = "Prototipo · Finca, rol, alcance y duración (sin acción)",
                 icon = MoIcons.Plus,
-                onClick = {},
                 modifier = Modifier.testTag("invite-new-item"),
             )
         }
@@ -417,3 +416,4 @@ fun InvitationsReceivedPreview_Light() {
 fun InvitationsSentPreview_Dark() {
     MaginaOlivoTheme(mode = AppearanceMode.DARK) { InvitationsInboxPrototype() }
 }
+
