@@ -36,6 +36,14 @@ import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDeleteCodes
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDeleteCoordinator
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDeleteOutcome
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcResponse
+import com.isivoltpro.maginaolivo.data.repository.sync.HarvestReceiveCoordinator
+import com.isivoltpro.maginaolivo.data.repository.sync.HarvestReceiveOutcome
+import com.isivoltpro.maginaolivo.data.repository.sync.deliveryDeleteHash
+import com.isivoltpro.maginaolivo.data.repository.enqueueCollapsed
+import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
+import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
+import org.junit.Assert.assertNotNull
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchWorker
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcAdapter
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcTransport
@@ -680,6 +688,209 @@ class DeliveryV3HttpsEphemeralTest {
         assertEquals(listOf(1, 2), listOf(gone.getInt("deleted"), gone.getInt("version")))
         assertEquals(2, remote(a.entityId).getInt("receipts")); assertEquals(2, remote(b.entityId).getInt("receipts"))
         Log.i("G808", "G808-JORNADA-J splitEqual=true deleteWaited=true weight=0 jornadaDeleted=${gone.getInt("deleted")}")
+    }
+
+
+    // ------------------------------------------------------------------------------------------------------- R3-d
+
+    /** Counts every receive RPC and its bytes; optionally cuts the connection on the n-th bundle (airplane mode). */
+    private inner class CountingReceive(var cutOnBundle: Int = 0) : DeliveryRpcTransport {
+        private val inner = HttpsDeliveryRpcTransport(config, scope = HttpsDeliveryRpcTransport.RpcScope.HARVEST_RECEIVE)
+        val names = mutableListOf<String>()
+        var bytes = 0L
+        override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse {
+            names += name
+            if (cutOnBundle > 0 && name == "get_own_harvest_bundle_v1" && names.count { it == name } == cutOnBundle) throw java.io.IOException("airplane")
+            return inner.rpc(name, bodyJson, accessToken).also { bytes += it.body.length }
+        }
+    }
+
+    private fun receiver(device: Device, transport: DeliveryRpcTransport) = HarvestReceiveCoordinator(device.db, device.account, issuer,
+        transport, { device.links.ledgerFor(it) }, ServerWorkspaceOwnerVerifier(authorizations, issuer), RandomIds,
+        tokenIssuer = "$issuer/auth/v1")
+
+    private fun dump(device: Device) = listOf("harvests", "harvest_parcels", "deliveries", "delivery_parcels", "sync_outbox", "sync_receive_receipts")
+        .joinToString("\n") { t -> device.db.openHelper.writableDatabase.query("SELECT * FROM $t ORDER BY rowid").use { c ->
+            "$t:" + buildList { while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { if (c.isNull(it)) "∅" else c.getString(it) }) }
+                .joinToString(";") } }
+    private fun outboxCount(device: Device) = device.db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM sync_outbox").use { it.moveToFirst(); it.getInt(0) }
+
+    /** A Pesada of device A with exact or unknown shares, sent v3 and confirmed by the strict v3 head. */
+    private suspend fun sentPesada(a: Device, graph: Graph, at: Instant, day: LocalDate, net: Long, vararg shares: Pair<UUID, Long?>): SyncOutboxEntity {
+        val draft = DeliveryDraft(farmId = graph.farm, deliveryDate = day, destinationOrganizationId = null, destinationName = "Cooperativa San Isidro",
+            netGrams = net, shares = shares.map { DeliveryShareInput(it.first, it.second) }, origin = PesadaOrigin.TREE)
+        val id = (repository(a, at, HistoricalDeliveryRoute { _, _ -> true }).create(draft) as AppResult.Success).value
+        return a.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+    }
+
+    private suspend fun confirmV3(a: Device, op: SyncOutboxEntity) {
+        assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(a).dispatch(op.id, lease))
+        assertEquals(DispatchOutcome.SYNCED, worker(a).resolveAwaitingHead(op.id, lease))
+    }
+
+    private fun serverSplit(jornada: UUID) = remoteJornada(jornada).getJSONArray("split").let { arr -> (0 until arr.length()).map { i ->
+        val o = arr.getJSONObject(i); Triple(o.getString("parcelId"), o.getString("mode"), if (o.isNull("weight")) null else o.getLong("weight")) } }
+
+    private suspend fun localSplit(device: Device, jornada: UUID) = device.db.harvestDao().listParcels(jornada).sortedBy { it.parcelId.toString() }
+        .map { Triple(it.parcelId.toString(), it.allocationMode, it.weightGrams) }
+
+    /**
+     * H1 (#834): device A creates, edits and logically deletes Jornadas and Pesadas against the real server; device B (same
+     * owner, its own Room, session and consent) receives them: UUIDs, versions, receipts, hashes, fingerprints, MANUAL kilos
+     * and AUTO_DAY split equal to the server; a repeated receive writes nothing; a derived-only change of an AUTO_DAY (no
+     * version change) is new evidence, never a contradictory rewrite; zero outbox by reception on B.
+     */
+    @Test fun r3dH1TwoDevicesTheReceiverImportsWhatTheSenderWrote() = runBlocking<Unit> {
+        val graph = Graph()
+        val a = device(names[0], "actor", "token", graph, server = true)
+        val b = device(names[1], "actor", "token", graph, server = false)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(1))
+        val day = LocalDate.now(zone).minusDays(2)
+        // A: an AUTO_DAY with three Pesadas (exact and unknown shares), then one edited (v2) and one deleted (R1-a).
+        val p1 = sentPesada(a, graph, before, day, 1_000_000, graph.active to 600_000L, graph.archived to 400_000L)
+        val p2 = sentPesada(a, graph, before, day, 500_000, graph.archived to null)
+        val p3 = sentPesada(a, graph, before, day, 300_000, graph.active to 300_000L)
+        val auto = sendJornada(a, p1)
+        for (op in listOf(p1, p2, p3)) confirmV3(a, op)
+        val edit = DeliveryDraft(farmId = graph.farm, deliveryDate = day, destinationOrganizationId = null, destinationName = "Cooperativa San Isidro",
+            netGrams = 550_000, shares = listOf(DeliveryShareInput(graph.archived, null)), origin = PesadaOrigin.TREE)
+        assertTrue(repository(a, before.plus(Duration.ofHours(1)), HistoricalDeliveryRoute { _, _ -> true }).update(p2.entityId, edit) is AppResult.Success)
+        val editOp = a.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, p2.entityId).single { it.status == OutboxStatus.PENDING }
+        assertEquals(DispatchOutcome.SYNCED, worker(a).dispatch(editOp.id, lease))
+        val deletes = DeliveryDeleteCoordinator(a.db, a.account, issuer,
+            HttpsDeliveryRpcTransport(config, scope = HttpsDeliveryRpcTransport.RpcScope.DELIVERY_DELETE),
+            { a.links.ledgerFor(it) }, ServerWorkspaceOwnerVerifier(authorizations, issuer))
+        assertTrue(repository(a, before.plus(Duration.ofHours(2)), HistoricalDeliveryRoute { _, _ -> true }).delete(p3.entityId) is AppResult.Success)
+        val delOp = a.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, p3.entityId).single { it.operation == OutboxOperation.DELETE }
+        assertEquals(DeliveryDeleteOutcome.STAGED, deletes.stage(delOp.id)); assertEquals(DeliveryDeleteOutcome.SYNCED, deletes.send(delOp.id, lease))
+        // A: a hand-recorded Jornada with typed kilos, sent through the Jornada writer.
+        val manual = UUID.randomUUID()
+        a.db.harvestDao().upsert(HarvestEntity(id = manual, workspaceId = graph.workspace, campaignId = graph.campaign, farmId = graph.farm,
+            harvestDate = day.minusDays(1), weightGrams = 4_242_000, metadata = LocalMetadata(before, before, syncStatus = SyncStatus.PENDING), dayOrigin = "MANUAL"))
+        a.db.enqueueCollapsed(RandomIds, SyncEntityType.HARVEST, manual, OutboxOperation.CREATE, before)
+        val mMarker = a.db.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, manual).single()
+        assertEquals(HarvestSendOutcome.STAGED, harvests(a).stage(mMarker.id))
+        assertEquals(HarvestSendOutcome.SYNCED, harvests(a).send(mMarker.id, lease))
+
+        // B receives.
+        assertEquals(0, outboxCount(b))
+        val wire = CountingReceive()
+        val first = receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign)
+        assertEquals(HarvestReceiveOutcome.IMPORTED, first.outcome)
+        assertTrue("${first.held.map { it.cause }}", first.held.isEmpty())
+        assertEquals(0, outboxCount(b))
+        // UUIDs, versions and tombstones equal the server's; parcels with A's UUIDs.
+        for (op in listOf(p1, p2, p3)) {
+            val local = b.db.deliveryDao().findById(op.entityId)!!
+            assertEquals(remote(op.entityId).getLong("version"), local.metadata.remoteVersion)
+            assertEquals(remote(op.entityId).getInt("deleted") == 1, local.metadata.deletedAt != null)
+            assertEquals(a.db.deliveryDao().listParcels(op.entityId).map { it.id }.toSet(), b.db.deliveryDao().listParcels(op.entityId).map { it.id }.toSet())
+        }
+        // Receipts: the v3 CREATE head is exactly A's prepared hash; the edit heads on v2; the delete on the canonical hash.
+        val receipts = b.db.syncReceiveReceiptDao()
+        val account = b.actor.toString()
+        assertEquals(a.db.deliveryDispatchPrepareDao().findByOperation(p1.id)!!.payloadHash, receipts.find(issuer, account, "DELIVERY", p1.entityId)!!.headPayloadHash)
+        assertEquals(2, receipts.find(issuer, account, "DELIVERY", p2.entityId)!!.headPayloadVersion)
+        assertEquals(deliveryDeleteHash(p3.entityId, 1), receipts.find(issuer, account, "DELIVERY", p3.entityId)!!.headPayloadHash)
+        // AUTO_DAY: same UUID and version, kilos and split equal to the server (derived on B, never imported).
+        val dayB = b.db.harvestDao().findById(auto)!!
+        assertEquals(remoteJornada(auto).getLong("version"), dayB.metadata.remoteVersion)
+        assertEquals(remoteJornada(auto).getLong("weight"), dayB.weightGrams)
+        assertEquals(serverSplit(auto), localSplit(b, auto))
+        assertEquals(1_550_000L, dayB.weightGrams)
+        // MANUAL: the typed kilos.
+        assertEquals(4_242_000L, b.db.harvestDao().findById(manual)!!.weightGrams)
+        val autoReceipt = receipts.find(issuer, account, "HARVEST", auto)!!
+        assertNotNull(autoReceipt.ownFingerprint); assertNotNull(autoReceipt.derivedFingerprint)
+        // Repeated receive: nothing read beyond the manifest, nothing written.
+        val snapshot = dump(b); val bundles = wire.names.count { it == "get_own_harvest_bundle_v1" }
+        assertEquals(HarvestReceiveOutcome.ALREADY_CURRENT, receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign).outcome)
+        assertEquals(bundles, wire.names.count { it == "get_own_harvest_bundle_v1" })
+        assertEquals(snapshot, dump(b))
+        // A adds a Pesada to the AUTO_DAY: derived kilos/split and derived_fingerprint move, the Jornada version does not.
+        val p4 = sentPesada(a, graph, before, day, 200_000, graph.active to 200_000L); confirmV3(a, p4)
+        assertEquals(dayB.metadata.remoteVersion, remoteJornada(auto).getLong("version"))
+        val third = receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign)
+        assertEquals(HarvestReceiveOutcome.IMPORTED, third.outcome)
+        assertTrue("derived-only is not a rewrite: ${third.held.map { it.cause }}", third.held.none { it.cause == "REMOTE_REWRITTEN" })
+        val updated = receipts.find(issuer, account, "HARVEST", auto)!!
+        assertEquals(autoReceipt.remoteVersion, updated.remoteVersion)
+        assertTrue(updated.derivedFingerprint != autoReceipt.derivedFingerprint)
+        assertEquals(serverSplit(auto), localSplit(b, auto)); assertEquals(1_750_000L, b.db.harvestDao().findById(auto)!!.weightGrams)
+        assertEquals(0, outboxCount(b))
+        Log.i("G808", "G808-R3D-H1 imported=${first.applied.size} repeated=ALREADY_CURRENT derivedOnly=IMPORTED weight=1750000 outboxB=0 bytes=${wire.bytes}")
+    }
+
+    /**
+     * H2 (#834): B's pending local change is never overwritten (REMOTE_AHEAD); a cut connection writes nothing and a
+     * restart (new Room handle) receives once; another account on the device sees and reads nothing.
+     */
+    @Test fun r3dH2PendingLocalChangesInterruptionsRestartAndAccountIsolation() = runBlocking<Unit> {
+        val graph = Graph()
+        val a = device(names[0], "actor", "token", graph, server = true)
+        var b = device(names[1], "actor", "token", graph, server = false)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(1))
+        val day = LocalDate.now(zone).minusDays(2)
+        val p1 = sentPesada(a, graph, before, day, 800_000, graph.active to 800_000L)
+        val p2 = sentPesada(a, graph, before, day.minusDays(1), 300_000, graph.active to 300_000L)
+        sendJornada(a, p1); sendJornada(a, p2); confirmV3(a, p1); confirmV3(a, p2)
+        // Airplane mode at the second bundle: OFFLINE, nothing written on B.
+        val empty = dump(b)
+        assertEquals(HarvestReceiveOutcome.OFFLINE, receiver(b, CountingReceive(cutOnBundle = 2)).receive(graph.workspace, graph.farm, graph.campaign).outcome)
+        assertEquals(empty, dump(b))
+        // Restart: B's process dies; a new Room handle and session receive everything once.
+        b.db.close()
+        b = device(names[1], "actor", "token", graph, server = false)
+        assertEquals(HarvestReceiveOutcome.IMPORTED, receiver(b, CountingReceive()).receive(graph.workspace, graph.farm, graph.campaign).outcome)
+        assertEquals(0, outboxCount(b))
+        // B edits p1 offline (a PENDING v2 operation); A edits it on the server: B never overwrites its pending change.
+        val edit = { net: Long -> DeliveryDraft(farmId = graph.farm, deliveryDate = day, destinationOrganizationId = null,
+            destinationName = "Cooperativa San Isidro", netGrams = net, shares = listOf(DeliveryShareInput(graph.active, net)), origin = PesadaOrigin.TREE) }
+        assertTrue(repository(b, before.plus(Duration.ofHours(3)), LegacyDeliveryRoute).update(p1.entityId, edit(810_000)) is AppResult.Success)
+        assertTrue(repository(a, before.plus(Duration.ofHours(4)), HistoricalDeliveryRoute { _, _ -> true }).update(p1.entityId, edit(820_000)) is AppResult.Success)
+        val aEdit = a.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, p1.entityId).single { it.status == OutboxStatus.PENDING }
+        assertEquals(DispatchOutcome.SYNCED, worker(a).dispatch(aEdit.id, lease))
+        val pending = dump(b)
+        val report = receiver(b, CountingReceive()).receive(graph.workspace, graph.farm, graph.campaign)
+        assertTrue("${report.held.map { it.cause + ":" + it.entityId }}", report.held.any { it.entityId == p1.entityId && it.cause == "REMOTE_AHEAD" })
+        assertEquals(pending, dump(b))
+        assertEquals(810_000L, b.db.deliveryDao().findById(p1.entityId)!!.netGrams)
+        // Another account on a third device: not the owner of this workspace, zero receive RPCs, nothing written.
+        val member = device(names[2], "member", "memberToken", graph, server = false)
+        val memberWire = CountingReceive(); val memberEmpty = dump(member)
+        assertEquals(HarvestReceiveOutcome.NOT_AUTHORIZED, receiver(member, memberWire).receive(graph.workspace, graph.farm, graph.campaign).outcome)
+        assertTrue(memberWire.names.isEmpty()); assertEquals(memberEmpty, dump(member))
+        Log.i("G808", "G808-R3D-H2 offline=nothingWritten restart=IMPORTED pending=REMOTE_AHEAD member=NOT_AUTHORIZED")
+    }
+
+    /**
+     * H3 (#834): over 2000 Jornadas in one campaign the manifest is 54000; the receiver partitions it by dates and reads
+     * the exact union, never truncated. Logs the cost of reading every needed bundle before applying (calls, bytes, time,
+     * heap). The bulk Jornadas have no receipt (written outside the protocol): all are held UNVERIFIED, none inserted.
+     */
+    @Test fun r3dH3ALargeManifestIsPartitionedAndTheReadCostIsMeasured() = runBlocking<Unit> {
+        val graph = Graph()
+        val a = device(names[0], "actor", "token", graph, server = true)
+        val b = device(names[1], "actor", "token", graph, server = false)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(1))
+        val p = sentPesada(a, graph, before, LocalDate.now(zone).minusDays(2), 900_000, graph.active to 900_000L)
+        val auto = sendJornada(a, p); confirmV3(a, p)
+        fetch("/__g26_admin/bulk_manual?workspace=${graph.workspace}&farm=${graph.farm}&campaign=${graph.campaign}&count=2001", "POST")
+        val wire = CountingReceive()
+        val runtime = Runtime.getRuntime(); runtime.gc()
+        val heapBefore = runtime.totalMemory() - runtime.freeMemory(); val started = System.nanoTime()
+        val report = receiver(b, wire).receive(graph.workspace, graph.farm, graph.campaign)
+        val millis = (System.nanoTime() - started) / 1_000_000; val heapAfter = runtime.totalMemory() - runtime.freeMemory()
+        val manifests = wire.names.count { it == "get_own_harvest_manifest_v1" }
+        val bundles = wire.names.count { it == "get_own_harvest_bundle_v1" }
+        assertTrue("partitioned: $manifests", manifests > 1)
+        assertEquals(2002, bundles)                                   // every Jornada read once: 2001 bulk + the AUTO_DAY
+        assertEquals(HarvestReceiveOutcome.IMPORTED, report.outcome)  // the AUTO_DAY applied
+        assertNotNull(b.db.harvestDao().findById(auto))
+        assertEquals(2001, report.held.count { it.cause == "UNVERIFIED" })
+        assertEquals(1, b.db.harvestDao().listLiveForCampaign(graph.campaign).size)
+        assertEquals(0, outboxCount(b))
+        Log.i("G808", "G808-R3D-H3 manifests=$manifests bundles=$bundles bytes=${wire.bytes} ms=$millis heapDeltaKiB=${(heapAfter - heapBefore) / 1024}")
     }
 
     private fun session(actor: UUID, key: String): AuthSession {

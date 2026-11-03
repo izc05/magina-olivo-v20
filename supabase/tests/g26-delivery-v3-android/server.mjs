@@ -56,7 +56,8 @@ const files = [...names.map(name => new URL(`../../migrations/${name}`, import.m
   new URL('../../migrations/20261027155737_g25_receive_bundle_contract.sql', import.meta.url),
   new URL('../../migrations/20261029044901_g26_workspace_authorization.sql', import.meta.url),
   ...['g26-parent-receive-v1.sql', 'g26-fpm-manage-hardening.sql', 'g26-parcel-mutation-v1.sql', 'g26-historical-writers-v1.sql',
-    'g26-delivery-head-v3.sql', 'g26-harvest-writer-v1.sql', 'g26-delivery-delete-v1.sql']
+    'g26-delivery-head-v3.sql', 'g26-harvest-writer-v1.sql', 'g26-delivery-delete-v1.sql', 'g26-harvest-head-v2.sql',
+    'g26-harvest-receive-v1.sql']
     .map(name => new URL(`../../proposals/${name}`, import.meta.url))];
 sql(`BEGIN;\n${files.map(file => readFileSync(file, 'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
 
@@ -170,6 +171,17 @@ const server = createServer({ key: readFileSync(process.env.G26_TLS_KEY),
       v3Mode = mode; return done();
     }
     if (url.pathname === '/__g26_admin/delivery') return json(200, delivery(url.searchParams.get('id') ?? ''));
+    // R3-d: many hand-recorded Jornadas of one campaign (one per day), to force the manifest over its 2000 limit.
+    if (incoming.method === 'POST' && url.pathname === '/__g26_admin/bulk_manual') {
+      const [ws, farm, campaign] = ['workspace', 'farm', 'campaign'].map(k => url.searchParams.get(k) ?? '');
+      const count = Number(url.searchParams.get('count') ?? '0');
+      for (const id of [ws, farm, campaign]) assert.match(id, uuid);
+      assert.ok(Number.isInteger(count) && count > 0 && count <= 2100);
+      sql(`INSERT INTO public.harvests(id,workspace_id,farm_id,campaign_id,harvest_date,weight_grams,day_origin,recorded_by_user_id,version)
+           SELECT gen_random_uuid(),${q(ws)},${q(farm)},${q(campaign)},date '2025-10-01'+g,1000,'MANUAL',${q(owner.id)},1
+           FROM generate_series(0,${count - 1}) g;`);
+      return done();
+    }
     // A write outside the receipt protocol: it moves the version, so the held receipt is no longer the head.
     if (incoming.method === 'POST' && url.pathname === '/__g26_admin/touch') {
       const id = url.searchParams.get('id') ?? '';

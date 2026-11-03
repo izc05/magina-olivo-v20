@@ -463,9 +463,11 @@ class HarvestReceiveRoomTest {
     @Test fun a13AnOlderServerStateNeverGoesBackAndALargeManifestIsPartitioned() = runBlocking<Unit> {
         setup(); val server = standard()
         // 54000 on the whole manifest: the receiver partitions by dates and receives the exact union.
+        // R3-d: a Jornada dated beyond the local campaign dates is never left out of every partition.
+        server.harvests += SHarvest(UUID.randomUUID(), LocalDate.parse("2031-01-01"), "MANUAL", weight = 1_000)
         server.manifestLimit = 1
         assertEquals(HarvestReceiveOutcome.IMPORTED, receive(server).outcome)
-        assertEquals(3, server.harvests.count { db.harvestDao().findById(it.id) != null })
+        assertEquals(4, server.harvests.count { db.harvestDao().findById(it.id) != null })
         server.manifestLimit = Int.MAX_VALUE
         // An older state (version below what was received) is REMOTE_BEHIND: nothing goes back.
         val p = server.pesadas.first { it.version == 2L && it.deletedAt == null }

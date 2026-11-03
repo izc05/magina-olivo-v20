@@ -90,6 +90,12 @@ internal class HarvestReceiveCoordinator(
     private val ledger: (UUID) -> FarmLinkLedger?,
     private val ownerVerifier: WorkspaceOwnerVerifier?,
     private val idGenerator: IdGenerator,
+    /**
+     * #808 R3-d: the JWT issuer the R2 contract echoes (`auth.jwt()->>'iss'`, e.g. "<project>/auth/v1"). The device's
+     * [issuer] (the project, as the consent ledger and the senders use it) keys receipts and holds; responses are checked
+     * against this one. Passed explicitly by whoever wires the receiver; never derived by string rules here.
+     */
+    private val tokenIssuer: String = issuer,
     private val now: () -> Instant = Instant::now,
 ) {
     private class Offline : Exception()
@@ -101,7 +107,7 @@ internal class HarvestReceiveCoordinator(
 
     suspend fun receive(workspaceId: UUID, farmId: UUID, campaignId: UUID): HarvestReceiveReport {
         val verifier = ownerVerifier ?: return HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
-        if (issuer.isBlank()) return HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
+        if (issuer.isBlank() || tokenIssuer.isBlank()) return HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
         val userId = account.state.value.userId ?: return HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
         val workspace = database.workspaceDao().findById(workspaceId)
         if (workspace == null || workspace.metadata.deletedAt != null || workspace.ownerUserId != userId)
@@ -115,7 +121,7 @@ internal class HarvestReceiveCoordinator(
         return try {
             account.withServerVerifiedIdentity(remote = { session ->
                 if (session.userId != userId || !verifier.isCurrentOwner(session, workspaceId)) throw Unauthorized()
-                read(session, ManifestRequest(issuer, session.userId, workspaceId, farmId, campaignId), bounds)
+                read(session, ManifestRequest(tokenIssuer, session.userId, workspaceId, farmId, campaignId), bounds)
             }) { verified, read ->
                 if (verified != userId || read.manifest.request.accountId != verified) HarvestReceiveReport(HarvestReceiveOutcome.NOT_AUTHORIZED)
                 else commit(verified, read)
@@ -137,7 +143,7 @@ internal class HarvestReceiveCoordinator(
         val wanted = manifest.harvests.filter { differs(session.userId, it, manifest.deliveries.filter { d -> d.harvestId == it.id }) }
         val bundles = wanted.sortedBy { it.id.toString() }.map { h ->
             val body = call(session, HarvestReceiveContract.BUNDLE_RPC, """{"p_harvest_id":"${h.id}"}""")
-            HarvestReceiveParser.parseBundle(body, BundleRequest(issuer, session.userId, h.id, request.workspaceId, request.farmId, request.campaignId))
+            HarvestReceiveParser.parseBundle(body, BundleRequest(tokenIssuer, session.userId, h.id, request.workspaceId, request.farmId, request.campaignId))
         }
         return Read(manifest, bundles)
     }
@@ -147,12 +153,14 @@ internal class HarvestReceiveCoordinator(
         val body = try {
             call(session, HarvestReceiveContract.MANIFEST_RPC, manifestBody(request))
         } catch (_: TooLarge) {
-            val from = request.from ?: bounds.first
-            val to = request.to ?: bounds.second
-            if (!from.isBefore(to)) throw TooLarge()
-            val mid = from.plusDays((to.toEpochDay() - from.toEpochDay()) / 2)
-            val low = manifest(session, request.copy(from = from, to = mid), bounds)
-            val high = manifest(session, request.copy(from = mid.plusDays(1), to = to), bounds)
+            // R3-d: the outer edges stay OPEN (null), so rows dated outside the local campaign's dates are never left out
+            // of every partition; the campaign dates only place the cut. A closed single day still over the limit is TOO_LARGE.
+            if (request.from != null && request.to != null && !request.from.isBefore(request.to)) throw TooLarge()
+            val hi = request.to ?: maxOf(bounds.second, (request.from ?: bounds.first).plusYears(1))
+            val lo = request.from ?: minOf(bounds.first, hi.minusYears(1))
+            val mid = lo.plusDays((hi.toEpochDay() - lo.toEpochDay()) / 2)
+            val low = manifest(session, request.copy(to = mid), bounds)
+            val high = manifest(session, request.copy(from = mid.plusDays(1)), bounds)
             return HarvestManifest(request, low.harvests + high.harvests, low.deliveries + high.deliveries)
         }
         return HarvestReceiveParser.parseManifest(body, request)
