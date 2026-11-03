@@ -426,6 +426,83 @@ class HarvestSendRoomTest {
         }
     }
 
+    /** Everything the rebase could touch on phone B, captured to prove "nothing mutated". */
+    private suspend fun snapshot(phone: Phone, marker: UUID, losing: UUID, pesadas: List<SyncOutboxEntity>): List<Any?> =
+        listOf(phone.db.syncOutboxDao().findById(marker), phone.db.harvestDao().findById(losing),
+            phone.db.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, losing)) +
+            pesadas.flatMap { listOf(phone.db.deliveryDao().findById(it.entityId), phone.db.deliveryDao().listParcels(it.entityId),
+                phone.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, it.entityId)) }
+
+    @Test
+    fun aRevokedOwnerNeverRebasesAndOnlyAFreshOwnerDoes() = runBlocking<Unit> {
+        val server = FakeServer()
+        val a = Phone("hv-owner-a")
+        val b = Phone("hv-owner-b")
+        val pa = a.pesada(net = 1_000_000)
+        val pb = b.pesada(net = 2_000_000)
+        val canonical = a.jornadaOf(pa).id
+        val losing = b.jornadaOf(pb).id
+        lease().use { lease ->
+            confirmJornada(a, server, pa, lease)
+            val marker = b.unboundMarker(losing)
+            assertEquals(HarvestSendOutcome.STAGED, b.sender(server).stage(marker.id))
+            assertEquals(HarvestSendOutcome.AUTO_DAY_EXISTS, b.sender(server).send(marker.id, lease))
+            val before = snapshot(b, marker.id, losing, listOf(pb))
+            val calls = server.names.size
+            // The ownership was revoked on the server: the fresh check refuses, nothing is rewritten.
+            owner = false
+            assertEquals(HarvestSendOutcome.NOT_AUTHORIZED, b.sender(server).rebaseOntoCanonical(marker.id))
+            assertEquals(before, snapshot(b, marker.id, losing, listOf(pb)))
+            // No owner verifier at all (the shipped configuration): refused before any session check.
+            owner = true
+            val unwired = HarvestSendCoordinator(b.db, b.account, ISSUER, server, { b.links.ledgerFor(it) }, null, RandomIds) { now }
+            assertEquals(HarvestSendOutcome.NOT_AUTHORIZED, unwired.rebaseOntoCanonical(marker.id))
+            assertEquals(before, snapshot(b, marker.id, losing, listOf(pb)))
+            // Another project's coordinator cannot rebase an envelope frozen for this issuer.
+            val foreign = HarvestSendCoordinator(b.db, b.account, "https://otro-proyecto.supabase.co", server, { b.links.ledgerFor(it) },
+                WorkspaceOwnerVerifier { _, ws -> ws == workspaceId }, RandomIds) { now }
+            assertEquals(HarvestSendOutcome.REJECTED, foreign.rebaseOntoCanonical(marker.id))
+            assertEquals(before, snapshot(b, marker.id, losing, listOf(pb)))
+            assertEquals("El rebase nunca llama a RPC de escritura", calls, server.names.size)
+            // The server confirms ownership again: the SAME refused operation is rebased.
+            assertEquals(HarvestSendOutcome.REBASED, b.sender(server).rebaseOntoCanonical(marker.id))
+            assertEquals(canonical, b.db.deliveryDao().findById(pb.entityId)!!.harvestId)
+            assertEquals(HarvestCodes.AUTO_DAY_REBASED, b.db.syncOutboxDao().findById(marker.id)!!.lastErrorCode)
+        }
+    }
+
+    @Test
+    fun aPesadaWithoutAnOutboxOperationIsNeverRebased() = runBlocking<Unit> {
+        val server = FakeServer()
+        val a = Phone("hv-orphan-a")
+        val b = Phone("hv-orphan-b")
+        val pa = a.pesada(net = 1_000_000)
+        val pb = b.pesada(net = 2_000_000)
+        val orphan = b.pesada(net = 500_000)
+        val losing = b.jornadaOf(pb).id
+        assertEquals(losing, b.jornadaOf(orphan).id)
+        lease().use { lease ->
+            confirmJornada(a, server, pa, lease)
+            val marker = b.unboundMarker(losing)
+            assertEquals(HarvestSendOutcome.STAGED, b.sender(server).stage(marker.id))
+            assertEquals(HarvestSendOutcome.AUTO_DAY_EXISTS, b.sender(server).send(marker.id, lease))
+            // The second Pesada lost its outbox operation (e.g. an older client cleared it): no guaranteed way out.
+            b.db.syncOutboxDao().deleteOnlyPendingForEntity(SyncEntityType.DELIVERY, orphan.entityId)
+            assertTrue(b.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, orphan.entityId).isEmpty())
+            val before = snapshot(b, marker.id, losing, listOf(pb, orphan))
+            assertEquals(HarvestSendOutcome.RETAINED, b.sender(server).rebaseOntoCanonical(marker.id))
+            assertEquals(before, snapshot(b, marker.id, losing, listOf(pb, orphan)))
+            // The Pesada that kept its operation keeps it PENDING, with its UUID, bytes and Jornada.
+            val kept = b.db.syncOutboxDao().findById(pb.id)!!
+            assertEquals(OutboxStatus.PENDING, kept.status)
+            assertEquals(pb.payloadJson, kept.payloadJson)
+            assertEquals(losing, b.db.deliveryDao().findById(pb.entityId)!!.harvestId)
+            assertEquals(losing, b.db.deliveryDao().findById(orphan.entityId)!!.harvestId)
+            assertNull(b.db.harvestDao().findById(losing)!!.metadata.deletedAt)
+            assertEquals(HarvestCodes.AUTO_DAY_EXISTS, b.db.syncOutboxDao().findById(marker.id)!!.lastErrorCode)
+        }
+    }
+
     @Test
     fun aPreparedPesadaIsNeverRebasedAndEverythingIsRetained() = runBlocking<Unit> {
         val server = FakeServer()

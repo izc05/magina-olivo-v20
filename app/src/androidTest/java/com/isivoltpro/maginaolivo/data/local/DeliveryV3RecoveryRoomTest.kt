@@ -389,11 +389,20 @@ class DeliveryV3RecoveryRoomTest {
         val device = device()
         lease().use { lease ->
             val op = held(device, lease)
-            val foreign = LocalFarmLinkRepository(context, db, device.account, "other-project", AndroidFarmLinkLedger(device.ledger), verifier)
-            val rpc = Rpc(onCheck = { receipt(op) }, onHead = { head(op) })
-            val outcome = DeliveryDispatchWorker(db, foreign, DeliveryRpcAdapter(rpc)) { now }.resolveAwaitingHead(op.id, lease)
-            assertTrue("$outcome", outcome == DispatchOutcome.REJECTED || outcome == DispatchOutcome.NOT_AUTHORIZED)
-            assertTrue("Sin escritura", DeliveryRpcAdapter.SYNC_OWN_DELIVERY_V3 !in rpc.names)
+            var ownerChecks = 0
+            val countingVerifier = WorkspaceOwnerVerifier { session, ws -> ownerChecks++; verifier.isCurrentOwner(session, ws) }
+            val foreign = LocalFarmLinkRepository(context, db, device.account, "other-project", AndroidFarmLinkLedger(device.ledger), countingVerifier)
+            val rpc = Rpc(onCheck = { fail("Otro issuer: ninguna lectura"); error("") })
+            val outboxBefore = db.syncOutboxDao().findById(op.id)
+            val prepareBefore = db.deliveryDispatchPrepareDao().findByOperation(op.id)
+            val deliveryBefore = db.deliveryDao().findById(op.entityId)
+            assertEquals(DispatchOutcome.REJECTED,
+                DeliveryDispatchWorker(db, foreign, DeliveryRpcAdapter(rpc)) { now }.resolveAwaitingHead(op.id, lease))
+            assertTrue("Cero RPC", rpc.names.isEmpty())
+            assertEquals("Ni siquiera la comprobacion de propietario", 0, ownerChecks)
+            assertEquals(outboxBefore, db.syncOutboxDao().findById(op.id))
+            assertEquals(prepareBefore, db.deliveryDispatchPrepareDao().findByOperation(op.id))
+            assertEquals(deliveryBefore, db.deliveryDao().findById(op.entityId))
             assertStillHeld(op, null)
             // The original issuer still confirms the SAME operation.
             assertEquals(DispatchOutcome.SYNCED,

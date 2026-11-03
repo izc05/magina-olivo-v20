@@ -242,7 +242,18 @@ class LocalFarmLinkRepository(
         at: Instant = Instant.now(),
     ): V3ResolveOutcome {
         val verifier = ownerVerifier ?: return V3ResolveOutcome.NOT_AUTHORIZED
+        // #808 hardening: an operation prepared under another project (issuer), account or subject is not
+        // this repository's to touch. Refused locally, before any network call: no session check, no owner
+        // read, no RPC, no write.
+        val prepared = withContext(Dispatchers.IO) { database.deliveryDispatchPrepareDao().findByOperation(operationId) }
+            ?: return V3ResolveOutcome.REJECTED
+        val current = account.state.value.userId ?: return V3ResolveOutcome.NOT_AUTHORIZED
+        if (prepared.issuer != issuer || prepared.accountId != current.toString() || prepared.subject != subject(current)) {
+            return V3ResolveOutcome.REJECTED
+        }
         return account.withServerVerifiedIdentity({ session ->
+            // The verified session must still be the account that prepared it; otherwise nothing is read.
+            if (session.userId.toString() != prepared.accountId) return@withServerVerifiedIdentity null
             val workspace = withContext(Dispatchers.IO) {
                 database.syncOutboxDao().findById(operationId)?.farmId?.let { database.farmDao().findById(it) }?.workspaceId
             } ?: return@withServerVerifiedIdentity null

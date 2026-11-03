@@ -30,10 +30,12 @@ import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDeliveryRepository
 import com.isivoltpro.maginaolivo.data.repository.ServerWorkspaceOwnerVerifier
 import com.isivoltpro.maginaolivo.data.repository.V3RecoveryCauses
+import com.isivoltpro.maginaolivo.data.repository.WorkspaceOwnerVerifier
 import com.isivoltpro.maginaolivo.data.repository.deliveryOriginCreatedAt
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchWorker
 import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcAdapter
+import com.isivoltpro.maginaolivo.data.repository.sync.DeliveryRpcTransport
 import com.isivoltpro.maginaolivo.data.repository.sync.DispatchOutcome
 import com.isivoltpro.maginaolivo.data.repository.sync.HttpsDeliveryRpcTransport
 import com.isivoltpro.maginaolivo.data.repository.sync.HarvestCodes
@@ -504,13 +506,31 @@ class DeliveryV3HttpsEphemeralTest {
         assertEquals(DispatchOutcome.SYNCED, recovering.resolveAwaitingHead(kept.id, lease))
         assertEquals(DispatchOutcome.SYNCED, recovering.resolveAwaitingHead(kept.id, lease))
         assertRecovered(owner, kept, jornada)
-        // A different issuer reading the same session never confirms: the held operation is not its to touch.
+        // A session of ANOTHER project (issuer) is refused explicitly, locally, before any network call: exactly
+        // REJECTED, zero RPC, zero owner reads, outbox/PREPARE/Pesada identical and no remote ACK or version change.
+        val rpcCalls = mutableListOf<String>()
+        val counting = DeliveryRpcTransport { name, body, token -> rpcCalls += name; transport.rpc(name, body, token) }
+        var ownerReads = 0
+        val realOwner = ServerWorkspaceOwnerVerifier(authorizations, issuer)
+        val countingOwner = WorkspaceOwnerVerifier { session, ws -> ownerReads++; realOwner.isCurrentOwner(session, ws) }
         val foreign = LocalFarmLinkRepository(context, owner.db, rotated, "https://otro-proyecto.supabase.co",
-            AndroidFarmLinkLedger(owner.ledger), ServerWorkspaceOwnerVerifier(authorizations, issuer))
-        val foreignOutcome = DeliveryDispatchWorker(owner.db, foreign, DeliveryRpcAdapter(transport)).resolveAwaitingHead(edited.id, lease)
-        assertTrue("$foreignOutcome", foreignOutcome != DispatchOutcome.SYNCED && foreignOutcome != DispatchOutcome.NEEDS_REBASE)
-        val untouched = owner.db.syncOutboxDao().findById(edited.id)!!
-        assertEquals(OutboxStatus.BLOCKED, untouched.status); assertEquals(edited.payloadJson, untouched.payloadJson)
+            AndroidFarmLinkLedger(owner.ledger), countingOwner)
+        val outboxBefore = owner.db.syncOutboxDao().findById(edited.id)
+        val prepareBefore = owner.db.deliveryDispatchPrepareDao().findByOperation(edited.id)
+        val pesadaBefore = owner.db.deliveryDao().findById(edited.entityId)
+        val serverBefore = remote(edited.entityId)
+        val foreignOutcome = DeliveryDispatchWorker(owner.db, foreign, DeliveryRpcAdapter(counting)).resolveAwaitingHead(edited.id, lease)
+        assertEquals(DispatchOutcome.REJECTED, foreignOutcome)
+        assertTrue("Cero RPC: $rpcCalls", rpcCalls.isEmpty())
+        assertEquals("Cero lecturas de propietario", 0, ownerReads)
+        assertEquals(outboxBefore, owner.db.syncOutboxDao().findById(edited.id))
+        assertEquals(prepareBefore, owner.db.deliveryDispatchPrepareDao().findByOperation(edited.id))
+        assertNull(prepareBefore!!.settledAt)
+        assertEquals(pesadaBefore, owner.db.deliveryDao().findById(edited.entityId))
+        val serverAfter = remote(edited.entityId)
+        assertEquals(serverBefore.getInt("receipts"), serverAfter.getInt("receipts"))
+        assertEquals(serverBefore.getInt("version"), serverAfter.getInt("version"))
+        assertEquals(serverBefore.getString("hash"), serverAfter.getString("hash"))
         assertEquals(1, remoteJornada(jornada).getInt("rows"))
         Log.i("G808", "G808-RECOVERY kept=SYNCED edited=${stillHeld.lastErrorMessage} localEdit=NEEDS_REBASE rotated=true " +
             "foreignIssuer=$foreignOutcome")

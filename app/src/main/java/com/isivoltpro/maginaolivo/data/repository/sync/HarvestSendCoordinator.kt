@@ -294,26 +294,42 @@ internal class HarvestSendCoordinator(
      * its unsent marker rebuilt (same operation id, same kilos and parcels, only the Jornada changes); the
      * losing day is retired locally with an audit code. Anything else: [HarvestSendOutcome.RETAINED],
      * nothing mutated. The canonical day is adopted with the version its HEAD reported.
+     *
+     * #808 hardening: the rewrite needs, inside the authenticated flow, the server's FRESH confirmation
+     * that this session still OWNS the workspace of the losing day (same check as [send]). Without an
+     * owner verifier, with another account, or with the ownership revoked: NOT_AUTHORIZED, nothing mutated.
      */
-    suspend fun rebaseOntoCanonical(operationId: UUID): HarvestSendOutcome = try {
-        account.withServerVerifiedIdentity(remote = { Unit }) { userId, _ ->
-            database.withTransaction { rebaseLocked(operationId, userId) }
+    suspend fun rebaseOntoCanonical(operationId: UUID): HarvestSendOutcome {
+        if (issuer.isBlank()) return HarvestSendOutcome.NOT_AUTHORIZED
+        val verifier = ownerVerifier ?: return HarvestSendOutcome.NOT_AUTHORIZED
+        val op = database.syncOutboxDao().findById(operationId) ?: return HarvestSendOutcome.REJECTED
+        val accountId = op.accountId ?: return HarvestSendOutcome.REJECTED
+        val workspaceId = database.harvestDao().findById(op.entityId)?.workspaceId ?: return HarvestSendOutcome.REJECTED
+        return try { account.withServerVerifiedIdentity(remote = { session ->
+            session.userId.toString() == accountId && verifier.isCurrentOwner(session, workspaceId)
+        }) { userId, owner ->
+            if (!owner || userId.toString() != accountId) HarvestSendOutcome.NOT_AUTHORIZED
+            else database.withTransaction { rebaseLocked(operationId, userId, workspaceId) }
         }
-    } catch (cancel: CancellationException) { throw cancel
-    } catch (failure: AuthFailure) {
-        if (failure.kind == AuthFailure.Kind.NETWORK) HarvestSendOutcome.OFFLINE else HarvestSendOutcome.NOT_AUTHORIZED
+        } catch (cancel: CancellationException) { throw cancel
+        } catch (failure: AuthFailure) {
+            if (failure.kind == AuthFailure.Kind.NETWORK) HarvestSendOutcome.OFFLINE else HarvestSendOutcome.NOT_AUTHORIZED
+        }
     }
 
-    private suspend fun rebaseLocked(operationId: UUID, userId: UUID): HarvestSendOutcome {
+    private suspend fun rebaseLocked(operationId: UUID, userId: UUID, verifiedWorkspace: UUID): HarvestSendOutcome {
         val outbox = database.syncOutboxDao()
         val op = outbox.findById(operationId) ?: return HarvestSendOutcome.REJECTED
         if (op.entityType != SyncEntityType.HARVEST || op.status != OutboxStatus.BLOCKED ||
             op.lastErrorCode != HarvestCodes.AUTO_DAY_EXISTS || op.accountId != userId.toString()) return HarvestSendOutcome.REJECTED
         val envelope = op.payloadJson?.let(::parseHarvestEnvelope) ?: return HarvestSendOutcome.REJECTED
+        if (envelope.issuer != issuer) return HarvestSendOutcome.REJECTED
         val match = AUDIT.matchEntire(op.lastErrorMessage ?: "") ?: return HarvestSendOutcome.RETAINED
         val canonical = UUID.fromString(match.groupValues[1])
         val canonicalVersion = match.groupValues[2].toLongOrNull() ?: return HarvestSendOutcome.RETAINED
         val losing = database.harvestDao().findById(op.entityId) ?: return HarvestSendOutcome.REJECTED
+        // The ownership was verified for THIS workspace; a day that moved meanwhile is not covered by it.
+        if (losing.workspaceId != verifiedWorkspace) return HarvestSendOutcome.NOT_AUTHORIZED
         if (envelope.kind != HarvestKind.CREATE || losing.dayOrigin != AUTO_DAY || losing.metadata.remoteVersion != null ||
             losing.metadata.deletedAt != null || canonical == losing.id) return HarvestSendOutcome.RETAINED
         database.harvestDao().findById(canonical)?.let { existing ->
@@ -329,9 +345,15 @@ internal class HarvestSendCoordinator(
         ) return HarvestSendOutcome.RETAINED
         val pesadas = database.deliveryDao().listAllForHarvest(losing.id)
         val markers = pesadas.associateWith { outbox.listForEntity(SyncEntityType.DELIVERY, it.id) }
+        // #808 hardening: EVERY Pesada keeps a guaranteed way out. One with no outbox operation (`any` over an
+        // empty list was vacuously safe) or with any marker that is not an unsent, never-prepared, frozen
+        // CREATE/UPDATE of this account is never moved: RETAINED, nothing mutated.
         val unsafe = pesadas.any { pesada ->
-            pesada.metadata.remoteVersion != null || markers.getValue(pesada).any { marker ->
+            val own = markers.getValue(pesada)
+            pesada.metadata.remoteVersion != null || own.isEmpty() || own.any { marker ->
                 marker.status != OutboxStatus.PENDING || marker.attemptCount != 0 || marker.payloadVersion !in setOf(2, 3) ||
+                    marker.payloadJson == null || marker.operation !in setOf(OutboxOperation.CREATE, OutboxOperation.UPDATE) ||
+                    (marker.accountId != null && marker.accountId != userId.toString()) ||
                     database.deliveryDispatchPrepareDao().findByOperation(marker.id) != null
             }
         }
