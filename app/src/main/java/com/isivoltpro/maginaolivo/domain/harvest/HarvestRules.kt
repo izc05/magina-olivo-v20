@@ -65,6 +65,13 @@ data class Harvest(
      * false for a Jornada recorded by hand, whose kilos are the farmer's own figure.
      */
     val automatic: Boolean = false,
+    /**
+     * CR-010 amendment J (J-D2): for a hand-recorded Jornada, the kilos of the live Pesadas linked to it, shown apart
+     * as an informative figure; never added to or replacing [totalGrams]. Null when none is linked or for a day.
+     */
+    val linkedPesadasGrams: Long? = null,
+    /** CR-010 amendment J (J-D3): its kilos may have been rewritten by the earlier rule; retained for review. */
+    val retainedForReview: Boolean = false,
 ) {
     val allocatedGrams: Long?
         get() = checkedNonNegativeSum(

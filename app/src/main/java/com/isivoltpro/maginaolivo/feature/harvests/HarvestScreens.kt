@@ -1062,6 +1062,20 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
             )
         }
     }
+    // CR-010 amendment J: attributed kilos shown apart from the ones without an exact Parcel.
+    harvest.allocatedGrams?.takeIf { it > 0 && harvest.allocationMode != HarvestAllocationMode.EXACT }?.let { attributed ->
+        Text("Atribuidos a parcelas: ${Weight.format(attributed)}", style = MaterialTheme.typography.bodyMedium,
+            color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("harvest-attributed"))
+    }
+    if (!harvest.automatic) harvest.linkedPesadasGrams?.let { grams ->
+        Text("Pesadas enlazadas: ${Weight.format(grams)} (informativo, no se suman a los kilos anotados)",
+            style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText,
+            modifier = Modifier.testTag("harvest-linked-pesadas"))
+    }
+    if (harvest.retainedForReview) {
+        Text("Esta jornada se ha retenido para revisión: sus kilos podrían haberse recalculado automáticamente.",
+            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("harvest-retained-review"))
+    }
     if (harvest.allocationMode != HarvestAllocationMode.EXACT) {
         Text(
             "Sin repartir entre parcelas: ${harvest.unallocatedGrams?.let(Weight::format) ?: "No disponible"}",

@@ -53,6 +53,10 @@ scripts/local-qa/run-isolated-ports.sh g26-delivery-delete 563
 
 **Lo que no cambia:** el `project_id` único, la limpieza con `supabase stop --no-backup`, los diagnósticos y la aceptación de solo proyectos locales son los del runner.
 
+**Límites del prefijo:** de 100 a 655 (nunca 543), para que los puertos no pasen de 65535.
+
+**Git Bash:** el script mantiene literal el `-subj '/CN=…'` de `openssl` (`MSYS2_ARG_CONV_EXCL`), que los runners HTTPS necesitan.
+
 **Alcance:**
 - sirve para los 24 runners que arrancan Supabase;
 - `g26-parcel-mutation-android` (solo Room) no lo necesita;

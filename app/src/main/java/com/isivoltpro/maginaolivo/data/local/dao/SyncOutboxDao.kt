@@ -380,6 +380,24 @@ interface SyncOutboxDao {
     suspend fun blockDeliveryDelete(operationId: UUID, accountId: String, payloadJson: String, code: String, message: String?,
         nowEpochMillis: Long): Int
 
+    /** CR-010 amendment J (J-D3): Jornadas with an operation retained under [code] (e.g. MANUAL_KILOS_REVIEW). */
+    @Query("""
+        SELECT DISTINCT entity_id FROM sync_outbox
+        WHERE entity_type = 'HARVEST' AND status = 'BLOCKED' AND last_error_code = :code AND entity_id IN (:harvestIds)
+    """)
+    suspend fun listBlockedHarvests(code: String, harvestIds: List<UUID>): List<UUID>
+
+    /**
+     * #808 gate J: an explicit re-evaluation reopens ONLY a staged Jornada operation retained as exactly :code
+     * (HARVEST_CONFLICT:HARVEST_HAS_DEPENDENTS), with its UUID, account and frozen bytes; nothing else moves.
+     */
+    @Query("""
+        UPDATE sync_outbox SET status = 'PENDING', last_error_code = NULL, last_error_message = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'HARVEST' AND status = 'BLOCKED' AND last_error_code = :code
+          AND account_id = :accountId AND payload_json IS NOT NULL
+    """)
+    suspend fun reopenRetainedHarvest(operationId: UUID, accountId: String, code: String, nowEpochMillis: Long): Int
+
     /** #808 audit: a retained HARVEST operation changes code only from the exact expected one. */
     @Query("""
         UPDATE sync_outbox SET last_error_code = :to, last_error_message = :message, updated_at = :nowEpochMillis

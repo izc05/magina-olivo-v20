@@ -57,6 +57,13 @@ internal enum class HarvestSendOutcome {
      * the split, so the Jornada is never sent incomplete: retained with zero RPC, bytes and UUID intact.
      */
     MANUAL_PARCELS_UNSUPPORTED,
+    /**
+     * #808 gate J (J-D3): a hand-recorded Jornada whose kilos may have been rewritten by the earlier rule (they equal its
+     * linked Pesadas and differ from the last confirmed value, or nothing confirmed exists): retained, never sent.
+     */
+    MANUAL_KILOS_REVIEW,
+    /** #808 gate J: a Jornada delete waits until every delete of its Pesadas is settled (Pesadas before Jornada). */
+    WAITING_DEPENDENTS,
     CONFLICT,
     REVIEW_HELD,
     OUTCOME_UNKNOWN,
@@ -72,6 +79,10 @@ internal object HarvestCodes {
     const val AUTO_DAY_EXISTS = "AUTO_DAY_EXISTS"
     const val AUTO_DAY_REBASED = "AUTO_DAY_REBASED"
     const val MANUAL_PARCELS_UNSUPPORTED = "MANUAL_PARCELS_UNSUPPORTED"
+    /** #808 gate J (J-D3): retained for review; releasing it needs an explicit procedure not authorized in gate J. */
+    const val MANUAL_KILOS_REVIEW = "MANUAL_KILOS_REVIEW"
+    /** The server refused a Jornada delete while it still had live Pesadas. */
+    const val HAS_DEPENDENTS = "HARVEST_CONFLICT:HARVEST_HAS_DEPENDENTS"
     const val RESOLVED_DERIVED_ONLY = "RESOLVED_DERIVED_ONLY"
     const val RESOLVED_ADOPTED_NOOP = "RESOLVED_ADOPTED_NOOP"
     const val RESOLVED_NEVER_SENT = "RESOLVED_NEVER_SENT"
@@ -136,7 +147,14 @@ internal class HarvestSendCoordinator(
             return if (outbox.resolveUnstagedHarvest(op.id, HarvestCodes.MANUAL_PARCELS_UNSUPPORTED, at) == 1)
                 HarvestSendOutcome.MANUAL_PARCELS_UNSUPPORTED else HarvestSendOutcome.REJECTED
         }
+        // Gate J (J-D3), after authorization and consent: never stage typed kilos that may have been rewritten.
+        if (day.metadata.deletedAt == null && manualKilosSuspect(day)) {
+            return if (outbox.resolveUnstagedHarvest(op.id, HarvestCodes.MANUAL_KILOS_REVIEW, at) == 1)
+                HarvestSendOutcome.MANUAL_KILOS_REVIEW else HarvestSendOutcome.REJECTED
+        }
         val remote = day.metadata.remoteVersion
+        // Gate J: Pesadas before Jornada. A delete is not even frozen while a delete of its Pesadas is unsettled.
+        if (day.metadata.deletedAt != null && remote != null && dependentsUnsettled(day)) return HarvestSendOutcome.WAITING_DEPENDENTS
         val envelope = when {
             remote == null && day.metadata.deletedAt != null ->
                 return resolve(op, HarvestCodes.RESOLVED_NEVER_SENT, at)
@@ -194,6 +212,16 @@ internal class HarvestSendCoordinator(
                     previous, now().toEpochMilli()) == 1) HarvestSendOutcome.MANUAL_PARCELS_UNSUPPORTED
                 else HarvestSendOutcome.REJECTED
         }
+        // Gate J (J-D3), before any network call: an operation frozen before the rule changed is retained as it is.
+        if (envelope.kind != HarvestKind.DELETE && manualKilosSuspect(day)) {
+            if (account.state.value.userId?.toString() != accountId) return HarvestSendOutcome.NOT_AUTHORIZED
+            val previous = if (op.status == OutboxStatus.FAILED) "previous=" + op.lastErrorCode + ";attempts=" + op.attemptCount else null
+            return if (database.syncOutboxDao().blockHarvest(op.id, accountId, payload, HarvestCodes.MANUAL_KILOS_REVIEW,
+                    previous, now().toEpochMilli()) == 1) HarvestSendOutcome.MANUAL_KILOS_REVIEW
+                else HarvestSendOutcome.REJECTED
+        }
+        // Gate J: Pesadas before Jornada, also for a delete frozen earlier. Nothing is sent or changed.
+        if (envelope.kind == HarvestKind.DELETE && dependentsUnsettled(day)) return HarvestSendOutcome.WAITING_DEPENDENTS
         if (!consented(UUID.fromString(accountId), day.workspaceId, farmId)) return HarvestSendOutcome.CONSENT_REQUIRED
         return try {
             lease.withActiveRequest {
@@ -316,6 +344,60 @@ internal class HarvestSendCoordinator(
     private suspend fun block(op: SyncOutboxEntity, code: String, message: String?, outcome: HarvestSendOutcome) =
         if (database.syncOutboxDao().blockHarvest(op.id, op.accountId!!, op.payloadJson!!, code, message, now().toEpochMilli()) == 1)
             outcome else HarvestSendOutcome.REJECTED
+
+    /**
+     * #808 gate J: explicit re-evaluation of a Jornada delete the server refused with HARVEST_HAS_DEPENDENTS. Only when
+     * every delete of its Pesadas is now settled is the SAME operation (UUID, account, frozen bytes) reopened and sent
+     * once through [send]; a stale expected version is then refused by the server's CAS, never applied blindly.
+     * Never automatic: no scheduler or worker calls it. While a dependent is unsettled: WAITING_DEPENDENTS, nothing moves.
+     */
+    suspend fun reevaluateDependents(operationId: UUID, lease: DeliveryDispatchLease): HarvestSendOutcome {
+        lease.requireOpen()
+        val op = database.syncOutboxDao().findById(operationId) ?: return HarvestSendOutcome.REJECTED
+        val accountId = op.accountId ?: return HarvestSendOutcome.REJECTED
+        if (op.entityType != SyncEntityType.HARVEST || op.status != OutboxStatus.BLOCKED || op.lastErrorCode != HarvestCodes.HAS_DEPENDENTS)
+            return HarvestSendOutcome.REJECTED
+        val envelope = op.payloadJson?.let(::parseHarvestEnvelope) ?: return HarvestSendOutcome.REJECTED
+        if (envelope.kind != HarvestKind.DELETE || envelope.issuer != issuer) return HarvestSendOutcome.REJECTED
+        if (account.state.value.userId?.toString() != accountId) return HarvestSendOutcome.NOT_AUTHORIZED
+        val day = database.harvestDao().findById(op.entityId) ?: return HarvestSendOutcome.REJECTED
+        if (dependentsUnsettled(day)) return HarvestSendOutcome.WAITING_DEPENDENTS
+        if (database.syncOutboxDao().reopenRetainedHarvest(op.id, accountId, HarvestCodes.HAS_DEPENDENTS, now().toEpochMilli()) != 1)
+            return HarvestSendOutcome.REJECTED
+        return send(operationId, lease)
+    }
+
+    /**
+     * Gate J (J-D3): typed kilos that may have been rewritten by the earlier Phase 19B rule. A hand-recorded Jornada with
+     * live linked Pesadas whose kilos equal their sum is suspect unless the last confirmed value is exactly those kilos.
+     */
+    private suspend fun manualKilosSuspect(day: HarvestEntity): Boolean {
+        if (day.dayOrigin == AUTO_DAY) return false
+        val linked = database.deliveryDao().listLiveForHarvest(day.id)
+        if (linked.isEmpty()) return false
+        val sum = runCatching { linked.fold(0L) { total, pesada -> Math.addExact(total, pesada.netGrams) } }.getOrNull() ?: return true
+        if (day.weightGrams != sum) return false
+        val confirmed = database.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, day.id)
+            .filter { it.status == OutboxStatus.CONFIRMED && it.payloadJson != null }
+            .mapNotNull { parseHarvestEnvelope(it.payloadJson!!) }.filter { it.harvest != null }
+            .maxByOrNull { it.localVersion }
+        val confirmedKilos = confirmed?.harvest?.get("weightGrams").number()
+        return confirmedKilos == null || confirmedKilos != day.weightGrams
+    }
+
+    /**
+     * Gate J: true while any Pesada of the Jornada (live or deleted) is live, has an operation that is not settled, or an
+     * unsettled PREPARE. Settled = CONFIRMED, or a delete resolved without a request because it never reached the server.
+     */
+    private suspend fun dependentsUnsettled(day: HarvestEntity): Boolean =
+        database.deliveryDao().listAllForHarvest(day.id).any { pesada ->
+            pesada.metadata.deletedAt == null ||
+                database.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, pesada.id).any { op ->
+                    !(op.status == OutboxStatus.CONFIRMED ||
+                        (op.status == OutboxStatus.BLOCKED && op.lastErrorCode == DeliveryDeleteCodes.RESOLVED_NEVER_SENT))
+                } ||
+                database.deliveryDispatchPrepareDao().listForDelivery(pesada.id).any { it.settledAt == null }
+        }
 
     /**
      * After AUTO_DAY_EXISTS: moves this device's unsent dependents onto the canonical AUTO_DAY, in ONE

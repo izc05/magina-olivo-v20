@@ -12,6 +12,9 @@ import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
+/** Sum of the live Pesadas linked to one Jornada (CR-010 amendment J). */
+data class HarvestLinkedGrams(val harvestId: UUID, val grams: Long)
+
 @Dao
 interface DeliveryDao {
     @Upsert suspend fun upsert(delivery: DeliveryEntity)
@@ -68,6 +71,13 @@ interface DeliveryDao {
 
     @Query("SELECT * FROM deliveries WHERE harvest_id = :harvestId AND deleted_at IS NULL")
     suspend fun listLiveForHarvest(harvestId: UUID): List<DeliveryEntity>
+
+    /** CR-010 amendment J (J-D2): kilos of the live Pesadas linked to each Jornada, an informative figure only. */
+    @Query("""
+        SELECT harvest_id AS harvestId, SUM(net_grams) AS grams FROM deliveries
+        WHERE deleted_at IS NULL AND harvest_id IN (:harvestIds) GROUP BY harvest_id
+    """)
+    suspend fun sumLiveNetByHarvest(harvestIds: List<UUID>): List<HarvestLinkedGrams>
 
     /** #808 rebase: every Pesada of a Jornada, deleted ones included. */
     @Query("SELECT * FROM deliveries WHERE harvest_id = :harvestId")

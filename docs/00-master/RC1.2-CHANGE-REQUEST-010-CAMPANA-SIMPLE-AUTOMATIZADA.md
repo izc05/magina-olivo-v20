@@ -627,9 +627,11 @@ non-destructive; `RoomMigrationTest` covers 16→17 and 17→18.
    (Notebook quick actions, Registrar hoy, labels) treats ACTIVE and HARVEST alike. Existing HARVEST
    rows keep working unmigrated and read as «Activa».
 2. **Automatic day.** The Pesada form stops defaulting to «Sin jornada»; saving finds or creates the
-   day by Farm + Campaign + date. The day's origin is the **union** of its Pesadas' Parcels, **except**
-   that any Farm-level Pesada (no Parcel chosen) makes the day's origin **farm-wide / unallocated**;
-   exact attribution stays on each individual Pesada and is never inferred for the day. Editing a
+   day by Farm + Campaign + date. **Superseded by amendment J (#808, 2026-11-03), below:** the day's
+   Parcel split follows the server rule (`derive_auto_day`); a Farm-level Pesada no longer makes the day
+   farm-wide. The original text was: "the day's origin is the union of its Pesadas' Parcels, except that
+   any Farm-level Pesada makes the day's origin farm-wide / unallocated; exact attribution stays on each
+   individual Pesada and is never inferred for the day." Editing a
    Pesada's date moves it to the right day (A1 applies to the day it leaves).
 3. **Legacy Jornadas are never reused.** Automatic linking only ever finds or creates an `AUTO_DAY`
    (oldest live `AUTO_DAY` of that Farm/Campaign/date, else a new one). A new Pesada is **never**
@@ -653,3 +655,38 @@ non-destructive; `RoomMigrationTest` covers 16→17 and 17→18.
 4. Pricing preferences + calculated costs through the ledger (A3, Room v18).
 5. Campaign dashboard and charts (§12).
 6. Targeted visual refinement of Campaign/Recolección/Cuaderno (§13).
+
+## Amendment J (#808 gate J, owner decisions J-D1/J-D2/J-D3, 2026-11-03)
+
+Supersedes implementation note 2 (day origin) and makes note 3 explicit for linked Pesadas. Product rules,
+applied identically on Android and on the server, so that a second device verifies the same kilos and split.
+
+### J-D1. Parcel split of an automatic day (`AUTO_DAY`)
+
+- The day's **total kilos** are always the exact sum of its live Pesadas. Nothing is lost or re-weighted.
+- Per Parcel, the day holds:
+  - **EXACT** with the **sum** of the Pesadas' exact kilos for that Parcel, only when **every** live Pesada
+    share of that Parcel is EXACT;
+  - otherwise **UNALLOCATED** with no kilos (the Parcel participated, its exact kilos are unknown).
+- A Pesada **without Parcels** adds its kilos to the day total but **no Parcel**: it is never "the whole Farm".
+- No split is invented: no proportional, equal or presumed kilos per Parcel, ever (§3 truth rule).
+- The UI distinguishes **kilos attributed** (sum of EXACT Parcels) from **kilos not attributed**
+  (day total minus attributed kilos), e.g. «1.500 kg atribuidos a parcelas · 400 kg sin atribuir».
+- Migration: historical days are **not rewritten** on upgrade. A day takes the new split the next time one
+  of its Pesadas changes, or through an explicit, idempotent recomputation that creates no outbox
+  operation (derived kilos are not a client payload).
+
+### J-D2. Hand-recorded Jornadas (MANUAL)
+
+- A MANUAL Jornada keeps the kilos the farmer typed. Linking, editing or deleting a Pesada never overwrites,
+  sums or zeroes them, and never queues a Jornada update.
+- When Pesadas are linked to it (legacy links from before CR-010, or received ones), their kilos are shown as a
+  **separate informative figure** («Pesadas enlazadas: 2.500 kg»), never added to or replacing the typed kilos.
+
+### J-D3. Historical MANUAL values with signs of alteration
+
+- A MANUAL Jornada whose kilos may have been rewritten by the earlier rule (they equal the sum of its linked
+  Pesadas and differ from the last confirmed value, or no confirmed value exists to compare) is **retained for
+  review**: nothing is corrected or sent automatically; evidence, receipts and outbox are preserved.
+- Releasing such a Jornada requires an explicit, verifiable procedure, **not authorized in gate J**.
+

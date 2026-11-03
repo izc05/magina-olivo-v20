@@ -617,6 +617,71 @@ class DeliveryV3HttpsEphemeralTest {
             "stale=${held.lastErrorCode} weight=${remoteJornada(jornada).getLong("weight")}")
     }
 
+    /**
+     * #808 gate J against the real server: the device's AUTO_DAY split (CR-010 amendment J) equals the server's derived
+     * split after creates and deletes; the Jornada delete waits for the deletes of its Pesadas, then applies once.
+     */
+    @Test fun gateJTheDeviceSplitEqualsTheServerAndTheJornadaDeleteWaitsForItsPesadas() = runBlocking<Unit> {
+        val graph = Graph()
+        val owner = device(names[0], "actor", "token", graph, server = true)
+        val before = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofDays(1))
+        val day = LocalDate.now(zone).minusDays(2)
+        val repo = repository(owner, before, HistoricalDeliveryRoute { _, _ -> true })
+        suspend fun exact(net: Long, vararg shares: Pair<UUID, Long?>): SyncOutboxEntity {
+            val draft = DeliveryDraft(farmId = graph.farm, deliveryDate = day, destinationOrganizationId = null,
+                destinationName = "Cooperativa San Isidro", netGrams = net, shares = shares.map { DeliveryShareInput(it.first, it.second) },
+                origin = PesadaOrigin.TREE)
+            val id = (repo.create(draft) as AppResult.Success).value
+            return owner.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, id).single()
+        }
+        val a = exact(1_000_000, graph.active to 600_000L, graph.archived to 400_000L)
+        val b = exact(500_000, graph.archived to null)
+        val jornada = sendJornada(owner, a)
+        for (op in listOf(a, b)) {
+            assertEquals(DispatchOutcome.V3_ACK_AWAITING_HEAD, worker(owner).dispatch(op.id, lease))
+            assertEquals(DispatchOutcome.SYNCED, worker(owner).resolveAwaitingHead(op.id, lease))
+        }
+        fun localSplit() = runBlocking { owner.db.harvestDao().listParcels(jornada).sortedBy { it.parcelId.toString() }
+            .map { Triple(it.parcelId.toString(), it.allocationMode, it.weightGrams) } }
+        fun serverSplit() = remoteJornada(jornada).getJSONArray("split").let { arr -> (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i); Triple(o.getString("parcelId"), o.getString("mode"), if (o.isNull("weight")) null else o.getLong("weight")) } }
+        // EXACT for the Parcel with only exact shares, UNALLOCATED for the one with a share without kilos: same on both.
+        assertEquals(serverSplit(), localSplit())
+        assertEquals(1_500_000L, remoteJornada(jornada).getLong("weight"))
+        assertEquals(1_500_000L, owner.db.harvestDao().findById(jornada)!!.weightGrams)
+        val deletes = DeliveryDeleteCoordinator(owner.db, owner.account, issuer,
+            HttpsDeliveryRpcTransport(config, scope = HttpsDeliveryRpcTransport.RpcScope.DELIVERY_DELETE),
+            { owner.links.ledgerFor(it) }, ServerWorkspaceOwnerVerifier(authorizations, issuer))
+        suspend fun deleteMarker(op: SyncOutboxEntity): SyncOutboxEntity {
+            assertTrue(repo.delete(op.entityId) is AppResult.Success)
+            return owner.db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, op.entityId)
+                .single { it.operation == com.isivoltpro.maginaolivo.data.local.model.OutboxOperation.DELETE }
+        }
+        // Delete the mixed Pesada: both splits follow, the remaining Parcel back to EXACT.
+        val mb = deleteMarker(b)
+        assertEquals(DeliveryDeleteOutcome.STAGED, deletes.stage(mb.id))
+        assertEquals(DeliveryDeleteOutcome.SYNCED, deletes.send(mb.id, lease))
+        assertEquals(serverSplit(), localSplit())
+        assertEquals(1_000_000L, remoteJornada(jornada).getLong("weight"))
+        // The last Pesada goes locally: the empty AUTO_DAY is retired with a DELETE marker that must wait.
+        val ma = deleteMarker(a)
+        val dayMarker = owner.db.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, jornada)
+            .single { it.status == OutboxStatus.PENDING && it.payloadJson == null }
+        assertEquals(HarvestSendOutcome.WAITING_DEPENDENTS, harvests(owner).stage(dayMarker.id))
+        assertEquals(0, remoteJornada(jornada).getInt("deleted"))
+        assertEquals(DeliveryDeleteOutcome.STAGED, deletes.stage(ma.id))
+        assertEquals(DeliveryDeleteOutcome.SYNCED, deletes.send(ma.id, lease))
+        // Server: kilos 0, no split, Jornada alive. Only now the Jornada delete is frozen and applied, once.
+        val empty = remoteJornada(jornada)
+        assertEquals(0L, empty.getLong("weight")); assertEquals(0, empty.getInt("parcels")); assertEquals(0, empty.getInt("deleted"))
+        assertEquals(HarvestSendOutcome.STAGED, harvests(owner).stage(dayMarker.id))
+        assertEquals(HarvestSendOutcome.SYNCED, harvests(owner).send(dayMarker.id, lease))
+        val gone = remoteJornada(jornada)
+        assertEquals(listOf(1, 2), listOf(gone.getInt("deleted"), gone.getInt("version")))
+        assertEquals(2, remote(a.entityId).getInt("receipts")); assertEquals(2, remote(b.entityId).getInt("receipts"))
+        Log.i("G808", "G808-JORNADA-J splitEqual=true deleteWaited=true weight=0 jornadaDeleted=${gone.getInt("deleted")}")
+    }
+
     private fun session(actor: UUID, key: String): AuthSession {
         val token = fixture.getString(key)
         val expiration = JSONObject(String(Base64.getUrlDecoder().decode(token.split('.')[1]))).getLong("exp")

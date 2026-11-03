@@ -11,6 +11,7 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.harvest.AUTO_DAY
+import com.isivoltpro.maginaolivo.domain.harvest.AutoDaySplit
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import java.time.Instant
 import java.time.LocalDate
@@ -67,27 +68,18 @@ internal class JornadaLedger(
      * none left it goes back to «Kg pendientes de pesada», and it is removed only when nothing
      * else — jornales, equipment, expenses or attachments — still belongs to it.
      *
-     * A Jornada recorded by hand keeps the Phase 19B rule: with Pesadas its kilos are their sum.
-     * Once a Pesada linked, no typed figure is left, so when the last one leaves it too goes back
-     * to 0 («Kg pendientes de pesada»); A2 would otherwise show those kilos as hand-typed history.
+     * A Jornada recorded by hand (MANUAL) is never touched here (CR-010 amendment J, J-D2): its typed kilos and
+     * split are the farmer's, whatever Pesadas are linked to it. (Before amendment J its kilos followed the sum of
+     * its Pesadas, the Phase 19B rule; values altered that way are retained for review by the sender, J-D3.)
      */
     suspend fun reconcile(harvestId: UUID?, now: Instant) {
         if (harvestId == null) return
         val harvest = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null } ?: return
-        val linked = database.deliveryDao().listLiveForHarvest(harvestId)
-        if (harvest.dayOrigin == AUTO_DAY) {
-            reconcileAutoDay(harvest, linked, now)
-            return
-        }
-        val sum = linkedGrams(linked)
-        if (sum == harvest.weightGrams) return
-        database.harvestDao().upsert(harvest.copy(weightGrams = sum, metadata = harvest.metadata.next(now)))
-        val parcels = database.harvestDao().listParcels(harvestId)
-        parcels.singleOrNull()?.takeIf { it.allocationMode == HarvestAllocation.EXACT.name }?.let { only ->
-            val share = if (sum > 0) only.copy(weightGrams = sum) else only.copy(weightGrams = null, allocationMode = HarvestAllocation.UNALLOCATED.name)
-            database.harvestDao().upsertParcels(listOf(share))
-        }
-        database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, harvestId, OutboxOperation.UPDATE, now)
+        // CR-010 amendment J (J-D2): a hand-recorded Jornada keeps the kilos and split the farmer typed. Linking,
+        // editing or deleting a Pesada never overwrites, sums or zeroes them and never queues a Jornada update; the
+        // linked Pesadas are only an informative figure.
+        if (harvest.dayOrigin != AUTO_DAY) return
+        reconcileAutoDay(harvest, database.deliveryDao().listLiveForHarvest(harvestId), now)
     }
 
     /**
@@ -147,32 +139,38 @@ internal class JornadaLedger(
     }
 
     /**
-     * CR-010 (note 2): a day's origin is the union of its Pesadas' Parcels, except that one
-     * Pesada from the whole Farm (no Parcel chosen) makes the day farm-wide. With no Pesada the
-     * origin is not determined: no Parcel rows at all, never every Parcel (#458). Always without
-     * a split: exact kilos stay on each Pesada and are never inferred for the day.
+     * CR-010 amendment J (J-D1): the day's Parcels follow the server rule ([AutoDaySplit], as `derive_auto_day`):
+     * per Parcel, EXACT with the sum only when every live share is EXACT, else UNALLOCATED without kilos; a Pesada
+     * without Parcels adds no Parcel. With no Pesada the origin is not determined: no Parcel rows at all (#458).
      *
-     * Only the difference is written: a Parcel already in the day keeps its row, id and
-     * `parcelNameAtHarvest`; a Parcel joining takes its current name; one leaving loses only its row.
+     * Only the difference is written: a Parcel already in the day keeps its row, id and `parcelNameAtHarvest`; a
+     * Parcel joining takes its current name; one leaving loses only its row. Never an outbox operation by itself.
      */
     private suspend fun replaceDayParcels(day: HarvestEntity, linked: List<DeliveryEntity>, now: Instant): Boolean {
         val campaignId = day.campaignId ?: return false
-        val origins = linked.map { pesada -> database.deliveryDao().listParcels(pesada.id).map { it.parcelId } }
-        val wanted: Set<UUID> = when {
-            origins.isEmpty() -> emptySet()
-            origins.any { it.isEmpty() } -> database.harvestDao().listCampaignParcels(campaignId).map { it.parcelId }.toSet()
-            else -> origins.flatten().toSet()
+        val shares = linked.flatMap { pesada ->
+            database.deliveryDao().listParcels(pesada.id).map { share ->
+                AutoDaySplit.Share(share.parcelId,
+                    if (share.allocationMode == HarvestAllocation.EXACT.name) HarvestAllocation.EXACT else HarvestAllocation.UNALLOCATED,
+                    share.weightGrams)
+            }
         }
+        val wanted = AutoDaySplit.derive(shares).associateBy { it.parcelId }
         val current = database.harvestDao().listParcels(day.id)
         val removed = current.filter { it.parcelId !in wanted }
-        val reset = current.filter {
-            it.parcelId in wanted && (it.allocationMode != HarvestAllocation.UNALLOCATED.name || it.weightGrams != null)
-        }.map { it.copy(weightGrams = null, allocationMode = HarvestAllocation.UNALLOCATED.name, metadata = it.metadata.next(now)) }
-        val missing = wanted - current.map { it.parcelId }.toSet()
-        val added = if (missing.isEmpty()) emptyList() else dayParcels(day.id, day.workspaceId, campaignId, missing, now)
-        if (removed.isEmpty() && reset.isEmpty() && added.isEmpty()) return false
+        val changed = current.mapNotNull { row ->
+            val target = wanted[row.parcelId] ?: return@mapNotNull null
+            if (row.allocationMode == target.allocation.name && row.weightGrams == target.weightGrams) null
+            else row.copy(weightGrams = target.weightGrams, allocationMode = target.allocation.name, metadata = row.metadata.next(now))
+        }
+        val missing = wanted.keys - current.map { it.parcelId }.toSet()
+        val added = if (missing.isEmpty()) emptyList() else dayParcels(day.id, day.workspaceId, campaignId, missing, now).map { row ->
+            val target = wanted.getValue(row.parcelId)
+            row.copy(weightGrams = target.weightGrams, allocationMode = target.allocation.name)
+        }
+        if (removed.isEmpty() && changed.isEmpty() && added.isEmpty()) return false
         if (removed.isNotEmpty()) database.harvestDao().deleteParcelsById(removed.map { it.id })
-        if (reset.isNotEmpty() || added.isNotEmpty()) database.harvestDao().upsertParcels(reset + added)
+        if (changed.isNotEmpty() || added.isNotEmpty()) database.harvestDao().upsertParcels(changed + added)
         return true
     }
 

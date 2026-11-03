@@ -220,24 +220,18 @@ class OfflineFirstHarvestRepository(
             }
             if (current.dayOrigin == AUTO_DAY) return@inTransaction updateAutoDay(current, draft)
             validate(draft, current.workspaceId)?.let { return@inTransaction it }
-            // Phase 19B: a Jornada with Pesadas takes its kilos from them, never from the form.
+            // CR-010 amendment J (J-D2): a hand-recorded Jornada keeps the kilos and split typed in its form, even with
+            // linked Pesadas (their kilos are only an informative figure). The date rule still holds: never after them.
             val pesadas = database.deliveryDao().listLiveForHarvest(id)
-            val pesadaGrams = pesadas.sumOf { it.netGrams }
-            var shares = draft.shares
-            if (pesadas.isNotEmpty()) {
-                if (shares.size > 1 && shares.any { it.weightGrams != null }) {
-                    return@inTransaction AppResult.Failure(AppError.Validation("parcels", "exact_with_pesadas"))
-                }
-                if (pesadas.any { it.deliveryDate.isBefore(draft.harvestDate) }) {
-                    return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "after_pesadas"))
-                }
-                shares = shares.map { if (it.weightGrams != null) it.copy(weightGrams = pesadaGrams) else it }
+            val shares = draft.shares
+            if (pesadas.any { it.deliveryDate.isBefore(draft.harvestDate) }) {
+                return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "after_pesadas"))
             }
             val now = clock.nowInstant()
             database.harvestDao().upsert(
                 current.copy(
                     harvestDate = draft.harvestDate,
-                    weightGrams = if (pesadas.isEmpty()) draft.totalGrams!! else pesadaGrams,
+                    weightGrams = draft.totalGrams!!,
                     notes = draft.notes.normalized(),
                     collectionMethod = draft.collectionMethod?.name,
                     workerCount = draft.workerCount,
@@ -398,6 +392,12 @@ class OfflineFirstHarvestRepository(
             .associateWith { database.farmDao().findById(it)?.name }
         val campaigns = mapNotNull { it.harvest.campaignId }.distinct()
             .associateWith { database.campaignDao().findById(it) }
+        // CR-010 amendment J: linked-Pesada kilos (informative) and review holds, only for hand-recorded Jornadas.
+        val manualIds = filter { it.harvest.dayOrigin != AUTO_DAY }.map { it.harvest.id }
+        val linked = if (manualIds.isEmpty()) emptyMap()
+            else database.deliveryDao().sumLiveNetByHarvest(manualIds).associate { it.harvestId to it.grams }
+        val retained = if (manualIds.isEmpty()) emptySet()
+            else database.syncOutboxDao().listBlockedHarvests(MANUAL_KILOS_REVIEW, manualIds).toSet()
         return map { row ->
             val harvest = row.harvest
             val campaign = harvest.campaignId?.let(campaigns::get)
@@ -432,6 +432,8 @@ class OfflineFirstHarvestRepository(
                 campaignName = campaign?.name,
                 editable = campaign != null && campaign.status in RUNNING,
                 automatic = harvest.dayOrigin == AUTO_DAY,
+                linkedPesadasGrams = linked[harvest.id],
+                retainedForReview = harvest.id in retained,
             )
         }
     }
@@ -447,5 +449,7 @@ class OfflineFirstHarvestRepository(
 
     private companion object {
         val RUNNING = setOf(CampaignStatus.ACTIVE, CampaignStatus.HARVEST)
+        /** Same code as HarvestCodes.MANUAL_KILOS_REVIEW (sync layer); kept literal so this layer does not depend on it. */
+        const val MANUAL_KILOS_REVIEW = "MANUAL_KILOS_REVIEW"
     }
 }

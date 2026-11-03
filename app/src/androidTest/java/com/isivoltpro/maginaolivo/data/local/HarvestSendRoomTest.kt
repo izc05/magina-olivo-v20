@@ -528,8 +528,14 @@ class HarvestSendRoomTest {
         }
     }
 
+    /** Settles the local delete of a Pesada as the R1-a sender would for one that never reached the server. */
+    private fun settlePesadaDelete(phone: Phone, pesadaId: UUID, status: String = "BLOCKED", code: String? = "DELETE_RESOLVED_NEVER_SENT") =
+        phone.db.openHelper.writableDatabase.execSQL(
+            "UPDATE sync_outbox SET status = ?, last_error_code = ? WHERE entity_type = 'DELIVERY' AND entity_id = ? AND operation = 'DELETE'",
+            arrayOf<Any?>(status, code, pesadaId.toString()))
+
     @Test
-    fun aDeleteIsSentOnlyAsALogicalDeleteAndIsRetainedWhileTheServerHasPesadas() = runBlocking<Unit> {
+    fun aDeleteWaitsForItsPesadasIsRetainedWhileTheServerHasThemAndIsReevaluatedExplicitly() = runBlocking<Unit> {
         val phone = Phone("hv-delete")
         val pesada = phone.pesada()
         val server = FakeServer()
@@ -540,13 +546,87 @@ class HarvestSendRoomTest {
             assertNotNull(phone.db.harvestDao().findById(jornada.id)!!.metadata.deletedAt)
             val marker = phone.db.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, jornada.id)
                 .single { it.status == OutboxStatus.PENDING && it.payloadJson == null }
+            // Gate J: Pesadas before Jornada. While the Pesada delete is unsettled nothing is frozen or sent.
+            val calls = server.names.size
+            assertEquals(HarvestSendOutcome.WAITING_DEPENDENTS, phone.sender(server).stage(marker.id))
+            assertEquals(marker, phone.db.syncOutboxDao().findById(marker.id))
+            assertEquals(calls, server.names.size)
+            settlePesadaDelete(phone, pesada.entityId)
             assertEquals(HarvestSendOutcome.STAGED, phone.sender(server).stage(marker.id))
-            val envelope = parseHarvestEnvelope(phone.db.syncOutboxDao().findById(marker.id)!!.payloadJson!!)!!
+            val staged = phone.db.syncOutboxDao().findById(marker.id)!!
+            val envelope = parseHarvestEnvelope(staged.payloadJson!!)!!
             assertEquals(HarvestKind.DELETE, envelope.kind); assertEquals(1L, envelope.expectedVersion)
+            // The server still holds a Pesada (another device): refused, retained, never deleted.
             server.withPesadas += jornada.id
             assertEquals(HarvestSendOutcome.CONFLICT, phone.sender(server).send(marker.id, lease))
-            assertEquals(HarvestCodes.CONFLICT_PREFIX + "HARVEST_HAS_DEPENDENTS", phone.db.syncOutboxDao().findById(marker.id)!!.lastErrorCode)
+            assertEquals(HarvestCodes.HAS_DEPENDENTS, phone.db.syncOutboxDao().findById(marker.id)!!.lastErrorCode)
             assertTrue("Retenida, no se borra", server.days.getValue(jornada.id).deleted.not())
+            // A local dependent unsettled again: the re-evaluation waits, nothing moves, zero RPC.
+            settlePesadaDelete(phone, pesada.entityId, status = "PENDING", code = null)
+            val held = phone.db.syncOutboxDao().findById(marker.id)!!
+            val before = server.names.size
+            assertEquals(HarvestSendOutcome.WAITING_DEPENDENTS, phone.sender(server).reevaluateDependents(marker.id, lease))
+            assertEquals(held, phone.db.syncOutboxDao().findById(marker.id))
+            assertEquals(before, server.names.size)
+            // Settled locally but still refused by the server: retained again with the same UUID and bytes.
+            settlePesadaDelete(phone, pesada.entityId)
+            assertEquals(HarvestSendOutcome.CONFLICT, phone.sender(server).reevaluateDependents(marker.id, lease))
+            assertEquals(staged.payloadJson, phone.db.syncOutboxDao().findById(marker.id)!!.payloadJson)
+            // The server's Pesada is gone: the SAME operation applies once; nothing is re-frozen.
+            server.withPesadas -= jornada.id
+            assertEquals(HarvestSendOutcome.SYNCED, phone.sender(server).reevaluateDependents(marker.id, lease))
+            val done = phone.db.syncOutboxDao().findById(marker.id)!!
+            assertEquals(OutboxStatus.CONFIRMED, done.status); assertEquals(staged.payloadJson, done.payloadJson)
+            assertTrue(server.days.getValue(jornada.id).deleted)
+            assertEquals(1, server.receipts.keys.count { it == marker.id })
+            // Only a delete retained as HAS_DEPENDENTS can be re-evaluated.
+            assertEquals(HarvestSendOutcome.REJECTED, phone.sender(server).reevaluateDependents(marker.id, lease))
+        }
+    }
+
+    /** Links a Pesada to a hand-recorded Jornada as a pre-CR-010 device did, and optionally rewrites its kilos. */
+    private suspend fun legacyLink(phone: Phone, manual: UUID, pesada: SyncOutboxEntity, kilos: Long? = null) {
+        phone.db.deliveryDao().findById(pesada.entityId)!!.let { phone.db.deliveryDao().upsert(it.copy(harvestId = manual)) }
+        if (kilos != null) phone.db.harvestDao().findById(manual)!!.let { phone.db.harvestDao().upsert(it.copy(weightGrams = kilos)) }
+    }
+
+    @Test
+    fun aManualJornadaWhoseKilosMayHaveBeenRewrittenIsRetainedForReviewWithZeroRpc() = runBlocking<Unit> {
+        val phone = Phone("hv-j-review")
+        val server = FakeServer()
+        lease().use { lease ->
+            // Kilos equal to its linked Pesadas and nothing confirmed to compare: ambiguous, retained.
+            val ambiguous = manualDay(phone, split = false)
+            legacyLink(phone, ambiguous, phone.pesada(net = 2_800_000), kilos = 2_800_000)
+            val m1 = phone.unboundMarker(ambiguous)
+            val day1 = phone.db.harvestDao().findById(ambiguous)
+            assertEquals(HarvestSendOutcome.MANUAL_KILOS_REVIEW, phone.sender(server).stage(m1.id))
+            val held = phone.db.syncOutboxDao().findById(m1.id)!!
+            assertEquals(OutboxStatus.BLOCKED, held.status); assertEquals(HarvestCodes.MANUAL_KILOS_REVIEW, held.lastErrorCode)
+            assertEquals(day1, phone.db.harvestDao().findById(ambiguous))
+            assertTrue("Cero RPC", server.names.none { it == "sync_own_harvest_v1" })
+            // Typed kilos different from the linked Pesadas: not suspect, sent as usual.
+            val typed = manualDay(phone, split = false)
+            legacyLink(phone, typed, phone.pesada(net = 1_000_000))
+            assertEquals(HarvestSendOutcome.STAGED, phone.sender(server).stage(phone.unboundMarker(typed).id))
+            // A value confirmed earlier and still equal: not suspect either.
+            val confirmed = manualDay(phone, split = false)
+            phone.db.harvestDao().findById(confirmed)!!.let { phone.db.harvestDao().upsert(it.copy(weightGrams = 3_000_000)) }
+            val first = phone.unboundMarker(confirmed)
+            assertEquals(HarvestSendOutcome.STAGED, phone.sender(server).stage(first.id))
+            assertEquals(HarvestSendOutcome.SYNCED, phone.sender(server).send(first.id, lease))
+            legacyLink(phone, confirmed, phone.pesada(net = 3_000_000))
+            phone.db.enqueueCollapsed(RandomIds, SyncEntityType.HARVEST, confirmed, OutboxOperation.UPDATE, now)
+            assertEquals(HarvestSendOutcome.RESOLVED_NOOP, phone.sender(server).stage(phone.unboundMarker(confirmed).id))
+            // An operation frozen before the value became suspect is retained by send, before any request.
+            val late = manualDay(phone, split = false)
+            val lateMarker = phone.unboundMarker(late)
+            assertEquals(HarvestSendOutcome.STAGED, phone.sender(server).stage(lateMarker.id))
+            legacyLink(phone, late, phone.pesada(net = 4_200_000))
+            val calls = server.names.size
+            assertEquals(HarvestSendOutcome.MANUAL_KILOS_REVIEW, phone.sender(server).send(lateMarker.id, lease))
+            assertEquals(calls, server.names.size)
+            assertEquals(HarvestCodes.MANUAL_KILOS_REVIEW, phone.db.syncOutboxDao().findById(lateMarker.id)!!.lastErrorCode)
         }
     }
 

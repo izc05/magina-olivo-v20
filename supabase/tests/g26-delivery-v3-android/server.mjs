@@ -116,7 +116,10 @@ function harvestState(id) {
     (SELECT coalesce(max(version),0) FROM public.harvests WHERE id=${q(id)}),
     (SELECT count(*) FROM public.harvests WHERE id=${q(id)} AND deleted_at IS NOT NULL),
     (SELECT count(*) FROM public.harvest_parcels WHERE harvest_id=${q(id)});`).split('|');
-  return { rows: Number(rows), weight: Number(weight), version: Number(version), deleted: Number(deleted), parcels: Number(parcels) };
+  // Gate J: the server's derived split, ordered by parcel id, to compare with the device's own AUTO_DAY rule.
+  const split = JSON.parse(sql(`SELECT coalesce(jsonb_agg(jsonb_build_object('parcelId',parcel_id,'mode',allocation_mode,'weight',weight_grams)
+    ORDER BY parcel_id::text),'[]') FROM public.harvest_parcels WHERE harvest_id=${q(id)};`));
+  return { rows: Number(rows), weight: Number(weight), version: Number(version), deleted: Number(deleted), parcels: Number(parcels), split };
 }
 
 async function archive(parcel, at) {

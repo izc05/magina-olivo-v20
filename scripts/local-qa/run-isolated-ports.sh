@@ -17,7 +17,8 @@ set -euo pipefail
 suite="${1:?usage: run-isolated-ports.sh <suite> [port-prefix]}"
 prefix="${2:-553}"
 [[ "$suite" =~ ^[a-z0-9-]+$ ]] || { echo "Invalid suite name: $suite" >&2; exit 2; }
-[[ "$prefix" =~ ^[1-6][0-9]{2}$ && "$prefix" != "543" ]] || { echo "Port prefix must be three digits, not 543" >&2; exit 2; }
+# Ports <prefix>20..<prefix>29 must stay valid TCP ports (<= 65535): prefixes 100..655, never the default 543.
+[[ "$prefix" =~ ^[1-6][0-9]{2}$ && "$prefix" != "543" && "$prefix" -le 655 ]] || { echo "Port prefix must be 100..655 and not 543" >&2; exit 2; }
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 runner="$root/supabase/tests/$suite/run.sh"
 [[ -f "$runner" ]] || { echo "No runner: $runner" >&2; exit 2; }
@@ -48,4 +49,5 @@ if (cd !== 1 || ports !== 1) throw new Error(`expected one cd and one config ste
 writeFileSync(target, out.join('\n'));
 JS
 echo "isolated ports ${prefix}20-${prefix}29 for $suite (repository runner unchanged)"
-bash "$copy"
+# Git Bash (MSYS) rewrites arguments that look like paths; keep openssl's -subj '/CN=...' literal.
+MSYS2_ARG_CONV_EXCL="${MSYS2_ARG_CONV_EXCL:+$MSYS2_ARG_CONV_EXCL;}/CN=" bash "$copy"

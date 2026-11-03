@@ -11,6 +11,8 @@ import com.isivoltpro.maginaolivo.data.repository.deliveryOriginCreatedAt
 import com.isivoltpro.maginaolivo.data.repository.deliveryPayloadHash
 import com.isivoltpro.maginaolivo.data.repository.pgObject
 import com.isivoltpro.maginaolivo.data.repository.pgScalar
+import com.isivoltpro.maginaolivo.domain.harvest.AutoDaySplit
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
@@ -147,11 +149,10 @@ internal object HarvestReceiveVerifier {
     /** Sum of live nets; per parcel EXACT with the sum only if every share is EXACT, else UNALLOCATED and null. */
     fun serverDerived(live: List<ReceivedDelivery>): Derived {
         val weight = live.fold(0L) { total, d -> Math.addExact(total, d.netGrams) }
-        val parcels = live.flatMap { it.parcels }.groupBy { it.parcelId }.map { (parcelId, shares) ->
-            if (shares.all { it.allocationMode == "EXACT" && it.weightGrams != null })
-                DerivedParcel(parcelId, shares.fold(0L) { s, p -> Math.addExact(s, p.weightGrams!!) }, "EXACT")
-            else DerivedParcel(parcelId, null, "UNALLOCATED")
-        }.sortedBy { it.parcelId.toString() }
+        // The one shared rule (gate J): the same function Android uses for its own automatic days.
+        val parcels = AutoDaySplit.derive(live.flatMap { d -> d.parcels.map { p ->
+            AutoDaySplit.Share(p.parcelId, if (p.allocationMode == "EXACT") HarvestAllocation.EXACT else HarvestAllocation.UNALLOCATED, p.weightGrams)
+        } }).map { DerivedParcel(it.parcelId, it.weightGrams, it.allocation.name) }
         return Derived(weight, parcels)
     }
 
