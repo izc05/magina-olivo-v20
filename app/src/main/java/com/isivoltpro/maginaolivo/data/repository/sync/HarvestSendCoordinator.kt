@@ -52,6 +52,11 @@ internal enum class HarvestSendOutcome {
     REBASED,
     /** A rebase is not safe (prepared, sent or unknown dependents): nothing mutated, kept for review. */
     RETAINED,
+    /**
+     * #808 R1-b: a hand-recorded (MANUAL) Jornada with a parcel split. The 12-key contract cannot carry
+     * the split, so the Jornada is never sent incomplete: retained with zero RPC, bytes and UUID intact.
+     */
+    MANUAL_PARCELS_UNSUPPORTED,
     CONFLICT,
     REVIEW_HELD,
     OUTCOME_UNKNOWN,
@@ -66,6 +71,7 @@ internal enum class HarvestSendOutcome {
 internal object HarvestCodes {
     const val AUTO_DAY_EXISTS = "AUTO_DAY_EXISTS"
     const val AUTO_DAY_REBASED = "AUTO_DAY_REBASED"
+    const val MANUAL_PARCELS_UNSUPPORTED = "MANUAL_PARCELS_UNSUPPORTED"
     const val RESOLVED_DERIVED_ONLY = "RESOLVED_DERIVED_ONLY"
     const val RESOLVED_ADOPTED_NOOP = "RESOLVED_ADOPTED_NOOP"
     const val RESOLVED_NEVER_SENT = "RESOLVED_NEVER_SENT"
@@ -124,6 +130,12 @@ internal class HarvestSendCoordinator(
         parentProblem(userId, day)?.let { return it }
         if (!consented(userId, day.workspaceId, farmId)) return HarvestSendOutcome.CONSENT_REQUIRED
         val at = now().toEpochMilli()
+        // R1-b, after authorization and consent: a MANUAL day with a parcel split is never frozen into an
+        // envelope that would drop it. The unbound marker is kept (BLOCKED with its cause, never deleted).
+        if (manualSplitWouldBeLost(day, deleting = day.metadata.deletedAt != null)) {
+            return if (outbox.resolveUnstagedHarvest(op.id, HarvestCodes.MANUAL_PARCELS_UNSUPPORTED, at) == 1)
+                HarvestSendOutcome.MANUAL_PARCELS_UNSUPPORTED else HarvestSendOutcome.REJECTED
+        }
         val remote = day.metadata.remoteVersion
         val envelope = when {
             remote == null && day.metadata.deletedAt != null ->
@@ -147,6 +159,14 @@ internal class HarvestSendCoordinator(
         else HarvestSendOutcome.REJECTED
     }
 
+    /**
+     * R1-b: true when sending would drop data. Only a non-AUTO_DAY day (MANUAL, or a legacy day without origin,
+     * sent as MANUAL) that still holds harvest_parcels rows, and only for CREATE/UPDATE: an AUTO_DAY split is
+     * derived by the server from its Pesadas, and a logical DELETE loses nothing.
+     */
+    private suspend fun manualSplitWouldBeLost(day: HarvestEntity, deleting: Boolean): Boolean =
+        !deleting && day.dayOrigin != AUTO_DAY && database.harvestDao().listParcels(day.id).isNotEmpty()
+
     private suspend fun resolve(op: SyncOutboxEntity, code: String, at: Long): HarvestSendOutcome =
         if (database.syncOutboxDao().resolveUnstagedHarvest(op.id, code, at) == 1) HarvestSendOutcome.RESOLVED_NOOP
         else HarvestSendOutcome.REJECTED
@@ -164,6 +184,16 @@ internal class HarvestSendCoordinator(
         val day = database.harvestDao().findById(op.entityId) ?: return HarvestSendOutcome.REJECTED
         val farmId = day.farmId ?: return HarvestSendOutcome.REJECTED
         if (envelope.issuer != issuer || envelope.harvestId != day.id || op.farmId != farmId) return HarvestSendOutcome.REJECTED
+        // R1-b, before any network call: an operation staged (or left UNKNOWN) before the day got a parcel split,
+        // or by an older client, is retained as it is. Zero RPC; UUID, frozen bytes and attempt count intact; an
+        // UNKNOWN outcome stays recorded in the message. Only the account that froze it may do so.
+        if (manualSplitWouldBeLost(day, deleting = envelope.kind == HarvestKind.DELETE)) {
+            if (account.state.value.userId?.toString() != accountId) return HarvestSendOutcome.NOT_AUTHORIZED
+            val previous = if (op.status == OutboxStatus.FAILED) "previous=${op.lastErrorCode};attempts=${op.attemptCount}" else null
+            return if (database.syncOutboxDao().blockHarvest(op.id, accountId, payload, HarvestCodes.MANUAL_PARCELS_UNSUPPORTED,
+                    previous, now().toEpochMilli()) == 1) HarvestSendOutcome.MANUAL_PARCELS_UNSUPPORTED
+                else HarvestSendOutcome.REJECTED
+        }
         if (!consented(UUID.fromString(accountId), day.workspaceId, farmId)) return HarvestSendOutcome.CONSENT_REQUIRED
         return try {
             lease.withActiveRequest {

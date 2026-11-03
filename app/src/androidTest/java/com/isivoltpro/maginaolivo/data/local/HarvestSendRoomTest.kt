@@ -11,6 +11,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
+import com.isivoltpro.maginaolivo.data.local.entity.HarvestParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
@@ -576,6 +577,143 @@ class HarvestSendRoomTest {
         assertEquals(HarvestSendOutcome.CONSENT_REQUIRED, revoked.sender(server).stage(m3.id))
         val untouched = revoked.db.syncOutboxDao().findById(m3.id)!!
         assertNull(untouched.payloadJson); assertNull(untouched.accountId)
+    }
+
+    /** R1-b: a hand-recorded day; [origin] null is a legacy day without origin, also sent as MANUAL. */
+    private suspend fun manualDay(phone: Phone, split: Boolean, origin: String? = "MANUAL"): UUID {
+        val id = UUID.randomUUID()
+        phone.db.harvestDao().upsert(HarvestEntity(id = id, workspaceId = workspaceId, campaignId = campaignId, farmId = farmId,
+            harvestDate = day, weightGrams = 4_200_000, metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING), dayOrigin = origin))
+        if (split) addSplit(phone, id)
+        phone.db.enqueueCollapsed(RandomIds, SyncEntityType.HARVEST, id, OutboxOperation.CREATE, now)
+        return id
+    }
+
+    private suspend fun addSplit(phone: Phone, id: UUID) = phone.db.harvestDao().upsertParcels(listOf(
+        HarvestParcelEntity(UUID.randomUUID(), workspaceId, id, north, null, "Norte", 4_200_000, "EXACT", LocalMetadata(now, now))))
+
+    /** Everything R1-b must keep: the day, its split, every outbox operation of it. */
+    private suspend fun keep(phone: Phone, id: UUID): List<Any?> = listOf(phone.db.harvestDao().findById(id),
+        phone.db.harvestDao().listParcels(id), phone.db.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, id))
+
+    @Test
+    fun aManualJornadaWithAParcelSplitIsRetainedWithoutAnyRpcAcrossSessionsAndRestarts() = runBlocking<Unit> {
+        val phone = Phone("hv-r1b-stage")
+        val server = FakeServer()
+        for (origin in listOf("MANUAL", null)) {
+            val id = manualDay(phone, split = true, origin = origin)
+            val marker = phone.unboundMarker(id)
+            val dayBefore = phone.db.harvestDao().findById(id)
+            val splitBefore = phone.db.harvestDao().listParcels(id)
+            assertEquals(HarvestSendOutcome.MANUAL_PARCELS_UNSUPPORTED, phone.sender(server).stage(marker.id))
+            val held = phone.db.syncOutboxDao().findById(marker.id)!!
+            assertEquals(marker.id, held.id)
+            assertEquals(OutboxStatus.BLOCKED, held.status)
+            assertEquals(HarvestCodes.MANUAL_PARCELS_UNSUPPORTED, held.lastErrorCode)
+            assertNull("Nunca se congela un sobre incompleto", held.payloadJson)
+            assertEquals(0, held.attemptCount)
+            assertEquals(dayBefore, phone.db.harvestDao().findById(id))
+            assertEquals(splitBefore, phone.db.harvestDao().listParcels(id))
+            // A later edit of the same day: a new marker, retained too; the first one is never deleted.
+            phone.db.enqueueCollapsed(RandomIds, SyncEntityType.HARVEST, id, OutboxOperation.UPDATE, now)
+            val second = phone.unboundMarker(id)
+            assertEquals(HarvestSendOutcome.MANUAL_PARCELS_UNSUPPORTED, phone.sender(server).stage(second.id))
+            assertEquals(2, phone.db.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, id).size)
+            assertEquals(held, phone.db.syncOutboxDao().findById(marker.id))
+        }
+        assertTrue("Cero RPC", server.names.isEmpty())
+
+        // Another session of another account is refused BEFORE the barrier: it never touches the marker.
+        val id = manualDay(phone, split = true)
+        val marker = phone.unboundMarker(id)
+        val before = keep(phone, id)
+        val stranger = AccountRepository(object : AccountAuthApi by SimulatedAccountAuthApi() { override val simulated = false },
+            MemoryAccountSessionStore())
+        stranger.login("otra@example.test", "password42", true)
+        assertTrue(stranger.state.value.userId != phone.userId)
+        val foreign = HarvestSendCoordinator(phone.db, stranger, ISSUER, server, { phone.links.ledgerFor(it) },
+            WorkspaceOwnerVerifier { _, ws -> ws == workspaceId }, RandomIds) { now }
+        assertEquals(HarvestSendOutcome.NOT_AUTHORIZED, foreign.stage(marker.id))
+        assertEquals(before, keep(phone, id))
+
+        // Restart, then a new login of the same account: still retained, still zero RPC.
+        phone.db.close()
+        val reopened = MaginaOlivoDatabase.create(context, phone.name).also { opened += it to phone.name }
+        phone.account.logout(false)
+        phone.account.login("owner@example.test", "password42", true)
+        assertEquals(phone.userId, phone.account.state.value.userId)
+        val links = LocalFarmLinkRepository(context, reopened, phone.account, ISSUER, AndroidFarmLinkLedger(phone.ledger))
+        val restarted = HarvestSendCoordinator(reopened, phone.account, ISSUER, server, { links.ledgerFor(it) },
+            WorkspaceOwnerVerifier { _, ws -> ws == workspaceId }, RandomIds) { now }
+        assertEquals(HarvestSendOutcome.MANUAL_PARCELS_UNSUPPORTED, restarted.stage(marker.id))
+        assertEquals(HarvestCodes.MANUAL_PARCELS_UNSUPPORTED, reopened.syncOutboxDao().findById(marker.id)!!.lastErrorCode)
+        assertEquals(before[0], reopened.harvestDao().findById(id))
+        assertEquals(before[1], reopened.harvestDao().listParcels(id))
+        assertTrue("Cero RPC", server.names.isEmpty())
+    }
+
+    @Test
+    fun aStagedOrUnknownManualOperationIsRetainedAsItIsOnceTheDayHasASplit() = runBlocking<Unit> {
+        val phone = Phone("hv-r1b-send")
+        val server = FakeServer()
+        lease().use { lease ->
+            // Staged before the split existed (or by an older client): frozen bytes, never re-frozen.
+            val staged = manualDay(phone, split = false)
+            val m1 = phone.unboundMarker(staged)
+            assertEquals(HarvestSendOutcome.STAGED, phone.sender(server).stage(m1.id))
+            val frozen = phone.db.syncOutboxDao().findById(m1.id)!!
+            addSplit(phone, staged)
+            assertEquals(HarvestSendOutcome.MANUAL_PARCELS_UNSUPPORTED, phone.sender(server).send(m1.id, lease))
+            assertTrue("Cero RPC", server.names.isEmpty())
+            val held = phone.db.syncOutboxDao().findById(m1.id)!!
+            assertEquals(OutboxStatus.BLOCKED, held.status)
+            assertEquals(HarvestCodes.MANUAL_PARCELS_UNSUPPORTED, held.lastErrorCode)
+            assertNull(held.lastErrorMessage)
+            assertEquals(frozen.id, held.id); assertEquals(frozen.payloadJson, held.payloadJson)
+            assertEquals(frozen.accountId, held.accountId); assertEquals(frozen.attemptCount, held.attemptCount)
+            assertEquals(1, phone.db.harvestDao().listParcels(staged).size)
+            // Retained means never re-sent: another send refuses without a request.
+            assertEquals(HarvestSendOutcome.REJECTED, phone.sender(server).send(m1.id, lease))
+            assertTrue(server.names.isEmpty())
+
+            // UNKNOWN: the first answer was lost. Once the day has a split nothing more goes out; the
+            // unknown outcome and the attempt count stay recorded, the bytes are the same.
+            val unknownDay = manualDay(phone, split = false)
+            val m2 = phone.unboundMarker(unknownDay)
+            assertEquals(HarvestSendOutcome.STAGED, phone.sender(server).stage(m2.id))
+            server.dropNext = true
+            assertEquals(HarvestSendOutcome.OUTCOME_UNKNOWN, phone.sender(server).send(m2.id, lease))
+            val unknown = phone.db.syncOutboxDao().findById(m2.id)!!
+            val calls = server.names.size
+            addSplit(phone, unknownDay)
+            assertEquals(HarvestSendOutcome.MANUAL_PARCELS_UNSUPPORTED, phone.sender(server).send(m2.id, lease))
+            assertEquals("Cero RPC", calls, server.names.size)
+            val keptUnknown = phone.db.syncOutboxDao().findById(m2.id)!!
+            assertEquals(OutboxStatus.BLOCKED, keptUnknown.status)
+            assertEquals("previous=OUTCOME_UNKNOWN;attempts=${unknown.attemptCount}", keptUnknown.lastErrorMessage)
+            assertEquals(unknown.payloadJson, keptUnknown.payloadJson); assertEquals(unknown.attemptCount, keptUnknown.attemptCount)
+        }
+    }
+
+    @Test
+    fun aManualWithoutSplitStillSyncsAndAnAutoDayIsNeverRetained() = runBlocking<Unit> {
+        val phone = Phone("hv-r1b-allowed")
+        val server = FakeServer()
+        lease().use { lease ->
+            val manual = manualDay(phone, split = false)
+            val m = phone.unboundMarker(manual)
+            assertEquals(HarvestSendOutcome.STAGED, phone.sender(server).stage(m.id))
+            assertEquals(HarvestSendOutcome.SYNCED, phone.sender(server).send(m.id, lease))
+            assertEquals(1L, phone.db.harvestDao().findById(manual)!!.metadata.remoteVersion)
+            // An AUTO_DAY has a split derived from its Pesadas: the server derives its own, never retained.
+            val pesada = phone.pesada()
+            val auto = phone.jornadaOf(pesada)
+            assertTrue(phone.db.harvestDao().listParcels(auto.id).isNotEmpty())
+            val confirmed = confirmJornada(phone, server, pesada, lease)
+            assertEquals(1L, confirmed.metadata.remoteVersion)
+            assertTrue(phone.db.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, auto.id)
+                .none { it.lastErrorCode == HarvestCodes.MANUAL_PARCELS_UNSUPPORTED })
+        }
     }
 
     @Test

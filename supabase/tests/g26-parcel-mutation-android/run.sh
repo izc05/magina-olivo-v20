@@ -23,4 +23,4 @@ cat "$work/instrument.out"
 adb logcat -d -s G26MEM:I | grep G26-MEM || echo 'G26-MEM no lines'
 # 2c-3 convergence evidence: per scene, A/B/server hashes and outbox states.
 adb logcat -d -s G26CONV:I | grep G26-CONV || echo 'G26-CONV no lines'
-grep -q 'OK (174 tests)' "$work/instrument.out"
+grep -q 'OK (177 tests)' "$work/instrument.out"
