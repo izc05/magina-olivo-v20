@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo.data.local
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.isivoltpro.maginaolivo.data.local.dao.ReceiptRecordOutcome
 import com.isivoltpro.maginaolivo.data.local.dao.SyncReceiveHoldDao
 import com.isivoltpro.maginaolivo.data.local.entity.SyncReceiveHoldEntity
 import com.isivoltpro.maginaolivo.data.local.entity.SyncReceiveReceiptEntity
@@ -44,14 +45,14 @@ class SyncReceiveStoreRoomTest {
 
     @Test fun aReceiptIsRecordedOnceAndTheSameEvidenceAgainWritesNothing() = runBlocking<Unit> {
         val dao = db.syncReceiveReceiptDao()
-        assertTrue(dao.record(receipt()))
+        assertEquals(ReceiptRecordOutcome.INSERTED, dao.record(receipt()))
         val stored = dao.find("iss", "a", "DELIVERY", pesada)
         assertEquals(receipt(), stored)
         // The same evidence later: zero writes, the first receivedAt is kept.
-        assertFalse(dao.record(receipt(at = 9_000)))
+        assertEquals(ReceiptRecordOutcome.UNCHANGED, dao.record(receipt(at = 9_000)))
         assertEquals(stored, dao.find("iss", "a", "DELIVERY", pesada))
         // New evidence (a newer remote version) replaces it.
-        assertTrue(dao.record(receipt(version = 2, at = 9_000)))
+        assertEquals(ReceiptRecordOutcome.UPDATED, dao.record(receipt(version = 2, at = 9_000)))
         assertEquals(2L, dao.find("iss", "a", "DELIVERY", pesada)!!.remoteVersion)
         assertEquals(listOf(receipt(version = 2, at = 9_000)), dao.listForHarvest("iss", "a", harvest))
         assertEquals(1, dao.count())
@@ -82,8 +83,9 @@ class SyncReceiveStoreRoomTest {
 
     @Test fun accountsAndIssuersNeverSeeEachOthersEvidenceOrHolds() = runBlocking<Unit> {
         val receipts = db.syncReceiveReceiptDao(); val holds = db.syncReceiveHoldDao()
-        assertTrue(receipts.record(receipt(account = "a"))); assertTrue(receipts.record(receipt(account = "b")))
-        assertTrue(receipts.record(receipt(issuer = "otro")))
+        assertEquals(ReceiptRecordOutcome.INSERTED, receipts.record(receipt(account = "a")))
+        assertEquals(ReceiptRecordOutcome.INSERTED, receipts.record(receipt(account = "b")))
+        assertEquals(ReceiptRecordOutcome.INSERTED, receipts.record(receipt(issuer = "otro")))
         assertTrue(holds.observe(hold(account = "a"))); assertTrue(holds.observe(hold(account = "b")))
         assertEquals(1, receipts.listForHarvest("iss", "a", harvest).size)
         assertNull(receipts.find("iss", "c", "DELIVERY", pesada))
@@ -91,6 +93,72 @@ class SyncReceiveStoreRoomTest {
         assertEquals(listOf("b"), holds.listOpen("iss", "b").map { it.accountId })
         assertTrue(holds.listOpen("otro", "a").isEmpty())
         assertEquals(3, receipts.count()); assertEquals(2, holds.count())
+    }
+
+    private fun table(name: String) = db.openHelper.writableDatabase.query("SELECT * FROM $name ORDER BY rowid").use { c ->
+        buildList { while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { if (c.isNull(it)) "<NULL>" else c.getString(it) }) } }
+
+    /** Regression 1: an older remote version (an old bundle, a retried read) never goes back; nothing is written. */
+    @Test fun anOlderRemoteVersionIsStaleAndWritesNothing() = runBlocking<Unit> {
+        val dao = db.syncReceiveReceiptDao()
+        assertEquals(ReceiptRecordOutcome.INSERTED, dao.record(receipt(version = 3)))
+        val before = table("sync_receive_receipts")
+        for (older in listOf(2L, 1L)) assertEquals(ReceiptRecordOutcome.STALE, db.recordReceiveEvidence(receipt(version = older, at = 9_000)))
+        // Even an older version with other evidence is stale, never a conflict and never a replacement.
+        assertEquals(ReceiptRecordOutcome.STALE, db.recordReceiveEvidence(receipt(version = 2).copy(headPayloadHash = "c".repeat(64))))
+        assertEquals(before, table("sync_receive_receipts"))
+        assertEquals(0, db.syncReceiveHoldDao().count())
+    }
+
+    /** Regression 2: the same version with identical evidence (a repeated reception) is accepted with zero writes. */
+    @Test fun theSameVersionWithIdenticalEvidenceIsUnchangedAndWritesNothing() = runBlocking<Unit> {
+        assertEquals(ReceiptRecordOutcome.INSERTED, db.recordReceiveEvidence(receipt(version = 2)))
+        val before = table("sync_receive_receipts")
+        repeat(3) { assertEquals(ReceiptRecordOutcome.UNCHANGED, db.recordReceiveEvidence(receipt(version = 2, at = 5_000L + it))) }
+        assertEquals(before, table("sync_receive_receipts"))
+        assertEquals(0, db.syncReceiveHoldDao().count())
+    }
+
+    /** Regression 3: the same version with contradictory evidence is a verifiable conflict; the receipt is never replaced. */
+    @Test fun theSameVersionWithContradictoryEvidenceIsAVerifiableConflict() = runBlocking<Unit> {
+        assertEquals(ReceiptRecordOutcome.INSERTED, db.recordReceiveEvidence(receipt(version = 2)))
+        val stored = table("sync_receive_receipts")
+        val rewritten = receipt(version = 2, at = 7_000).copy(headOperationId = UUID.randomUUID(), headPayloadHash = "d".repeat(64))
+        assertEquals(ReceiptRecordOutcome.CONFLICT, db.recordReceiveEvidence(rewritten))
+        assertEquals(stored, table("sync_receive_receipts"))
+        val hold = db.syncReceiveHoldDao().find("iss", "a", "DELIVERY", pesada, RECEIVE_HOLD_REMOTE_REWRITTEN)!!
+        assertEquals(listOf(2L, 2L, "d".repeat(64)), listOf(hold.localVersion, hold.remoteVersion, hold.remoteHash))
+        assertTrue(hold.detail!!.contains("stored_hash=" + "a".repeat(64)))
+        assertNull(hold.resolvedAt)
+        // Each kind of contradiction is a conflict: deleted, fingerprints, Jornada, contract.
+        for (other in listOf(receipt(version = 2).copy(deleted = true), receipt(version = 2).copy(ownFingerprint = "e".repeat(64)),
+            receipt(version = 2).copy(harvestId = UUID.randomUUID()), receipt(version = 2).copy(contractVersion = 2))) {
+            assertEquals(ReceiptRecordOutcome.CONFLICT, db.syncReceiveReceiptDao().record(other))
+        }
+        assertEquals(stored, table("sync_receive_receipts"))
+        // The same conflict observed again writes nothing more.
+        val holds = table("sync_receive_holds")
+        assertEquals(ReceiptRecordOutcome.CONFLICT, db.recordReceiveEvidence(rewritten.copy(receivedAt = 8_000)))
+        assertEquals(holds, table("sync_receive_holds"))
+    }
+
+    /** Regression 4: a newer version updates; it survives a restart, and accounts never block each other. */
+    @Test fun aNewerVersionUpdatesSurvivesARestartAndAccountsStayIsolated() = runBlocking<Unit> {
+        assertEquals(ReceiptRecordOutcome.INSERTED, db.recordReceiveEvidence(receipt(version = 1)))
+        assertEquals(ReceiptRecordOutcome.UPDATED, db.recordReceiveEvidence(receipt(version = 3, at = 2_000).copy(headPayloadHash = "f".repeat(64))))
+        assertTrue(db.syncReceiveHoldDao().observe(hold()))
+        val receipts = table("sync_receive_receipts"); val holds = table("sync_receive_holds")
+        // Restart: the database is closed and reopened; the rules apply to what was persisted.
+        db.close(); db = MaginaOlivoDatabase.create(context, name)
+        assertEquals(receipts, table("sync_receive_receipts")); assertEquals(holds, table("sync_receive_holds"))
+        assertEquals(ReceiptRecordOutcome.STALE, db.recordReceiveEvidence(receipt(version = 2)))
+        assertEquals(ReceiptRecordOutcome.UNCHANGED, db.recordReceiveEvidence(receipt(version = 3, at = 9_000).copy(headPayloadHash = "f".repeat(64))))
+        // Another account (or issuer) keeps its own evidence: a lower version there is a first insert, not stale.
+        assertEquals(ReceiptRecordOutcome.INSERTED, db.recordReceiveEvidence(receipt(version = 1, account = "b")))
+        assertEquals(ReceiptRecordOutcome.INSERTED, db.recordReceiveEvidence(receipt(version = 1, issuer = "otro")))
+        assertEquals(3L, db.syncReceiveReceiptDao().find("iss", "a", "DELIVERY", pesada)!!.remoteVersion)
+        // Outbox untouched throughout.
+        assertEquals(0, db.syncOutboxDao().countActive())
     }
 
     @Test fun aFreshInstallStartsWithBothTablesEmptyAndNoOutbox() = runBlocking<Unit> {

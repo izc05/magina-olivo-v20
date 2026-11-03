@@ -35,18 +35,29 @@ abstract class SyncReceiveReceiptDao {
     protected abstract suspend fun update(receipt: SyncReceiveReceiptEntity): Int
 
     /**
-     * Stores [receipt] only if it adds evidence. Identical evidence (everything but [SyncReceiveReceiptEntity.receivedAt])
-     * writes nothing and returns false; new or changed evidence returns true.
+     * Records verified receive evidence without ever going back (#808 R3-a correction, condition for R3-c):
+     * - no receipt yet: [ReceiptRecordOutcome.INSERTED];
+     * - a LOWER remote version than the stored one (an old bundle, a retried read): [ReceiptRecordOutcome.STALE], nothing written;
+     * - the SAME version with identical evidence (everything but receivedAt): [ReceiptRecordOutcome.UNCHANGED], nothing written;
+     * - the SAME version with contradictory evidence (head, hash, fingerprints, deleted, Jornada or contract):
+     *   [ReceiptRecordOutcome.CONFLICT], nothing replaced (the caller records a verifiable hold, see recordReceiveEvidence);
+     * - a HIGHER version: [ReceiptRecordOutcome.UPDATED].
      */
     @Transaction
-    open suspend fun record(receipt: SyncReceiveReceiptEntity): Boolean {
+    open suspend fun record(receipt: SyncReceiveReceiptEntity): ReceiptRecordOutcome {
         val existing = find(receipt.issuer, receipt.accountId, receipt.entityType, receipt.entityId)
-        if (existing == null) { insert(receipt); return true }
-        if (existing == receipt.copy(receivedAt = existing.receivedAt)) return false
-        check(update(receipt) == 1)
-        return true
+            ?: run { insert(receipt); return ReceiptRecordOutcome.INSERTED }
+        return when {
+            receipt.remoteVersion < existing.remoteVersion -> ReceiptRecordOutcome.STALE
+            receipt.remoteVersion == existing.remoteVersion ->
+                if (existing == receipt.copy(receivedAt = existing.receivedAt)) ReceiptRecordOutcome.UNCHANGED else ReceiptRecordOutcome.CONFLICT
+            else -> { check(update(receipt) == 1); ReceiptRecordOutcome.UPDATED }
+        }
     }
 }
+
+/** #808 R3-a: what [SyncReceiveReceiptDao.record] did. Only INSERTED and UPDATED wrote a receipt. */
+enum class ReceiptRecordOutcome { INSERTED, UPDATED, UNCHANGED, STALE, CONFLICT }
 
 /** #808 R3-a. Holds are observed, never resolved here: there is deliberately no method that sets `resolved_at`. */
 @Dao
