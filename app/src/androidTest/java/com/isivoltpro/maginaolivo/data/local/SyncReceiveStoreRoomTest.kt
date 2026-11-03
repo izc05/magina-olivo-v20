@@ -136,6 +136,12 @@ class SyncReceiveStoreRoomTest {
             assertEquals(ReceiptRecordOutcome.CONFLICT, db.syncReceiveReceiptDao().record(other))
         }
         assertEquals(stored, table("sync_receive_receipts"))
+        // Only the derived fingerprint at the same version (an AUTO_DAY whose Pesadas changed) is new evidence, not a rewrite.
+        val day = receipt(version = 2).copy(entityType = "HARVEST", entityId = harvest, ownFingerprint = "1".repeat(64), derivedFingerprint = "2".repeat(64))
+        assertEquals(ReceiptRecordOutcome.INSERTED, db.recordReceiveEvidence(day))
+        assertEquals(ReceiptRecordOutcome.UPDATED, db.recordReceiveEvidence(day.copy(derivedFingerprint = "3".repeat(64), receivedAt = 9_000)))
+        assertEquals("3".repeat(64), db.syncReceiveReceiptDao().find("iss", "a", "HARVEST", harvest)!!.derivedFingerprint)
+        assertEquals(ReceiptRecordOutcome.CONFLICT, db.recordReceiveEvidence(day.copy(derivedFingerprint = "4".repeat(64), ownFingerprint = "5".repeat(64))))
         // The same conflict observed again writes nothing more.
         val holds = table("sync_receive_holds")
         assertEquals(ReceiptRecordOutcome.CONFLICT, db.recordReceiveEvidence(rewritten.copy(receivedAt = 8_000)))

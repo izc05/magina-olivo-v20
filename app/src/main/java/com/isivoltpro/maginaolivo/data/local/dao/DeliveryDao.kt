@@ -79,6 +79,10 @@ interface DeliveryDao {
     """)
     suspend fun sumLiveNetByHarvest(harvestIds: List<UUID>): List<HarvestLinkedGrams>
 
+    /** #808 R3-c: Pesadas of a farm and campaign the server already confirmed (REMOTE_MISSING detection). */
+    @Query("SELECT * FROM deliveries WHERE farm_id = :farmId AND campaign_id = :campaignId AND remote_version IS NOT NULL")
+    suspend fun listRemoteForCampaign(farmId: UUID, campaignId: UUID): List<DeliveryEntity>
+
     /** #808 rebase: every Pesada of a Jornada, deleted ones included. */
     @Query("SELECT * FROM deliveries WHERE harvest_id = :harvestId")
     suspend fun listAllForHarvest(harvestId: UUID): List<DeliveryEntity>

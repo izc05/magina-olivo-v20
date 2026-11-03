@@ -9,6 +9,7 @@
 | --- | --- | --- | --- |
 | Base anterior a J (R3-b) | `d8ce433df` | 113 (11 + 87 + 15) | **47** |
 | Esta rama (J + corrección del DAO) | HEAD de `codex/g26-808-r3a-dao-fix` | 113 | **47** |
+| R3-c (receptor) | HEAD de `codex/g26-808-r3c-receiver` | 113 | **47**, la misma lista exacta (`diff` vacío) |
 
 **Los dos conjuntos de pruebas fallidas son idénticos** (la diferencia está vacía en ambos sentidos), con la misma causa en cada prueba. **Ninguno es una regresión de J ni de la corrección del DAO.**
 

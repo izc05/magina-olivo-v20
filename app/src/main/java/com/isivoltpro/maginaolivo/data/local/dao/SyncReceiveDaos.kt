@@ -41,7 +41,10 @@ abstract class SyncReceiveReceiptDao {
      * - the SAME version with identical evidence (everything but receivedAt): [ReceiptRecordOutcome.UNCHANGED], nothing written;
      * - the SAME version with contradictory evidence (head, hash, fingerprints, deleted, Jornada or contract):
      *   [ReceiptRecordOutcome.CONFLICT], nothing replaced (the caller records a verifiable hold, see recordReceiveEvidence);
-     * - a HIGHER version: [ReceiptRecordOutcome.UPDATED].
+     * - a HIGHER version: [ReceiptRecordOutcome.UPDATED];
+     * - the SAME version where ONLY `derived_fingerprint` differs: [ReceiptRecordOutcome.UPDATED]. An AUTO_DAY's derived kilos
+     *   and split change with its Pesadas without moving the Jornada version (R1-c contract), so this is new evidence, not
+     *   a rewrite. Any other difference at the same version stays a CONFLICT.
      */
     @Transaction
     open suspend fun record(receipt: SyncReceiveReceiptEntity): ReceiptRecordOutcome {
@@ -49,8 +52,12 @@ abstract class SyncReceiveReceiptDao {
             ?: run { insert(receipt); return ReceiptRecordOutcome.INSERTED }
         return when {
             receipt.remoteVersion < existing.remoteVersion -> ReceiptRecordOutcome.STALE
-            receipt.remoteVersion == existing.remoteVersion ->
-                if (existing == receipt.copy(receivedAt = existing.receivedAt)) ReceiptRecordOutcome.UNCHANGED else ReceiptRecordOutcome.CONFLICT
+            receipt.remoteVersion == existing.remoteVersion -> when {
+                existing == receipt.copy(receivedAt = existing.receivedAt) -> ReceiptRecordOutcome.UNCHANGED
+                existing.copy(derivedFingerprint = receipt.derivedFingerprint, receivedAt = receipt.receivedAt) == receipt ->
+                    { check(update(receipt) == 1); ReceiptRecordOutcome.UPDATED }
+                else -> ReceiptRecordOutcome.CONFLICT
+            }
             else -> { check(update(receipt) == 1); ReceiptRecordOutcome.UPDATED }
         }
     }

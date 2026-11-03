@@ -124,6 +124,20 @@ internal class JornadaLedger(
         database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, day.id, OutboxOperation.UPDATE, now)
     }
 
+    /**
+     * #808 R3-c (design D5): receive-mode derivation of an automatic day. Kilos are the sum of its live Pesadas and the
+     * split follows [AutoDaySplit]; it NEVER creates, replaces or resolves an outbox operation, and a hand-recorded
+     * Jornada is never touched (J-D2). Must run inside the receiver's transaction. Returns the day as stored after it.
+     */
+    internal suspend fun deriveForReceive(harvestId: UUID, now: Instant): HarvestEntity? {
+        val day = database.harvestDao().findById(harvestId)?.takeIf { it.dayOrigin == AUTO_DAY } ?: return null
+        val linked = database.deliveryDao().listLiveForHarvest(harvestId)
+        replaceDayParcels(day, linked, now)
+        val sum = linkedGrams(linked)
+        if (sum != day.weightGrams) database.harvestDao().upsert(day.copy(weightGrams = sum))
+        return database.harvestDao().findById(harvestId)
+    }
+
     /** #497: never persist a wrapped/negative day total if historical/imported rows are extreme. */
     private fun linkedGrams(linked: List<DeliveryEntity>): Long {
         var total = 0L
