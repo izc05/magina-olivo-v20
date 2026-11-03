@@ -81,8 +81,8 @@ fun AiAssistantPlaceholderScreen(
             modifier = Modifier
                 .size(80.dp)
                 .clip(CircleShape)
-                .background(MoOliveTint)
-                .border(2.dp, MoOlivePrimary, CircleShape),
+                .background(MoColors.current.actionTint)
+                .border(2.dp, MoColors.current.actionText, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             OliveMark(
@@ -107,15 +107,15 @@ fun AiAssistantPlaceholderScreen(
             Text(
                 text = "Asistente inteligente del olivar",
                 style = MaterialTheme.typography.titleMedium,
-                color = MoOlivePrimary,
+                color = MoColors.current.actionText,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
             )
 
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFFFDF6E2),
-                border = BorderStroke(1.dp, Color(0xFFE5DFC9)),
+                color = MoColors.current.warningTint,
+                border = BorderStroke(1.dp, MoColors.current.warningAccent.copy(alpha = 0.5f)),
                 modifier = Modifier.padding(top = 4.dp),
             ) {
                 Text(
@@ -178,8 +178,8 @@ fun AiAssistantPlaceholderScreen(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = MoShape.card,
-            color = Color(0xFFFAF7EE),
-            border = BorderStroke(1.dp, MoOliveMid.copy(alpha = 0.3f)),
+            color = MoColors.current.actionTint,
+            border = BorderStroke(1.dp, MoColors.current.actionText.copy(alpha = 0.35f)),
         ) {
             Row(
                 modifier = Modifier.padding(MoSpacing.md),
@@ -189,7 +189,7 @@ fun AiAssistantPlaceholderScreen(
                 Icon(
                     imageVector = MoIcons.Checklist,
                     contentDescription = null,
-                    tint = MoOlivePrimary,
+                    tint = MoColors.current.actionText,
                     modifier = Modifier.size(24.dp),
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -229,13 +229,13 @@ private fun AiCapabilityItem(
         Surface(
             modifier = Modifier.size(36.dp),
             shape = CircleShape,
-            color = MoOliveTint,
+            color = MoColors.current.actionTint,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = MoOlivePrimary,
+                    tint = MoColors.current.actionText,
                     modifier = Modifier.size(18.dp),
                 )
             }

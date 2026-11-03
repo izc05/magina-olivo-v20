@@ -182,3 +182,74 @@ Regla de diseño: `InvitationLifecycle.grantsAccess` solo es `true` en `ACTIVE_C
 - SHA `2d67bd563`: la ejecución **push** de Android CI tuvo un `ComposeTimeoutException` en un test instrumentado de autenticación (fallo histórico, no corregido por código en esta PR). La ejecución **pull_request** del mismo SHA terminó en verde: Foundation, Gate 3 Emulator y Gate 3 Evidence.
 
 - SHA `b73c35c9d`: Gate 3 Evidence falló en `ArchitectureBoundaryTest.infrastructureOutsideAuthorizedAuthRemainsBlocked` porque un comentario KDoc de `CollaborationScopeUi.kt` nombraba el backend prohibido. Corregido en el commit siguiente; además se retiraron `remindersEnabled`/`onToggleReminders` de `ProfileAccountPanel` (`ReminderSettings` completo sigue siendo requisito de integración) y todas las acciones de invitación quedan deshabilitadas y rotuladas «(prototipo)».
+
+---
+
+## 7. Auditoría Visual en Jetpack Compose Real (H1–H4 y M1–M4) y Galería PNG Accesible
+
+Todas las capturas de esta sección han sido obtenidas desde el motor de renderizado real de **Jetpack Compose** (`createAndroidComposeRule<ComponentActivity>().onRoot().captureToImage()`) en emulador Android API 35 (`393 dp` estándar en claro/oscuro + `320 dp` con fuente ampliada `1.30x`).
+
+### 7.1. Resumen de las 8 Correcciones Visuales Aplicadas
+
+| ID | Problema detectado en Compose real (ANTES) | Corrección aplicada (DESPUÉS) | Archivos modificados |
+| :--- | :--- | :--- | :--- |
+| **H1** | En `FarmMembershipCard`, el nombre de la finca y el badge `"Principal"` compartían fila con `RoleBadge`, comprimiendo `"Principal"` a 9 líneas de 1 letra y estirando la tarjeta a ~160 dp. | Cabecera superior de metadatos con `RoleBadge` a la izquierda y badge `"Principal"` (`maxLines = 1, softWrap = false`) a la derecha; nombre de finca y superficie (`\u00A0ha`) a ancho completo debajo. | `CollaborationRolesUi.kt` |
+| **H2** | Fondos claros fijos (`0xFFFBF8F2`, `0xFFFAF7EE`, `0xFFFDF6E2`, `MoOliveTint`) hacían ilegible el texto claro en Modo Oscuro (Mágina IA, `InviteCollaboratorSheet`, `RoleBadge`, píldora `"1 pendiente"`). | Sustitución por tokens reactivos de `MoColors.current` (`actionTint`/`actionText`, `warningTint`/`warningText`, `infoTint`/`infoText`) y `MoStatusChip(tone = MoStatusTone.Warning)`. | `AiAssistantPlaceholderScreen.kt`, `CollaborationRolesUi.kt`, `CollaborationScopeUi.kt`, `InvitationFlowUi.kt`, `ProfileAccountPanel.kt` |
+| **H3** | El punto indicador de sincronización (9 dp) en `ProfileAvatarIconButton` quedaba cortado por el `.clip(CircleShape)` del `Surface(42.dp)` y del `Box(48.dp)` exterior. | Punto indicador de `11.dp` posicionado en el `Box(48.dp)` exterior sin recorte circular y con borde adaptativo `MoSurfaceTokens.cardSurface`. | `MoTopBarProfileAvatar.kt` |
+| **H4** | En `SentInvitationCard` e `InvitationLifecycleCard`, los emails largos (`cuadrilla.demo@example.test`) y `RoleBadge` en la misma fila partían `"Recolector\na"` o `.test` huérfano. | `RoleBadge` (y `MoStatusChip` en `FlowRow`) en la fila superior de la tarjeta y el email debajo a ancho completo con `maxLines = 1, overflow = TextOverflow.Ellipsis`. | `InvitationFlowUi.kt`, `CollaborationScopeUi.kt` |
+| **M1** | En `ReceivedInvitationCard`, el título `"Invitación de colaboración (Diseño)"` y la fecha `"Recibida hoy, 10:30 (Muestra)"` chocaban en la misma línea. | Cabecera apilada con la marca temporal alineada bajo el título (`padding(start = 14.dp)`). | `InvitationFlowUi.kt` |
+| **M2** | Subtítulos largos truncados con `...` en `ProfileAccountPanel` (`Gestión de cuenta`, `Municipio preferido`, etc.). | Subtítulos concisos que entran completos en 1 línea a `393 dp` y en 2 líneas a `320 dp / 1.30x`. | `ProfileAccountPanel.kt` |
+| **M3** | Botón de cierre `✕` del panel de `36.dp` con carácter de texto y botón volver `"←"` con texto descentrado en barra superior. | Botón de cierre de `48.dp` con nuevo icono vectorial `MoIcons.Close` y botón volver de `48.dp` con `MoIcons.ChevronLeft`. | `MoIcons.kt`, `ProfileAccountPanel.kt`, `MoTopBarProfileAvatar.kt` |
+| **M4** | `ChoiceGroup` en «Crear invitación» usaba `options.chunked(2)`, forzando saltos de fila artificiales en grupos de 3 chips cortos (`Titular`, `Gestor`, `Recolectora` / `Enlace`, `WhatsApp`, `Código QR`). | Uso de `FlowRow` con espaciado uniforme de `8.dp` y altura mínima táctil de `48.dp`. | `CollaborationScopeUi.kt` |
+
+---
+
+### 7.2. Comparativa Visual ANTES / DESPUÉS (Jetpack Compose Real)
+
+#### H3 y M3 — Barra Superior con Avatar (`MoTopBarProfileAvatar.kt`)
+| ANTES (Punto de estado cortado y flecha de texto) | DESPUÉS (Punto completo fuera del círculo e icono vectorial `<`) |
+| :---: | :---: |
+| ![Antes V1 Claro](captures/compose-real/antes/v1_topbar_avatar_states_light.png) | ![Después V1 Claro](captures/compose-real/vista-1-cabecera-ia/v1_topbar_avatar_states_light.png) |
+| ![Antes V1 Oscuro](captures/compose-real/antes/v1_topbar_avatar_states_dark.png) | ![Después V1 Oscuro](captures/compose-real/vista-1-cabecera-ia/v1_topbar_avatar_states_dark.png) |
+
+#### H2 — Mágina IA en Modo Oscuro (`AiAssistantPlaceholderScreen.kt`)
+| ANTES (Tarjeta inferior crema fija ilegible en oscuro) | DESPUÉS (Superficie adaptativa `MoColors.current.actionTint`) |
+| :---: | :---: |
+| ![Antes Mágina IA Oscuro](captures/compose-real/antes/v1_magina_ia_placeholder_top_dark.png) | ![Después Mágina IA Oscuro](captures/compose-real/vista-1-cabecera-ia/v1_magina_ia_placeholder_top_dark.png) |
+
+#### H1, H2, M2 y M3 — Panel Perfil y Cuenta (`ProfileAccountPanel.kt`)
+| ANTES (Finca principal estirada, `"1 pendiente"` fijo, cierre 36dp y truncamientos) | DESPUÉS (Tarjeta compacta con `"Principal"` íntegro, cierre 48dp vectorial y subtítulos completos) |
+| :---: | :---: |
+| ![Antes V2 Claro Top](captures/compose-real/antes/v2_panel_signedin_synced_top_light.png) | ![Después V2 Claro Top](captures/compose-real/vista-2-panel-perfil/v2_panel_signedin_synced_top_light.png) |
+| ![Antes V2 Oscuro Top](captures/compose-real/antes/v2_panel_signedin_synced_top_dark.png) | ![Después V2 Oscuro Top](captures/compose-real/vista-2-panel-perfil/v2_panel_signedin_synced_top_dark.png) |
+| ![Antes V2 Claro Bottom](captures/compose-real/antes/v2_panel_signedin_synced_bottom_light.png) | ![Después V2 Claro Bottom](captures/compose-real/vista-2-panel-perfil/v2_panel_signedin_synced_bottom_light.png) |
+
+#### H1 y H2 — Tarjetas de Explotaciones y Roles en Modo Oscuro (`CollaborationRolesUi.kt`)
+| ANTES | DESPUÉS |
+| :---: | :---: |
+| ![Antes V3 Tarjetas Oscuro](captures/compose-real/antes/v3_roles_cards_top_dark.png) | ![Después V3 Tarjetas Oscuro](captures/compose-real/vista-3-roles/v3_roles_cards_top_dark.png) |
+
+#### H2 y M4 — Crear Invitación (`CollaborationScopeUi.kt`)
+| ANTES (Chips cortados en 2 por fila y `MoOliveTint` fijo en oscuro) | DESPUÉS (`FlowRow` con 3 chips en línea y tokens adaptativos) |
+| :---: | :---: |
+| ![Antes V4 Crear Claro](captures/compose-real/antes/v4_create_invitation_top_light.png) | ![Después V4 Crear Claro](captures/compose-real/vista-4-invitaciones/v4_create_invitation_top_light.png) |
+| ![Antes V4 Crear Oscuro](captures/compose-real/antes/v4_create_invitation_top_dark.png) | ![Después V4 Crear Oscuro](captures/compose-real/vista-4-invitaciones/v4_create_invitation_top_dark.png) |
+
+#### H2, H4 y M1 — Invitaciones Enviadas, Detalle y Hoja de Envío (`InvitationFlowUi.kt` y `CollaborationScopeUi.kt`)
+| ANTES (`Recolector\na`, `.test` huérfano y texto blanco sobre crema en oscuro) | DESPUÉS (Badges íntegros, emails completos en 1 línea y contraste oscuro correcto) |
+| :---: | :---: |
+| ![Antes V4 Enviadas Claro](captures/compose-real/antes/v4_invitations_sent_top_light.png) | ![Después V4 Enviadas Claro](captures/compose-real/vista-4-invitaciones/v4_invitations_sent_top_light.png) |
+| ![Antes V4 Detalle Oscuro](captures/compose-real/antes/v4_invitation_cards_detail_dark.png) | ![Después V4 Detalle Oscuro](captures/compose-real/vista-4-invitaciones/v4_invitation_cards_detail_dark.png) |
+| ![Antes V4 Sheet Oscuro](captures/compose-real/antes/v4_invite_collaborator_sheet_dark.png) | ![Después V4 Sheet Oscuro](captures/compose-real/vista-4-invitaciones/v4_invite_collaborator_sheet_dark.png) |
+
+---
+
+### 7.3. Validación en Pantalla Estrecha (`320 dp`) y Fuente Ampliada (`1.30x`)
+
+| Vista en estrés (`320 dp` + `fontScale = 1.30f`) | Modo Claro | Modo Oscuro |
+| :--- | :---: | :---: |
+| **Vista 1 — Barra Superior con Avatar** | ![Stress V1 Claro](captures/compose-real/stress-narrow-font130/stress_narrow320_font130_v1_topbar_light.png) | ![Stress V1 Oscuro](captures/compose-real/stress-narrow-font130/stress_narrow320_font130_v1_topbar_dark.png) |
+| **Vista 2 — Panel Perfil y Cuenta** | ![Stress V2 Claro](captures/compose-real/stress-narrow-font130/stress_narrow320_font130_v2_panel_top_light.png) | ![Stress V2 Oscuro](captures/compose-real/stress-narrow-font130/stress_narrow320_font130_v2_panel_top_dark.png) |
+| **Vista 4 — Bandeja de Invitaciones** | ![Stress V4 Invitaciones Claro](captures/compose-real/stress-narrow-font130/stress_narrow320_font130_v4_invitations_light.png) | ![Stress V4 Invitaciones Oscuro](captures/compose-real/stress-narrow-font130/stress_narrow320_font130_v4_invitations_dark.png) |
+| **Vista 4 — Crear Invitación (`FlowRow`)** | ![Stress V4 Crear Claro](captures/compose-real/stress-narrow-font130/stress_narrow320_font130_v4_create_light.png) | ![Stress V4 Crear Oscuro](captures/compose-real/stress-narrow-font130/stress_narrow320_font130_v4_create_dark.png) |
+

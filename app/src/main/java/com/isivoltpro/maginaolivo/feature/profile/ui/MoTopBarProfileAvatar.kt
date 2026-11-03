@@ -54,11 +54,18 @@ fun ProfileAvatarIconButton(
     syncState: AccountSyncState = if (isConnected) AccountSyncState.SIGNED_IN_SYNCED else AccountSyncState.LOCAL_ONLY,
     hasUnreadAlerts: Boolean = false,
 ) {
+    val palette = MoColors.current
+    val dotColor = when (syncState) {
+        AccountSyncState.SIGNED_IN_OFFLINE,
+        AccountSyncState.LOCAL_ONLY -> palette.warningText
+        AccountSyncState.SIGNED_IN_SYNCED -> Color(0xFF4E7A45)
+        AccountSyncState.SIGNED_IN_SYNCING -> Color(0xFF4C6876)
+    }
+
     // Zona táctil mínima accesible de 48dp x 48dp conforme a WCAG y directrices Android
     Box(
         modifier = modifier
             .size(48.dp)
-            .clip(CircleShape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "Mi perfil, cuenta y explotaciones" }
             .testTag("topbar-profile-avatar"),
@@ -87,48 +94,18 @@ fun ProfileAvatarIconButton(
                             .testTag("topbar-avatar-local"),
                     )
                 }
-
-                // Indicador visual de estado de sincronización / conexión
-                when (syncState) {
-                    AccountSyncState.SIGNED_IN_OFFLINE -> {
-                        Box(
-                            modifier = Modifier
-                                .size(9.dp)
-                                .align(Alignment.BottomEnd)
-                                .background(MoColors.current.warningText, CircleShape)
-                                .border(1.5.dp, Color.White, CircleShape),
-                        )
-                    }
-                    AccountSyncState.LOCAL_ONLY -> {
-                        Box(
-                            modifier = Modifier
-                                .size(9.dp)
-                                .align(Alignment.BottomEnd)
-                                .background(MoColors.current.warningText, CircleShape)
-                                .border(1.5.dp, Color.White, CircleShape),
-                        )
-                    }
-                    AccountSyncState.SIGNED_IN_SYNCED -> {
-                        Box(
-                            modifier = Modifier
-                                .size(9.dp)
-                                .align(Alignment.BottomEnd)
-                                .background(Color(0xFF4E7A45), CircleShape)
-                                .border(1.5.dp, Color.White, CircleShape),
-                        )
-                    }
-                    AccountSyncState.SIGNED_IN_SYNCING -> {
-                        Box(
-                            modifier = Modifier
-                                .size(9.dp)
-                                .align(Alignment.BottomEnd)
-                                .background(Color(0xFF4C6876), CircleShape)
-                                .border(1.5.dp, Color.White, CircleShape),
-                        )
-                    }
-                }
             }
         }
+
+        // Indicador visual de estado de sincronización / conexión fuera del recorte circular
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 2.dp, bottom = 2.dp)
+                .size(11.dp)
+                .background(dotColor, CircleShape)
+                .border(1.5.dp, MoSurfaceTokens.cardSurface, CircleShape),
+        )
     }
 }
 
@@ -165,11 +142,27 @@ fun MoTopAppBarWithProfile(
         ) {
             // Acción de navegación izquierda (ej: Volver)
             if (navigationSymbol != null && onNavigationClick != null) {
-                MoIconButton(
-                    symbol = navigationSymbol,
-                    contentDescription = navigationDescription,
-                    onClick = onNavigationClick,
-                )
+                Surface(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .semantics { contentDescription = navigationDescription }
+                        .clickable(role = Role.Button, onClick = onNavigationClick)
+                        .testTag("topbar-back-button"),
+                    shape = CircleShape,
+                    color = MoSurfaceTokens.cardElevated,
+                    contentColor = MoColors.current.bodyText,
+                    border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = MoIcons.ChevronLeft,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                            tint = MoColors.current.bodyText,
+                        )
+                    }
+                }
             }
 
             // Título y subtítulo central
@@ -229,7 +222,7 @@ fun MoTopAppBarWithProfile(
                                     .size(10.dp)
                                     .align(Alignment.TopEnd)
                                     .background(MoColors.current.warningText, CircleShape)
-                                    .border(1.5.dp, Color.White, CircleShape),
+                                    .border(1.5.dp, MoSurfaceTokens.cardSurface, CircleShape),
                             )
                         }
                     }

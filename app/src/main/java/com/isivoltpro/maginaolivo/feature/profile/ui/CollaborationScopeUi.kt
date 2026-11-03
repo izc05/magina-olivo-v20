@@ -4,7 +4,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -27,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.app.AppearanceMode
@@ -186,10 +190,8 @@ fun RoleScopeCard(role: CollaboratorRole, scope: MockRoleScope, modifier: Modifi
         border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(role.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MoColors.current.primaryText)
-                RoleBadge(role = role)
-            }
+            RoleBadge(role = role)
+            Text(role.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MoColors.current.primaryText)
             Text(role.description, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
 
             Text("Alcance", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MoColors.current.primaryText)
@@ -231,36 +233,46 @@ fun RolesScopeScreenPrototype(modifier: Modifier = Modifier) {
 // ======================================================================================
 
 @Composable
-private fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit) {
+private fun ChoiceChip(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val palette = MoColors.current
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .heightIn(min = 48.dp)
             .clickable(role = Role.RadioButton, onClick = onClick),
         shape = RoundedCornerShape(24.dp),
-        color = if (selected) MoOliveTint else MoSurfaceTokens.cardSurface,
-        border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) MoOlivePrimary else MoSurfaceTokens.cardStroke),
+        color = if (selected) palette.actionTint else MoSurfaceTokens.cardSurface,
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) palette.actionText else MoSurfaceTokens.cardStroke),
     ) {
-        Text(
-            text,
+        Box(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            color = if (selected) MoOlivePrimary else MoColors.current.bodyText,
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                color = if (selected) palette.actionText else palette.bodyText,
+            )
+        }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ChoiceGroup(title: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     MoSectionHeader(title)
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        options.chunked(2).forEachIndexed { rowIndex, row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEachIndexed { i, option ->
-                    val index = rowIndex * 2 + i
-                    ChoiceChip(option, selected == index) { onSelect(index) }
-                }
-            }
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEachIndexed { index, option ->
+            ChoiceChip(option, selected == index) { onSelect(index) }
         }
     }
 }
@@ -293,6 +305,7 @@ fun CreateInvitationPrototype(modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun InvitationLifecycleCard(item: MockInvitationItem, modifier: Modifier = Modifier) {
     Card(
@@ -301,23 +314,28 @@ fun InvitationLifecycleCard(item: MockInvitationItem, modifier: Modifier = Modif
         colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
         border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
-        Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    item.counterpart,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MoColors.current.primaryText,
-                )
+        Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 RoleBadge(role = item.role)
+                MoStatusChip(text = item.lifecycle.label, tone = item.lifecycle.tone)
             }
+            Text(
+                item.counterpart,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MoColors.current.primaryText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Text(
                 "${item.scope.farmName} · ${item.scope.parcelsLabel()} · ${item.scope.campaignLabel()}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MoSurfaceTokens.secondaryText,
             )
-            MoStatusChip(text = item.lifecycle.label, tone = item.lifecycle.tone)
             Text(item.lifecycle.explanation, style = MaterialTheme.typography.bodySmall, color = MoColors.current.bodyText)
 
             when {

@@ -33,6 +33,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -117,8 +119,9 @@ fun ProfileAccountPanel(
             )
             Surface(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
+                    .semantics { contentDescription = "Cerrar panel de perfil" }
                     .clickable(role = Role.Button, onClick = onDismiss)
                     .testTag("profile-panel-close"),
                 shape = CircleShape,
@@ -126,10 +129,11 @@ fun ProfileAccountPanel(
                 border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "✕",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MoColors.current.bodyText,
+                    Icon(
+                        imageVector = MoIcons.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MoColors.current.bodyText,
                     )
                 }
             }
@@ -158,8 +162,8 @@ fun ProfileAccountPanel(
                         .clip(CircleShape)
                         .testTag("profile-panel-avatar"),
                     shape = CircleShape,
-                    color = if (userProfile.isConnected) MoOlivePrimary else MoOliveTint,
-                    border = BorderStroke(2.dp, MoOliveMid),
+                    color = if (userProfile.isConnected) MoOlivePrimary else MoColors.current.actionTint,
+                    border = BorderStroke(2.dp, MoColors.current.actionText),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         if (userProfile.isConnected && userProfile.initials.isNotBlank()) {
@@ -221,19 +225,10 @@ fun ProfileAccountPanel(
             modifier = Modifier.testTag("profile-invitations-item"),
             trailing = {
                 if (receivedInvitationsCount > 0) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFFDF6E2),
-                        border = BorderStroke(1.dp, Color(0xFFE5DFC9)),
-                    ) {
-                        Text(
-                            text = "$receivedInvitationsCount pendiente",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MoColors.current.warningText,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        )
-                    }
+                    MoStatusChip(
+                        text = "$receivedInvitationsCount pendiente",
+                        tone = MoStatusTone.Warning,
+                    )
                 } else {
                     Icon(MoIcons.ChevronRight, null, tint = MoSurfaceTokens.secondaryText, modifier = Modifier.size(18.dp))
                 }
@@ -247,7 +242,7 @@ fun ProfileAccountPanel(
 
         MoCompactListItem(
             title = "Municipio preferido",
-            subtitle = "${userProfile.preferredMunicipality} (${userProfile.preferredProvince}) · Previsión y Catastro",
+            subtitle = "${userProfile.preferredMunicipality} (${userProfile.preferredProvince})",
             icon = MoIcons.Map,
             onClick = onEditLocation,
             modifier = Modifier.testTag("profile-municipality-item"),
@@ -274,7 +269,7 @@ fun ProfileAccountPanel(
 
         MoCompactListItem(
             title = "Mis máquinas y aperos",
-            subtitle = "Tractores, atomizadores y equipos para anotar en los trabajos",
+            subtitle = "Tractores, atomizadores y equipos",
             icon = MoIcons.Tractor,
             onClick = onMachinery,
             modifier = Modifier.testTag("profile-machinery-item"),
@@ -285,7 +280,7 @@ fun ProfileAccountPanel(
 
         MoCompactListItem(
             title = "Aplicadores y asesores",
-            subtitle = "Carné ROPO y credenciales técnicas para el cuaderno CUE",
+            subtitle = "Carné ROPO y credenciales CUE",
             icon = MoIcons.People,
             onClick = onAgronomicPeople,
             modifier = Modifier.testTag("profile-agronomic-item"),
@@ -302,9 +297,9 @@ fun ProfileAccountPanel(
         MoCompactListItem(
             title = "Gestión de cuenta",
             subtitle = if (userProfile.isConnected) {
-                "Sesión activa con ${userProfile.email} · Cambio de contraseña"
+                "${userProfile.email} · Contraseña"
             } else {
-                "Iniciar sesión o crear cuenta para sincronizar entre dispositivos"
+                "Iniciar sesión para sincronizar"
             },
             icon = MoIcons.Checklist,
             onClick = onAccountSettings,
@@ -321,7 +316,7 @@ fun ProfileAccountPanel(
 
         MoCompactListItem(
             title = "Notificaciones y avisos",
-            subtitle = if (notificationsEnabled) "Activadas · Avisos de labores planificadas" else "Desactivadas",
+            subtitle = if (notificationsEnabled) "Avisos de labores activados" else "Desactivadas",
             icon = MoIcons.Bell,
             onClick = onToggleNotifications,
             modifier = Modifier.testTag("profile-notifications-item"),
@@ -335,7 +330,7 @@ fun ProfileAccountPanel(
 
         MoCompactListItem(
             title = "Apariencia",
-            subtitle = "Tema claro / oscuro adaptado al olivar",
+            subtitle = "Tema claro / oscuro",
             icon = MoIcons.Weather,
             onClick = onToggleAppearance,
             modifier = Modifier.testTag("profile-appearance-item"),
@@ -346,7 +341,7 @@ fun ProfileAccountPanel(
 
         MoCompactListItem(
             title = "Modo sin conexión",
-            subtitle = "Tus registros se guardan siempre en este teléfono.",
+            subtitle = "Guardado siempre en el teléfono",
             icon = MoIcons.Checklist,
             trailing = {
                 MoStatusChip(text = "Siempre", tone = MoStatusTone.Success)
@@ -355,7 +350,7 @@ fun ProfileAccountPanel(
 
         MoCompactListItem(
             title = "Ayuda y privacidad",
-            subtitle = "Qué se guarda en el teléfono, novedades y política de datos",
+            subtitle = "Datos locales y política de privacidad",
             icon = MoIcons.Checklist,
             onClick = { onHelp("privacy") },
             modifier = Modifier.testTag("profile-help-item"),
@@ -366,7 +361,7 @@ fun ProfileAccountPanel(
 
         MoCompactListItem(
             title = "Mágina Olivo",
-            subtitle = "Versión $appVersion · Conforme a INSPIRE Catastro",
+            subtitle = "v$appVersion · INSPIRE Catastro",
             trailing = {
                 OliveMark(modifier = Modifier.size(28.dp))
             },

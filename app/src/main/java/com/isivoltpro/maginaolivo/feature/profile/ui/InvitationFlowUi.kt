@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.app.AppearanceMode
@@ -81,11 +82,7 @@ fun ReceivedInvitationCard(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
             // Cabecera de la tarjeta: Título de aviso y fecha
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -106,6 +103,7 @@ fun ReceivedInvitationCard(
                     text = invitation.dateLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MoSurfaceTokens.secondaryText,
+                    modifier = Modifier.padding(start = 14.dp),
                 )
             }
 
@@ -119,7 +117,7 @@ fun ReceivedInvitationCard(
             Text(
                 text = "${invitation.farmName} (${invitation.municipality})",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MoOlivePrimary,
+                color = MoColors.current.actionText,
                 fontWeight = FontWeight.SemiBold,
             )
 
@@ -229,16 +227,17 @@ fun InviteCollaboratorSheetContent(
 
         CollaboratorRole.entries.forEach { role ->
             val isSelected = selectedRole == role
+            val palette = MoColors.current
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(role = Role.RadioButton) { selectedRole = role }
                     .testTag("invite-role-${role.name.lowercase()}"),
                 shape = MoShape.card,
-                color = if (isSelected) MoOliveTint else MoSurfaceTokens.cardElevated,
+                color = if (isSelected) palette.actionTint else MoSurfaceTokens.cardElevated,
                 border = BorderStroke(
                     if (isSelected) 1.5.dp else 1.dp,
-                    if (isSelected) MoOlivePrimary else MoSurfaceTokens.cardStroke,
+                    if (isSelected) palette.actionText else MoSurfaceTokens.cardStroke,
                 ),
             ) {
                 Row(
@@ -250,19 +249,17 @@ fun InviteCollaboratorSheetContent(
                         selected = isSelected,
                         onClick = { selectedRole = role },
                     )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                text = role.title,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MoColors.current.primaryText,
-                            )
-                            RoleBadge(role = role)
-                        }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        RoleBadge(role = role)
+                        Text(
+                            text = role.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = palette.primaryText,
+                        )
                         Text(
                             text = role.subtitle,
                             style = MaterialTheme.typography.bodySmall,
@@ -277,16 +274,17 @@ fun InviteCollaboratorSheetContent(
 
         InvitationChannel.entries.forEach { channel ->
             val isSelected = selectedChannel == channel
+            val palette = MoColors.current
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(role = Role.RadioButton) { selectedChannel = channel }
                     .testTag("invite-channel-${channel.name.lowercase()}"),
                 shape = RoundedCornerShape(8.dp),
-                color = if (isSelected) MoOliveTint else MoSurfaceTokens.cardElevated,
+                color = if (isSelected) palette.actionTint else MoSurfaceTokens.cardElevated,
                 border = BorderStroke(
                     if (isSelected) 1.5.dp else 1.dp,
-                    if (isSelected) MoOlivePrimary else MoSurfaceTokens.cardStroke,
+                    if (isSelected) palette.actionText else MoSurfaceTokens.cardStroke,
                 ),
             ) {
                 Row(
@@ -303,7 +301,7 @@ fun InviteCollaboratorSheetContent(
                             text = channel.title,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = MoColors.current.primaryText,
+                            color = palette.primaryText,
                         )
                         Text(
                             text = channel.iconDescription,
@@ -319,8 +317,8 @@ fun InviteCollaboratorSheetContent(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
-            color = Color(0xFFFBF8F2),
-            border = BorderStroke(1.dp, MoOliveMid.copy(alpha = 0.3f)),
+            color = MoColors.current.actionTint,
+            border = BorderStroke(1.dp, MoColors.current.actionText.copy(alpha = 0.35f)),
         ) {
             Row(
                 modifier = Modifier.padding(10.dp),
@@ -330,7 +328,7 @@ fun InviteCollaboratorSheetContent(
                 Icon(
                     imageVector = MoIcons.Checklist,
                     contentDescription = null,
-                    tint = MoOlivePrimary,
+                    tint = MoColors.current.actionText,
                     modifier = Modifier.size(20.dp),
                 )
                 Text(
@@ -386,21 +384,18 @@ fun SentInvitationCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(MoSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = invitation.recipientEmail ?: "Invitación abierta",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MoColors.current.primaryText,
-                )
-                RoleBadge(role = invitation.role)
-            }
+            RoleBadge(role = invitation.role)
+
+            Text(
+                text = invitation.recipientEmail ?: "Invitación abierta",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MoColors.current.primaryText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
 
             Text(
                 text = "${invitation.scope} · Vía ${invitation.channel.title}",
@@ -413,7 +408,7 @@ fun SentInvitationCard(
                     text = "Código de un solo uso (Demo): ${invitation.oneTimeCode}",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MoOlivePrimary,
+                    color = MoColors.current.actionText,
                 )
             }
 
@@ -421,8 +416,8 @@ fun SentInvitationCard(
                 text = "${invitation.status.label} · ${invitation.dateLabel}",
                 style = MaterialTheme.typography.labelSmall,
                 color = when (invitation.status) {
-                    InvitationStatus.ACEPTADA -> MoSuccess
-                    InvitationStatus.PENDIENTE -> MoWarningText
+                    InvitationStatus.ACEPTADA -> MoColors.current.successText
+                    InvitationStatus.PENDIENTE -> MoColors.current.warningText
                     else -> MoSurfaceTokens.secondaryText
                 },
             )

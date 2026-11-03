@@ -58,10 +58,11 @@ fun RoleBadge(
     role: CollaboratorRole,
     modifier: Modifier = Modifier,
 ) {
+    val palette = MoColors.current
     val (backgroundColor, textColor, borderColor) = when (role) {
-        CollaboratorRole.PROPIETARIO -> Triple(MoOliveTint, MoOlivePrimary, MoOliveMid)
-        CollaboratorRole.GESTOR -> Triple(Color(0xFFFDF6E2), MoWarningText, MoWarning)
-        CollaboratorRole.RECOLECTOR -> Triple(MoInfoTint, MoInfo, MoInfo)
+        CollaboratorRole.PROPIETARIO -> Triple(palette.actionTint, palette.actionText, palette.actionText)
+        CollaboratorRole.GESTOR -> Triple(palette.warningTint, palette.warningText, palette.warningAccent)
+        CollaboratorRole.RECOLECTOR -> Triple(palette.infoTint, palette.infoText, palette.infoAccent)
     }
 
     Surface(
@@ -85,6 +86,8 @@ fun RoleBadge(
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = textColor,
+                maxLines = 1,
+                softWrap = false,
             )
         }
     }
@@ -113,26 +116,18 @@ fun RoleDetailCard(
                 .padding(MoSpacing.md),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = role.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MoColors.current.primaryText,
-                    )
-                    Text(
-                        text = role.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MoSurfaceTokens.secondaryText,
-                    )
-                }
-                RoleBadge(role = role)
-            }
+            RoleBadge(role = role)
+            Text(
+                text = role.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MoColors.current.primaryText,
+            )
+            Text(
+                text = role.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MoSurfaceTokens.secondaryText,
+            )
 
             Spacer(Modifier.height(4.dp))
             Text(
@@ -212,6 +207,7 @@ fun FarmMembershipCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
+    val palette = MoColors.current
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -220,54 +216,50 @@ fun FarmMembershipCard(
         colors = CardDefaults.cardColors(containerColor = MoSurfaceTokens.cardSurface),
         border = BorderStroke(
             if (membership.isPrimary) 1.5.dp else 1.dp,
-            if (membership.isPrimary) MoOlivePrimary.copy(alpha = 0.6f) else MoSurfaceTokens.cardStroke,
+            if (membership.isPrimary) palette.actionText.copy(alpha = 0.6f) else MoSurfaceTokens.cardStroke,
         ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(MoSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                RoleBadge(role = membership.role)
+                if (membership.isPrimary) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = palette.actionTint,
+                        border = BorderStroke(1.dp, palette.actionText.copy(alpha = 0.35f)),
                     ) {
                         Text(
-                            text = membership.farmName,
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "Principal",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = palette.actionText,
                             fontWeight = FontWeight.Bold,
-                            color = MoColors.current.primaryText,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                         )
-                        if (membership.isPrimary) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MoOliveTint,
-                            ) {
-                                Text(
-                                    text = "Principal",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MoOlivePrimary,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                )
-                            }
-                        }
                     }
-                    Text(
-                        text = "${membership.municipality} · ${membership.parcelCount} parcelas · ${membership.areaHectares} ha",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MoSurfaceTokens.secondaryText,
-                    )
                 }
-                RoleBadge(role = membership.role)
             }
+            Text(
+                text = membership.farmName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = palette.primaryText,
+            )
+            Text(
+                text = "${membership.municipality} · ${membership.parcelCount}\u00A0parcelas · ${membership.areaHectares}\u00A0ha",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoSurfaceTokens.secondaryText,
+            )
         }
     }
 }
