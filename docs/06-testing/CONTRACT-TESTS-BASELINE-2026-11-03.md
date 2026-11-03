@@ -1,5 +1,9 @@
 # Línea base de las pruebas de contrato antiguas (Jornadas, Pesadas y Jornadas manuales), 2026-11-03
 
+> **Corrección (auditoría #841):** el recuento de 47 de 113 de este documento era un artefacto de una salida truncada. El recuento crudo por prueba (`am instrument -r`) da **109 de 113** fallos (Jornada 11/11, Delivery 84/87, Harvest 14/15), así que la comparación «idéntica» de abajo tampoco es válida.
+>
+> **Recuperadas (2026-11-03):** 114/114 (113 históricas + 1 nueva), sin tocar producción. Ver `docs/06-testing/CONTRACT-TESTS-RECOVERY-2026-11-03.md`.
+
 - **Encargo del propietario (#837):** documentar los fallos de `JornadaPesadasContractTest`, `DeliveryContractTest` y `HarvestContractTest` comparándolos con la base anterior, sin deshabilitar ni relajar ninguna aserción.
 - **Ejecución:** emulador de QA aislado `MaginaOlivo_LocalQA_Disposable_API35` (API 35, limpio, único dispositivo, con la guarda superada), con `pm clear` antes de cada pasada y las mismas tres clases en las dos versiones.
 

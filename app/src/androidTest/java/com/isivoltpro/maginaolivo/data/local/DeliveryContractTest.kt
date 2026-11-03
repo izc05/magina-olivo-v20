@@ -120,6 +120,10 @@ import org.junit.runner.RunWith
 class DeliveryContractTest {
     private val context = attachmentFixtureContext(ApplicationProvider.getApplicationContext<Context>(), "delivery")
     private val workspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000d1")
+    /** G2.6 (#615): production always injects the active workspace (ActiveWorkspaceScope); the fixture's own plays that role. */
+    private val activeWorkspace = object : WorkspaceRepository {
+        override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
+    }
     private val farmId = UUID.fromString("20000000-0000-0000-0000-0000000000d1")
     private val campaignId = UUID.fromString("40000000-0000-0000-0000-0000000000d1")
     private val north = UUID.fromString("30000000-0000-0000-0000-0000000000d1")
@@ -258,7 +262,7 @@ class DeliveryContractTest {
     fun pesadaAndYieldUseWorkspaceCalendarAtMidnightBoundaries() = runBlocking {
         val workspace = db.workspaceDao().findById(workspaceId)!!
         db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
-        val repository = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val repository = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = activeWorkspace)
         val utcDay = LocalDate.parse("2026-12-02")
 
         assertValidation(
@@ -753,8 +757,8 @@ class DeliveryContractTest {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
         }
         val clock = FixedClock(now)
-        deliveries = OfflineFirstDeliveryRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
-        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
+        deliveries = OfflineFirstDeliveryRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = activeWorkspace) { ZoneOffset.UTC }
+        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = activeWorkspace) { ZoneOffset.UTC }
         organizations = OfflineFirstOrganizationRepository(db, workspaces, clock, RandomIds, TestDispatchers)
         attachments = OfflineFirstAttachmentRepository(db, AndroidAttachmentFileStore(context), workspaces, clock, RandomIds, TestDispatchers)
         documents = OfflineFirstDocumentOcrRepository(
@@ -1220,7 +1224,7 @@ class DeliveryContractTest {
             listOf(file, File(file.path + ".bak"), File(file.path + ".new")).forEach { it.delete() }
         }
         links.consent(userId, links.choices().filter { it.id == farmId }, true)
-        deliveries = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, writeScope = links) { ZoneOffset.UTC }
+        deliveries = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = activeWorkspace, writeScope = links) { ZoneOffset.UTC }
         val id = ok(deliveries.create(draft(2_000_000, north to null)))
 
         val stuck = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default)
@@ -1263,7 +1267,7 @@ class DeliveryContractTest {
             listOf(file, File(file.path + ".bak"), File(file.path + ".new")).forEach { it.delete() }
         }
         if (consent) links.consent(account.state.value.userId!!, links.choices().filter { it.id == farmId }, true)
-        deliveries = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, writeScope = links) { ZoneOffset.UTC }
+        deliveries = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = activeWorkspace, writeScope = links) { ZoneOffset.UTC }
         return account to links
     }
 
@@ -1636,6 +1640,20 @@ class DeliveryContractTest {
         )
         return PreparedFixture(links, id, op, identity, ack, account)
     }
+
+    /**
+     * #808 causal order (DeliveryDispatchWorker): parents -> Jornada confirmed -> Pesada. A Pesada is dispatched only once
+     * its Jornada has a remote version. The G2.4 worker fixtures predate that rule: here the Jornada is left exactly as its
+     * own sender leaves it after the server's receipt (remote version 1). The rule itself is pinned by
+     * [g24WorkerRefusesAPesadaWhoseJornadaIsNotConfirmedBeforeAnyConnection].
+     */
+    private suspend fun confirmParentJornada(deliveryId: UUID) {
+        val jornada = db.harvestDao().findById(db.deliveryDao().findById(deliveryId)!!.harvestId!!)!!
+        if (jornada.metadata.remoteVersion == null) db.harvestDao().upsert(jornada.copy(metadata = jornada.metadata.copy(remoteVersion = 1)))
+    }
+
+    /** A [preparable] Pesada whose Jornada is confirmed: what the worker may dispatch (#808 causal order). */
+    private suspend fun dispatchable(): PreparedFixture = preparable().also { confirmParentJornada(it.deliveryId) }
 
     private fun dir(name: String) = File(context.noBackupFilesDir, "g24-$name-${UUID.randomUUID()}")
 
@@ -2374,7 +2392,7 @@ class DeliveryContractTest {
 
     @Test
     fun g24WorkerALostResponseLeavesTheOutcomeUnknownAndRecoversByTheSameUuid() = runBlocking {
-        val fixture = preparable()
+        val fixture = dispatchable()
         val directory = dir("worker-lost")
         val before = db.deliveryDao().findById(fixture.deliveryId)!!
 
@@ -2423,7 +2441,7 @@ class DeliveryContractTest {
 
     @Test
     fun g24WorkerARevocationDuringTheRequestRetainsTheReceiptAndLeavesThePesadaUntouched() = runBlocking {
-        val fixture = preparable()
+        val fixture = dispatchable()
         val before = db.deliveryDao().findById(fixture.deliveryId)!!
         // The farmer revokes while the request is in flight: after the wait, consent is gone.
         val transport = FakeRpcTransport(
@@ -2479,9 +2497,10 @@ class DeliveryContractTest {
         val links = LocalFarmLinkRepository(context, db, account, "fixture-project", store)
         links.consent(userId, links.choices().filter { it.id == farmId }, true)
         val writer = OfflineFirstDeliveryRepository(
-            db, FixedClock(now), RandomIds, TestDispatchers, writeScope = links,
+            db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = activeWorkspace, writeScope = links,
         ) { ZoneOffset.UTC }
         val deliveryId = ok(writer.create(draft(2_800_000, north to null)))
+        confirmParentJornada(deliveryId)
         val op = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, deliveryId).single()
         assertEquals(userId, checkNotNull(account.state.value.userId))
 
@@ -2509,7 +2528,7 @@ class DeliveryContractTest {
 
     @Test
     fun g24WorkerAnAccountChangeDuringTheRequestCommitsNothing() = runBlocking {
-        val fixture = preparable()
+        val fixture = dispatchable()
         val before = db.deliveryDao().findById(fixture.deliveryId)!!
         val account = fixture.account
         // The session disappears while the request is in flight: the commit must be refused.
@@ -2543,7 +2562,7 @@ class DeliveryContractTest {
         // type, so the DELIVERY guard of verifiedRecoveredDeliveryReceipt is NOT on this path.
         // Before the fix, a receipt for another entity sharing this operation UUID was adopted
         // as this Pesada's ACK and the delivery was marked SYNCED.
-        val fixture = preparable()
+        val fixture = dispatchable()
         val before = db.deliveryDao().findById(fixture.deliveryId)!!
         val hash = deliveryPayloadHash(fixture.op.payloadJson!!, fixture.op.payloadVersion)!!
 
@@ -2596,12 +2615,35 @@ class DeliveryContractTest {
     }
 
     @Test
+    fun g24WorkerRefusesAPesadaWhoseJornadaIsNotConfirmedBeforeAnyConnection() = runBlocking {
+        // #808 causal order: parents -> Jornada confirmed -> Pesada. Without a remote version on its Jornada the Pesada
+        // is refused LOCALLY: no connection, no PREPARE, the operation and the Pesada exactly as they were.
+        val fixture = preparable()
+        val jornada = db.deliveryDao().findById(fixture.deliveryId)!!.harvestId!!
+        assertNull(db.harvestDao().findById(jornada)!!.metadata.remoteVersion)
+        val before = db.deliveryDao().findById(fixture.deliveryId)!!
+        val original = db.syncOutboxDao().findById(fixture.op.id)!!
+        val transport = FakeRpcTransport(
+            onWrite = { fail("Una Pesada sin Jornada confirmada no se envia"); error("inalcanzable") },
+            onCheck = { fail("Una Pesada sin Jornada confirmada no abre ninguna lectura"); error("inalcanzable") },
+        )
+        leaseIn(dir("worker-parent")).use { lease ->
+            assertEquals(DispatchOutcome.PARENT_NOT_SYNCED, workerWith(transport, fixture.links).dispatch(fixture.op.id, lease))
+        }
+        assertTrue("No se abrio ninguna peticion", transport.names.isEmpty())
+        assertEquals(0, db.deliveryDispatchPrepareDao().listForDelivery(fixture.deliveryId).size)
+        assertEquals(original, db.syncOutboxDao().findById(fixture.op.id))
+        assertEquals(before, db.deliveryDao().findById(fixture.deliveryId))
+        assertNull(db.harvestDao().findById(jornada)!!.metadata.remoteVersion)
+    }
+
+    @Test
     fun g24WorkerRefusesAPayloadV1OperationBeforeOpeningAnyConnection() = runBlocking {
         // Review #774: sync_own_delivery_v2 is a v2 endpoint whose receipt reports
         // payload_version=2. A v1 snapshot has different bytes, so its hash could never match
         // that receipt. The refusal is LOCAL and happens before the PREPARE, so a v1 operation
         // is neither sent nor claimed, and keeps its UUID and bytes for a later v2 migration.
-        val fixture = preparable()
+        val fixture = dispatchable()
         val before = db.deliveryDao().findById(fixture.deliveryId)!!
         val original = db.syncOutboxDao().findById(fixture.op.id)!!
 
@@ -2696,7 +2738,7 @@ class DeliveryContractTest {
         // existente: allí fallaba la escritura, así que el servidor pudo no haber confirmado
         // nada. Aquí la escritura SE CONFIRMA y lo que se pierde es la respuesta siguiente, que
         // es el caso que el guion del ensayo debe reproducir con red real.
-        val fixture = preparable()
+        val fixture = dispatchable()
         val before = db.deliveryDao().findById(fixture.deliveryId)!!
         val directory = dir("worker-post-commit")
         var writes = 0
@@ -2756,7 +2798,7 @@ class DeliveryContractTest {
         // B3 en vuelo, variante POSTERIOR al commit: el servidor ya aplicó la pesada y el
         // agricultor revoca antes de que llegue el recibo. El recibo se conserva como prueba y
         // la pesada local no se toca; no se "deshace" nada en el servidor por nuestra cuenta.
-        val fixture = preparable()
+        val fixture = dispatchable()
         val before = db.deliveryDao().findById(fixture.deliveryId)!!
         val transport = FakeRpcTransport(
             onWrite = { DeliveryRpcResponse(200, writeBody(fixture)) },
@@ -2806,7 +2848,7 @@ class DeliveryContractTest {
     // ---------------------------------------------------------------------------------------
 
     private suspend fun assertHeadBlocksTheAck(label: String, head: (PreparedFixture) -> DeliveryRpcResponse, expected: DispatchOutcome) {
-        val fixture = preparable()
+        val fixture = dispatchable()
         val before = db.deliveryDao().findById(fixture.deliveryId)!!
         val directory = dir("head-$label")
         val cut = FakeRpcTransport(

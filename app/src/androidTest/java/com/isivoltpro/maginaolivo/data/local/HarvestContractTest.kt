@@ -52,6 +52,10 @@ import org.junit.runner.RunWith
 class HarvestContractTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val workspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000a1")
+    /** G2.6 (#615): production always injects the active workspace (ActiveWorkspaceScope); the fixture's own plays that role. */
+    private val activeWorkspace = object : WorkspaceRepository {
+        override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
+    }
     private val farmId = UUID.fromString("20000000-0000-0000-0000-0000000000a1")
     private val idleFarmId = UUID.fromString("20000000-0000-0000-0000-0000000000a2")
     private val campaignId = UUID.fromString("40000000-0000-0000-0000-0000000000a1")
@@ -85,7 +89,7 @@ class HarvestContractTest {
     fun jornadaAndHarvestUseWorkspaceCalendarAtMidnightBoundaries() = runBlocking {
         val workspace = db.workspaceDao().findById(workspaceId)!!
         db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
-        val repository = OfflineFirstHarvestRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val repository = OfflineFirstHarvestRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = activeWorkspace)
         val utcDay = LocalDate.parse("2026-11-20")
 
         assertValidation("harvestDate", repository.openJornada(farmId, utcDay))
@@ -406,7 +410,7 @@ class HarvestContractTest {
 
     private fun open() {
         db = MaginaOlivoDatabase.create(context, DB)
-        harvests = OfflineFirstHarvestRepository(db, FixedClock(now), RandomIds, TestDispatchers) { ZoneOffset.UTC }
+        harvests = OfflineFirstHarvestRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = activeWorkspace) { ZoneOffset.UTC }
     }
 
     private fun draft(total: Long?, vararg shares: Pair<UUID, Long?>) = HarvestDraft(
