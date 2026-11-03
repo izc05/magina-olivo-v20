@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mágina Olivo 1.0 — Prototipos Visuales de Perfil, Cuenta, Roles y Mágina IA</title>
+  <style>
+    :root {
+      --mo-cream: #F8F6EE;
+      --mo-warm-white: #FFFEFA;
+      --mo-card-surface: #FFFEFA;
+      --mo-app-bg: #F8F6EE;
+      --mo-olive-primary: #3E5A32;
+      --mo-olive-mid: #4F6B39;
+      --mo-olive-tint: #E9EEE0;
+      --mo-ink: #2A2823;
+      --mo-text-secondary: #67625A;
+      --mo-outline: #E5E1D6;
+      --mo-warning-tint: #FDF6E2;
+      --mo-warning-text: #805B18;
+      --mo-warning-border: #E5DFC9;
+      --mo-info-tint: #E6EDF0;
+      --mo-info-text: #4C6876;
+      --mo-success: #4E7A45;
+      --mo-success-tint: #E8EFE3;
+      --mo-destructive: #B5534F;
+    }
+
+    body.dark-theme {
+      --mo-cream: #1C1B18;
+      --mo-warm-white: #262420;
+      --mo-card-surface: #262420;
+      --mo-app-bg: #1C1B18;
+      --mo-olive-primary: #769E66;
+      --mo-olive-mid: #8CB47C;
+      --mo-olive-tint: #2D3A26;
+      --mo-ink: #F0EDE6;
+      --mo-text-secondary: #AAA498;
+      --mo-outline: #3E3B33;
+      --mo-warning-tint: #3A321E;
+      --mo-warning-text: #E0BA60;
+      --mo-warning-border: #524729;
+      --mo-info-tint: #23313B;
+      --mo-info-text: #8FAEC2;
+      --mo-success: #679E5B;
+      --mo-success-tint: #263822;
+      --mo-destructive: #D9736E;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #E6E2D8; color: var(--mo-ink); padding: 20px; transition: background 0.3s; }
+    header { max-width: 1200px; margin: 0 auto 20px; background: var(--mo-warm-white); padding: 20px; border-radius: 16px; border: 1px solid var(--mo-outline); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+    h1 { color: var(--mo-olive-primary); font-size: 22px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+    .badge-olive { background: var(--mo-olive-tint); color: var(--mo-olive-primary); border: 1px solid var(--mo-olive-mid); }
+    .badge-warning { background: var(--mo-warning-tint); color: var(--mo-warning-text); border: 1px solid var(--mo-warning-border); }
+    .badge-info { background: var(--mo-info-tint); color: var(--mo-info-text); }
+    .badge-prototype { background: #FDE8E8; color: #9B1C1C; border: 1px solid #F8B4B4; }
+
+    .controls-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; gap: 10px; }
+    .tabs-nav { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tab-btn { background: var(--mo-cream); border: 1px solid var(--mo-outline); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--mo-text-secondary); transition: all 0.2s; }
+    .tab-btn.active { background: var(--mo-olive-primary); color: #FFF; border-color: var(--mo-olive-primary); }
+    .theme-toggle-btn { background: var(--mo-olive-tint); color: var(--mo-olive-primary); border: 1px solid var(--mo-olive-mid); padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; }
+
+    .showcase-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 24px; }
+    @media (min-width: 900px) {
+      .showcase-container { grid-template-columns: 420px 1fr; }
+    }
+
+    /* Mobile Device Frame */
+    .phone-mockup { width: 100%; max-width: 400px; height: 820px; background: var(--mo-app-bg); border-radius: 36px; border: 8px solid #2B2A27; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; display: flex; flex-direction: column; margin: 0 auto; position: relative; }
+    .notch { width: 140px; height: 18px; background: #2B2A27; margin: 0 auto; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+    .screen-content { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: var(--mo-app-bg); }
+    
+    /* Top Bar */
+    .topbar { background: var(--mo-card-surface); border-bottom: 1px solid var(--mo-outline); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; }
+    .topbar-title-box { display: flex; flex-direction: column; }
+    .topbar-title { font-size: 17px; font-weight: bold; color: var(--mo-ink); }
+    .topbar-sub { font-size: 11px; color: var(--mo-text-secondary); }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; }
+    .icon-circle-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--mo-card-surface); border: 1px solid var(--mo-outline); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+    .avatar-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--mo-olive-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; border: 1.5px solid var(--mo-outline); cursor: pointer; }
+    .unread-dot { width: 8px; height: 8px; background: var(--mo-warning-text); border-radius: 50%; border: 1.5px solid white; position: absolute; top: 2px; right: 2px; }
+
+    /* Bottom Bar */
+    .bottombar { background: var(--mo-card-surface); border-top: 1px solid var(--mo-outline); height: 58px; display: flex; align-items: center; justify-content: space-around; padding: 0 8px; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--mo-text-secondary); gap: 2px; }
+    .nav-item.active { color: var(--mo-olive-primary); font-weight: bold; }
+    .nav-plus-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--mo-olive-primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; box-shadow: 0 3px 8px rgba(62,90,50,0.3); }
+
+    /* Cards & Components */
+    .card { background: var(--mo-card-surface); border: 1px solid var(--mo-outline); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .card-row { display: flex; justify-content: space-between; align-items: center; }
+    .section-header { font-size: 12px; font-weight: bold; color: var(--mo-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+    .compact-item { background: var(--mo-card-surface); border: 1px solid var(--mo-outline); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .compact-left { display: flex; align-items: center; gap: 10px; }
+    .compact-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--mo-olive-tint); color: var(--mo-olive-primary); display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .compact-texts { display: flex; flex-direction: column; }
+    .compact-title { font-size: 13px; font-weight: 600; color: var(--mo-ink); }
+    .compact-sub { font-size: 11px; color: var(--mo-text-secondary); }
+
+    /* Details Panel */
+    .detail-panel { background: var(--mo-card-surface); border: 1px solid var(--mo-outline); border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+    .detail-title { font-size: 18px; font-weight: bold; color: var(--mo-olive-primary); margin-bottom: 12px; }
+    .detail-text { font-size: 14px; line-height: 1.6; color: var(--mo-ink); margin-bottom: 14px; }
+    .spec-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .spec-table th, .spec-table td { padding: 9px; text-align: left; border-bottom: 1px solid var(--mo-outline); font-size: 13px; }
+    .spec-table th { background: var(--mo-cream); color: var(--mo-text-secondary); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>
+      <span>🫒</span> Mágina Olivo 1.0 — Prototipos Visuales de Perfil, Cuenta, Roles e IA
+    </h1>
+    <p style="color: var(--mo-text-secondary); font-size: 13px; margin-bottom: 10px;">
+      Revisión visual de PR #830. <strong>Aviso:</strong> Todos los datos mostrados son 100% ficticios y de muestra. Las acciones, permisos e invitaciones son prototipos de diseño, no funcionalidad real ni políticas activadas en backend.
+    </p>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <span class="badge badge-prototype">Prototipo Visual Aislado</span>
+      <span class="badge badge-olive">Paleta Mágina 1.0</span>
+      <span class="badge badge-warning">Sin cambios en Room / Auth / Sync</span>
+    </div>
+
+    <div class="controls-row">
+      <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchView('view-topbar')">1. Avatar Superior</button>
+        <button class="tab-btn" onclick="switchView('view-panel')">2. Panel Perfil / Cuenta</button>
+        <button class="tab-btn" onclick="switchView('view-roles')">3. Diseño de Roles</button>
+        <button class="tab-btn" onclick="switchView('view-invitations')">4. Flujo de Invitaciones</button>
+        <button class="tab-btn" onclick="switchView('view-ai')">5. Reserva Mágina IA</button>
+      </div>
+      <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">Modo Oscuro</button>
+    </div>
+  </header>
+
+  <main class="showcase-container">
+    
+    <!-- Mobile Device Mockup Frame -->
+    <div class="phone-mockup">
+      <div class="notch"></div>
+      
+      <!-- Top Bar Mock -->
+      <div class="topbar">
+        <div class="topbar-title-box">
+          <div class="topbar-title" id="mock-topbar-title">Mi Campo</div>
+          <div class="topbar-sub" id="mock-topbar-sub">4 parcelas · 14,8 ha (Muestra)</div>
+        </div>
+        <div class="topbar-actions">
+          <div class="icon-circle-btn" title="Avisos y calendario">
+            🔔
+            <div class="unread-dot"></div>
+          </div>
+          <div class="avatar-btn" id="mock-avatar-btn" title="Mi perfil y cuenta" onclick="switchView('view-panel')">
+            AD
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Screen Content -->
+      <div class="screen-content" id="mock-screen-content">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Bottom Bar Mock -->
+      <div class="bottombar">
+        <div class="nav-item">
+          <span style="font-size: 18px;">⌂</span>
+          <span>Inicio</span>
+        </div>
+        <div class="nav-item active">
+          <span style="font-size: 18px;">♧</span>
+          <span>Mi Campo</span>
+        </div>
+        <div class="nav-plus-btn">+</div>
+        <div class="nav-item">
+          <span style="font-size: 18px;">▤</span>
+          <span>Cuaderno</span>
+        </div>
+        <div class="nav-item" onclick="switchView('view-ai')" style="cursor: pointer;">
+          <span style="font-size: 18px;">✨</span>
+          <span>Mágina IA</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Technical & UX Detail Column -->
+    <div class="detail-panel" id="detail-panel-content">
+      <!-- Injected via JS -->
+    </div>
+
+  </main>
+
+  <script>
+    let isDark = false;
+    function toggleTheme() {
+      isDark = !isDark;
+      document.body.classList.toggle('dark-theme', isDark);
+      document.getElementById('theme-btn').innerText = isDark ? 'Modo Claro' : 'Modo Oscuro';
+    }
+
+    const views = {
+      'view-topbar': {
+        title: 'Mi Campo',
+        sub: '4 parcelas · 14,8 ha (Muestra)',
+        renderMock: () => `
+          <div class="card" style="border: 1.5px solid var(--mo-olive-primary);">
+            <div style="font-size: 14px; font-weight: bold; color: var(--mo-olive-primary);">Acceso Global a Perfil</div>
+            <div style="font-size: 12px; color: var(--mo-text-secondary); line-height: 1.4;">
+              El avatar superior (iniciales «AD» en verde olivo o silueta en local) se ubica junto a la campana de Avisos en todas las pantallas principales.
+            </div>
+          </div>
+
+          <div class="section-header">Explotación activa (Demo)</div>
+          <div class="card">
+            <div class="card-row">
+              <div>
+                <div style="font-weight: bold; font-size: 14px;">Finca La Esperanza (Demo)</div>
+                <div style="font-size: 11px; color: var(--mo-text-secondary);">Valle Ficticio · 4 parcelas</div>
+              </div>
+              <span class="badge badge-olive">Propietario</span>
+            </div>
+          </div>
+
+          <div class="section-header">Labores de hoy (Demostración)</div>
+          <div class="compact-item">
+            <div class="compact-left">
+              <div class="compact-icon">🚜</div>
+              <div class="compact-texts">
+                <div class="compact-title">Tratamiento foliar de muestra</div>
+                <div class="compact-sub">Parcela 2 · Cobre y nutrientes</div>
+              </div>
+            </div>
+            <span style="font-size: 11px; color: var(--mo-success); font-weight: bold;">Completado</span>
+          </div>
+
+          <div class="compact-item">
+            <div class="compact-left">
+              <div class="compact-icon">⚖️</div>
+              <div class="compact-texts">
+                <div class="compact-title">Pesada de aceituna en báscula</div>
+                <div class="compact-sub">1.450 kg · S.C.A. Olivarera Demo</div>
+              </div>
+            </div>
+            <span style="font-size: 11px; color: var(--mo-olive-primary); font-weight: bold;">Registrada</span>
+          </div>
+        `,
+        renderDetail: () => `
+          <div class="detail-title">1. Avatar en Barra Superior (CR-UX-PERFIL-01 §1.1)</div>
+          <p class="detail-text">
+            <strong>Objetivo de producto:</strong> Liberar la cuarta pestaña inferior para el futuro <em>Asistente IA</em> trasladando el acceso a Perfil, Cuenta y Explotaciones a un botón circular de avatar en la barra superior, a la derecha, junto a la campana de Avisos.
+          </p>
+          <table class="spec-table">
+            <tr><th>Componente</th><th>Especificación técnica</th></tr>
+            <tr><td><code>ProfileAvatarIconButton</code></td><td>Botón circular de 42dp con semántica accesible «Mi perfil, cuenta y explotaciones».</td></tr>
+            <tr><td>Estado Conectado</td><td>Fondo <code>MoOlivePrimary</code> (#3E5A32), texto blanco con iniciales de la cuenta demo (ej: «AD»).</td></tr>
+            <tr><td>Estado Local / Offline</td><td>Icono de olivo con indicador discreto en tono ámbar indicando almacenamiento en el dispositivo.</td></tr>
+            <tr><td>Campana de Avisos</td><td>Conserva su acceso superior íntegro con soporte para indicador de notificaciones pendientes (*unread dot*).</td></tr>
+          </table>
+        `
+      },
+      'view-panel': {
+        title: 'Mi Perfil y Cuenta',
+        sub: 'Panel integral de agricultor (Demo)',
+        renderMock: () => `
+          <div class="card" style="border: 1.5px solid var(--mo-outline);">
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <div style="width: 50px; height: 50px; border-radius: 50%; background: var(--mo-olive-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;">
+                AD
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 15px; font-weight: bold;">Agricultor Demo</div>
+                <div style="font-size: 11px; color: var(--mo-text-secondary);">usuario.demo@example.test</div>
+                <span class="badge badge-olive" style="margin-top: 4px; width: fit-content;">Sesión iniciada · Sincronizado</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-header">Mis explotaciones y roles (Muestra)</div>
+          <div class="card">
+            <div class="card-row">
+              <div>
+                <div style="font-weight: bold; font-size: 13px;">Finca La Esperanza (Demo)</div>
+                <div style="font-size: 11px; color: var(--mo-text-secondary);">4 parcelas · 14,8 ha</div>
+              </div>
+              <span class="badge badge-olive">Propietario</span>
+            </div>
+            <div class="card-row" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--mo-outline);">
+              <div>
+                <div style="font-weight: bold; font-size: 13px;">Olivar Los Cerros (Muestra)</div>
+                <div style="font-size: 11px; color: var(--mo-text-secondary);">2 parcelas · 6,4 ha</div>
+              </div>
+              <span class="badge badge-warning">Gestor</span>
+            </div>
+          </div>
+
+          <div class="compact-item" onclick="switchView('view-invitations')" style="cursor: pointer; border-color: var(--mo-warning-border);">
+            <div class="compact-left">
+              <div class="compact-icon" style="background: var(--mo-warning-tint); color: var(--mo-warning-text);">✉️</div>
+              <div class="compact-texts">
+                <div class="compact-title">Mis invitaciones y accesos</div>
+                <div class="compact-sub">1 invitación pendiente de revisar</div>
+              </div>
+            </div>
+            <span class="badge badge-warning">1 pendiente</span>
+          </div>
+
+          <div class="section-header">Herramientas del olivar</div>
+          <div class="compact-item">
+            <div class="compact-left">
+              <div class="compact-icon">🚜</div>
+              <div class="compact-texts">
+                <div class="compact-title">Mis máquinas y aperos</div>
+                <div class="compact-sub">Tractores, atomizadores (PR #211)</div>
+              </div>
+            </div>
+            <span>›</span>
+          </div>
+          <div class="compact-item">
+            <div class="compact-left">
+              <div class="compact-icon">👨‍🌾</div>
+              <div class="compact-texts">
+                <div class="compact-title">Aplicadores y asesores</div>
+                <div class="compact-sub">Carné ROPO y credenciales CUE</div>
+              </div>
+            </div>
+            <span>›</span>
+          </div>
+
+          <div class="section-header">Ajustes y soporte</div>
+          <div class="compact-item">
+            <div class="compact-left">
+              <div class="compact-icon">🔔</div>
+              <div class="compact-texts">
+                <div class="compact-title">Notificaciones de labores</div>
+                <div class="compact-sub">Avisos activos a las 20:00 h</div>
+              </div>
+            </div>
+            <span class="badge badge-olive">Activas</span>
+          </div>
+
+          <button style="margin-top: 6px; width: 100%; padding: 11px; background: transparent; border: 1.5px solid var(--mo-destructive); color: var(--mo-destructive); border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer;">
+            Cerrar sesión
+          </button>
+        `,
+        renderDetail: () => `
+          <div class="detail-title">2. Panel Organizado de Perfil y Cuenta (CR-UX-PERFIL-01 §2)</div>
+          <p class="detail-text">
+            <strong>Reorganización sin pérdida ni duplicación:</strong> Se agrupan todas las pantallas y entidades preexistentes en un panel accesible, sin perder las rutas profundas de <code>ProfileScreen.kt</code>, <code>MyProfile.kt</code>, <code>AccountScreen.kt</code> ni <code>MachineryRoute</code>.
+          </p>
+          <table class="spec-table">
+            <tr><th>Bloque</th><th>Contenido integrado</th></tr>
+            <tr><td>1. Cabecera Personal</td><td>Identidad de la cuenta, foto/iniciales, estado reactivo de sincronización y aislamiento estricto A→B→A.</td></tr>
+            <tr><td>2. Explotaciones y Roles</td><td>Lista de fincas en las que participa el usuario con badge de rol (Titular, Gestor, Recolector) y acceso a invitaciones recibidas.</td></tr>
+            <tr><td>3. Datos del Campo</td><td>Municipio y provincia preferidos (previsión meteorológica y Catastro), cooperativa vinculada.</td></tr>
+            <tr><td>4. Herramientas</td><td>Mis máquinas (PR #211) y Aplicadores/Asesores CUE (#671).</td></tr>
+            <tr><td>5. Cuenta y Seguridad</td><td>Sesión, cambio de contraseña, reautenticación y botón explícito de Cierre de sesión.</td></tr>
+          </table>
+        `
+      },
+      'view-roles': {
+        title: 'Roles de Colaboración',
+        sub: 'Modelo de permisos transparentes (Diseño)',
+        renderMock: () => `
+          <div class="card" style="border-left: 5px solid var(--mo-olive-primary);">
+            <div class="card-row">
+              <div style="font-weight: bold; font-size: 14px;">1. Titular / Propietario</div>
+              <span class="badge badge-olive">Propietario</span>
+            </div>
+            <div style="font-size: 11px; color: var(--mo-text-secondary); margin-top: 2px;">
+              Control total de la finca y contratos
+            </div>
+            <div style="font-size: 12px; margin-top: 6px; line-height: 1.4;">
+              ✅ Gestión de parcelas y Catastro<br>
+              ✅ Invitar gestores y cuadrillas<br>
+              ✅ Consulta completa de costes e ingresos
+            </div>
+          </div>
+
+          <div class="card" style="border-left: 5px solid var(--mo-warning-text);">
+            <div class="card-row">
+              <div style="font-weight: bold; font-size: 14px;">2. Gestor / Arrendatario</div>
+              <span class="badge badge-warning">Gestor</span>
+            </div>
+            <div style="font-size: 11px; color: var(--mo-text-secondary); margin-top: 2px;">
+              Gestión agronómica completa de campaña
+            </div>
+            <div style="font-size: 12px; margin-top: 6px; line-height: 1.4;">
+              ✅ Registro de labores, riegos y CUE<br>
+              ✅ Anotación de jornales y pesadas<br>
+              🔒 Sin acceso a cuentas bancarias del titular
+            </div>
+          </div>
+
+          <div class="card" style="border-left: 5px solid var(--mo-info-text);">
+            <div class="card-row">
+              <div style="font-weight: bold; font-size: 14px;">3. Empresa Recolectora</div>
+              <span class="badge badge-info">Recolector</span>
+            </div>
+            <div style="font-size: 11px; color: var(--mo-text-secondary); margin-top: 2px;">
+              Encargo acotado de cosecha y entregas
+            </div>
+            <div style="font-size: 12px; margin-top: 6px; line-height: 1.4;">
+              ✅ Partes de recolección en parcelas autorizadas<br>
+              ✅ Subida de albaranes de báscula y fotos<br>
+              🔒 Sin acceso a otras fincas ni ejercicios anteriores
+            </div>
+          </div>
+        `,
+        renderDetail: () => `
+          <div class="detail-title">3. Modelo de Roles (CR-COLLAB-01 / CR-COLLAB-02)</div>
+          <p class="detail-text">
+            <strong>Tres roles simples y comprensibles:</strong> Una persona puede tener roles distintos en fincas diferentes desde su misma cuenta. Se conserva un único ID canónico de finca y una sola pesada compartida para evitar duplicidades de kilos.
+          </p>
+          <table class="spec-table">
+            <tr><th>Rol</th><th>Identidad visual</th><th>Alcance permitido</th><th>Límites de seguridad</th></tr>
+            <tr><td><strong>Titular</strong></td><td>Verde Olivo (<code>MoOlivePrimary</code>)</td><td>Control de parcelas, firmas de entrega, finanzas completas.</td><td>Ninguno en su explotación.</td></tr>
+            <tr><td><strong>Gestor</strong></td><td>Ámbar / Ocre (<code>MoWarningText</code>)</td><td>Labores del cuaderno, tratamientos fitosanitarios, jornales, pesadas.</td><td>No modifica catastro ni accede a contabilidad bancaria.</td></tr>
+            <tr><td><strong>Recolector</strong></td><td>Azul pizarra (<code>MoInfoText</code>)</td><td>Partes de recolección, fotos de albarán, propuesta de costes de cuadrilla.</td><td>Acotado a parcelas y campaña asignadas. No ve contratos.</td></tr>
+          </table>
+        `
+      },
+      'view-invitations': {
+        title: 'Invitación Recibida',
+        sub: 'Revisión transparente (Prototipo)',
+        renderMock: () => `
+          <div class="card" style="border: 2px solid var(--mo-olive-primary);">
+            <div class="card-row">
+              <span style="font-size: 11px; font-weight: bold; color: var(--mo-warning-text);">NUEVA INVITACIÓN RECIBIDA (DEMO)</span>
+              <span style="font-size: 11px; color: var(--mo-text-secondary);">Hoy, 10:30 h</span>
+            </div>
+            
+            <div style="font-size: 15px; font-weight: bold; margin-top: 4px;">
+              Colaborador Demo te invita a colaborar
+            </div>
+            <div style="font-size: 13px; color: var(--mo-olive-primary); font-weight: 600;">
+              Finca El Manantial (Demo)
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin: 6px 0;">
+              <span style="font-size: 12px; color: var(--mo-text-secondary);">Rol propuesto:</span>
+              <span class="badge badge-warning">Gestor / Arrendatario</span>
+            </div>
+
+            <div style="background: var(--mo-cream); border: 1px solid var(--mo-outline); border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.4;">
+              <strong>Alcance:</strong> Toda la finca · Campaña 2026/2027<br>
+              Podrás gestionar labores, partes de jornales y pesadas de báscula. No tendrás acceso a los datos bancarios del titular.
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+              <button style="flex: 1; padding: 11px; background: var(--mo-olive-primary); color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer;">
+                Aceptar invitación
+              </button>
+              <button style="padding: 11px 16px; background: transparent; border: 1px solid var(--mo-outline); border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; color: var(--mo-text-secondary);">
+                Rechazar
+              </button>
+            </div>
+          </div>
+
+          <div class="section-header">Invitaciones enviadas (Demo)</div>
+          <div class="card">
+            <div class="card-row">
+              <div style="font-weight: bold; font-size: 13px;">cuadrilla.demo@example.test</div>
+              <span class="badge badge-info">Recolector</span>
+            </div>
+            <div style="font-size: 11px; color: var(--mo-text-secondary);">
+              Finca La Esperanza · Parcelas 1 y 2 · QR presencial
+            </div>
+            <div class="card-row" style="margin-top: 4px;">
+              <span style="font-size: 11px; color: var(--mo-success); font-weight: bold;">Aceptada · Activa</span>
+              <span style="font-size: 11px; color: var(--mo-destructive); cursor: pointer;">Revocar acceso</span>
+            </div>
+          </div>
+        `,
+        renderDetail: () => `
+          <div class="detail-title">4. Flujo Visual de Invitaciones (CR-COLLAB-02 §2 y §3)</div>
+          <p class="detail-text">
+            <strong>Invitar en menos de 1 minuto sin tecnicismos:</strong> El agricultor emite la invitación desde <code>Mi Campo > Finca > Invitar</code> eligiendo Rol, Alcance y Canal (WhatsApp, QR presencial, código numérico o enlace).
+          </p>
+          <table class="spec-table">
+            <tr><th>Vía de envío</th><th>Mecanismo UX</th><th>Garantía de seguridad</th></tr>
+            <tr><td><strong>WhatsApp</strong></td><td>Mensaje preparado con enlace HTTPS y código de respaldo de 6 dígitos.</td><td>Android App Links verificados; reanudación segura tras registro.</td></tr>
+            <tr><td><strong>QR Presencial</strong></td><td>Código QR en pantalla para escanear cara a cara en la finca.</td><td>Un solo uso; caducidad temporal; fail-closed ante reintentos.</td></tr>
+            <tr><td><strong>Aceptación Transparente</strong></td><td>Tarjeta de confirmación en Perfil que detalla exactamente qué verá el invitado antes de aceptar.</td><td>Sin exposición de datos privados ni geometrías antes de aceptar y confirmar.</td></tr>
+          </table>
+        `
+      },
+      'view-ai': {
+        title: 'Mágina IA',
+        sub: 'Asistente del Olivar (v1.1)',
+        renderMock: () => `
+          <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 12px 0;">
+            <div style="width: 68px; height: 68px; border-radius: 50%; background: var(--mo-olive-tint); border: 2px solid var(--mo-olive-primary); display: flex; align-items: center; justify-content: center; font-size: 30px;">
+              ✨
+            </div>
+            <div style="font-size: 19px; font-weight: bold; color: var(--mo-ink);">Mágina IA</div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--mo-olive-primary);">Asistente inteligente del olivar</div>
+            <span class="badge badge-warning">En preparación para la versión 1.1</span>
+          </div>
+
+          <div class="card">
+            <div style="font-weight: bold; font-size: 13px; color: var(--mo-ink); margin-bottom: 4px;">
+              ¿Qué podrás hacer con Mágina IA?
+            </div>
+            
+            <div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 6px;">
+              <span style="font-size: 18px;">💬</span>
+              <div style="font-size: 12px; line-height: 1.4;">
+                <strong>Consultas en lenguaje natural</strong><br>
+                Pregunta cuándo se hizo el último tratamiento de cobre o cuántos kilos llevas entregados.
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 6px;">
+              <span style="font-size: 18px;">📷</span>
+              <div style="font-size: 12px; line-height: 1.4;">
+                <strong>Lectura de albaranes y facturas</strong><br>
+                Extrae automáticamente kilos y rendimientos fotografiando tu albarán de cooperativa.
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 6px;">
+              <span style="font-size: 18px;">🌦️</span>
+              <div style="font-size: 12px; line-height: 1.4;">
+                <strong>Alertas agroclimáticas preventivas</strong><br>
+                Avisos personalizados según AEMET y modelos fenológicos del olivo en Sierra Mágina.
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="border-color: var(--mo-olive-mid);">
+            <div style="font-size: 12px; font-weight: bold; color: var(--mo-olive-primary);">Compromiso de rigor agronómico</div>
+            <div style="font-size: 11px; color: var(--mo-text-secondary); line-height: 1.4; margin-top: 2px;">
+              Mágina IA no inventará datos ni sustituirá las prescripciones de tu técnico asesor ni el criterio de tu cooperativa. Tus datos agrícolas no se comparten con terceros.
+            </div>
+          </div>
+        `,
+        renderDetail: () => `
+          <div class="detail-title">5. Reserva del Asistente IA en la 4ª Pestaña Inferior (CR-UX-PERFIL-01 §1.5)</div>
+          <p class="detail-text">
+            <strong>Reserva inequívoca y serena:</strong> Al mover Perfil arriba, la cuarta pestaña inferior queda reservada para <em>Mágina IA</em>.
+          </p>
+          <table class="spec-table">
+            <tr><th>Principio</th><th>Regla estricta</th></tr>
+            <tr><td><strong>Sin chat ficticio</strong></td><td>No se simulan conversaciones falsas, sugerencias inventadas ni respuestas que puedan inducir a error al agricultor.</td></tr>
+            <tr><td><strong>Explicación transparente</strong></td><td>Muestra de forma atractiva y pedagógica las 4 capacidades clave planificadas para la versión 1.1.</td></tr>
+            <tr><td><strong>Rigor agronómico</strong></td><td>Aviso explícito de que la IA es una herramienta de consulta asistida y nunca una autoridad prescriptiva.</td></tr>
+          </table>
+        `
+      }
+    };
+
+    function switchView(viewKey) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(viewKey));
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const view = views[viewKey];
+      document.getElementById('mock-topbar-title').innerText = view.title;
+      document.getElementById('mock-topbar-sub').innerText = view.sub;
+      document.getElementById('mock-screen-content').innerHTML = view.renderMock();
+      document.getElementById('detail-panel-content').innerHTML = view.renderDetail();
+    }
+
+    // Initialize first view
+    switchView('view-topbar');
+  </script>
+</body>
+</html>
