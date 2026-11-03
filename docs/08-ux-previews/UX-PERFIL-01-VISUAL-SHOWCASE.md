@@ -155,3 +155,28 @@ Pantalla de reserva elegante, serena y sin promesas ficticias:
 | `AppNavigation.kt` | Intacto | Cero alteraciones en las rutas reales o el enrutamiento de producción. |
 | `Theme.kt` / `AppearanceMode` | Respetado | Previews adaptados a `MaginaOlivoTheme(mode = AppearanceMode.LIGHT/DARK)`. |
 | `MoStatusChip` | Respetado | Llamadas adaptadas a la firma `text = ...`. |
+
+---
+
+## 4. Vistas 3 y 4 — Roles con alcance e invitaciones (prototipo UX)
+
+Archivo: `app/src/main/java/com/isivoltpro/maginaolivo/feature/profile/ui/CollaborationScopeUi.kt` (sin navegación, sin Supabase/Auth/Room).
+
+| Preview | Contenido |
+| :--- | :--- |
+| `RolesScopePreview_Light` / `_Dark` | Tres roles con alcance finca · parcelas · campaña · validez, y «Podrá (permiso futuro, no activo)» / «No podrá». |
+| `CreateInvitationPreview_Light` / `_Dark` | Finca → rol → alcance → duración → compartir (enlace, WhatsApp, QR). Estado visual local. |
+| `InvitationsSentPreview_Light` / `_Dark` | Enviadas: pendiente, activa, en cola sin conexión, error, caducada. Acciones cancelar/revocar/reintentar. |
+| `InvitationsReceivedPreview_Light` | Recibidas: pendiente (aceptar/rechazar), aceptada confirmando, revocada. |
+
+Regla de diseño: `InvitationLifecycle.grantsAccess` solo es `true` en `ACTIVE_CONFIRMED`. Los estados `QUEUED_OFFLINE`, `AWAITING_SERVER` y `ACCEPTED_AWAITING_SERVER` dicen explícitamente «Aún no da acceso».
+
+## 5. Pendientes de integración de Perfil/Cuenta (no resueltos en #830)
+
+- `ReminderSettings` completo con `MyProfileViewModel.saveReminders(preferences)`, sin reducirlo a un interruptor.
+- Selector de municipio y de cooperativa existentes.
+- Herramientas DEV (Finca Demo, catálogo) condicionadas a builds DEV.
+
+## 6. Registro de CI
+
+- SHA `2d67bd563`: la ejecución **push** de Android CI tuvo un `ComposeTimeoutException` en un test instrumentado de autenticación (fallo histórico, no corregido por código en esta PR). La ejecución **pull_request** del mismo SHA terminó en verde: Foundation, Gate 3 Emulator y Gate 3 Evidence.
