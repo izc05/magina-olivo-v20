@@ -16,14 +16,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -42,6 +47,11 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.feed.FeedAge
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
+import com.isivoltpro.maginaolivo.domain.feed.IneMunicipality
+import com.isivoltpro.maginaolivo.domain.weather.WeatherLocationPreferenceStore
+import com.isivoltpro.maginaolivo.domain.weather.WeatherLocationResolver
+import com.isivoltpro.maginaolivo.domain.weather.WeatherPreferenceIdentity
+import kotlinx.coroutines.flow.Flow
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
@@ -87,35 +97,49 @@ data class WeatherWeekUiState(
     val refreshing: Boolean = false,
     /** #315: the last «Actualizar» failed; the saved value stays on screen with its age. */
     val refreshFailed: Boolean = false,
+    /** Selector 1.0: the place comes from the farmer's explicit weather preference. */
+    val hasExplicitLocation: Boolean = false,
+    /** Selector 1.0: the farms' one municipality, offered as a 1-tap suggestion. */
+    val farmSuggestion: FeedLocation? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WeatherWeekViewModel(
-    workspaces: WorkspaceRepository,
+    private val workspaces: WorkspaceRepository,
     farms: FarmRepository,
     private val weatherFeed: WeatherFeed?,
-    /** Phase 21A: the farmer's municipality (Perfil) when the farms give no single place. */
+    /** Phase 21A: the farmer's municipality (Perfil), only as a local-mode fallback. */
     profile: ProfileRepository? = null,
+    /** Selector 1.0: personal weather municipality (identity + workspace). */
+    private val weatherLocationStore: WeatherLocationPreferenceStore? = null,
+    weatherIdentity: Flow<WeatherPreferenceIdentity> = flowOf(WeatherPreferenceIdentity.Local),
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(WeatherWeekUiState(isLoading = true))
     val state: StateFlow<WeatherWeekUiState> = mutableState.asStateFlow()
+    private val currentIdentity = MutableStateFlow<WeatherPreferenceIdentity>(WeatherPreferenceIdentity.Local)
 
     init {
-        val locations = flow { emit(workspaces.ensureLocalWorkspace()) }
-            .flatMapLatest { result ->
-                when (result) {
-                    is AppResult.Success -> farms.observeActive(result.value)
-                    is AppResult.Failure -> flowOf(emptyList())
-                }
+        val workspace = flow { emit(workspaces.ensureLocalWorkspace()) }
+            .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+        val farmList = workspace.flatMapLatest { result ->
+            when (result) {
+                is AppResult.Success -> farms.observeActive(result.value)
+                is AppResult.Failure -> flowOf(emptyList())
             }
-            .map(::resolveLocation)
-            .combine((profile?.observe() ?: flowOf(ProfileSettings())).catch { emit(ProfileSettings()) }) { resolved, settings ->
-                if (resolved.location == null) {
-                    resolved.copy(location = settings.location, ambiguous = resolved.ambiguous && settings.location == null)
-                } else {
-                    resolved
-                }
-            }
+        }
+        val explicit = combine(weatherIdentity.onEach { currentIdentity.value = it }, workspace) { identity, ws ->
+            identity to (ws as? AppResult.Success)?.value
+        }.flatMapLatest { (identity, wsId) ->
+            if (wsId == null || weatherLocationStore == null) flowOf(identity to null)
+            else weatherLocationStore.observe(identity, wsId).map { identity to it }
+        }
+        val locations = combine(
+            farmList,
+            explicit,
+            (profile?.observe() ?: flowOf(ProfileSettings())).catch { emit(ProfileSettings()) },
+        ) { list, (identity, pref), settings ->
+            WeatherLocationResolver.resolve(list, pref, settings, identity)
+        }
             .distinctUntilChanged()
             .onEach { resolved ->
                 val place = resolved.location
@@ -126,7 +150,16 @@ class WeatherWeekViewModel(
         viewModelScope.launch {
             locations.flatMapLatest { resolved ->
                 (weatherFeed?.observe(resolved.location) ?: flowOf(FeedState.NotConfigured))
-                    .map { WeatherWeekUiState(isLoading = false, location = resolved.location, locationAmbiguous = resolved.ambiguous, weather = it) }
+                    .map {
+                        WeatherWeekUiState(
+                            isLoading = false,
+                            location = resolved.location,
+                            locationAmbiguous = resolved.ambiguous,
+                            weather = it,
+                            hasExplicitLocation = resolved.hasExplicitPreference,
+                            farmSuggestion = resolved.farmSuggestion,
+                        )
+                    }
             }.collect { next ->
                 mutableState.value = next.copy(refreshing = mutableState.value.refreshing, refreshFailed = mutableState.value.refreshFailed)
             }
@@ -152,17 +185,23 @@ class WeatherWeekViewModel(
         }
     }
 
-    private fun resolveLocation(farms: List<Farm>): ResolvedWeatherLocation {
-        val places = farms.mapNotNull { farm ->
-            farm.municipality?.trim()?.takeIf(String::isNotEmpty)?.let { FeedLocation(it, farm.province) }
+    /** Selector 1.0: saves the chosen municipality; farm records are never touched. */
+    fun selectMunicipality(municipality: IneMunicipality) {
+        val store = weatherLocationStore ?: return
+        viewModelScope.launch {
+            val wsId = (workspaces.ensureLocalWorkspace() as? AppResult.Success)?.value ?: return@launch
+            mutableState.value = mutableState.value.copy(refreshFailed = false)
+            store.set(currentIdentity.value, wsId, municipality)
         }
-        return ResolvedWeatherLocation(
-            location = FeedLocation.common(farms.map { it.municipality to it.province }),
-            ambiguous = places.map(FeedLocation::key).distinct().size > 1,
-        )
     }
 
-    private data class ResolvedWeatherLocation(val location: FeedLocation?, val ambiguous: Boolean)
+    fun clearMunicipality() {
+        val store = weatherLocationStore ?: return
+        viewModelScope.launch {
+            val wsId = (workspaces.ensureLocalWorkspace() as? AppResult.Success)?.value ?: return@launch
+            store.clear(currentIdentity.value, wsId)
+        }
+    }
 }
 
 @Composable
@@ -181,6 +220,8 @@ fun WeatherWeekRoute(
                     persistence.farmRepository,
                     persistence.weatherFeed,
                     persistence.profileRepository,
+                    persistence.weatherLocationStore,
+                    persistence.weatherIdentity,
                 )
             }
         },
@@ -190,9 +231,14 @@ fun WeatherWeekRoute(
         viewModel.onResumed()
         onPauseOrDispose { }
     }
-    WeatherWeekScreen(state, clock.nowInstant(), onRadar, onBack, onRefresh = viewModel::refresh)
+    WeatherWeekScreen(
+        state, clock.nowInstant(), onRadar, onBack, onRefresh = viewModel::refresh,
+        onSelectMunicipality = viewModel::selectMunicipality.takeIf { persistence.weatherLocationStore != null },
+        onClearMunicipality = viewModel::clearMunicipality,
+    )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeatherWeekScreen(
     state: WeatherWeekUiState,
@@ -201,7 +247,22 @@ fun WeatherWeekScreen(
     onBack: (() -> Unit)? = null,
     zone: ZoneId = ZoneId.systemDefault(),
     onRefresh: (() -> Unit)? = null,
+    /** Selector 1.0: null hides «Cambiar municipio» (no store wired, e.g. previews). */
+    onSelectMunicipality: ((IneMunicipality) -> Unit)? = null,
+    onClearMunicipality: () -> Unit = {},
 ) {
+    var selectorOpen by rememberSaveable { mutableStateOf(false) }
+    if (selectorOpen && onSelectMunicipality != null) {
+        ModalBottomSheet(onDismissRequest = { selectorOpen = false }) {
+            WeatherLocationSelectorContent(
+                currentLocation = state.location.takeIf { state.hasExplicitLocation },
+                farmSuggestion = state.farmSuggestion,
+                onSelectMunicipality = { onSelectMunicipality(it); selectorOpen = false },
+                onClearLocation = { onClearMunicipality(); selectorOpen = false },
+                onCancel = { selectorOpen = false },
+            )
+        }
+    }
     Scaffold(
         Modifier.fillMaxSize().testTag("weather-week-root"),
         containerColor = MoSurfaceTokens.appBackground,
@@ -225,6 +286,23 @@ fun WeatherWeekScreen(
                 color = MoColors.current.primaryText,
                 modifier = Modifier.testTag("weather-week-location"),
             )
+            if (state.location != null) {
+                Text(
+                    if (state.hasExplicitLocation) "Ubicación elegida por ti" else "Municipio de tus fincas",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MoSurfaceTokens.secondaryText,
+                    modifier = Modifier.testTag("weather-week-location-origin"),
+                )
+            }
+            if (onSelectMunicipality != null) {
+                TextButton(
+                    onClick = { selectorOpen = true },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("weather-week-location-action"),
+                ) {
+                    Icon(MoIcons.Location, null, modifier = Modifier.size(18.dp))
+                    Text(if (state.location == null) " Elegir municipio" else " Cambiar municipio")
+                }
+            }
             if (state.isLoading) {
                 Text("Cargando el tiempo…", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("weather-week-loading"))
             } else {
@@ -281,8 +359,8 @@ fun WeatherWeekScreen(
                         WeatherRefresh(state, onRefresh)
                     }
                     FeedState.NoLocation -> Text(
-                        if (state.locationAmbiguous) "Tus fincas están en varios municipios. Elige tu municipio en Perfil para consultar el tiempo."
-                        else "Añade el municipio en la ficha de tu finca o en Perfil para consultar el tiempo.",
+                        if (state.locationAmbiguous) "Tus fincas están en varios municipios. Elige tu municipio para consultar el tiempo."
+                        else "Elige tu municipio o añádelo en la ficha de tu finca para consultar el tiempo.",
                         color = MoSurfaceTokens.secondaryText,
                         modifier = Modifier.testTag("weather-week-no-location"),
                     )

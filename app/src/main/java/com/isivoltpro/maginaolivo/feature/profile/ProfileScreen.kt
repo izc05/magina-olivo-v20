@@ -120,6 +120,21 @@ fun ProfileRoute(
                     onCreateCooperative = profileViewModel::createCooperative,
                     onClearError = profileViewModel::clearError,
                 )
+                // Selector 1.0: personal weather municipality, independent of the profile row above.
+                val weatherPersistence = persistence
+                val store = weatherPersistence?.weatherLocationStore
+                if (weatherPersistence != null && store != null) {
+                    val weatherViewModel: WeatherLocationSettingsViewModel = viewModel(
+                        key = "profile-weather-location",
+                        factory = viewModelFactory {
+                            initializer {
+                                WeatherLocationSettingsViewModel(weatherPersistence.workspaceRepository, weatherPersistence.farmRepository, store, weatherPersistence.weatherIdentity)
+                            }
+                        },
+                    )
+                    val weatherState by weatherViewModel.state.collectAsStateWithLifecycle()
+                    WeatherLocationSettingsRow(weatherState, weatherViewModel::select, weatherViewModel::clear)
+                }
             }
         } else {
             null
