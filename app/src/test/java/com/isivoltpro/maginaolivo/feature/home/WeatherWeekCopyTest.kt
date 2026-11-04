@@ -54,12 +54,12 @@ class WeatherWeekCopyTest {
         assertEquals(WeatherTone.NEUTRAL, (null as WeatherCondition?).tone())
     }
 
-    @Test fun visibleForecastDaysFiltersPastDatesWhenOfflineCacheIsViewedLater() {
+    @Test fun visibleForecastDaysFiltersPastDatesAndReturnsEmptyWhenAllStoredDaysHavePassed() {
         val cachedDays = listOf(day(-2, max = 20), day(-1, max = 21), day(0, max = 22), day(1, max = 23))
         assertEquals(listOf(today, today.plusDays(1)), visibleForecastDays(cachedDays, today).map { it.date })
-        // Fallback when all cached days are in the past: still show what is saved rather than an empty list.
+        // When every stored day is already in the past, returns emptyList so past days are never shown as upcoming.
         val allPast = listOf(day(-3, max = 18), day(-2, max = 19))
-        assertEquals(allPast.map { it.date }, visibleForecastDays(allPast, today).map { it.date })
+        assertTrue(visibleForecastDays(allPast, today).isEmpty())
     }
 
     @Test fun advisoriesAreDerivedDeterministicallyFromPublishedFiguresOnly() {
@@ -73,13 +73,20 @@ class WeatherWeekCopyTest {
         val warnings = weatherAdvisories(calmNow, adverseDays, today)
         assertEquals(
             listOf(
-                "Tormenta prevista (mañana)",
-                "Viento fuerte mañana (38 km/h) · precaución con tratamientos",
+                "Tormenta en la previsión (mañana)",
+                "Viento fuerte mañana (38 km/h) · precaución al tratar el olivar",
                 "Riesgo de helada mañana (mín. -1°)",
                 "Lluvia intensa hoy (18,5 mm)",
             ),
             warnings,
         )
+
+        // When all stored days have passed and the reading is stale, no outdated advisories are claimed for today.
+        val staleStorm = WeatherNow(-2, WeatherCondition.STORM, 90, 42, Instant.parse("2026-09-29T10:00:00Z"))
+        val expiredDays = listOf(
+            WeatherDayForecast(today.minusDays(3), -2, 12, WeatherCondition.STORM, 90, 25.0, 40),
+        )
+        assertTrue(weatherAdvisories(staleStorm, expiredDays, today, stale = true).isEmpty())
     }
 
     private fun day(offset: Long, max: Int? = null, prob: Int? = null, mm: Double? = null) =

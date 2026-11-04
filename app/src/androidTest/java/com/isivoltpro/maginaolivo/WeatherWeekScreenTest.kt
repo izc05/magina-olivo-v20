@@ -168,10 +168,32 @@ class WeatherWeekScreenTest {
             .assertTextContains("Previsión actual", substring = true)
             .assertTextContains("Salida 08:08 · Puesta 20:03", substring = true)
         composeRule.onNodeWithTag("weather-week-advisories").performScrollTo().assertIsDisplayed()
-            .assertTextContains("Tormenta prevista hoy", substring = true)
-            .assertTextContains("Viento fuerte (36 km/h)", substring = true)
+            .assertTextContains("Condiciones a vigilar en tu olivar", substring = true)
+            .assertTextContains("Tormenta en la previsión de hoy", substring = true)
+            .assertTextContains("Viento fuerte (36 km/h) · precaución al tratar el olivar", substring = true)
             .assertTextContains("Riesgo de helada mañana (mín. -1°)", substring = true)
             .assertTextContains("Lluvia intensa hoy (22 mm)", substring = true)
+            .assertTextContains("No sustituye a los avisos oficiales de AEMET", substring = true)
+    }
+
+    @Test fun expiredDailyForecastNeverShowsPastDaysAsUpcoming() {
+        val today = LocalDate.of(2026, 9, 28)
+        val expiredForecast = WeatherNow(
+            temperatureC = 17,
+            condition = WeatherCondition.CLOUDY,
+            rainProbabilityPercent = null,
+            windKmh = 12,
+            validAt = now.minusSeconds(3 * 24 * 3600),
+            daily = listOf(
+                WeatherDayForecast(today.minusDays(3), 10, 19, WeatherCondition.RAIN, null, 4.0, 15),
+                WeatherDayForecast(today.minusDays(2), 11, 21, WeatherCondition.CLEAR, null, 0.0, 10),
+            ),
+        )
+        show(WeatherWeekUiState(location = location, weather = FeedState.Value(expiredForecast, "MET Norway", now.minusSeconds(3 * 24 * 3600), stale = true)))
+        composeRule.onNodeWithTag("weather-week-stale").assertIsDisplayed()
+        composeRule.onNodeWithTag("weather-week-expired-days").performScrollTo().assertIsDisplayed()
+            .assertTextContains("Los días guardados en el teléfono ya han pasado", substring = true)
+        composeRule.onNodeWithTag("weather-week-day-0").assertDoesNotExist()
     }
 
     private fun show(state: WeatherWeekUiState, onRadar: (() -> Unit)? = null) {

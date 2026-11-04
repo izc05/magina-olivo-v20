@@ -68,6 +68,44 @@ class WeatherWeekViewModelTest {
     }
 
     @Test
+    fun singleMunicipalityTakesPrecedenceEvenWhenAnotherFarmHasBlankMunicipality() = runTest(dispatcher) {
+        val viewModel = createViewModel(
+            farms = listOf(farm("Bedmar"), farm("   ")),
+            profileFlow = flowOf(ProfileSettings(municipality = "Úbeda", province = "Jaén")),
+        )
+        backgroundScope.launch(dispatcher) { viewModel.state.collect() }
+
+        assertEquals(FeedLocation("Bedmar", "Jaén"), viewModel.state.value.location)
+        assertFalse(viewModel.state.value.locationAmbiguous)
+        assertTrue(viewModel.state.value.weather is FeedState.Value)
+    }
+
+    @Test
+    fun offlineStaleCacheIsPreservedWhenManualRefreshFails() = runTest(dispatcher) {
+        val staleFeedState = FeedState.Value(sampleWeather, "AEMET", now.minusSeconds(7200), stale = true)
+        val viewModel = WeatherWeekViewModel(
+            workspaces = object : WorkspaceRepository {
+                override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspace)
+            },
+            farms = object : FarmRepository by unused() {
+                override fun observeActive(workspaceId: UUID): Flow<List<Farm>> = flowOf(listOf(farm("Bedmar")))
+            },
+            weatherFeed = object : WeatherFeed {
+                override fun observe(location: FeedLocation?): Flow<FeedState<WeatherNow>> = flowOf(staleFeedState)
+                override suspend fun refreshIfStale(location: FeedLocation) {}
+                override suspend fun refresh(location: FeedLocation): Boolean = false
+            },
+        )
+        backgroundScope.launch(dispatcher) { viewModel.state.collect() }
+
+        viewModel.refresh()
+        val state = viewModel.state.value
+        assertTrue(state.refreshFailed)
+        assertFalse(state.refreshing)
+        assertEquals(staleFeedState, state.weather)
+    }
+
+    @Test
     fun manualRefreshAndResumeAskTheWeatherFeedAndReportFailuresHonestly() = runTest(dispatcher) {
         val staleCalls = mutableListOf<FeedLocation>()
         var manualCalls = 0

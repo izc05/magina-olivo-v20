@@ -239,9 +239,9 @@ fun WeatherWeekScreen(
                             )
                         }
                         CurrentWeatherSummary(weather.value, weather.stale, now, zone)
-                        weatherAdvisories(weather.value, weather.value.daily, today)
+                        weatherAdvisories(weather.value, weather.value.daily, today, stale = weather.stale)
                             .takeIf { it.isNotEmpty() }
-                            ?.let { WeatherAdvisoriesCard(it) }
+                            ?.let { WeatherAdvisoriesCard(it, weather.source) }
                         onRadar?.let { RadarAccess(it) }
                         Spacer(Modifier.height(MoSpacing.xs))
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -249,8 +249,14 @@ fun WeatherWeekScreen(
                             Text("Máx. · mín.", style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText)
                         }
                         val week = visibleForecastDays(weather.value.daily, today)
-                        if (week.isEmpty()) {
+                        if (weather.value.daily.isEmpty()) {
                             Text("La fuente disponible aún no ofrece previsión semanal.", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("weather-week-no-days"))
+                        } else if (week.isEmpty()) {
+                            Text(
+                                "Los días guardados en el teléfono ya han pasado. Conéctate y pulsa Actualizar para consultar los próximos días.",
+                                color = MoSurfaceTokens.secondaryText,
+                                modifier = Modifier.testTag("weather-week-expired-days"),
+                            )
                         } else {
                             // #362: the week in one line, from published values only.
                             weekSummary(week, today)?.let {
@@ -375,7 +381,7 @@ private fun CurrentWeatherSummary(weather: WeatherNow, stale: Boolean, now: Inst
 }
 
 @Composable
-private fun WeatherAdvisoriesCard(advisories: List<String>) {
+private fun WeatherAdvisoriesCard(advisories: List<String>, source: String) {
     Surface(
         modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("weather-week-advisories"),
         shape = MoShape.card,
@@ -385,11 +391,16 @@ private fun WeatherAdvisoriesCard(advisories: List<String>) {
         Column(Modifier.padding(MoSpacing.sm), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 Icon(MoIcons.Warning, null, tint = MoColors.current.warningText, modifier = Modifier.size(20.dp))
-                Text("Avisos en la previsión", style = MaterialTheme.typography.titleSmall, color = MoColors.current.warningText)
+                Text("Condiciones a vigilar en tu olivar", style = MaterialTheme.typography.titleSmall, color = MoColors.current.warningText)
             }
             advisories.forEach { line ->
                 Text("• $line", style = MaterialTheme.typography.bodySmall, color = MoColors.current.primaryText)
             }
+            Text(
+                "Orientación para el campo según los datos previstos por $source · No sustituye a los avisos oficiales de AEMET.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MoSurfaceTokens.secondaryText,
+            )
         }
     }
 }

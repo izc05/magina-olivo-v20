@@ -14,47 +14,47 @@ import java.util.Locale
  */
 
 /**
- * Keeps only days from [today] onwards when the cached forecast is viewed on a later date;
- * falls back to the stored list only when every cached day is already in the past.
+ * Keeps only days from [today] onwards when the cached forecast is viewed on a later date.
+ * If every stored day is already in the past (`date < today`), returns an empty list so
+ * historical days are never displayed under «Próximos días».
  */
-internal fun visibleForecastDays(days: List<WeatherDayForecast>, today: LocalDate): List<WeatherDayForecast> {
-    if (days.isEmpty()) return emptyList()
-    val upcoming = days.filter { !it.date.isBefore(today) }
-    return (upcoming.ifEmpty { days }).take(7)
-}
+internal fun visibleForecastDays(days: List<WeatherDayForecast>, today: LocalDate): List<WeatherDayForecast> =
+    days.filter { !it.date.isBefore(today) }.take(7)
 
 /**
- * Deterministic weather warnings derived strictly from the figures published by the source
- * (never invented when a measure is absent). Helps the olive grower spot wind, frost, storm,
- * or heavy rain at a glance.
+ * Deterministic agronomic weather notes derived strictly from the figures published by the source
+ * (never invented when a measure is absent, and never presented as official AEMET/CAP warnings).
+ * Helps the olive grower spot wind, frost, storm, or heavy rain at a glance.
  */
 internal fun weatherAdvisories(
     current: WeatherNow,
     days: List<WeatherDayForecast>,
     today: LocalDate,
+    stale: Boolean = false,
 ): List<String> {
     val lines = mutableListOf<String>()
     val upcoming = visibleForecastDays(days, today)
+    val includeCurrent = !stale && !upcoming.isEmpty()
 
-    val stormToday = current.condition == WeatherCondition.STORM ||
+    val stormToday = (includeCurrent && current.condition == WeatherCondition.STORM) ||
         upcoming.firstOrNull { it.date == today }?.condition == WeatherCondition.STORM
     val stormDay = upcoming.firstOrNull { it.condition == WeatherCondition.STORM }
     if (stormToday) {
-        lines += "Tormenta prevista hoy"
+        lines += "Tormenta en la previsión de hoy"
     } else if (stormDay != null) {
-        lines += "Tormenta prevista (${shortDay(stormDay.date, today)})"
+        lines += "Tormenta en la previsión (${shortDay(stormDay.date, today)})"
     }
 
-    val currentWind = current.windKmh ?: 0
+    val currentWind = if (includeCurrent) (current.windKmh ?: 0) else 0
     val windiestDay = upcoming.filter { (it.windKmh ?: 0) >= STRONG_WIND_KMH }.maxByOrNull { it.windKmh!! }
     if (currentWind >= STRONG_WIND_KMH) {
-        lines += "Viento fuerte ($currentWind km/h) · precaución con tratamientos"
+        lines += "Viento fuerte ($currentWind km/h) · precaución al tratar el olivar"
     } else if (windiestDay != null) {
-        lines += "Viento fuerte ${shortDay(windiestDay.date, today)} (${windiestDay.windKmh} km/h) · precaución con tratamientos"
+        lines += "Viento fuerte ${shortDay(windiestDay.date, today)} (${windiestDay.windKmh} km/h) · precaución al tratar el olivar"
     }
 
     val frostDay = upcoming.firstOrNull { it.minTemperatureC != null && it.minTemperatureC <= FROST_TEMP_C }
-    if (current.temperatureC <= FROST_TEMP_C) {
+    if (includeCurrent && current.temperatureC <= FROST_TEMP_C) {
         lines += "Riesgo de helada ahora (${current.temperatureC}°)"
     } else if (frostDay != null) {
         lines += "Riesgo de helada ${shortDay(frostDay.date, today)} (mín. ${frostDay.minTemperatureC}°)"
