@@ -58,19 +58,19 @@ object EdgeWeatherResponse {
                 minTemperatureC = day.optIntOrNull("minTemperatureC"),
                 maxTemperatureC = day.optIntOrNull("maxTemperatureC"),
                 condition = dayCondition,
-                rainProbabilityPercent = day.optIntOrNull("rainProbabilityPercent"),
-                rainMm = day.optDoubleOrNull("rainMm"),
-                windKmh = day.optIntOrNull("windKmh"),
+                rainProbabilityPercent = day.optIntOrNull("rainProbabilityPercent")?.coerceIn(0, 100),
+                rainMm = day.optDoubleOrNull("rainMm")?.takeIf { it.isFinite() && it >= 0.0 },
+                windKmh = day.optIntOrNull("windKmh")?.takeIf { it >= 0 },
             )
-        }.take(7)
+        }.sortedBy { it.date }.distinctBy { it.date }.take(7)
         val solar = body.optJSONObject("solar")
         return WeatherReading(
             provider = provider,
             weather = WeatherNow(
                 temperatureC = current.getInt("temperatureC"),
                 condition = condition,
-                rainProbabilityPercent = current.optIntOrNull("rainProbabilityPercent"),
-                windKmh = current.optIntOrNull("windKmh"),
+                rainProbabilityPercent = current.optIntOrNull("rainProbabilityPercent")?.coerceIn(0, 100),
+                windKmh = current.optIntOrNull("windKmh")?.takeIf { it >= 0 },
                 validAt = Instant.parse(current.getString("validAt")),
                 updatedAt = Instant.parse(body.getString("updatedAt")),
                 attribution = body.optString("attribution").ifBlank { null },

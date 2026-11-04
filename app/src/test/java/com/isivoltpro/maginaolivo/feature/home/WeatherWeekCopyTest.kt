@@ -2,9 +2,12 @@ package com.isivoltpro.maginaolivo.feature.home
 
 import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
 import com.isivoltpro.maginaolivo.domain.weather.WeatherDayForecast
+import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
+import java.time.Instant
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** #362: the week's rain and summary say only what the source published. */
@@ -49,6 +52,34 @@ class WeatherWeekCopyTest {
         assertEquals(WeatherTone.PARTLY, WeatherCondition.PARTLY_CLOUDY.tone())
         assertEquals(WeatherTone.SUN, WeatherCondition.CLEAR.tone())
         assertEquals(WeatherTone.NEUTRAL, (null as WeatherCondition?).tone())
+    }
+
+    @Test fun visibleForecastDaysFiltersPastDatesWhenOfflineCacheIsViewedLater() {
+        val cachedDays = listOf(day(-2, max = 20), day(-1, max = 21), day(0, max = 22), day(1, max = 23))
+        assertEquals(listOf(today, today.plusDays(1)), visibleForecastDays(cachedDays, today).map { it.date })
+        // Fallback when all cached days are in the past: still show what is saved rather than an empty list.
+        val allPast = listOf(day(-3, max = 18), day(-2, max = 19))
+        assertEquals(allPast.map { it.date }, visibleForecastDays(allPast, today).map { it.date })
+    }
+
+    @Test fun advisoriesAreDerivedDeterministicallyFromPublishedFiguresOnly() {
+        val calmNow = WeatherNow(18, WeatherCondition.CLEAR, 5, 10, Instant.parse("2026-10-03T10:00:00Z"))
+        assertTrue(weatherAdvisories(calmNow, listOf(day(0, max = 24, mm = 0.0)), today).isEmpty())
+
+        val adverseDays = listOf(
+            WeatherDayForecast(today, 4, 18, WeatherCondition.RAIN, 80, 18.5, 20),
+            WeatherDayForecast(today.plusDays(1), -1, 14, WeatherCondition.STORM, 90, 8.0, 38),
+        )
+        val warnings = weatherAdvisories(calmNow, adverseDays, today)
+        assertEquals(
+            listOf(
+                "Tormenta prevista (mañana)",
+                "Viento fuerte mañana (38 km/h) · precaución con tratamientos",
+                "Riesgo de helada mañana (mín. -1°)",
+                "Lluvia intensa hoy (18,5 mm)",
+            ),
+            warnings,
+        )
     }
 
     private fun day(offset: Long, max: Int? = null, prob: Int? = null, mm: Double? = null) =

@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -50,6 +52,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -75,6 +78,7 @@ sealed interface RadarUiState {
 class RadarViewModel(private val source: RadarSource?) : ViewModel() {
     private val mutableState = MutableStateFlow<RadarUiState>(if (source == null) RadarUiState.NotConfigured else RadarUiState.Loading)
     val state: StateFlow<RadarUiState> = mutableState.asStateFlow()
+    private var loadJob: Job? = null
 
     init {
         load()
@@ -82,10 +86,17 @@ class RadarViewModel(private val source: RadarSource?) : ViewModel() {
 
     fun load() {
         val radar = source ?: return
+        if (loadJob?.isActive == true) return
         mutableState.value = RadarUiState.Loading
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             mutableState.value = runCatching { radar.frames() }
-                .fold({ RadarUiState.Ready(it, it.frames.lastIndex) }, { RadarUiState.Unavailable })
+                .fold(
+                    onSuccess = {
+                        if (it.frames.isEmpty()) RadarUiState.Unavailable
+                        else RadarUiState.Ready(it, it.frames.lastIndex)
+                    },
+                    onFailure = { RadarUiState.Unavailable },
+                )
         }
     }
 
@@ -97,7 +108,11 @@ class RadarViewModel(private val source: RadarSource?) : ViewModel() {
 }
 
 @Composable
-fun RadarRoute(persistence: LocalPersistence, farmId: UUID?) {
+fun RadarRoute(
+    persistence: LocalPersistence,
+    farmId: UUID?,
+    onBack: (() -> Unit)? = null,
+) {
     val viewModel: RadarViewModel = viewModel(
         key = "radar",
         factory = viewModelFactory { initializer { RadarViewModel(persistence.radarSource) } },
@@ -112,7 +127,7 @@ fun RadarRoute(persistence: LocalPersistence, farmId: UUID?) {
         } ?: flowOf(emptyList())
     }
     val parcels by parcelsFlow.collectAsStateWithLifecycle(emptyList())
-    RadarScreen(state, parcels, onRetry = viewModel::load, onFrame = viewModel::showFrame)
+    RadarScreen(state, parcels, onRetry = viewModel::load, onFrame = viewModel::showFrame, onBack = onBack)
 }
 
 /**
@@ -126,6 +141,7 @@ fun RadarScreen(
     onRetry: () -> Unit,
     onFrame: (Int) -> Unit,
     zone: ZoneId = ZoneId.systemDefault(),
+    onBack: (() -> Unit)? = null,
 ) {
     Scaffold(
         Modifier.fillMaxSize().testTag("radar-root"),
@@ -136,13 +152,19 @@ fun RadarScreen(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
+            if (onBack != null) {
+                TextButton(onClick = onBack, modifier = Modifier.testTag("radar-back")) {
+                    Icon(MoIcons.ChevronLeft, null, modifier = Modifier.size(18.dp))
+                    Text("Volver")
+                }
+            }
             // #345: the radar keeps its water-blue identity (icon + title), distinct from «El tiempo».
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                 modifier = Modifier.testTag("radar-title"),
             ) {
-                androidx.compose.material3.Icon(MoIcons.Rain, null, tint = MoColors.current.rainText, modifier = Modifier.size(32.dp))
+                Icon(MoIcons.Rain, null, tint = MoColors.current.rainText, modifier = Modifier.size(32.dp))
                 Text("Radar de lluvia", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.rainText)
             }
             when (state) {

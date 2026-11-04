@@ -23,7 +23,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +30,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -109,7 +110,11 @@ class WeatherWeekViewModel(
             }
             .map(::resolveLocation)
             .combine((profile?.observe() ?: flowOf(ProfileSettings())).catch { emit(ProfileSettings()) }) { resolved, settings ->
-                if (resolved.location == null) resolved.copy(location = settings.location) else resolved
+                if (resolved.location == null) {
+                    resolved.copy(location = settings.location, ambiguous = resolved.ambiguous && settings.location == null)
+                } else {
+                    resolved
+                }
             }
             .distinctUntilChanged()
             .onEach { resolved ->
@@ -126,6 +131,13 @@ class WeatherWeekViewModel(
                 mutableState.value = next.copy(refreshing = mutableState.value.refreshing, refreshFailed = mutableState.value.refreshFailed)
             }
         }
+    }
+
+    /** #315: returning to El tiempo after > 1 hour refreshes the cached forecast in the background. */
+    fun onResumed() {
+        val feed = weatherFeed ?: return
+        val place = mutableState.value.location ?: return
+        viewModelScope.launch { feed.refreshIfStale(place) }
     }
 
     /** #315: «Actualizar» asks the source now; a failure keeps the saved value and says so. */
@@ -173,7 +185,11 @@ fun WeatherWeekRoute(
             }
         },
     )
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onResumed()
+        onPauseOrDispose { }
+    }
     WeatherWeekScreen(state, clock.nowInstant(), onRadar, onBack, onRefresh = viewModel::refresh)
 }
 
@@ -214,19 +230,28 @@ fun WeatherWeekScreen(
             } else {
                 when (val weather = state.weather) {
                     is FeedState.Value -> {
-                        if (weather.stale) MoStatusChip("Datos guardados · pueden estar antiguos", tone = MoStatusTone.Warning, modifier = Modifier.testTag("weather-week-stale"))
-                        CurrentWeatherSummary(weather.value, weather.stale)
+                        val today = now.atZone(zone).toLocalDate()
+                        if (weather.stale) {
+                            MoStatusChip(
+                                "Datos guardados · pueden estar antiguos",
+                                tone = MoStatusTone.Warning,
+                                modifier = Modifier.testTag("weather-week-stale"),
+                            )
+                        }
+                        CurrentWeatherSummary(weather.value, weather.stale, now, zone)
+                        weatherAdvisories(weather.value, weather.value.daily, today)
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { WeatherAdvisoriesCard(it) }
                         onRadar?.let { RadarAccess(it) }
                         Spacer(Modifier.height(MoSpacing.xs))
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text("Próximos días", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText, modifier = Modifier.weight(1f))
                             Text("Máx. · mín.", style = MaterialTheme.typography.labelMedium, color = MoSurfaceTokens.secondaryText)
                         }
-                        if (weather.value.daily.isEmpty()) {
+                        val week = visibleForecastDays(weather.value.daily, today)
+                        if (week.isEmpty()) {
                             Text("La fuente disponible aún no ofrece previsión semanal.", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("weather-week-no-days"))
                         } else {
-                            val today = now.atZone(zone).toLocalDate()
-                            val week = weather.value.daily.take(7)
                             // #362: the week in one line, from published values only.
                             weekSummary(week, today)?.let {
                                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.bodyText, modifier = Modifier.testTag("weather-week-summary"))
@@ -313,19 +338,28 @@ private fun RadarAccess(onRadar: () -> Unit) {
 }
 
 @Composable
-private fun CurrentWeatherSummary(weather: WeatherNow, stale: Boolean) {
+private fun CurrentWeatherSummary(weather: WeatherNow, stale: Boolean, now: Instant, zone: ZoneId) {
     Surface(
         modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("weather-week-current"),
         shape = MoShape.cardLarge,
         color = MoColors.current.infoTint,
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            Text(if (stale) "Previsión guardada" else "Previsión actual", style = MaterialTheme.typography.labelLarge, color = MoColors.current.infoText)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(if (stale) "Previsión guardada" else "Previsión actual", style = MaterialTheme.typography.labelLarge, color = MoColors.current.infoText)
+                Text("Tramo ${HOUR_FORMAT.format(weather.validAt.atZone(zone))}", style = MaterialTheme.typography.labelMedium, color = MoColors.current.secondaryText)
+            }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 WeatherTemperature(weather.temperatureC, Modifier.weight(1f))
                 WeatherConditionIcon(weather.condition, Modifier.size(64.dp))
             }
             Text(weather.condition.label, style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
+            weather.solarLine(now)?.let { solar ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
+                    Icon(MoIcons.Sun, null, tint = MoColors.current.valueText, modifier = Modifier.size(18.dp))
+                    Text(solar, style = MaterialTheme.typography.bodySmall, color = MoColors.current.bodyText)
+                }
+            }
         }
     }
     if (weather.rainProbabilityPercent != null || weather.windKmh != null) {
@@ -335,6 +369,26 @@ private fun CurrentWeatherSummary(weather: WeatherNow, stale: Boolean) {
             }
             weather.windKmh?.let {
                 WeatherMeasure("Viento", "$it km/h", MoIcons.Wind, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeatherAdvisoriesCard(advisories: List<String>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("weather-week-advisories"),
+        shape = MoShape.card,
+        color = MoColors.current.warningTint,
+        border = BorderStroke(1.dp, MoColors.current.warningText),
+    ) {
+        Column(Modifier.padding(MoSpacing.sm), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                Icon(MoIcons.Warning, null, tint = MoColors.current.warningText, modifier = Modifier.size(20.dp))
+                Text("Avisos en la previsión", style = MaterialTheme.typography.titleSmall, color = MoColors.current.warningText)
+            }
+            advisories.forEach { line ->
+                Text("• $line", style = MaterialTheme.typography.bodySmall, color = MoColors.current.primaryText)
             }
         }
     }
@@ -418,3 +472,4 @@ internal fun rainFormat(value: Double): String = String.format(SPANISH, "%.1f", 
 private val SPANISH = Locale.forLanguageTag("es-ES")
 private val DAY = DateTimeFormatter.ofPattern("d MMMM", SPANISH)
 private val DATE = DateTimeFormatter.ofPattern("EEEE d MMMM", SPANISH)
+private val HOUR_FORMAT = DateTimeFormatter.ofPattern("HH:mm")
