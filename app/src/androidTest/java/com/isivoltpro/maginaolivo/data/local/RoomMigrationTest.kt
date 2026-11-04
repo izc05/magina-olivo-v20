@@ -85,12 +85,97 @@ class RoomMigrationTest {
                 "AND name NOT IN ('room_master_table','android_metadata') ORDER BY name",
         ).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }.filterNot { it in exclude }
         return tables.joinToString("\n") { table ->
-            database.query("SELECT * FROM `$table` ORDER BY rowid").use { c ->
+            database.query("SELECT * FROM $table ORDER BY rowid").use { c ->
                 val rows = buildList {
                     while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { i -> if (c.isNull(i)) "<NULL>" else c.getString(i) })
                 }
                 "$table(${c.columnNames.joinToString(",")}):${rows.joinToString(";")}"
             }
+        }
+    }
+
+    /** Every table with its columns and rows (each row as column -> value), to compare a source version with the target. */
+    private fun snapshot(database: androidx.sqlite.db.SupportSQLiteDatabase): Map<String, Pair<List<String>, List<Map<String, String?>>>> {
+        val tables = database.query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' " +
+                "AND name NOT IN ('room_master_table','android_metadata') ORDER BY name",
+        ).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+        return tables.associateWith { table ->
+            database.query("SELECT * FROM $table").use { c ->
+                val columns = c.columnNames.toList()
+                columns to buildList { while (c.moveToNext()) add(columns.indices.associate { i -> columns[i] to (if (c.isNull(i)) null else c.getString(i)) }) }
+            }
+        }
+    }
+
+    /**
+     * Integration #796 + #808: every table of [before] still exists after migrating, with exactly the same rows over its
+     * ORIGINAL columns (order-independent); new columns and new tables may only be added.
+     */
+    private fun assertPreserved(before: Map<String, Pair<List<String>, List<Map<String, String?>>>>,
+        after: Map<String, Pair<List<String>, List<Map<String, String?>>>>) {
+        for ((table, source) in before) {
+            val (columns, rows) = source
+            val target = after[table] ?: error("table $table disappeared")
+            assertTrue("$table lost columns: ${columns - target.first.toSet()}", target.first.containsAll(columns))
+            fun key(row: Map<String, String?>) = columns.joinToString("|") { row[it] ?: "<NULL>" }
+            assertEquals("rows of $table", rows.map(::key).sorted(), target.second.map(::key).sorted())
+        }
+    }
+
+    private fun count(database: androidx.sqlite.db.SupportSQLiteDatabase, table: String) =
+        database.query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
+
+    /**
+     * Integration #796 + #808: a device still on schema 26 (the one of `main`) with a representative field dataset migrates
+     * through EVERY step to 34 (the chain's), with the app's own migration list: nothing is lost or altered and the
+     * receive tables arrive empty.
+     */
+    @Test
+    fun chain26To34PreservesARepresentativeFieldDataset() {
+        val before = migrationHelper.createDatabase(TEST_DATABASE, 26).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos','Olivos centenarios','Bedmar y Garcíez','Jaén','ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO parcels (id, workspace_id, display_name, cadastral_reference, managed_area_m2, source, status, created_at, updated_at, version, sync_status) VALUES ('p','w','Parcela El Cerrón','23902A001000010000AB',15000.0,'MANUAL','ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','HARVEST',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO harvests (id, workspace_id, campaign_id, farm_id, harvest_date, weight_grams, created_at, updated_at, version, sync_status) VALUES ('h','w','c','f','2025-11-20',4242000,1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, harvest_id, created_at, updated_at, version, sync_status) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL','h',1000,1000,2,'SYNCED')")
+            database.execSQL("INSERT INTO harvest_labour (id, workspace_id, harvest_id, quantity, unit, created_at, updated_at, version, sync_status) VALUES ('l','w','h',4,'DAY',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO expenses (id, workspace_id, campaign_id, farm_id, expense_date, concept, category, amount_minor, currency, status, origin, created_at, updated_at, version, sync_status) VALUES ('e','w','c','f','2025-11-20','Gasóleo tractor','FUEL',8500,'EUR','POSTED','MANUAL',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO documents (id, workspace_id, owner_type, owner_id, type, mime_type, display_name, local_uri, upload_status, created_at, updated_at, version, sync_status) VALUES ('doc','w','FARM','f','PHOTO','image/jpeg','Foto Olivar','file:///photos/olivar.jpg','UPLOADED',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO sync_outbox (id, entity_type, entity_id, operation, payload_version, base_remote_version, status, attempt_count, next_attempt_at, last_error_code, last_error_message, created_at, updated_at) VALUES ('op-1','DELIVERY','d','UPDATE',1,1,'PENDING',0,NULL,NULL,NULL,1000,1000)")
+            snapshot(database)
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 34, true, *DatabaseMigrations.all).use { database ->
+            assertPreserved(before, snapshot(database))
+            assertEquals(0, count(database, "sync_receive_receipts")); assertEquals(0, count(database, "sync_receive_holds"))
+            database.query("SELECT weight_grams FROM harvests WHERE id='h'").use { assertTrue(it.moveToFirst()); assertEquals(4242000L, it.getLong(0)) }
+        }
+    }
+
+    /**
+     * Integration #796 + #808: a device on schema 32 (the one of #796) with a representative dataset, including a blocked
+     * campaign CAS operation, a workspace selection and its authorization cache, migrates 32 -> 33 -> 34 with nothing lost.
+     */
+    @Test
+    fun chain32To34PreservesARepresentativeDatasetWithSelectionAndAuthorization() {
+        val before = migrationHelper.createDatabase(TEST_DATABASE, 32).use { database ->
+            database.execSQL("INSERT INTO workspaces(id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','QA','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO farms(id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('f','w','Farm','ACTIVE',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO parcels (id, workspace_id, display_name, source, status, created_at, updated_at, version, sync_status) VALUES ('p','w','Parcela','MANUAL','ACTIVE',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO campaigns(id,workspace_id,farm_id,name,start_date,status,created_at,updated_at,version,sync_status) VALUES ('c','w','f','Edited','2026-01-01','HARVEST',1000,1000,2,'CONFLICT')")
+            database.execSQL("INSERT INTO harvests (id, workspace_id, campaign_id, farm_id, harvest_date, weight_grams, created_at, updated_at, version, sync_status) VALUES ('h','w','c','f','2026-01-20',4242000,1000,1000,1,'PENDING')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, source, harvest_id, created_at, updated_at, version, sync_status) VALUES ('d','w','f','c','2026-01-20','Coop',1500000,'MANUAL','h',1000,1000,1,'PENDING')")
+            database.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,last_error_code,created_at,updated_at) VALUES ('op','CAMPAIGN','c','UPDATE',1,'BLOCKED',1,'CAS_CONFLICT',1000,1000)")
+            database.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,created_at,updated_at) VALUES ('op-d','DELIVERY','d','CREATE',2,'PENDING',0,1000,1000)")
+            database.execSQL("INSERT INTO workspace_selections(issuer,account_id,workspace_id) VALUES ('issuer','a','w')")
+            database.execSQL("INSERT INTO workspace_authorization_cache(issuer,account_id,contract_json) VALUES ('issuer','a','{}')")
+            snapshot(database)
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 34, true, DatabaseMigrations.MIGRATION_32_33, DatabaseMigrations.MIGRATION_33_34).use { database ->
+            assertPreserved(before, snapshot(database))
+            assertEquals(0, count(database, "sync_receive_receipts")); assertEquals(0, count(database, "sync_receive_holds"))
+            assertEquals(0, count(database, "campaign_reconciliations"))
         }
     }
 

@@ -145,7 +145,7 @@ fun AppNavigation(
     }
     // A reminder opens its Activity over the Calendar, so Back returns to the agenda.
     LaunchedEffect(openAccount, backStackEntry == null) {
-        if(openAccount && backStackEntry!=null && startDestination!=AppDestination.Onboarding && compositionRoot.environment!=AppEnvironment.PRODUCTION) {
+        if(openAccount && backStackEntry!=null && startDestination!=AppDestination.Onboarding && compositionRoot.accountRepository.isConfigured) {
             navController.navigateToRoot(RootDestination.Profile)
             navController.navigate(AppDestination.Account) { launchSingleTop=true }
             onAccountOpened()
@@ -353,7 +353,8 @@ fun AppNavigation(
             }
             composable(RootDestination.Profile.route) {
                 ProfileRoute(
-                    onAccount = if(compositionRoot.environment!=AppEnvironment.PRODUCTION) ({ navController.navigate(AppDestination.Account) }) else null,
+                    accountRepository = compositionRoot.accountRepository,
+                    onAccount = if(compositionRoot.accountRepository.isConfigured) ({ navController.navigate(AppDestination.Account) }) else null,
                     appearanceStore = compositionRoot.appearanceStore,
                     appVersion = appVersionLabel(
                         com.isivoltpro.maginaolivo.BuildConfig.VERSION_NAME,

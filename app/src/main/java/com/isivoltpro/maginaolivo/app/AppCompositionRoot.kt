@@ -75,11 +75,12 @@ data class AppCompositionRoot(
         fun createAndroid(
             context: Context,
             environmentValue: String,
+            accountRepository: com.isivoltpro.maginaolivo.feature.account.AccountRepository? = null,
         ): AppCompositionRoot {
             val applicationContext = context.applicationContext
             val defaults = createDefault(environmentValue)
             val database = MaginaOlivoDatabase.getInstance(applicationContext)
-            val account = com.isivoltpro.maginaolivo.feature.account.AccountRuntime.get(applicationContext)
+            val account = accountRepository ?: com.isivoltpro.maginaolivo.feature.account.AccountRuntime.get(applicationContext)
             val farmLinks = com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository(applicationContext,database,account,BuildConfig.AUTH_PROJECT_URL)
             val workspaceRepository = LocalWorkspaceRepository(
                 database = database,
@@ -87,7 +88,7 @@ data class AppCompositionRoot(
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
                 regionalContext = defaults.regionalContext,
-                account = account,
+                accountRepository = account,
                 issuer = BuildConfig.AUTH_PROJECT_URL,
                 authorizationRemote = if (BuildConfig.AUTH_PROJECT_URL.startsWith("https://") && BuildConfig.AUTH_PUBLIC_KEY.isNotBlank())
                     com.isivoltpro.maginaolivo.data.repository.HttpsWorkspaceAuthorizationRemote(BuildConfig.AUTH_PROJECT_URL, BuildConfig.AUTH_PUBLIC_KEY)
@@ -114,6 +115,7 @@ data class AppCompositionRoot(
                 clock = defaults.clock,
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
+                workspaceRepository = workspaceRepository,
             )
             val campaignRepository = OfflineFirstCampaignRepository(
                 database, defaults.clock, defaults.idGenerator, defaults.dispatchers, workspaceRepository,

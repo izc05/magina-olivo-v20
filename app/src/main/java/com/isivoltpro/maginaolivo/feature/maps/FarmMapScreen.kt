@@ -88,8 +88,9 @@ fun FarmMapRoute(
     onLocated: (UUID) -> Unit = onOpenParcel,
     onImported: () -> Unit = {},
 ) {
+    val ownerScope = persistence.workspaceRepository.currentOwnerId()?.toString() ?: "default"
     val viewModel: FarmMapViewModel = viewModel(
-        key = "farm-map-$farmId-$locateParcelId",
+        key = "farm-map-$farmId-$locateParcelId-$ownerScope",
         factory = viewModelFactory {
             initializer {
                 FarmMapViewModel(farmId, persistence.farmRepository, persistence.parcelRepository, OfficialCadastreClient(), locateParcelId)

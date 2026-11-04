@@ -85,6 +85,7 @@ class GlobalQuickActionsTest {
             rejectCalls(), rejectCalls(), rejectCalls(), rejectCalls(), rejectCalls(), rejectCalls(), rejectCalls(),
             rejectCalls(), rejectCalls(), rejectCalls(), object : WorkspaceRepository {
                 override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspace)
+                override fun currentOwnerId(): UUID = workspace
             })
     }
 

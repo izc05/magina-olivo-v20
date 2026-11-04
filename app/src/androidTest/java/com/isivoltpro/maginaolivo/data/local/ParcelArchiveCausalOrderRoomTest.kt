@@ -389,7 +389,7 @@ class ParcelArchiveCausalOrderRoomTest {
 
     private fun sender() = ParcelMutationSendCoordinator(db, account, issuer, server, { ledger }, { now })
     private fun cas() = CampaignCasCoordinator(db, account, issuer, CampaignCasRpcAdapter(server)) { now }
-    private fun parcels() = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers())
+    private fun parcels() = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db })
     private fun campaigns() = OfflineFirstCampaignRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(),
         object : WorkspaceRepository { override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspace) })
 

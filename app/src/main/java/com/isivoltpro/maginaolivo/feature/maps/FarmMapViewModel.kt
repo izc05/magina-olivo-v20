@@ -23,6 +23,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -70,6 +72,7 @@ data class FarmMapState(
     val selectedCandidates: List<CadastralCandidate> get() = candidates.filter { it.reference in selected }
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class FarmMapViewModel(
     private val farmId: UUID,
     private val farms: FarmRepository,
@@ -140,10 +143,16 @@ class FarmMapViewModel(
 
     init {
         viewModelScope.launch { farms.observeById(farmId).collect { farm -> mutableState.update { it.copy(farm = farm) } } }
-        viewModelScope.launch { parcels.observeActive(farmId).collect { list -> mutableState.update { it.copy(parcels = list) } } }
+        viewModelScope.launch {
+            farms.observeById(farmId).flatMapLatest { farm ->
+                if (farm == null) flowOf(emptyList()) else parcels.observeActive(farmId)
+            }.collect { list -> mutableState.update { it.copy(parcels = list) } }
+        }
         if (locateParcelId != null) {
             viewModelScope.launch {
-                parcels.observeById(locateParcelId).collect { parcel -> mutableState.update { it.copy(locateParcel = parcel) } }
+                farms.observeById(farmId).flatMapLatest { farm ->
+                    if (farm == null) flowOf(null) else parcels.observeById(locateParcelId)
+                }.collect { parcel -> mutableState.update { it.copy(locateParcel = parcel) } }
             }
         }
     }

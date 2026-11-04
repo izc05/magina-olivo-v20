@@ -115,6 +115,10 @@ class DeliveryV3RecoveryRoomTest {
         val api = object : AccountAuthApi by SimulatedAccountAuthApi() { override val simulated = false }
         val account = AccountRepository(api, MemoryAccountSessionStore())
         account.login("owner@example.test", "password42", true)
+        // Integration #796 + #808: farms are linkable only from the signed-in owner's own workspace (#796); the fixture's
+        // workspace belongs to that account, as a real device's does.
+        db.openHelper.writableDatabase.execSQL("UPDATE workspaces SET owner_user_id = ? WHERE id = ?",
+            arrayOf<Any>(account.state.value.userId.toString(), workspaceId.toString()))
         val links = LocalFarmLinkRepository(context, db, account, "fixture-project", store, if (withVerifier) verifier else null)
         cleanup.add {
             store.read()?.consents?.forEach { File(context.noBackupFilesDir, "account-link-backups/${it.backupId}").deleteRecursively() }

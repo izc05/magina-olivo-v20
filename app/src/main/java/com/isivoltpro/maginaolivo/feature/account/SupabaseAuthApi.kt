@@ -11,6 +11,8 @@ class AuthConfiguration(val projectUrl: String, internal val publicKey: String, 
     override fun toString() = "AuthConfiguration(key=redacted)"
     companion object {
         fun forEnvironment(environment: String, url: String, key: String, applicationId: String): AuthConfiguration? {
+            // Integration #796 + #808 (owner decision 3): no new PRODUCTION capability until it is approved; a PRODUCTION
+            // build gets no Auth configuration and the Auth Gate stays fail-closed.
             if (environment !in setOf("DEV", "STAGING") || url.isBlank() || key.isBlank()) return null
             val uri = runCatching { URI(url.trim()) }.getOrNull() ?: return null
             if (uri.scheme != "https" || uri.port != -1 || uri.userInfo != null || uri.rawQuery != null || uri.rawFragment != null || uri.path !in listOf("", "/")) return null

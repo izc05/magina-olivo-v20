@@ -259,12 +259,12 @@ class AgriculturalYearContractTest {
         val workspaces = object : WorkspaceRepository {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
         }
-        farms = OfflineFirstFarmRepository(db, clock, RandomIds, TestDispatchers)
-        parcels = OfflineFirstParcelRepository(db, clock, RandomIds, TestDispatchers)
-        activities = OfflineFirstActivityRepository(db, clock, RandomIds, TestDispatchers)
-        campaigns = OfflineFirstCampaignRepository(db, clock, RandomIds, TestDispatchers)
-        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
-        deliveries = OfflineFirstDeliveryRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
+        farms = OfflineFirstFarmRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
+        parcels = OfflineFirstParcelRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
+        activities = OfflineFirstActivityRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
+        campaigns = OfflineFirstCampaignRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
+        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
+        deliveries = OfflineFirstDeliveryRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
         labour = OfflineFirstLabourRepository(db, workspaces, clock, RandomIds, TestDispatchers)
         equipment = OfflineFirstEquipmentRepository(db, clock, RandomIds, TestDispatchers)
         expenses = OfflineFirstExpenseRepository(db, workspaces, clock, RandomIds, TestDispatchers)

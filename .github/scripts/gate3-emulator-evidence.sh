@@ -366,8 +366,11 @@ set_airplane_mode disable 0 | tee -a evidence/airplane-mode.txt
 set +e
 # The live Catastro WFS check has its own Gate 17 workflow; ordinary emulator
 # validation remains deterministic when the external service is unavailable.
+# Integration #796 + #808 (owner decision D2, option A): the seven *HttpsEphemeralTest classes need the disposable TLS
+# Supabase fixture and run in the https-regression job (supabase/tests/g26-*-android*/run.sh). Listed BY NAME on purpose:
+# a new HTTPS class is not excluded and stays visible here until it is added to https-regression and to this list.
 adb shell am instrument -w \
-  -e notClass com.isivoltpro.maginaolivo.CatastroLiveImportTest,com.isivoltpro.maginaolivo.Phase18OnlineImportTest,com.isivoltpro.maginaolivo.Phase18OfflineReopenTest,com.isivoltpro.maginaolivo.Phase18PolygonParcelLookupTest \
+  -e notClass com.isivoltpro.maginaolivo.CatastroLiveImportTest,com.isivoltpro.maginaolivo.Phase18OnlineImportTest,com.isivoltpro.maginaolivo.Phase18OfflineReopenTest,com.isivoltpro.maginaolivo.Phase18PolygonParcelLookupTest,com.isivoltpro.maginaolivo.data.local.CampaignCasHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.DeliveryV3HttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.FarmSendHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.ParcelConvergenceHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.ParcelSendHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.ParentReceiveHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.WorkspaceSendHttpsEphemeralTest \
   "$TEST_PKG/$RUNNER" > evidence/instrumentation-all.txt 2>&1
 INSTRUMENTATION_RC=$?
 set -e

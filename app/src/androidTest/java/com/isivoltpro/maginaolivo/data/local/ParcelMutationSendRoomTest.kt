@@ -333,7 +333,7 @@ class ParcelMutationSendRoomTest {
     }
 
     private fun sender() = ParcelMutationSendCoordinator(db, account, issuer, server, { ledger }, { now })
-    private fun parcels() = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers())
+    private fun parcels() = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db })
 
     /** The app's producer, then the #800 CREATE confirmed: parcel and membership at remote v1 on both sides. */
     private suspend fun confirmedParcel(parcelName: String): UUID {

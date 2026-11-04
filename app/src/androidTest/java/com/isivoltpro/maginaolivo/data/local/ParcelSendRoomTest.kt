@@ -259,7 +259,7 @@ class ParcelSendRoomTest {
     }
 
     private fun sender() = ParcelSendCoordinator(db, account, issuer, server, { ledger }, { now })
-    private fun parcels() = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers())
+    private fun parcels() = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db })
     /** The app's own producer: the parcel, its initial membership and one unbound PARCEL CREATE marker. */
     private suspend fun createParcel(parcelName: String): Pair<UUID, UUID> {
         val parcel = (parcels().create(NewParcel(farm, parcelName, municipality = "Bedmar", province = "Jaén",

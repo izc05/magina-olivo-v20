@@ -188,6 +188,11 @@ class DeliveryV3HttpsEphemeralTest {
         val ledger = File(context.noBackupFilesDir, "g808-v3-ledger-${UUID.randomUUID()}.json").also { ledgers += it }
         val links = LocalFarmLinkRepository(context, db, account, issuer, AndroidFarmLinkLedger(ledger),
             ServerWorkspaceOwnerVerifier(authorizations, issuer))
+        // Integration #796 + #808 (D1, option A): a farm of a workspace the account does not own is linkable only with the
+        // account's valid remote authorization (write); like the app once signed in online, the device refreshes it first.
+        assertEquals(AppResult.Success(Unit), com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository(db,
+            com.isivoltpro.maginaolivo.core.time.SystemAppClock(), RandomIds, TestDispatchers,
+            com.isivoltpro.maginaolivo.core.regional.RegionalContext.spainDefault(), account, issuer, authorizations).refreshAuthorizations())
         links.consent(actor, links.choices().filter { it.id == graph.farm }, accepted = true)
         val workspace = object : WorkspaceRepository {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(graph.workspace)

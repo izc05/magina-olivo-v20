@@ -360,7 +360,7 @@ class ParcelConvergenceRoomTest {
     }
     private suspend fun grant(db: MaginaOlivoDatabase, permissions: List<String>) = db.workspaceAuthorizationCacheDao().upsert(
         WorkspaceAuthorizationCacheEntity(issuer, a.toString(), """{"contract_version":1,"issuer":"$issuer/auth/v1","subject":"$a","verified_at":"$now","token_expires_at":"${now.plusSeconds(3600)}","workspaces":[${if (permissions.isEmpty()) "" else """{"id":"$workspace","name":"Olivar A","role":"OWNER","permissions":[${permissions.joinToString(",") { "\"$it\"" }}],"grant_version":1,"authorization_expires_at":"${now.plusSeconds(900)}"}"""}]}"""))
-    private fun parcels(db: MaginaOlivoDatabase) = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers())
+    private fun parcels(db: MaginaOlivoDatabase) = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db })
     private fun sender(db: MaginaOlivoDatabase, account: AccountRepository) =
         ParcelMutationSendCoordinator(db, account, issuer, server, { ledger }, { Instant.now() })
     private suspend fun receive(db: MaginaOlivoDatabase, account: AccountRepository) =

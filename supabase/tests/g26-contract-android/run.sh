@@ -9,7 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 command -v adb >/dev/null
-EXPECTED=114
+EXPECTED=125   # 113 historical + 1 (#845) + 11 added by #796 to DeliveryContractTest
 work="$(mktemp -d)"
 cleanup() { rm -rf "$work"; }
 trap cleanup EXIT

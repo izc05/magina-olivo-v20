@@ -384,7 +384,7 @@ class OfflineFirstFarmRepositoryTest {
                 ).create(NewFarm(workspaceId, "La Solana")),
             )
             fun parcels(now: Instant, ids: List<UUID>) = OfflineFirstParcelRepository(
-                database, FixedClock(now), QueuedIdGenerator(ids), TestDispatchers,
+                database, FixedClock(now), QueuedIdGenerator(ids), TestDispatchers, workspaceRepository = FixtureWorkspace { database }
             )
             assertEquals(
                 AppResult.Success(parcelId),
@@ -437,7 +437,7 @@ class OfflineFirstFarmRepositoryTest {
             val parcels = OfflineFirstParcelRepository(
                 database, FixedClock(TEST_INSTANT),
                 QueuedIdGenerator(listOf(parcelId, uuid("50000000-0000-0000-0000-000000000090"), uuid("60000000-0000-0000-0000-000000000090"), uuid("60000000-0000-0000-0000-000000000091"))),
-                TestDispatchers,
+                TestDispatchers, workspaceRepository = FixtureWorkspace { database }
             )
             val agronomy = ParcelAgronomy(
                 oliveTreeCount = 247,
@@ -479,7 +479,7 @@ class OfflineFirstFarmRepositoryTest {
                 // create() takes 3 ids (parcel, membership, outbox); linkToRegistry takes 1 (outbox).
                 QueuedIdGenerator(listOf(manualId) + (1..2).map { uuid("50000000-0000-0000-0000-00000000018$it") } +
                     listOf(importedId) + (3..9).map { uuid("50000000-0000-0000-0000-00000000018$it") }),
-                TestDispatchers,
+                TestDispatchers, workspaceRepository = FixtureWorkspace { database }
             )
             val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
             assertEquals(
@@ -532,7 +532,7 @@ class OfflineFirstFarmRepositoryTest {
             val random = object : IdGenerator { override fun newId(): UUID = UUID.randomUUID() }
             val farms = repository(database, TEST_INSTANT, random)
             val farmId = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
-            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
+            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers, workspaceRepository = FixtureWorkspace { database })
             val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
             fun catastro(name: String, reference: String) = NewParcel(
                 farmId = farmId,
@@ -605,7 +605,7 @@ class OfflineFirstFarmRepositoryTest {
             val farms = repository(database, TEST_INSTANT, random)
             val farmA = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
             val farmB = (farms.create(NewFarm(workspaceId, "La Loma")) as AppResult.Success).value
-            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
+            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers, workspaceRepository = FixtureWorkspace { database })
             val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
             fun catastro(name: String, reference: String) = NewParcel(
                 farmA, name, cadastralReference = reference, source = ParcelSource.CATASTRO,
@@ -755,7 +755,7 @@ class OfflineFirstFarmRepositoryTest {
             val random = object : IdGenerator { override fun newId(): UUID = UUID.randomUUID() }
             val farms = repository(database, TEST_INSTANT, random)
             val createdFarm = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
-            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
+            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers, workspaceRepository = FixtureWorkspace { database })
             val createdParcel = (parcels.create(NewParcel(createdFarm, "Parcela Norte")) as AppResult.Success).value
 
             val campaign = CampaignEntity(

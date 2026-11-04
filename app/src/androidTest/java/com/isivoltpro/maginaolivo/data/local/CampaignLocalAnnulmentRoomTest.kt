@@ -200,7 +200,7 @@ class CampaignLocalAnnulmentRoomTest {
 
     private fun campaigns() = OfflineFirstCampaignRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(),
         object : WorkspaceRepository { override suspend fun ensureLocalWorkspace(): AppResult<UUID> = active })
-    private fun parcels() = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers())
+    private fun parcels() = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db })
     /** The app's producer: a PREPARATION campaign with a snapshot of [parcel] and one unbound CREATE. */
     private suspend fun created(campaignName: String): UUID =
         (campaigns().create(NewCampaign(farm, campaignName, start, setOf(parcel))) as AppResult.Success).value

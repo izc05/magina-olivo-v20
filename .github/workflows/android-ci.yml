@@ -152,7 +152,7 @@ jobs:
   gate3-emulator:
     if: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/g26-integration-temp') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout

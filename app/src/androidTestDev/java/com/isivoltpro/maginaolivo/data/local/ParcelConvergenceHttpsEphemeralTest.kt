@@ -280,7 +280,7 @@ class ParcelConvergenceHttpsEphemeralTest {
         db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), RegionalContext.spainDefault(), account, issuer)
     private fun farms(db: MaginaOlivoDatabase, account: AccountRepository) =
         OfflineFirstFarmRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), selector(db, account))
-    private fun parcels(db: MaginaOlivoDatabase) = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers())
+    private fun parcels(db: MaginaOlivoDatabase) = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db })
     private fun remote(id: UUID) = JSONObject(fetch("/__g26_admin/parcel?id=$id", "GET"))
     private fun session(actor: UUID, key: String): AuthSession {
         val token = fixture.getString(key)

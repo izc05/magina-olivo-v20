@@ -59,6 +59,7 @@ fun authSettings(environment: String): Pair<String,String> {
 }
 val devAuth=authSettings("DEV")
 val stagingAuth=authSettings("STAGING")
+val productionAuth=authSettings("PRODUCTION")
 
 android {
     namespace = "com.isivoltpro.maginaolivo"
@@ -103,8 +104,8 @@ android {
             dimension = "environment"
             resValue("string", "app_name", "Mágina Olivo")
             buildConfigField("String", "ENVIRONMENT", "\"PRODUCTION\"")
-            buildConfigField("String", "AUTH_PROJECT_URL", "\"\"")
-            buildConfigField("String", "AUTH_PUBLIC_KEY", "\"\"")
+            buildConfigField("String", "AUTH_PROJECT_URL", "\"${productionAuth.first}\"")
+            buildConfigField("String", "AUTH_PUBLIC_KEY", "\"${productionAuth.second}\"")
         }
     }
 

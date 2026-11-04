@@ -337,7 +337,7 @@ class ParcelSendHttpsEphemeralTest {
     private fun farms(db: MaginaOlivoDatabase, account: AccountRepository) =
         OfflineFirstFarmRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), selector(db, account))
     private fun parcels(db: MaginaOlivoDatabase, ids: IdGenerator = UuidGenerator()) =
-        OfflineFirstParcelRepository(db, SystemAppClock(), ids, DefaultAppDispatchers())
+        OfflineFirstParcelRepository(db, SystemAppClock(), ids, DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db })
     private fun remoteParcel(id: UUID) = JSONObject(fetch("/__g26_admin/parcel?id=$id", "GET"))
     private fun session(actor: UUID, key: String): AuthSession {
         val token = fixture.getString(key)

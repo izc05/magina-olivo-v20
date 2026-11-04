@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.data.local.FixtureWorkspace
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.isivoltpro.maginaolivo.app.LocalPersistence
@@ -55,7 +57,7 @@ class QuickLabourRoomTest {
     }
     private fun open() {
         db = MaginaOlivoDatabase.create(context, name)
-        harvests = OfflineFirstHarvestRepository(db, clock, ids, dispatchers) { ZoneOffset.UTC }
+        harvests = OfflineFirstHarvestRepository(db, clock, ids, dispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
         labour = OfflineFirstLabourRepository(db, workspaces, clock, ids, dispatchers)
         expenses = OfflineFirstExpenseRepository(db, workspaces, clock, ids, dispatchers)
         persistence = LocalPersistence(db, unused(), unused(), unused(), unused(), unused(), unused(), unused(),
@@ -104,7 +106,7 @@ class QuickLabourRoomTest {
         assertEquals(1, inside.size); assertEquals(ExpenseOrigin.DAY_LABOUR, inside.single().origin)
         assertEquals(3600L, ExpenseSummary.of(inside, "EUR").totalMinor)
         assertEquals(10100L, ExpenseSummary.of(rows, "EUR").totalMinor)
-        val deliveries = OfflineFirstDeliveryRepository(db, clock, ids, dispatchers) { ZoneOffset.UTC }
+        val deliveries = OfflineFirstDeliveryRepository(db, clock, ids, dispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
         ok(deliveries.create(DeliveryDraft(farmId = farm, deliveryDate = date,
             destinationOrganizationId = null, destinationName = "Cooperativa sintética", netGrams = 1_000_000,
             shares = listOf(DeliveryShareInput(parcel, null)), origin = PesadaOrigin.TREE)))

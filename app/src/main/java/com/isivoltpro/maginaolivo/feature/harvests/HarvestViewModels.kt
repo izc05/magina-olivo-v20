@@ -357,13 +357,14 @@ class HarvestDetailViewModel(
         val repository = expenses ?: return
         val harvest = mutableState.value.harvest ?: return
         val state = mutableState.value
+        if (state.isSaving) return
         val currencyContext = state.newCostCurrencyContext()
         val currency = currencyContext.currency ?: run {
             mutableState.value = state.copy(costError = currencyContext.error)
             return
         }
+        mutableState.value = state.copy(isSaving = true, costError = null)
         viewModelScope.launch {
-            mutableState.value = mutableState.value.copy(isSaving = true, costError = null)
             val draft = ExpenseDraft(
                 expenseDate = harvest.harvestDate,
                 concept = kind.concept(concept),

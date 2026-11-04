@@ -37,12 +37,14 @@ import androidx.test.espresso.action.Tap
 import androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom
 import com.isivoltpro.maginaolivo.app.AppearanceMode
 import com.isivoltpro.maginaolivo.app.LocalPersistence
+import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import com.isivoltpro.maginaolivo.feature.maps.FarmMapRoute
 import com.isivoltpro.maginaolivo.navigation.RootDestination
 import com.isivoltpro.maginaolivo.navigation.bottomNavigationRoots
@@ -105,9 +107,13 @@ class NativeFarmMapLifecycleTest {
                 else -> throw AssertionError("Unknown test farm")
             })
         }
+        val workspaces = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspace)
+            override fun currentOwnerId(): UUID = workspace
+        }
         persistence = LocalPersistence(database, farms, rejectCalls(), parcels, rejectCalls(),
             rejectCalls(), rejectCalls(), rejectCalls(), rejectCalls(), rejectCalls(), rejectCalls(), rejectCalls(),
-            rejectCalls(), rejectCalls(), rejectCalls(), rejectCalls())
+            rejectCalls(), rejectCalls(), rejectCalls(), workspaces)
     }
     @After fun closeOnlyTestDatabase() {
         try { runCatching { capture("end-of-case") } } finally { database.close() }

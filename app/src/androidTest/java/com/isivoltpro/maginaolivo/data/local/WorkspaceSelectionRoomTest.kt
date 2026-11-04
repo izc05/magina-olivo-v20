@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -91,8 +92,12 @@ class WorkspaceSelectionRoomTest {
         val accountLoggedOut = account(storeA)
         accountLoggedOut.logout(false)
         val signedOut = workspace(reopened, accountLoggedOut)
-        assertTrue((signedOut.activeWorkspace() as AppResult.Success).value != w2)
-        assertEquals(local, (signedOut.activeWorkspace() as AppResult.Success).value)
+        assertTrue("Logged out session on configured account must fail closed", signedOut.activeWorkspace() is AppResult.Failure)
+        assertTrue("Logged out session must not ensure workspaces", signedOut.ensureLocalWorkspace() is AppResult.Failure)
+        org.junit.Assert.assertNull(signedOut.observeLocalWorkspace().first())
+        assertEquals(1, count(reopened, "SELECT count(*) FROM workspaces WHERE id='$local'"))
+        assertEquals(1, count(reopened, "SELECT count(*) FROM workspaces WHERE id='$w2'"))
+        assertEquals(1, count(reopened, "SELECT count(*) FROM sync_outbox WHERE id='local-op' AND status='PENDING'"))
     }
 
     @Test fun revokedAuthorizationCannotBeRestoredByHistoricReceipt() = runBlocking {
@@ -116,6 +121,83 @@ class WorkspaceSelectionRoomTest {
         identity.resume(true)
         assertTrue(work.refreshAuthorizations() is AppResult.Success)
         assertEquals(w1, (work.activeWorkspace() as AppResult.Success).value)
+    }
+
+    @Test fun freshInstallProvisionsUnboundWorkspaceWithoutDuplicateOutbox() = runBlocking {
+        val db = open()
+        val unconfiguredAccount = AccountRepository(null)
+        val work = workspace(db, unconfiguredAccount)
+
+        assertEquals(0, count(db, "SELECT count(*) FROM workspaces"))
+        assertEquals(0, count(db, "SELECT count(*) FROM sync_outbox"))
+        assertTrue("activeWorkspace before ensure must be NotFound", work.activeWorkspace() is AppResult.Failure)
+
+        val observed = work.observeActiveWorkspace().first()
+        assertTrue("observeActiveWorkspace must ensure local workspace on clean install: $observed", observed is AppResult.Success)
+        val workspaceId = (observed as AppResult.Success).value
+
+        assertEquals(1, count(db, "SELECT count(*) FROM workspaces"))
+        assertEquals(1, count(db, "SELECT count(*) FROM sync_outbox WHERE entity_type='WORKSPACE' AND operation='CREATE'"))
+
+        // Ensuring again or observing again must reuse the same workspace without creating duplicate outbox entries
+        val ensuredAgain = work.ensureLocalWorkspace()
+        assertTrue(ensuredAgain is AppResult.Success)
+        assertEquals(workspaceId, (ensuredAgain as AppResult.Success).value)
+
+        val activeNow = work.activeWorkspace()
+        assertTrue(activeNow is AppResult.Success)
+        assertEquals(workspaceId, (activeNow as AppResult.Success).value)
+
+        assertEquals(1, count(db, "SELECT count(*) FROM workspaces"))
+        assertEquals(1, count(db, "SELECT count(*) FROM sync_outbox WHERE entity_type='WORKSPACE' AND operation='CREATE'"))
+    }
+
+    @Test fun securityBoundariesNeverAutoCreateWorkspaceOrGenerateOutbox() = runBlocking {
+        val db = open()
+        insertWorkspace(db, w1, "Workspace One")
+        insertWorkspace(db, w2, "Workspace Two")
+
+        // 1. Multiple workspaces without selection -> must NOT auto-create a third workspace
+        val storeA = sessionStore(a)
+        val accountA = account(storeA)
+        val workA = workspace(db, accountA) { setOf(w1, w2) }
+
+        val activeMulti = workA.activeWorkspace()
+        assertTrue("Multiple workspaces without selection must require selection: $activeMulti", activeMulti is AppResult.Failure)
+        val ensuredMulti = workA.ensureLocalWorkspace()
+        assertTrue("ensureLocalWorkspace must NOT create workspace when multiple choices exist: $ensuredMulti", ensuredMulti is AppResult.Failure)
+        assertEquals(2, count(db, "SELECT count(*) FROM workspaces"))
+        assertEquals(0, count(db, "SELECT count(*) FROM sync_outbox"))
+
+        // 2. Select w1 -> active is w1
+        assertTrue(workA.selectWorkspace(w1) is AppResult.Success)
+        assertEquals(w1, (workA.activeWorkspace() as AppResult.Success).value)
+
+        // 3. Revoked authorization -> must fail closed and NOT auto-create a replacement workspace
+        var allowed = emptySet<UUID>()
+        val workRevoked = workspace(db, accountA) { allowed }
+        assertTrue(workRevoked.refreshAuthorizations() is AppResult.Success)
+        assertTrue("Revoked workspace must fail closed on activeWorkspace", workRevoked.activeWorkspace() is AppResult.Failure)
+        assertTrue("Revoked workspace must fail closed on ensureLocalWorkspace without creating new workspace", workRevoked.ensureLocalWorkspace() is AppResult.Failure)
+        assertEquals(2, count(db, "SELECT count(*) FROM workspaces"))
+        assertEquals(0, count(db, "SELECT count(*) FROM sync_outbox"))
+
+        // 4. Expired session -> must fail closed and NOT auto-create
+        now = now.plusSeconds(7200)
+        assertTrue("Expired session must fail closed on activeWorkspace", workRevoked.activeWorkspace() is AppResult.Failure)
+        assertTrue("Expired session must fail closed on ensureLocalWorkspace", workRevoked.ensureLocalWorkspace() is AppResult.Failure)
+        assertEquals(2, count(db, "SELECT count(*) FROM workspaces"))
+        assertEquals(0, count(db, "SELECT count(*) FROM sync_outbox"))
+        now = now.minusSeconds(7200)
+
+        // 5. Logout -> must fail closed and NOT auto-create or expose previous data
+        accountA.logout(false)
+        val workLoggedOut = workspace(db, accountA)
+        assertTrue("Logged out session must fail closed on activeWorkspace", workLoggedOut.activeWorkspace() is AppResult.Failure)
+        assertTrue("Logged out session must fail closed on ensureLocalWorkspace", workLoggedOut.ensureLocalWorkspace() is AppResult.Failure)
+        assertNull("Logged out session must emit null on observeLocalWorkspace", workLoggedOut.observeLocalWorkspace().first())
+        assertEquals(2, count(db, "SELECT count(*) FROM workspaces"))
+        assertEquals(0, count(db, "SELECT count(*) FROM sync_outbox"))
     }
 
     private fun open() = MaginaOlivoDatabase.create(context, name).also { database = it }

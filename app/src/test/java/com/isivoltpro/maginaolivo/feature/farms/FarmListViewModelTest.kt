@@ -110,6 +110,38 @@ class FarmListViewModelTest {
         assertTrue(viewModel.state.value.message == null)
     }
 
+    @Test
+    fun workspacePermissionFailureReflectsInUiStateWithoutExposingFarms() = runTest(dispatcher) {
+        val repository = FakeFarmRepository()
+        val errorFlow = MutableStateFlow<AppResult<UUID>>(AppResult.Failure(com.isivoltpro.maginaolivo.core.common.AppError.Permission("No hay sesión activa")))
+        val viewModel = FarmListViewModel(
+            farmRepository = repository,
+            workspaceRepository = FakeWorkspaceRepository(workspaceId, errorFlow),
+        )
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(null, viewModel.state.value.workspaceId)
+        assertTrue(viewModel.state.value.farms.isEmpty())
+        assertEquals("No se pudo conservar el permiso necesario", viewModel.state.value.error)
+    }
+
+    @Test
+    fun workspaceSelectionRequiredReflectsInUiStateWithoutExposingFarms() = runTest(dispatcher) {
+        val repository = FakeFarmRepository()
+        val errorFlow = MutableStateFlow<AppResult<UUID>>(AppResult.Failure(com.isivoltpro.maginaolivo.core.common.AppError.Validation("workspaceId", "selection_required")))
+        val viewModel = FarmListViewModel(
+            farmRepository = repository,
+            workspaceRepository = FakeWorkspaceRepository(workspaceId, errorFlow),
+        )
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(null, viewModel.state.value.workspaceId)
+        assertTrue(viewModel.state.value.farms.isEmpty())
+        assertEquals("Revisa los datos indicados", viewModel.state.value.error)
+    }
+
     private fun farm(
         name: String,
         archived: Boolean = false,
@@ -131,8 +163,10 @@ class FarmListViewModelTest {
 
     private class FakeWorkspaceRepository(
         private val id: UUID,
+        private val flow: Flow<AppResult<UUID>> = MutableStateFlow(AppResult.Success(id)),
     ) : WorkspaceRepository {
         override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(id)
+        override fun observeActiveWorkspace(): Flow<AppResult<UUID>> = flow
     }
 
     private class FakeFarmRepository : FarmRepository {

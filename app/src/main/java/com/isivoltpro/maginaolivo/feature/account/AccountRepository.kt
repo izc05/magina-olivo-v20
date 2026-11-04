@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.withLock
 /** No agricultural repository, database, file store or outbox is a dependency. */
 class AccountRepository(private val api: AccountAuthApi?, private val store: AccountSessionStore = MemoryAccountSessionStore(),
     private val now: () -> Instant = Instant::now) {
+    val isConfigured: Boolean get() = api != null
     private val mutable = MutableStateFlow(AccountState(status=if(api==null) AccountStatus.UNCONFIGURED else AccountStatus.SIGNED_OUT, simulated=api?.simulated==true))
     val state: StateFlow<AccountState> = mutable
     // Two locks, always taken in this order and never nested the other way round:
@@ -29,19 +30,32 @@ class AccountRepository(private val api: AccountAuthApi?, private val store: Acc
     // identity [generation] it started from is still current (logout/account change bump it).
     private val network = Mutex()
     private val local = Mutex()
+
     @Volatile private var record: AccountRecord? = null
     private var generation = 0L
     private val inFlight = java.util.concurrent.atomic.AtomicInteger()
     // This repository is the process Auth owner; a recreated Activity must not cancel exchange.
     private val callbackScope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
+
+    init {
+        try {
+            record = store.read()
+            publish()
+        } catch (_: Exception) {
+            record = null
+        }
+    }
+
     fun receiveLink(url:String,online:Boolean) = callbackScope.launch { completeLink(url,online) }
     fun requestLogout(online:Boolean) = callbackScope.launch { logout(online) }
     /** Cached identity from the Auth owner. Offline use is valid only before token expiry. */
-    suspend fun workspaceSession(): WorkspaceSession = local.withLock {
-        val current = current()
-        if (api == null || current.recovery != null || api.simulated) return@withLock WorkspaceSession.SignedOut
-        val session = current.session ?: return@withLock WorkspaceSession.SignedOut
-        if (!session.expiresAt.isAfter(now())) WorkspaceSession.Expired
+    fun workspaceSession(): WorkspaceSession {
+        if (api == null || api.simulated) return WorkspaceSession.SignedOut
+        val current = record ?: return WorkspaceSession.SignedOut
+        if (current.recovery != null) return WorkspaceSession.SignedOut
+        val session = current.session ?: return WorkspaceSession.SignedOut
+        val isExpired = !session.expiresAt.isAfter(now())
+        return if (isExpired && mutable.value.online) WorkspaceSession.Expired
         else WorkspaceSession.Authenticated(session.userId)
     }
     internal suspend fun <T> withCachedLocalAccess(action: suspend (java.util.UUID?) -> T): T = local.withLock {
