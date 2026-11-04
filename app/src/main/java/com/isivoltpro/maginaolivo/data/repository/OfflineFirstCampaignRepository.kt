@@ -255,6 +255,15 @@ class OfflineFirstCampaignRepository(
 
     private suspend fun replaceSnapshots(campaignId: UUID, parcelIds: Set<UUID>, now: Instant) {
         val campaign = database.campaignDao().findById(campaignId) ?: error("campaign missing")
+        // Phase 2 snapshot contract: once the server holds the campaign (remote version), its parcel snapshots are server
+        // facts with no contract to change them. They are kept exactly (ids, content, sync state) so later edits and the
+        // activation travel through CAMPAIGN CAS; a different parcel set is a real change and is refused, never applied
+        // locally in a way the server would not have. An unconfirmed campaign still rebuilds them (they go in its CREATE).
+        if (campaign.metadata.remoteVersion != null) {
+            val current = database.campaignDao().listSnapshots(campaignId).filter { it.metadata.deletedAt == null }
+            if (current.map { it.parcelId }.toSet() != parcelIds) throw InvalidSelection("confirmed_campaign_parcels_locked")
+            return
+        }
         val farm = database.farmDao().findById(campaign.farmId) ?: error("farm missing")
         val rows = parcelIds.sortedBy(UUID::toString).map { parcelId ->
             val parcel = database.parcelDao().findById(parcelId) ?: throw InvalidSelection("parcel_not_found")

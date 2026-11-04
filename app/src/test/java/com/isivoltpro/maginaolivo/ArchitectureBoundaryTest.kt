@@ -210,9 +210,20 @@ class ArchitectureBoundaryTest {
             ".readOwnDeliveryReceiveBundle(", ".receiveDeliveryBundle(", ".runSingleDispatch(").forEach { forbidden ->
             assertFalse("Pesada v3 probe must stay a writer probe: $forbidden", deliveryV3Text.contains(forbidden))
         }
+        // Phase 2: the two-device A2 -> B2 probe. Opt-in per device, disposable server only, real senders and receivers
+        // only: it never calls an RPC itself (no direct campaign create, no REST path), and wires no scheduler.
+        val abProbe = all.filter { it.name == "AbTwoDeviceStepTest.kt" }
+        assertEquals("Exactly one two-device A2 -> B2 probe", 1, abProbe.size)
+        assertTrue(abProbe.single().invariantSeparatorsPath.contains("/androidTestDev/"))
+        val abText = abProbe.single().readText()
+        assertTrue(abText.contains("ab_role"))
+        assertTrue(abText.contains("CampaignCreateSendCoordinator("))
+        listOf("WorkManager", "create_own_campaign", "/rest/v1/rpc", "fun post(").forEach { forbidden ->
+            assertFalse("Two-device probe must use the real Android senders only: $forbidden", abText.contains(forbidden))
+        }
         all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe || it in campaignProbe ||
             it in parentProbe || it in workspaceProbe || it in farmProbe || it in parcelProbe || it in convergenceProbe ||
-            it in deliveryV3Probe }.forEach { file ->
+            it in deliveryV3Probe || it in abProbe }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +

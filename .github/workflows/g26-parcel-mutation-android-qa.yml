@@ -2,7 +2,7 @@ name: G2.6 PARCEL mutation Android QA isolated
 
 on:
   pull_request:
-    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3, codex/g26-campaign-history-h7, codex/g26-808-design, codex/g26-808-sql, codex/g26-808-android, codex/g26-808-head-v3, codex/g26-808-harvest-sql, codex/g26-808-harvest-android, codex/g26-808-cross-822-824, codex/g26-808-hardening, codex/g26-808-receiver-design, codex/g26-808-r1b-manual-barrier, codex/g26-808-r1a-sql, codex/g26-808-r1a-android, codex/g26-808-r1c-sql, codex/g26-808-r2-sql, codex/g26-808-r3-design, codex/g26-808-r3a-room, codex/g26-808-r3b-parser, codex/g26-808-j-plan, codex/g26-808-r3a-dao-fix, codex/g26-808-r3c-receiver, codex/g26-808-r3d-https, codex/g26-808-r3e-fix, codex/g26-808-r3e-limit, codex/g26-808-contract-recovery]
+    branches: [codex/g26-parcel-mutation-sql, codex/g26-parcel-mutation-android, codex/g26-parents-v2-sql, codex/g26-parcel-receive-v2-android, codex/g26-convergence-2c3, codex/g26-campaign-history-h7, codex/g26-808-design, codex/g26-808-sql, codex/g26-808-android, codex/g26-808-head-v3, codex/g26-808-harvest-sql, codex/g26-808-harvest-android, codex/g26-808-cross-822-824, codex/g26-808-hardening, codex/g26-808-receiver-design, codex/g26-808-r1b-manual-barrier, codex/g26-808-r1a-sql, codex/g26-808-r1a-android, codex/g26-808-r1c-sql, codex/g26-808-r2-sql, codex/g26-808-r3-design, codex/g26-808-r3a-room, codex/g26-808-r3b-parser, codex/g26-808-j-plan, codex/g26-808-r3a-dao-fix, codex/g26-808-r3c-receiver, codex/g26-808-r3d-https, codex/g26-808-r3e-fix, codex/g26-808-r3e-limit, codex/g26-808-contract-recovery, codex/g26-808-integration-796]
   workflow_dispatch:
 
 permissions:

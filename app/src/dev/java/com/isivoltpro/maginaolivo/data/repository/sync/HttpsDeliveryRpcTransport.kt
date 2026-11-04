@@ -40,6 +40,8 @@ internal class HttpsDeliveryRpcTransport(
         WORKSPACE_SEND(WorkspaceSendCoordinator.NAMES),
         FARM_SEND(FarmSendCoordinator.NAMES),
         PARCEL_SEND(ParcelSendCoordinator.NAMES),
+        /** Phase 2: CAMPAIGN create and its receipt, only for disposable probes. */
+        CAMPAIGN_CREATE(CampaignCreateSendCoordinator.NAMES),
         /** 2c-3: #805 update/archive/restore and their receipts, only for the disposable convergence probe. */
         PARCEL_MUTATION_SEND(ParcelMutationSendCoordinator.NAMES),
         /** #808: Jornada writer, receipts and HEAD, only for the disposable Pesada v3 probe. */

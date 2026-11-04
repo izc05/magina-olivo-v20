@@ -192,6 +192,50 @@ interface SyncOutboxDao {
     suspend fun blockParcelCreate(operationId: UUID, accountId: String,
         payloadJson: String, reason: String, nowEpochMillis: Long): Int
 
+    /** Phase 2 CAMPAIGN create: binds the app's unbound CREATE marker once; farm_id gates on the farm's G1b consent. */
+    @Query("""
+        UPDATE sync_outbox SET account_id = :accountId, farm_id = :farmId, payload_json = :payloadJson,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'CAMPAIGN' AND operation = 'CREATE' AND entity_id = :campaignId
+          AND status = 'PENDING' AND attempt_count = 0 AND payload_json IS NULL AND account_id IS NULL
+          AND base_remote_version IS NULL
+    """)
+    suspend fun stageCampaignCreate(operationId: UUID, accountId: String, campaignId: UUID, farmId: UUID,
+        payloadJson: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'FAILED', attempt_count = attempt_count + 1,
+            last_error_code = 'OUTCOME_UNKNOWN', last_error_message = NULL,
+            updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'CAMPAIGN' AND operation = 'CREATE'
+          AND status IN ('PENDING', 'FAILED') AND account_id = :accountId
+          AND payload_json = :payloadJson
+    """)
+    suspend fun markCampaignCreateUnknown(operationId: UUID, accountId: String,
+        payloadJson: String, nowEpochMillis: Long): Int
+
+    @Query("""
+        UPDATE sync_outbox SET status = 'BLOCKED', last_error_code = :reason,
+            last_error_message = NULL, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'CAMPAIGN' AND operation = 'CREATE'
+          AND status IN ('PENDING', 'FAILED') AND account_id = :accountId
+          AND payload_json = :payloadJson
+    """)
+    suspend fun blockCampaignCreate(operationId: UUID, accountId: String,
+        payloadJson: String, reason: String, nowEpochMillis: Long): Int
+
+    /**
+     * Phase 2: once a CAMPAIGN CREATE is confirmed, a later never-staged CREATE marker of the same campaign (a local
+     * edit queued while the first was staged) can only travel as a CAS UPDATE. Only untouched markers are promoted.
+     */
+    @Query("""
+        UPDATE sync_outbox SET operation = 'UPDATE', updated_at = :nowEpochMillis
+        WHERE entity_type = 'CAMPAIGN' AND entity_id = :campaignId AND id != :confirmedId AND operation = 'CREATE'
+          AND status = 'PENDING' AND attempt_count = 0 AND payload_json IS NULL AND account_id IS NULL
+          AND base_remote_version IS NULL
+    """)
+    suspend fun promoteLaterCampaignCreates(campaignId: UUID, confirmedId: UUID, nowEpochMillis: Long): Int
+
     /**
      * G2.6 PARCEL UPDATE/ARCHIVE/RESTORE (and legacy DELETE): binds an unbound marker once with its
      * typed envelope and the remote version it expects. A resolved review is the only blocker it accepts.
