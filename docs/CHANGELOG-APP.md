@@ -11,12 +11,15 @@ Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.
 
 - **Versión** (`0.2.0`): se sube a mano en `app/build.gradle.kts` (`appVersionName`) cuando se entrega un
   bloque de cambios al propietario, y se anota aquí.
-- **Compilación** (`531`): la pone la CI sola (número de ejecución de GitHub Actions, siempre creciente).
-  También es el `versionCode`, así que un APK nuevo siempre es «más nuevo» para Android.
-  Una compilación local muestra «compilación local».
+- **Compilación** (`531`): identifica la ejecución de CI. Para publicar, `versionCode` se fija por separado
+  y debe superar el último número aceptado por Google Play. Una compilación local muestra «compilación local».
 
 Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
 concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
+
+## 1.0.0 — candidato de publicación (sin publicar)
+
+- Preparación de la variante de producción para Google Play: configuración separada por entorno, firma de subida y enlaces de privacidad y solicitud de eliminación de cuenta. La publicación requiere verificar los servicios y datos reales de producción.
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 

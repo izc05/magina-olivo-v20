@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.feature.profile
 
+import android.content.Intent
+import android.net.Uri
+import com.isivoltpro.maginaolivo.BuildConfig
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import androidx.compose.foundation.background
@@ -21,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
+import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -100,6 +104,7 @@ fun HelpRoute(topic: HelpTopic) {
 
 @Composable
 fun HelpScreen(topic: HelpTopic, notes: List<NoteBlock>? = null) {
+    val context = LocalContext.current
     Column(
         Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).statusBarsPadding().verticalScroll(rememberScrollState())
             .padding(horizontal = MoSpacing.screen).testTag("help-${topic.route}"),
@@ -109,7 +114,14 @@ fun HelpScreen(topic: HelpTopic, notes: List<NoteBlock>? = null) {
         Text(topic.title, style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText)
         when (topic) {
             HelpTopic.NEWS -> News(notes)
-            HelpTopic.PRIVACY -> Sections(PRIVACY)
+            HelpTopic.PRIVACY -> {
+                Sections(PRIVACY)
+                if (BuildConfig.PRIVACY_URL.isNotBlank()) {
+                    MoTertiaryButton("Política de privacidad completa", {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.PRIVACY_URL)))
+                    }, Modifier.testTag("privacy-policy-link"))
+                }
+            }
             HelpTopic.OFFLINE -> Sections(OFFLINE)
         }
         Spacer(Modifier.height(MoSpacing.lg))
@@ -149,14 +161,17 @@ private const val CHANGELOG_ASSET = "CHANGELOG-APP.md"
 /** What stays on the phone and which outside services the app calls, and why. */
 private val PRIVACY = listOf(
     "Lo que queda en tu teléfono" to
-        "Fincas, parcelas, campañas, trabajos, pesadas, jornales, gastos, fotos y documentos se guardan en este " +
-        "teléfono y solo en él. Hoy no hay cuenta ni copia en la nube, y la copia de seguridad de Android y el " +
-        "paso a un teléfono nuevo no los llevan: si borras la app o sus datos, o cambias de teléfono, se pierden.",
+        "Los registros agrícolas se guardan primero en este teléfono. Con Cuenta y sincronización activadas, " +
+        "solo los datos habilitados pueden enviarse al servicio de la cuenta. Los datos aún no sincronizados " +
+        "pueden perderse si borras la app o cambias de teléfono: Android no hace una copia automática.",
     "Fotos de vales y facturas" to
-        "Una foto de vale o factura se guarda como adjunto en el propio teléfono y no se envía a ningún " +
-        "servicio. Las fotos que adjuntas no se leen: los kilos y los importes son los que escribes tú. Los " +
-        "vales y facturas que ya tenías «por revisar» de versiones anteriores se pueden seguir leyendo, " +
-        "solo en el propio teléfono, y nada leído se guarda sin tu confirmación.",
+        "Las fotos y documentos se guardan primero en el teléfono. La lectura automática de fotos nuevas de " +
+        "pesadas está desactivada; los kilos e importes son los que escribes tú. Los documentos antiguos " +
+        "«por revisar» siguen legibles y nada extraído se guarda sin tu confirmación.",
+    "Cuenta y eliminación" to
+        "Al crear una cuenta, el proveedor de autenticación procesa tu correo y credenciales. Cerrar sesión " +
+        "no elimina la cuenta ni los datos del servidor. Puedes iniciar una solicitud de eliminación desde " +
+        "Cuenta; la política completa explica el tratamiento y las posibles retenciones legales.",
     "Servicios externos que se consultan" to
         "Tiempo: se envía el municipio a nuestro servidor, que pregunta a AEMET y, si falla, a MET Norway. " +
         "Radar: nuestro servidor da la lista de imágenes y el teléfono descarga de RainViewer las de la zona " +
@@ -167,15 +182,17 @@ private val PRIVACY = listOf(
         "muestra con el widget de AOVE.net. Estos servicios reciben solo el municipio o la zona del mapa que " +
         "consultas; nunca tus pesadas, tus gastos ni tus trabajos.",
     "Permisos" to
-        "Cámara y archivos, solo cuando adjuntas una foto o un documento. Notificaciones, solo para los avisos " +
-        "de trabajos que planificas. Internet, solo para los servicios de arriba.",
+        "Cámara y archivos, solo cuando adjuntas una foto o documento; ubicación, cuando pides tu posición " +
+        "en el mapa; notificaciones, para avisos de trabajos. Internet se usa para Cuenta, sincronización y " +
+        "los servicios externos descritos.",
 )
 
 /** What works without signal and what needs it. */
 private val OFFLINE = listOf(
     "Todo lo del campo funciona sin cobertura" to
         "Registrar trabajos, riegos, tratamientos, pesadas, jornales y gastos, hacer fotos de vales y consultar " +
-        "el Cuaderno funciona en modo avión. Se guarda al momento en el teléfono.",
+        "el Cuaderno funciona con los datos disponibles en modo avión, incluso al volver a abrir la app. " +
+        "Se guarda al momento en el teléfono; una sesión caducada puede requerir iniciar sesión con conexión.",
     "Lo que necesita internet" to
         "El tiempo, el radar, el mercado del aceite y la consulta al Catastro. Sin cobertura verás el último dato " +
         "guardado con su fecha, o un aviso si no hay ninguno; nunca un dato inventado.",
