@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dev flavor only. Release builds trust the system CAs exactly as before. `debug-overrides` applies ONLY to debuggable
+  builds: a QA tester may install a disposable CA on a disposable emulator to point a DEV debug APK at a local
+  throw-away server (supabase/tests/g26-ab-apk). Staging and production have no such override.
+-->
+<network-security-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

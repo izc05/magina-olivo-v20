@@ -50,6 +50,8 @@ internal class HttpsDeliveryRpcTransport(
         DELIVERY_DELETE(DeliveryDeleteCoordinator.NAMES),
         /** #808 R3: R2 receive manifest and bundle (4 MiB bound shared with the SQL contract), only for disposable probes. */
         HARVEST_RECEIVE(HarvestReceiveContract.NAMES, HarvestReceiveContract.MAX_BYTES),
+        /** Manual sync: the read-only campaign list of one workspace (ids and versions only). */
+        CAMPAIGN_LIST(setOf(ManualSyncCoordinator.LIST_RPC)),
     }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =

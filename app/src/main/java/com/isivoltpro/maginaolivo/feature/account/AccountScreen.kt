@@ -42,7 +42,7 @@ private enum class AccountForm { LOGIN, REGISTER, RECOVER }
 @Composable
 fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:Boolean=false,connectivity:Flow<Boolean>? = null,
     farmLinks:com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository?=null,showBack:Boolean=true,
-    workspaces:WorkspaceRepository?=null) {
+    workspaces:WorkspaceRepository?=null,manualSync:com.isivoltpro.maginaolivo.feature.sync.ManualSync?=null) {
     val context=LocalContext.current
     var simulation by rememberSaveable { mutableStateOf(false) }
     val simulated=remember { AccountRepository(SimulatedAccountAuthApi()) }
@@ -88,7 +88,8 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
         }
         Text(status,Modifier.testTag("account-status"),style=MaterialTheme.typography.titleMedium,color=MoColors.current.bodyText)
         state.email?.let { Text(it,color=MoSurfaceTokens.secondaryText) }
-        Text(if(farmLinks!=null && !simulation) "Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Puedes preparar su vinculación a la cuenta; todavía no se sincronizan."
+        Text(if(farmLinks!=null && !simulation && manualSync!=null) "Tus registros siguen guardados en este teléfono. Vincula tus fincas a la cuenta y pulsa «Sincronizar ahora» para enviarlas y recibir las de tus otros dispositivos."
+            else if(farmLinks!=null && !simulation) "Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Puedes preparar su vinculación a la cuenta; todavía no se sincronizan."
             else "Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Esta pantalla no los vincula ni los sincroniza.",color=MoSurfaceTokens.secondaryText)
         if(workspaces!=null && !simulation) {
             Text("Workspace activo",style=MaterialTheme.typography.titleMedium,color=MoColors.current.primaryText)
@@ -114,7 +115,19 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
         state.error?.let { Text(it,Modifier.testTag("account-error").semantics { liveRegion=LiveRegionMode.Polite },color=MoColors.current.errorText) }
         state.message?.let { Text(it,Modifier.testTag("account-message").semantics { liveRegion=LiveRegionMode.Polite },color=MoSurfaceTokens.secondaryText) }
         if(!simulation && !state.simulated && state.userId!=null && state.status in setOf(AccountStatus.SIGNED_IN,AccountStatus.OFFLINE) && farmLinks!=null) {
-            com.isivoltpro.maginaolivo.feature.accountlink.FarmLinkPanel(farmLinks,state.userId!!)
+            // A finished manual sync may bring farms (from another device) that now need explicit consent here.
+            val syncRun=manualSync?.state?.collectAsStateWithLifecycle()?.value
+            key(syncRun?.takeIf { it !is com.isivoltpro.maginaolivo.feature.sync.ManualSyncState.Running }) {
+                com.isivoltpro.maginaolivo.feature.accountlink.FarmLinkPanel(farmLinks,state.userId!!)
+            }
+            com.isivoltpro.maginaolivo.feature.sync.ManualSyncPanel(manualSync,online)
+            if(manualSync!=null) LaunchedEffect(syncRun) {
+                // After a run, the workspace list may include the workspace just received from another device.
+                if(syncRun !is com.isivoltpro.maginaolivo.feature.sync.ManualSyncState.Running) workspaces?.let { repo ->
+                    (repo.availableWorkspaces() as? AppResult.Success)?.let { workspaceChoices=it.value }
+                    (repo.activeWorkspace() as? AppResult.Success)?.let { selectedWorkspace=it.value }
+                }
+            }
         }
         if(state.status==AccountStatus.RECOVERY) {
             PasswordInput(password,{password=it},"Nueva contraseña (8–128 caracteres)","account-new-password",enabled)

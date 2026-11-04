@@ -58,13 +58,14 @@ class LocalWorkspaceRepository(
         }
     }
 
+    // Observation is read-only with respect to workspace provisioning. Callers that
+    // intend to create the first local workspace must invoke ensureLocalWorkspace().
     override fun observeActiveWorkspace(): Flow<AppResult<UUID>> =
         if (account == null) combine(
             database.workspaceSelectionDao().observeAll(),
             database.workspaceDao().observeFirstActive(),
         ) { _, _ -> Unit }.map {
-            val active = activeWorkspace()
-            if (active is AppResult.Success) active else ensureLocalWorkspace()
+            activeWorkspace()
         }
         else combine(
             account.state,
@@ -75,12 +76,7 @@ class LocalWorkspaceRepository(
             .map { online ->
                 if (!online) lastRefreshAttemptNanos.set(0L)
                 else refreshIfDue()
-                val active = activeWorkspace()
-                if (active is AppResult.Success) active
-                else if (account.state.value.userId != null || !account.isConfigured) {
-                    val ensured = ensureLocalWorkspace()
-                    if (ensured is AppResult.Success) ensured else active
-                } else active
+                activeWorkspace()
             }
 
     override suspend fun refreshAuthorizations(): AppResult<Unit> = withContext(dispatchers.io) {
@@ -109,7 +105,10 @@ class LocalWorkspaceRepository(
 
     override suspend fun ensureLocalWorkspace(): AppResult<UUID> = withContext(dispatchers.io) {
         safe("ensure_local_workspace") {
-            if (account?.state?.value?.online == true) refreshAuthorizations()
+            // Throttled: many repositories call this inside flows that also observe the authorization cache this refresh
+            // writes; an unthrottled refresh re-triggered them forever (~27 requests/s on a phone that sees a server
+            // workspace it has not received yet). Explicit user actions (list, select) still refresh at once.
+            refreshIfDue()
             resolve(true)
         }
     }

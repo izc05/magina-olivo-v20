@@ -192,6 +192,33 @@ interface SyncOutboxDao {
     suspend fun blockParcelCreate(operationId: UUID, accountId: String,
         payloadJson: String, reason: String, nowEpochMillis: Long): Int
 
+    /**
+     * Manual sync: what one run may try, oldest first. Open operations, an in-flight delivery left by a lost response
+     * (resolved by its same UUID), and v3 Pesadas whose receipt waits for the HEAD read. Other BLOCKED rows stay for review.
+     */
+    @Query("""
+        SELECT * FROM sync_outbox
+        WHERE status IN ('PENDING', 'FAILED')
+           OR (entity_type = 'DELIVERY' AND status = 'PROCESSING')
+           OR (entity_type = 'DELIVERY' AND status = 'BLOCKED' AND last_error_code = 'V3_ACK_AWAITING_HEAD')
+        ORDER BY created_at, id
+    """)
+    suspend fun listForManualSync(): List<SyncOutboxEntity>
+
+    /** Manual sync summary: everything not yet confirmed by the server. */
+    @Query("SELECT * FROM sync_outbox WHERE status != 'CONFIRMED' ORDER BY created_at, id")
+    suspend fun listUnconfirmed(): List<SyncOutboxEntity>
+
+    /** Manual sync: binds the app's own unbound WORKSPACE CREATE marker once, only to its owner account. */
+    @Query("""
+        UPDATE sync_outbox SET account_id = :accountId, payload_json = :payloadJson, updated_at = :nowEpochMillis
+        WHERE id = :operationId AND entity_type = 'WORKSPACE' AND operation = 'CREATE' AND entity_id = :workspaceId
+          AND status = 'PENDING' AND attempt_count = 0 AND payload_json IS NULL AND account_id IS NULL
+          AND base_remote_version IS NULL
+    """)
+    suspend fun stageWorkspaceCreate(operationId: UUID, accountId: String, workspaceId: UUID,
+        payloadJson: String, nowEpochMillis: Long): Int
+
     /** Phase 2 CAMPAIGN create: binds the app's unbound CREATE marker once; farm_id gates on the farm's G1b consent. */
     @Query("""
         UPDATE sync_outbox SET account_id = :accountId, farm_id = :farmId, payload_json = :payloadJson,

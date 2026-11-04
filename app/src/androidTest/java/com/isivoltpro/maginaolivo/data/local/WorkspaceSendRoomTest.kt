@@ -242,6 +242,44 @@ class WorkspaceSendRoomTest {
         assertEquals(2, db.syncOutboxDao().listForEntity(SyncEntityType.WORKSPACE, staged.workspaceId!!).size)
     }
 
+    /** Manual sync: the app's own unbound marker is bound once to its owner; historical or foreign ones never are. */
+    @Test fun stageOwnedBindsOnlyTheAppsOwnWorkspaceMarkerAndNeverAHistoricalOrForeignOne() = runBlocking {
+        suspend fun marker(owner: UUID): Pair<UUID, UUID> {
+            val ws = UUID.randomUUID(); val op = UUID.randomUUID()
+            db.workspaceDao().upsert(com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity(ws, "Mi olivar", owner, "ES",
+                "Europe/Madrid", "es-ES", "EUR", com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata(now, now, syncStatus = SyncStatus.PENDING)))
+            db.syncOutboxDao().insert(com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity(op, SyncEntityType.WORKSPACE, ws,
+                OutboxOperation.CREATE, payloadVersion = 1, createdAt = now, updatedAt = now))
+            return ws to op
+        }
+        val (own, ownOp) = marker(a)
+        val (_, historicalOp) = marker(UUID.randomUUID())
+        val (_, foreignOp) = marker(c)
+        // Unbound markers cannot be sent at all.
+        assertEquals(WorkspaceSendOutcome.CONSENT_REQUIRED, sender().send(ownOp, lease))
+        assertEquals(WorkspaceSendOutcome.CONSENT_REQUIRED, sender().stageOwned(historicalOp))
+        assertEquals(WorkspaceSendOutcome.CONSENT_REQUIRED, sender().stageOwned(foreignOp))
+        listOf(historicalOp, foreignOp).forEach { op ->
+            val row = db.syncOutboxDao().findById(op)!!
+            assertNull(row.accountId); assertNull(row.payloadJson); assertEquals(OutboxStatus.PENDING, row.status)
+        }
+        assertEquals(WorkspaceSendOutcome.STAGED, sender().stageOwned(ownOp))
+        val bound = db.syncOutboxDao().findById(ownOp)!!
+        assertEquals(a.toString(), bound.accountId)
+        assertEquals(own, parseWorkspaceCreateEnvelope(bound.payloadJson!!)?.workspaceId)
+        // Staging again changes nothing; then it sends like any owned CREATE.
+        assertEquals(WorkspaceSendOutcome.STAGED, sender().stageOwned(ownOp))
+        assertEquals(bound.payloadJson, db.syncOutboxDao().findById(ownOp)!!.payloadJson)
+        assertEquals(WorkspaceSendOutcome.SYNCED, sender().send(ownOp, lease))
+        assertEquals(WorkspaceSendOutcome.ALREADY_CONFIRMED, sender().stageOwned(ownOp))
+        // Another signed-in account never binds this account's marker.
+        val (_, laterOp) = marker(a)
+        login(c)
+        assertEquals(WorkspaceSendOutcome.CONSENT_REQUIRED, sender().stageOwned(laterOp))
+        assertNull(db.syncOutboxDao().findById(laterOp)!!.accountId)
+        assertEquals(listOf("create_own_workspace", "check_sync_operations"), server.calls.map { it.first })
+    }
+
     private fun sender() = WorkspaceSendCoordinator(db, account, issuer, server, { now })
     private fun login(id: UUID) {
         store.write(AccountRecord(session = AuthSession(id, "$id@example.test", "access", "refresh", now.plusSeconds(3600))))

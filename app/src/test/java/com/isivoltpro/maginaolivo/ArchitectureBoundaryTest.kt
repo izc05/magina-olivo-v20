@@ -223,7 +223,7 @@ class ArchitectureBoundaryTest {
         }
         all.filterNot { it.name == fileName || it in readProbe || it in receiveProbe || it in campaignProbe ||
             it in parentProbe || it in workspaceProbe || it in farmProbe || it in parcelProbe || it in convergenceProbe ||
-            it in deliveryV3Probe || it in abProbe }.forEach { file ->
+            it in deliveryV3Probe || it in abProbe || it.isManualSyncWiring() }.forEach { file ->
             val text = file.readText()
             assertFalse(
                 "${file.name} must not construct $client: the transport stays unwired until a " +
@@ -305,11 +305,13 @@ class ArchitectureBoundaryTest {
         val shipped = app!!.walkTopDown().filter { it.isFile && it.extension == "kt" }
             .filter { file -> listOf("/main/java/", "/staging/java/", "/production/java/", "/dev/java/")
                 .any { it in file.invariantSeparatorsPath } }
-            .filterNot { it.name in setOf("DeliveryHistoricalRoute.kt", "HarvestSendCoordinator.kt", "DeliveryDeleteCoordinator.kt", "HarvestReceiveCoordinator.kt") }
+            .filterNot { it.name in setOf("DeliveryHistoricalRoute.kt", "HarvestSendCoordinator.kt", "DeliveryDeleteCoordinator.kt", "HarvestReceiveCoordinator.kt") || it.isManualSyncWiring() }
             .toList()
         assertTrue("No shipped Kotlin sources found", shipped.isNotEmpty())
         shipped.forEach { file ->
-            val text = file.readText()
+            // The composition root may only delegate to the flavor's SyncWiring (Legacy route and no verifier outside dev).
+            val text = file.readText().let { if (file.name != "AppCompositionRoot.kt") it else
+                it.replace("ownerVerifier = SyncWiring.ownerVerifier(", "").replace("payloadRoute = SyncWiring.deliveryRoute(", "") }
             listOf("HistoricalDeliveryRoute(", "ServerWorkspaceOwnerVerifier(", "ownerVerifier =", "payloadRoute =",
                 "HarvestSendCoordinator(", "DeliveryDeleteCoordinator(", "HarvestReceiveCoordinator(")
                 .forEach { forbidden ->
@@ -332,7 +334,7 @@ class ArchitectureBoundaryTest {
             .toList()
         assertTrue("No shipped Kotlin sources found", shipped.isNotEmpty())
         val allowed = mapOf(
-            ".resolveAwaitingHead(" to emptySet(),
+            ".resolveAwaitingHead(" to setOf("ManualSyncCoordinator.kt"),
             "resolveAwaitingV3Delivery(" to setOf("DeliveryV3Recovery.kt", "LocalFarmLinkRepository.kt", "DeliveryDispatchWorker.kt"),
             "rebaseOntoCanonical(" to setOf("HarvestSendCoordinator.kt"),
         )
@@ -455,9 +457,53 @@ class ArchitectureBoundaryTest {
         }.toList()
         listOf("ParentReceiveCoordinator", "CampaignReceiveCoordinator", "WorkspaceSendCoordinator",
             "FarmSendCoordinator", "ParcelSendCoordinator", "ParcelMutationSendCoordinator", "ParentReceiveV2Coordinator").forEach { receiver ->
-            appSources.filterNot { it.name == "$receiver.kt" }.forEach { file ->
+            appSources.filterNot { it.name == "$receiver.kt" || it.isManualSyncWiring() }.forEach { file ->
                 assertFalse("${file.name} must not construct $receiver", file.readText().contains("$receiver("))
             }
         }
     }
+
+    /**
+     * Owner authorization 04/11/2026 (Mágina Olivo 1.0, manual sync): the existing senders and receivers are wired for the
+     * app through exactly two files of the dev flavor, and only behind the «Sincronizar ahora» button. Staging and
+     * production keep no agricultural client, the v2 Pesada route and no owner check. Nothing is automatic.
+     */
+    @Test
+    fun manualSyncIsDevOnlyAndRunsOnlyFromTheButton() {
+        val app = sequenceOf(File("src"), File("app/src")).firstOrNull { it.exists() }
+        assertTrue("Could not locate the app source sets", app != null)
+        val all = app!!.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        val wiring = all.filter { it.isManualSyncWiring() }
+        assertEquals("Exactly the dev SyncWiring and the dev ManualSyncCoordinator: ${wiring.map { it.invariantSeparatorsPath }}",
+            2, wiring.size)
+        assertEquals(1, all.count { it.name == "ManualSyncCoordinator.kt" })
+        listOf("staging", "production").forEach { flavor ->
+            val stub = all.singleOrNull { it.name == "SyncWiring.kt" && "/$flavor/java/" in it.invariantSeparatorsPath }
+            assertTrue("$flavor needs its own SyncWiring", stub != null)
+            val text = stub!!.readText()
+            assertTrue("$flavor: v2 Pesadas", text.contains("= LegacyDeliveryRoute"))
+            assertTrue("$flavor: no owner check", text.contains("WorkspaceOwnerVerifier? = null"))
+            assertTrue("$flavor: no manual sync", text.contains("ManualSync? = null"))
+            listOf("HttpsDeliveryRpcTransport", "ManualSyncCoordinator", "HistoricalDeliveryRoute", "ServerWorkspaceOwnerVerifier")
+                .forEach { assertFalse("$flavor SyncWiring must not name $it", text.contains(it)) }
+        }
+        // Never automatic: no scheduler, timer or loop, and the only caller of requestSync is the button's onClick.
+        wiring.forEach { file ->
+            val text = file.readText()
+            listOf("WorkManager", "AlarmManager", "JobScheduler", "Timer(", "scheduleAtFixedRate", "delay(", "while (true)",
+                "observeReady(", "LaunchedEffect").forEach { assertFalse("${file.name} must stay manual: $it", text.contains(it)) }
+        }
+        val callers = all.filter { file -> listOf("/main/java/", "/dev/java/", "/staging/java/", "/production/java/")
+            .any { it in file.invariantSeparatorsPath } && file.readText().contains(".requestSync(") }
+        assertEquals("Only the panel starts a sync: ${callers.map { it.name }}", listOf("ManualSyncPanel.kt"), callers.map { it.name })
+        val panel = callers.single().readText()
+        assertTrue("requestSync is only an onClick", panel.contains("{ sync.requestSync() }") &&
+            Regex("""\.requestSync\(""").findAll(panel).count() == 1)
+    }
 }
+
+/** The two dev-flavor files authorized to wire the manual sync (see [ArchitectureBoundaryTest.manualSyncIsDevOnlyAndRunsOnlyFromTheButton]). */
+private fun File.isManualSyncWiring() = listOf(
+    "/dev/java/com/isivoltpro/maginaolivo/app/SyncWiring.kt",
+    "/dev/java/com/isivoltpro/maginaolivo/data/repository/sync/ManualSyncCoordinator.kt",
+).any { invariantSeparatorsPath.endsWith(it) }

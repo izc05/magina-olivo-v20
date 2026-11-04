@@ -52,7 +52,7 @@ const files = [...names.map(name => new URL(`../../migrations/${name}`, import.m
   ...['g26-campaign-head-v1.sql', 'g26-campaign-receive-v1.sql',
     'g26-parent-receive-v1.sql', 'g26-fpm-manage-hardening.sql', 'g26-parcel-mutation-v1.sql', 'g26-historical-writers-v1.sql',
     'g26-delivery-head-v3.sql', 'g26-harvest-writer-v1.sql', 'g26-delivery-delete-v1.sql', 'g26-harvest-head-v2.sql',
-    'g26-harvest-receive-v1.sql']
+    'g26-harvest-receive-v1.sql', 'g26-campaign-list-v1.sql']
     .map(name => new URL(`../../proposals/${name}`, import.meta.url))];
 sql(`BEGIN;\n${files.map(file => readFileSync(file, 'utf8')).join('\n')}\nCOMMIT; NOTIFY pgrst, 'reload schema';`);
 

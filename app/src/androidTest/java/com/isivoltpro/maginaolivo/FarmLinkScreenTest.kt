@@ -177,6 +177,12 @@ class FarmLinkScreenTest {
         waitFor("private-agriculture")
         rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,Configuration.ORIENTATION_PORTRAIT)
         waitFor("private-agriculture");compose.onNodeWithTag("farm-link-locked").assertDoesNotExist()
+        repeat(2) {
+            rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,Configuration.ORIENTATION_LANDSCAPE)
+            waitFor("private-agriculture");compose.onNodeWithTag("farm-link-locked").assertDoesNotExist()
+            rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,Configuration.ORIENTATION_PORTRAIT)
+            waitFor("private-agriculture");compose.onNodeWithTag("farm-link-locked").assertDoesNotExist()
+        }
         assertEquals(ids.take(1).toSet(),ledger.read()!!.farmIds)
         capture("rotation-restored-owner")
     }

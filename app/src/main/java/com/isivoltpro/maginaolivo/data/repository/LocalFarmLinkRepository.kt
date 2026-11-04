@@ -52,9 +52,7 @@ class LocalFarmLinkRepository(
     }
     private suspend fun reloadAndRequire(userId: UUID): FarmLinkLedger? {
         val loaded = load()
-        withContext(Dispatchers.Main.immediate) {
-            mutable.value = loaded
-        }
+        mutable.value = loaded
         if (!accessAllowed(userId)) throw IOException("Estas fincas están protegidas con otra cuenta o no se pudo comprobar su protección.")
         return mutable.value.ledger
     }
@@ -84,14 +82,10 @@ class LocalFarmLinkRepository(
             FarmLinkLocalState(updated)
         } catch (error: Exception) {
             val rolledBack = load()
-            withContext(Dispatchers.Main.immediate) {
-                mutable.value = rolledBack
-            }
+            mutable.value = rolledBack
             throw error
         }
-        withContext(Dispatchers.Main.immediate) {
-            mutable.value = newState
-        }
+        mutable.value = newState
         newState.ledger!!
     } }
 

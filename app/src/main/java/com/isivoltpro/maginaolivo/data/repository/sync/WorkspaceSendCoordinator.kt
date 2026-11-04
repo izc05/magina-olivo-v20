@@ -100,6 +100,37 @@ internal class WorkspaceSendCoordinator(
     }
 
     /**
+     * Manual sync: binds the app's own CREATE marker (created by the workspace repository while signed in, so its owner
+     * is already the account) to that account, freezing the payload once. A historical workspace (random local owner) or
+     * one owned by another account is never bound: [WorkspaceSendOutcome.CONSENT_REQUIRED].
+     */
+    suspend fun stageOwned(operationId: UUID): WorkspaceSendOutcome {
+        if (issuer.isBlank()) return WorkspaceSendOutcome.NOT_AUTHORIZED
+        return try {
+            account.withLocalIdentity { userId ->
+                database.withTransaction {
+                    val op = database.syncOutboxDao().findById(operationId) ?: return@withTransaction WorkspaceSendOutcome.REJECTED
+                    if (op.entityType != SyncEntityType.WORKSPACE || op.operation != OutboxOperation.CREATE)
+                        return@withTransaction WorkspaceSendOutcome.REJECTED
+                    if (op.status == OutboxStatus.CONFIRMED) return@withTransaction WorkspaceSendOutcome.ALREADY_CONFIRMED
+                    if (op.accountId != null || op.payloadJson != null)
+                        return@withTransaction if (op.accountId == userId.toString()) WorkspaceSendOutcome.STAGED
+                        else WorkspaceSendOutcome.CONSENT_REQUIRED
+                    val row = database.workspaceDao().findById(op.entityId) ?: return@withTransaction WorkspaceSendOutcome.REJECTED
+                    if (row.ownerUserId != userId) return@withTransaction WorkspaceSendOutcome.CONSENT_REQUIRED
+                    if (row.metadata.deletedAt != null || op.status != OutboxStatus.PENDING ||
+                        !validDraft(WorkspaceDraft(row.name, row.countryCode, row.timezone, row.locale, row.currency)))
+                        return@withTransaction WorkspaceSendOutcome.REJECTED
+                    val bound = database.syncOutboxDao().stageWorkspaceCreate(op.id, userId.toString(), row.id,
+                        buildWorkspaceCreateEnvelope(row, issuer), now().toEpochMilli())
+                    if (bound == 1) WorkspaceSendOutcome.STAGED else WorkspaceSendOutcome.REJECTED
+                }
+            }
+        } catch (cancel: CancellationException) { throw cancel
+        } catch (_: AuthFailure) { WorkspaceSendOutcome.NOT_AUTHORIZED }
+    }
+
+    /**
      * Sends or replays one bound CREATE. The same operation id and payload are reused after a
      * timeout or lost response, so the server answers with its idempotent receipt. Failures never
      * delete the outbox row or its payload.

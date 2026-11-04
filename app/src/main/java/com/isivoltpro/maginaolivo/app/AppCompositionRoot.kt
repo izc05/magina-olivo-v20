@@ -57,6 +57,8 @@ data class AppCompositionRoot(
     val appearanceStore: AppearanceStore = InMemoryAppearanceStore(),
     val accountRepository: com.isivoltpro.maginaolivo.feature.account.AccountRepository = com.isivoltpro.maginaolivo.feature.account.AccountRepository(null),
     val farmLinks: com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository? = null,
+    /** Manual sync («Sincronizar ahora»): dev flavor only; null in staging and production. Never automatic. */
+    val manualSync: com.isivoltpro.maginaolivo.feature.sync.ManualSync? = null,
 ) {
     companion object {
         fun createDefault(environmentValue: String): AppCompositionRoot =
@@ -81,7 +83,13 @@ data class AppCompositionRoot(
             val defaults = createDefault(environmentValue)
             val database = MaginaOlivoDatabase.getInstance(applicationContext)
             val account = accountRepository ?: com.isivoltpro.maginaolivo.feature.account.AccountRuntime.get(applicationContext)
-            val farmLinks = com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository(applicationContext,database,account,BuildConfig.AUTH_PROJECT_URL)
+            val authorizationRemote = if (BuildConfig.AUTH_PROJECT_URL.startsWith("https://") && BuildConfig.AUTH_PUBLIC_KEY.isNotBlank())
+                com.isivoltpro.maginaolivo.data.repository.HttpsWorkspaceAuthorizationRemote(BuildConfig.AUTH_PROJECT_URL, BuildConfig.AUTH_PUBLIC_KEY)
+            else null
+            // Manual sync wiring comes from the flavor: the dev flavor supplies the server owner check; staging and
+            // production supply none, so no v3 Pesada can be prepared there.
+            val farmLinks = com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository(applicationContext,database,account,BuildConfig.AUTH_PROJECT_URL,
+                ownerVerifier = SyncWiring.ownerVerifier(authorizationRemote, BuildConfig.AUTH_PROJECT_URL))
             val workspaceRepository = LocalWorkspaceRepository(
                 database = database,
                 clock = defaults.clock,
@@ -90,9 +98,7 @@ data class AppCompositionRoot(
                 regionalContext = defaults.regionalContext,
                 accountRepository = account,
                 issuer = BuildConfig.AUTH_PROJECT_URL,
-                authorizationRemote = if (BuildConfig.AUTH_PROJECT_URL.startsWith("https://") && BuildConfig.AUTH_PUBLIC_KEY.isNotBlank())
-                    com.isivoltpro.maginaolivo.data.repository.HttpsWorkspaceAuthorizationRemote(BuildConfig.AUTH_PROJECT_URL, BuildConfig.AUTH_PUBLIC_KEY)
-                else null,
+                authorizationRemote = authorizationRemote,
             )
             val farmRepository = OfflineFirstFarmRepository(
                 database = database,
@@ -167,6 +173,7 @@ data class AppCompositionRoot(
                 defaults.dispatchers,
                 workspaceRepository = workspaceRepository,
                 writeScope = farmLinks,
+                payloadRoute = SyncWiring.deliveryRoute(database),
             )
             val machineRepository = OfflineFirstMachineRepository(
                 database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
@@ -211,6 +218,8 @@ data class AppCompositionRoot(
             return defaults.copy(
                 accountRepository = account,
                 farmLinks = farmLinks,
+                manualSync = SyncWiring.manualSync(applicationContext, database, account, BuildConfig.AUTH_PROJECT_URL, farmLinks,
+                    workspaceRepository, authorizationRemote, defaults.idGenerator),
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 activeFarmStore = AndroidActiveFarmStore(applicationContext),
                 appearanceStore = AndroidAppearanceStore(applicationContext),
