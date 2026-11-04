@@ -11,13 +11,14 @@ class AuthConfiguration(val projectUrl: String, internal val publicKey: String, 
     override fun toString() = "AuthConfiguration(key=redacted)"
     companion object {
         fun forEnvironment(environment: String, url: String, key: String, applicationId: String): AuthConfiguration? {
-            // Integration #796 + #808 (owner decision 3): no new PRODUCTION capability until it is approved; a PRODUCTION
-            // build gets no Auth configuration and the Auth Gate stays fail-closed.
-            if (environment !in setOf("DEV", "STAGING") || url.isBlank() || key.isBlank()) return null
+            // Production Auth remains unconfigured until the release build receives a separate,
+            // explicitly validated project URL and public key.
+            if (environment !in setOf("DEV", "STAGING", "PRODUCTION") || url.isBlank() || key.isBlank()) return null
             val uri = runCatching { URI(url.trim()) }.getOrNull() ?: return null
             if (uri.scheme != "https" || uri.port != -1 || uri.userInfo != null || uri.rawQuery != null || uri.rawFragment != null || uri.path !in listOf("", "/")) return null
             val host = uri.host ?: return null
-            if (!Regex("^[a-z]{20}\\.supabase\\.co$").matches(host) || host.substringBefore('.') in setOf("zzelvbcuxsboafibfxch", "klchkjsdybbgritxkswp")) return null
+            if (!Regex("^[a-z]{20}\\.supabase\\.co$").matches(host) || host.substringBefore('.') in setOf("zzelvbcuxsboafibfxch", "klchkjsdybbgritxkswp") ||
+                (environment == "PRODUCTION" && host == "zubpicdibqbmewxeurhm.supabase.co")) return null
             val publicKey = key.trim()
             val valid = if (publicKey.startsWith("sb_publishable_")) Regex("^sb_publishable_[A-Za-z0-9_-]+$").matches(publicKey) else runCatching {
                 val parts = publicKey.split('.')

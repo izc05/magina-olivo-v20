@@ -9,8 +9,7 @@ import org.junit.Test
 import org.w3c.dom.Element
 
 /**
- * #461: farm data stays on this phone until Mágina Olivo has its own account/sync. Android's
- * cloud backup and device-to-device transfer must not carry the Room database, attachments,
+ * Android's cloud backup and device-to-device transfer must not carry the Room database, attachments,
  * camera cache or preferences, on every supported Android version.
  */
 class BackupPolicyTest {
@@ -47,8 +46,8 @@ class BackupPolicyTest {
     fun theProfileCopyTellsTheRealBehaviour() {
         val help = file("java/com/isivoltpro/maginaolivo/feature/profile/HelpScreens.kt").readText()
 
-        assertTrue(help.contains("la copia de seguridad de Android"))
-        assertTrue(help.contains("o cambias de teléfono, se pierden"))
+        assertTrue(help.contains("Android no hace una copia automática"))
+        assertTrue(help.contains("Los datos aún no sincronizados"))
     }
 
     private fun file(path: String): File {

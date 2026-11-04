@@ -1,6 +1,8 @@
 package com.isivoltpro.maginaolivo.feature.account
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -27,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.ui.components.*
+import com.isivoltpro.maginaolivo.BuildConfig
 import com.isivoltpro.maginaolivo.ui.theme.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -88,8 +91,8 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
         }
         Text(status,Modifier.testTag("account-status"),style=MaterialTheme.typography.titleMedium,color=MoColors.current.bodyText)
         state.email?.let { Text(it,color=MoSurfaceTokens.secondaryText) }
-        Text(if(farmLinks!=null && !simulation) "Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Puedes preparar su vinculación a la cuenta; todavía no se sincronizan."
-            else "Tus registros, fincas, fotos y documentos siguen guardados en este teléfono. Esta pantalla no los vincula ni los sincroniza.",color=MoSurfaceTokens.secondaryText)
+        Text(if(farmLinks!=null && !simulation) "Tus registros, fincas, fotos y documentos se guardan primero en este teléfono. La sincronización de los datos habilitados necesita una cuenta autorizada y puede requerir conexión."
+            else "Tus registros, fincas, fotos y documentos se guardan primero en este teléfono. Esta pantalla no los vincula por sí sola.",color=MoSurfaceTokens.secondaryText)
         if(workspaces!=null && !simulation) {
             Text("Workspace activo",style=MaterialTheme.typography.titleMedium,color=MoColors.current.primaryText)
             if(workspaceChoices.isEmpty()) Text("No hay workspaces disponibles para esta sesión. Los datos locales se conservan.",color=MoSurfaceTokens.secondaryText)
@@ -133,6 +136,11 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
             MoTertiaryButton("He olvidado la contraseña",{choose(AccountForm.RECOVER)},Modifier.testTag("account-mode-recover"),!state.busy)
         }
         if(state.email!=null) MoDestructiveButton("Cerrar sesión",{model.logout(online)},Modifier.fillMaxWidth().testTag("account-logout"),!state.busy)
+        if(!simulation && BuildConfig.ACCOUNT_DELETION_URL.isNotBlank()) {
+            MoTertiaryButton("Solicitar eliminación de cuenta y datos",{
+                context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(BuildConfig.ACCOUNT_DELETION_URL)))
+            },Modifier.fillMaxWidth().testTag("account-delete-request"))
+        }
         if(state.simulated && state.pendingPurpose!=null) MoSecondaryButton("Abrir enlace simulado",{model.simulateLink(online)},Modifier.fillMaxWidth().testTag("account-simulate-link"),!state.busy)
         if(simulationAllowed && !state.simulated) MoTertiaryButton("Probar Cuenta (simulación)",{simulation=true;choose(AccountForm.LOGIN)},Modifier.testTag("account-start-simulation"),!state.busy)
         if(simulation) MoTertiaryButton("Salir de simulación",{model.logout(false);simulation=false;choose(AccountForm.LOGIN)},Modifier.testTag("account-end-simulation"),!state.busy)
