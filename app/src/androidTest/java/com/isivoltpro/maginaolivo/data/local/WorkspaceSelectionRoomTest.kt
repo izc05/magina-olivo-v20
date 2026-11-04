@@ -133,8 +133,13 @@ class WorkspaceSelectionRoomTest {
         assertTrue("activeWorkspace before ensure must be NotFound", work.activeWorkspace() is AppResult.Failure)
 
         val observed = work.observeActiveWorkspace().first()
-        assertTrue("observeActiveWorkspace must ensure local workspace on clean install: $observed", observed is AppResult.Success)
-        val workspaceId = (observed as AppResult.Success).value
+        assertTrue("Observation must not provision a workspace: $observed", observed is AppResult.Failure)
+        assertEquals(0, count(db, "SELECT count(*) FROM workspaces"))
+        assertEquals(0, count(db, "SELECT count(*) FROM sync_outbox"))
+
+        val ensured = work.ensureLocalWorkspace()
+        assertTrue(ensured is AppResult.Success)
+        val workspaceId = (ensured as AppResult.Success).value
 
         assertEquals(1, count(db, "SELECT count(*) FROM workspaces"))
         assertEquals(1, count(db, "SELECT count(*) FROM sync_outbox WHERE entity_type='WORKSPACE' AND operation='CREATE'"))
@@ -150,6 +155,21 @@ class WorkspaceSelectionRoomTest {
 
         assertEquals(1, count(db, "SELECT count(*) FROM workspaces"))
         assertEquals(1, count(db, "SELECT count(*) FROM sync_outbox WHERE entity_type='WORKSPACE' AND operation='CREATE'"))
+    }
+
+    @Test fun observationAcrossAccountSwitchAndLogoutNeverCreatesWorkspace() = runBlocking {
+        val db = open()
+        val signedOut = workspace(db, account(MemoryAccountSessionStore()))
+        assertTrue(signedOut.observeActiveWorkspace().first() is AppResult.Failure)
+        val accountA = account(sessionStore(a))
+        assertTrue(workspace(db, accountA).observeActiveWorkspace().first() is AppResult.Failure)
+        val accountC = account(sessionStore(c))
+        assertTrue(workspace(db, accountC).observeActiveWorkspace().first() is AppResult.Failure)
+        accountC.logout(false)
+        assertTrue(workspace(db, accountC).observeActiveWorkspace().first() is AppResult.Failure)
+        assertEquals(0, count(db, "SELECT count(*) FROM workspaces"))
+        assertEquals(0, count(db, "SELECT count(*) FROM sync_outbox"))
+        assertEquals(0, count(db, "SELECT count(*) FROM workspace_selections"))
     }
 
     @Test fun securityBoundariesNeverAutoCreateWorkspaceOrGenerateOutbox() = runBlocking {

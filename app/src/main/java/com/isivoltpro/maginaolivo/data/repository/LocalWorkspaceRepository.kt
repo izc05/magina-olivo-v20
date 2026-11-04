@@ -58,13 +58,14 @@ class LocalWorkspaceRepository(
         }
     }
 
+    // Observation is read-only with respect to workspace provisioning. Callers that
+    // intend to create the first local workspace must invoke ensureLocalWorkspace().
     override fun observeActiveWorkspace(): Flow<AppResult<UUID>> =
         if (account == null) combine(
             database.workspaceSelectionDao().observeAll(),
             database.workspaceDao().observeFirstActive(),
         ) { _, _ -> Unit }.map {
-            val active = activeWorkspace()
-            if (active is AppResult.Success) active else ensureLocalWorkspace()
+            activeWorkspace()
         }
         else combine(
             account.state,
@@ -75,12 +76,7 @@ class LocalWorkspaceRepository(
             .map { online ->
                 if (!online) lastRefreshAttemptNanos.set(0L)
                 else refreshIfDue()
-                val active = activeWorkspace()
-                if (active is AppResult.Success) active
-                else if (account.state.value.userId != null || !account.isConfigured) {
-                    val ensured = ensureLocalWorkspace()
-                    if (ensured is AppResult.Success) ensured else active
-                } else active
+                activeWorkspace()
             }
 
     override suspend fun refreshAuthorizations(): AppResult<Unit> = withContext(dispatchers.io) {
