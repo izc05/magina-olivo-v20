@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.data.remote.weather
 
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
+import com.isivoltpro.maginaolivo.domain.feed.SpanishMunicipalityCatalog
 import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
 import com.isivoltpro.maginaolivo.domain.weather.WeatherDayForecast
@@ -24,13 +25,29 @@ class EdgeWeatherSource(
     private val timeoutMillis: Int = 10_000,
 ) : WeatherSource {
     override suspend fun fetch(location: FeedLocation): WeatherReading = withContext(Dispatchers.IO) {
-        val request = JSONObject().apply {
-            put("municipality", location.municipality)
-            location.province?.let { put("province", it) }
-        }
+        val request = buildRequestJson(location)
         EdgeWeatherResponse.parse(
             EdgeFunctionHttp.post(functionsUrl, "weather-forecast", anonKey, request.toString(), timeoutMillis),
         )
+    }
+
+    companion object {
+        /**
+         * Builds the JSON payload for `weather-forecast`. Includes `municipalityCode` (5-digit INE
+         * code) only when verified against the official [SpanishMunicipalityCatalog].
+         */
+        fun buildRequestJson(location: FeedLocation): JSONObject {
+            val validatedEntry = SpanishMunicipalityCatalog.resolve(
+                municipality = location.municipality,
+                province = location.province,
+                ineCode = location.ineCode,
+            )
+            return JSONObject().apply {
+                validatedEntry?.ineCode?.let { put("municipalityCode", it) }
+                put("municipality", location.municipality)
+                (location.province ?: validatedEntry?.provinceName)?.let { put("province", it) }
+            }
+        }
     }
 }
 

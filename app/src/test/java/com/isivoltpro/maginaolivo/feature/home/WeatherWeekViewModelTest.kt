@@ -9,9 +9,12 @@ import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.profile.ProfileDraft
 import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
 import com.isivoltpro.maginaolivo.domain.profile.ProfileSettings
+import com.isivoltpro.maginaolivo.domain.feed.SpanishMunicipalityCatalog
+import com.isivoltpro.maginaolivo.domain.weather.InMemoryWeatherLocationPreferenceStore
 import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
+import com.isivoltpro.maginaolivo.domain.weather.WeatherPreferenceIdentity
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.lang.reflect.Proxy
 import java.time.Instant
@@ -62,7 +65,7 @@ class WeatherWeekViewModelTest {
 
         // Once the farmer chooses a municipality in Perfil, ambiguity clears and weather loads.
         profileState.value = ProfileSettings(municipality = "Bedmar", province = "Jaén")
-        assertEquals(FeedLocation("Bedmar", "Jaén"), viewModel.state.value.location)
+        assertEquals(FeedLocation("Bedmar", "Jaén", "23902"), viewModel.state.value.location)
         assertFalse(viewModel.state.value.locationAmbiguous)
         assertTrue(viewModel.state.value.weather is FeedState.Value)
     }
@@ -75,7 +78,7 @@ class WeatherWeekViewModelTest {
         )
         backgroundScope.launch(dispatcher) { viewModel.state.collect() }
 
-        assertEquals(FeedLocation("Bedmar", "Jaén"), viewModel.state.value.location)
+        assertEquals(FeedLocation("Bedmar", "Jaén", "23902"), viewModel.state.value.location)
         assertFalse(viewModel.state.value.locationAmbiguous)
         assertTrue(viewModel.state.value.weather is FeedState.Value)
     }
@@ -173,6 +176,46 @@ class WeatherWeekViewModelTest {
             override suspend fun saveReminders(preferences: ReminderPreferences): AppResult<Unit> = AppResult.Success(Unit)
         },
     )
+
+    @Test
+    fun explicitPreferenceTakesHighestPriorityInViewModel() = runTest(dispatcher) {
+        val ubeda = SpanishMunicipalityCatalog.findByCode("23092")!!
+        val store = InMemoryWeatherLocationPreferenceStore()
+        val viewModel = WeatherWeekViewModel(
+            workspaces = object : WorkspaceRepository {
+                override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspace)
+            },
+            farms = object : FarmRepository by unused() {
+                override fun observeActive(workspaceId: UUID): Flow<List<Farm>> = flowOf(listOf(farm("Bedmar")))
+            },
+            weatherFeed = object : WeatherFeed {
+                override fun observe(location: FeedLocation?): Flow<FeedState<WeatherNow>> =
+                    flowOf(FeedState.Value(sampleWeather, "AEMET", now, stale = false))
+                override suspend fun refreshIfStale(location: FeedLocation) {}
+                override suspend fun refresh(location: FeedLocation): Boolean = true
+            },
+            profile = null,
+            weatherLocationStore = store,
+            weatherIdentity = flowOf(WeatherPreferenceIdentity.Local),
+        )
+        backgroundScope.launch(dispatcher) { viewModel.state.collect() }
+
+        // Initially uses the farm municipality (Bedmar)
+        assertEquals("Bedmar", viewModel.state.value.location?.municipality)
+        assertFalse(viewModel.state.value.hasExplicitLocation)
+
+        // Farmer explicitly chooses Úbeda
+        viewModel.selectMunicipality(ubeda)
+        assertEquals("Úbeda", viewModel.state.value.location?.municipality)
+        assertEquals("23092", viewModel.state.value.location?.ineCode)
+        assertTrue(viewModel.state.value.hasExplicitLocation)
+        assertEquals("Bedmar", viewModel.state.value.farmSuggestion?.municipality)
+
+        // Farmer clears preference -> reverts to farm municipality
+        viewModel.clearMunicipality()
+        assertEquals("Bedmar", viewModel.state.value.location?.municipality)
+        assertFalse(viewModel.state.value.hasExplicitLocation)
+    }
 
     private fun farm(municipality: String) = Farm(
         UUID.randomUUID(), workspace, "Finca $municipality", null, municipality, "Jaén", null, null, 0L, null, null, null, 1L,

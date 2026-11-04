@@ -78,6 +78,8 @@ internal fun HomeWeatherHero(
     weatherMotion: Boolean?,
     onForecast: () -> Unit,
     onAlerts: () -> Unit,
+    /** Selector 1.0: opens the weather municipality selector; null hides the action. */
+    onChangeLocation: (() -> Unit)? = null,
 ) {
     val minHeight = (LocalConfiguration.current.screenHeightDp * 0.52f).coerceIn(360f, 460f).dp
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))) {
@@ -141,6 +143,7 @@ internal fun HomeWeatherHero(
                             state.weatherLocation?.label ?: if (state.weatherLocationAmbiguous) "Tiempo de tus fincas" else "Tiempo de tu zona",
                             style = MaterialTheme.typography.titleSmall,
                             color = MoWarmWhite,
+                            modifier = Modifier.weight(1f, fill = false).testTag("home-weather-location"),
                         )
                     }
                     when (val weather = state.weather) {
@@ -188,12 +191,36 @@ internal fun HomeWeatherHero(
                             )
                             Text(
                                 when (weather) {
-                                    FeedState.NoLocation -> if (state.weatherLocationAmbiguous) "Varias ubicaciones · Elige tu municipio en Perfil" else "Añade el municipio en Mi Campo o en Perfil"
+                                    FeedState.NoLocation -> if (state.weatherLocationAmbiguous) "Varias ubicaciones · Elige tu municipio" else "Elige tu municipio o añádelo en Mi Campo"
                                     FeedState.NotConfigured -> "Fuente del tiempo no configurada"
                                     else -> "Conéctate para consultar el tiempo de tu zona"
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MoWarmWhite,
+                            )
+                        }
+                    }
+                }
+                // Selector 1.0: change the weather municipality right from Inicio (outside the
+                // merged summary so it stays its own 48 dp touch target).
+                onChangeLocation?.let { change ->
+                    Surface(
+                        onClick = change,
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("home-weather-location-action")
+                            .semantics { contentDescription = "Cambiar ubicación del tiempo" },
+                        shape = MoShape.field,
+                        color = MoSurfaceTokens.cardSurface.copy(alpha = 0.90f),
+                        contentColor = MoColors.current.primaryText,
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = MoSpacing.sm, vertical = MoSpacing.xs),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                        ) {
+                            Icon(MoIcons.Location, null, modifier = Modifier.size(18.dp))
+                            Text(
+                                if (state.weatherLocation == null) "Elegir municipio" else "Cambiar ubicación",
+                                style = MaterialTheme.typography.labelLarge,
                             )
                         }
                     }

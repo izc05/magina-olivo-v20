@@ -12,6 +12,7 @@ import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
+import com.isivoltpro.maginaolivo.domain.feed.IneMunicipality
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
 import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationTurn
 import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationTurns
@@ -22,12 +23,16 @@ import com.isivoltpro.maginaolivo.domain.market.OilMarketSeries
 import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
 import com.isivoltpro.maginaolivo.domain.profile.ProfileSettings
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
+import com.isivoltpro.maginaolivo.domain.weather.WeatherLocationPreferenceStore
+import com.isivoltpro.maginaolivo.domain.weather.WeatherLocationResolver
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
+import com.isivoltpro.maginaolivo.domain.weather.WeatherPreferenceIdentity
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,6 +90,8 @@ data class HomeUiState(
     val irrigationTurns: List<IrrigationTurn> = emptyList(),
     /** #620: local agricultural data could not be read reliably; never present this as empty. */
     val localReadError: String? = null,
+    /** Explicit weather preference from WeatherLocationPreferenceStore, when set. */
+    val hasExplicitWeatherLocation: Boolean = false,
 ) {
     val parcelCount: Long get() = farms.sumOf { it.parcelCount }
     val knownAreaM2: Double? get() = farms.mapNotNull { it.totalAreaM2 }.takeIf { it.isNotEmpty() }?.sum()
@@ -98,8 +105,11 @@ data class HomeUiState(
         .distinct()
         .singleOrNull()
         ?.ifEmpty { null }
-    /** True when active farms exist in different municipalities, so Inicio must not imply one place. */
-    val weatherLocationAmbiguous: Boolean get() = farms
+    /** Unambiguous farm location suggestion for the weather selector when every farm shares one place. */
+    val farmWeatherSuggestion: FeedLocation?
+        get() = FeedLocation.common(farms.map { it.municipality to it.province })?.withValidatedIneCode()
+    /** True when active farms exist in different municipalities and no weather location has resolved it. */
+    val weatherLocationAmbiguous: Boolean get() = weatherLocation == null && farms
         .mapNotNull { farm ->
             farm.municipality?.trim()?.takeIf(String::isNotEmpty)?.let { FeedLocation(it, farm.province).key }
         }
@@ -109,7 +119,7 @@ data class HomeUiState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
-    workspaces: WorkspaceRepository,
+    private val workspaces: WorkspaceRepository,
     farms: FarmRepository,
     activities: ActivityRepository,
     harvests: HarvestRepository,
@@ -124,12 +134,17 @@ class HomeViewModel(
     profile: ProfileRepository? = null,
     /** #720 R2: the Parcels whose irrigation days make the watering plan; null in tests/previews. */
     private val parcels: ParcelRepository? = null,
+    /** National Weather Selector 1.0: personal weather municipality preference store. */
+    private val weatherLocationStore: WeatherLocationPreferenceStore? = null,
+    /** Verified identity scope for personal weather preferences. */
+    private val weatherIdentity: Flow<WeatherPreferenceIdentity> = flowOf(WeatherPreferenceIdentity.Local),
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
     private var weatherRefresh: Job? = null
     private var weatherRefreshPlace: FeedLocation? = null
     private val localRetry = MutableStateFlow(0)
+    private val currentIdentity = MutableStateFlow<WeatherPreferenceIdentity>(WeatherPreferenceIdentity.Local)
 
     /**
      * #315: entering or coming back to Inicio (also after the app was in the background) asks for
@@ -145,6 +160,24 @@ class HomeViewModel(
         localRetry.value = localRetry.value + 1
     }
 
+    /** Saves the farmer's chosen weather municipality in [WeatherLocationPreferenceStore]. */
+    fun selectWeatherMunicipality(municipality: IneMunicipality) {
+        val store = weatherLocationStore ?: return
+        viewModelScope.launch {
+            val wsId = (workspaces.ensureLocalWorkspace() as? AppResult.Success)?.value ?: return@launch
+            store.set(currentIdentity.value, wsId, municipality)
+        }
+    }
+
+    /** Clears the explicit weather municipality preference for the current identity and workspace. */
+    fun clearWeatherMunicipality() {
+        val store = weatherLocationStore ?: return
+        viewModelScope.launch {
+            val wsId = (workspaces.ensureLocalWorkspace() as? AppResult.Success)?.value ?: return@launch
+            store.clear(currentIdentity.value, wsId)
+        }
+    }
+
     /** One background attempt per place at a time; Inicio never waits for it. */
     private fun refreshWeatherIfStale(place: FeedLocation) {
         val feed = weatherFeed ?: return
@@ -157,17 +190,36 @@ class HomeViewModel(
         val profileSettings = (profile?.observe() ?: flowOf(ProfileSettings()))
             .catch { emit(ProfileSettings()) }
             .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-        // The farms' one place first; the farmer's own municipality (Perfil) when they give none.
-        val location = combine(
-            state.map { it.farms }.distinctUntilChanged()
-                .map { list -> FeedLocation.common(list.map { it.municipality to it.province }) },
-            profileSettings.map { it.location },
-        ) { farmPlace, profilePlace -> farmPlace ?: profilePlace }
+        val explicitWeatherPreference = combine(
+            weatherIdentity.onEach { currentIdentity.value = it },
+            localRetry.flatMapLatest { flow { emit(workspaces.ensureLocalWorkspace()) } },
+        ) { identity, wsResult ->
+            identity to (wsResult as? AppResult.Success)?.value
+        }.flatMapLatest { (identity, wsId) ->
+            if (wsId == null || weatherLocationStore == null) {
+                flowOf(identity to null)
+            } else {
+                weatherLocationStore.observe(identity, wsId).map { pref -> identity to pref }
+            }
+        }
+        // Priority: explicit weather preference -> unambiguous farm municipality -> local profile fallback.
+        val resolvedWeatherPlace = combine(
+            state.map { it.farms }.distinctUntilChanged(),
+            explicitWeatherPreference,
+            profileSettings,
+        ) { farmList, (identity, explicitPref), settings ->
+            WeatherLocationResolver.resolve(
+                farms = farmList,
+                explicitPreference = explicitPref,
+                legacyProfileSettings = settings,
+                identity = identity,
+            )
+        }
             .distinctUntilChanged()
             // A stale or missing value is refreshed in the background; Inicio never waits for it.
-            .onEach { place -> place?.let(::refreshWeatherIfStale) }
-        val weather = location.flatMapLatest { place ->
-            (weatherFeed?.observe(place) ?: flowOf(FeedState.NotConfigured)).map { place to it }
+            .onEach { resolved -> resolved.location?.let(::refreshWeatherIfStale) }
+        val weather = resolvedWeatherPlace.flatMapLatest { resolved ->
+            (weatherFeed?.observe(resolved.location) ?: flowOf(FeedState.NotConfigured)).map { resolved to it }
         }
         viewModelScope.launch {
             localRetry.flatMapLatest {
@@ -228,6 +280,7 @@ class HomeViewModel(
                     mutableState.value = base.copy(
                         weatherLocation = mutableState.value.weatherLocation,
                         weather = mutableState.value.weather,
+                        hasExplicitWeatherLocation = mutableState.value.hasExplicitWeatherLocation,
                         oilMarket = mutableState.value.oilMarket,
                         cooperativeName = mutableState.value.cooperativeName,
                         irrigationTurns = mutableState.value.irrigationTurns,
@@ -263,8 +316,12 @@ class HomeViewModel(
             }
         }
         viewModelScope.launch {
-            weather.collect { (place, value) ->
-                mutableState.value = mutableState.value.copy(weatherLocation = place, weather = value)
+            weather.collect { (resolved, value) ->
+                mutableState.value = mutableState.value.copy(
+                    weatherLocation = resolved.location,
+                    weather = value,
+                    hasExplicitWeatherLocation = resolved.hasExplicitPreference,
+                )
             }
         }
     }
