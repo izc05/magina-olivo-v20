@@ -68,4 +68,4 @@ adb shell am instrument -w -e class \
   com.isivoltpro.maginaolivo.dev.test/androidx.test.runner.AndroidJUnitRunner \
   > "$work/instrument.out"
 cat "$work/instrument.out"
-grep -q 'OK (22 tests)' "$work/instrument.out"
+grep -q 'OK (23 tests)' "$work/instrument.out"
