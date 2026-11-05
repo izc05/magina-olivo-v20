@@ -130,6 +130,7 @@ class NativeFarmMapLifecycleTest {
                     RootDestination.Notebook -> MoIcons.Notebook
                     RootDestination.Alerts -> MoIcons.Bell
                     RootDestination.Profile -> MoIcons.Person
+                    RootDestination.Assistant -> MoIcons.Assistant
                 })
         }
         compose.activityRule.scenario.onActivity { activity ->

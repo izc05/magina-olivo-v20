@@ -130,6 +130,26 @@ class AccountAuthScreenTest {
         waitFor("account-login");compose.onNodeWithTag("account-login").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("account-status").performScrollTo().assertTextContains("Configuración de pruebas pendiente")
     }
+    @Test fun emailAndPasswordAcceptFocusedInputAndPasswordCanBeRevealed() {
+        val repo=AccountRepository(Api(),MemoryAccountSessionStore())
+        compose.setContent { MaginaOlivoTheme(AppearanceMode.LIGHT) { AccountRoute(repo,{},connectivity=MutableStateFlow(true)) } }
+        waitFor("account-email")
+        compose.onNodeWithTag("account-logo").assertIsDisplayed()
+        compose.onNodeWithTag("account-mode-login").assertDoesNotExist()
+        compose.onNodeWithTag("account-email").performScrollTo().performClick()
+        compose.onNodeWithTag("account-email").assertIsFocused().performTextInput("qa854@example.invalid")
+        compose.onNodeWithTag("account-email").assertTextContains("qa854@example.invalid")
+        compose.onNodeWithTag("account-password").performScrollTo().performClick()
+        compose.onNodeWithTag("account-password").assertIsFocused().performTextInput("password42")
+        compose.onNodeWithTag("account-password-visibility").performClick()
+        compose.onNodeWithTag("account-password").assertTextContains("password42")
+        compose.onNodeWithTag("account-password-visibility").performClick()
+        compose.onNodeWithTag("account-mode-recover").performScrollTo().performClick()
+        waitFor("account-recover")
+        compose.onNodeWithTag("account-mode-login").performScrollTo().performClick()
+        waitFor("account-login")
+        compose.onNodeWithTag("account-mode-login").assertDoesNotExist()
+    }
     private fun fingerprint(db:com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase):String {
         val sqlite=db.openHelper.readableDatabase
         val tables=mutableListOf<String>();sqlite.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").use { while(it.moveToNext())tables+=it.getString(0) }

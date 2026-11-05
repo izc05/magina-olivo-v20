@@ -266,6 +266,7 @@ class NativeMapDeviceQaTest {
                             RootDestination.Notebook -> MoIcons.Notebook
                             RootDestination.Alerts -> MoIcons.Bell
                             RootDestination.Profile -> MoIcons.Person
+                            RootDestination.Assistant -> MoIcons.Assistant
                         })
                     }
                     Scaffold(Modifier.fillMaxSize(), bottomBar = { MoBottomBar(items, selectedIndex = 1, onSelected = {}, onAddRecord = {}) }) { padding ->

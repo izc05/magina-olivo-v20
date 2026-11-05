@@ -85,6 +85,30 @@ class PersonalProfileScreenTest {
     }
 
     @Test
+    fun avatarAndPhotoActionsAreVisibleAndClickable() {
+        val clicks = AtomicInteger()
+        val removals = AtomicInteger()
+        val profile = PersonalProfile(UUID.randomUUID(), "farmer@example.test")
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ProfileScreen(
+                    appVersion = "1.0.0-TEST", notificationsOn = true,
+                    onNotifications = {}, onMachinery = {}, personalProfile = profile,
+                    onPickAvatar = { clicks.incrementAndGet() },
+                    onDeleteAvatar = { removals.incrementAndGet() },
+                    avatarMessage = "No se pudo guardar la foto en este teléfono.",
+                )
+            }
+        }
+        composeRule.onNodeWithTag("profile-avatar-initials").performClick()
+        composeRule.onNodeWithTag("profile-change-photo").performClick()
+        composeRule.onNodeWithTag("profile-remove-photo").performClick()
+        assertEquals(2, clicks.get())
+        assertEquals(1, removals.get())
+        composeRule.onNodeWithTag("profile-avatar-message").assertTextContains("No se pudo guardar", substring = true)
+    }
+
+    @Test
     fun sessionSignOutClearsIdentityImmediately() {
         var profileState by mutableStateOf<PersonalProfile?>(
             PersonalProfile(
@@ -194,6 +218,8 @@ class PersonalProfileScreenTest {
                         onMachinery = {},
                         onAccount = {},
                         personalProfile = profileWithPhoto,
+                        onPickAvatar = {},
+                        onDeleteAvatar = {},
                     )
                 }
             }

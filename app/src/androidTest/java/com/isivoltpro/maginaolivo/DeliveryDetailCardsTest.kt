@@ -84,6 +84,7 @@ class DeliveryDetailCardsTest {
                             RootDestination.Olivar -> MoIcons.Tree
                             RootDestination.Notebook -> MoIcons.Notebook
                             RootDestination.Profile -> MoIcons.Person
+                            RootDestination.Assistant -> MoIcons.Assistant
                             RootDestination.Alerts -> MoIcons.Bell
                         })
                     }, selectedIndex = 2, onSelected = {}, onAddRecord = {})

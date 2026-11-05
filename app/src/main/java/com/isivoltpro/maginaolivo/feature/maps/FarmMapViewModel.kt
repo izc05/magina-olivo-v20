@@ -257,7 +257,7 @@ class FarmMapViewModel(
                         selectedSavedId = own?.id,
                         taken = if (elsewhere) it.taken + candidate.reference else it.taken,
                         message = when {
-                            elsewhere -> "La parcela ${candidate.reference} ya está en otra finca de tu olivar."
+                            elsewhere -> "Parcela ya añadida a otra finca."
                             else -> null
                         },
                     )
@@ -322,7 +322,7 @@ class FarmMapViewModel(
                 it.copy(selectedSavedId = runCatching { UUID.fromString(id) }.getOrNull(), inspected = null, inspectedPlace = null)
             }
             candidate.reference in current.taken -> mutableState.update {
-                it.copy(message = "La parcela ${candidate.reference} ya está en tu olivar.")
+                it.copy(message = "Parcela ya añadida a tu olivar.")
             }
             // Viewing, touching a parcel reads it; marking parcels is what ADD is for.
             current.mode == FarmMapMode.VIEW -> {
@@ -395,10 +395,11 @@ class FarmMapViewModel(
     /** Catastro's place for a reference, or null: a failed lookup never blocks saving. */
     private suspend fun locate(reference: String) = try {
         kotlinx.coroutines.withTimeoutOrNull(com.isivoltpro.maginaolivo.feature.catastro.PLACE_TIMEOUT_MS) { client.locate(reference) }
+            ?: com.isivoltpro.maginaolivo.feature.catastro.CadastralMunicipalityCatalog.resolve(reference)
     } catch (cancelled: kotlinx.coroutines.CancellationException) {
         throw cancelled
     } catch (_: Exception) {
-        null
+        com.isivoltpro.maginaolivo.feature.catastro.CadastralMunicipalityCatalog.resolve(reference)
     }
 
     /** LOCATE: the chosen Catastro parcel becomes this parcel's identity and boundary. */

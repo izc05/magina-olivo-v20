@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -75,7 +76,7 @@ data class PersonalProfile(
         fun fromAccountState(state: AccountState, avatarFile: File? = null): PersonalProfile? {
             val uid = state.userId
             val em = state.email
-            return if (state.status == AccountStatus.SIGNED_IN && uid != null && !em.isNullOrBlank()) {
+            return if (state.status in setOf(AccountStatus.SIGNED_IN, AccountStatus.OFFLINE) && uid != null && !em.isNullOrBlank()) {
                 PersonalProfile(userId = uid, email = em, avatarFile = avatarFile)
             } else {
                 null
@@ -94,14 +95,16 @@ fun PersonalProfileHeader(
     onAccount: (() -> Unit)?,
     modifier: Modifier = Modifier,
     onPickAvatar: (() -> Unit)? = null,
+    avatarRevision: Long = 0L,
 ) {
+    val context = LocalContext.current
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .testTag("profile-personal-header"),
         shape = MoShape.card,
         color = MoSurfaceTokens.cardSurface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MoSurfaceTokens.cardStroke.copy(alpha = 0.38f)),
     ) {
         Row(
             modifier = Modifier
@@ -123,7 +126,7 @@ fun PersonalProfileHeader(
 
                 if (profile.avatarFile != null && profile.avatarFile.exists()) {
                     AsyncImage(
-                        model = profile.avatarFile,
+                        model = avatarImageRequest(context, profile.avatarFile, avatarRevision),
                         contentDescription = "Foto de perfil",
                         contentScale = ContentScale.Crop,
                         modifier = avatarModifier
@@ -175,6 +178,8 @@ fun PersonalProfileHeader(
                         color = MoSurfaceTokens.secondaryText,
                         modifier = Modifier.testTag("profile-email"),
                     )
+                    Text("Sesión iniciada", style = MaterialTheme.typography.labelSmall,
+                        color = MoColors.current.primaryText)
                 } else {
                     Text(
                         text = "Perfil local",
@@ -188,6 +193,8 @@ fun PersonalProfileHeader(
                         style = MaterialTheme.typography.bodySmall,
                         color = MoSurfaceTokens.secondaryText,
                     )
+                    Text("Sin sesión", style = MaterialTheme.typography.labelSmall,
+                        color = MoColors.current.primaryText)
                 }
             }
 

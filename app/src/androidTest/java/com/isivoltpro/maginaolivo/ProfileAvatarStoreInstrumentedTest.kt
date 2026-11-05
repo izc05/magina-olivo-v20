@@ -106,6 +106,22 @@ class ProfileAvatarStoreInstrumentedTest {
         assertEquals(0, targetDir.listFiles()?.size ?: 0)
     }
 
+    @Test
+    fun replacingPhotoKeepsOnlyTheCurrentImageAndOtherAccountIsUntouched() {
+        val userA = UUID.randomUUID()
+        val userB = UUID.randomUUID()
+        assertTrue(store.saveAvatar(userA, createSyntheticJpegStream(40, 40)) is AppResult.Success)
+        assertTrue(store.saveAvatar(userB, createSyntheticJpegStream(60, 60)) is AppResult.Success)
+        val beforeB = store.getAvatarFile(userB)!!.readBytes()
+        assertTrue(store.saveAvatar(userA, createSyntheticJpegStream(120, 120)) is AppResult.Success)
+        assertTrue(store.getAvatarFile(userA)!!.length() > 0)
+        assertTrue(beforeB.contentEquals(store.getAvatarFile(userB)!!.readBytes()))
+        assertEquals(2, targetDir.listFiles()?.size)
+        assertTrue(store.deleteAvatar(userA) is AppResult.Success)
+        assertNull(store.getAvatarFile(userA))
+        assertTrue(beforeB.contentEquals(store.getAvatarFile(userB)!!.readBytes()))
+    }
+
     private fun createSyntheticJpegStream(width: Int, height: Int): ByteArrayInputStream {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val stream = ByteArrayOutputStream()

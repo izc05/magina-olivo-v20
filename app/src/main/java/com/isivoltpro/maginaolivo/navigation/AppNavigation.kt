@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.navigation
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -27,6 +28,7 @@ import com.isivoltpro.maginaolivo.app.AppEnvironment
 import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
 import com.isivoltpro.maginaolivo.feature.agenda.AgendaRoute
 import com.isivoltpro.maginaolivo.feature.profile.ProfileRoute
+import com.isivoltpro.maginaolivo.feature.profile.ProfileAvatarAction
 import com.isivoltpro.maginaolivo.feature.phytosanitary.AgronomicPeopleRoute
 import com.isivoltpro.maginaolivo.feature.phytosanitary.AgronomicPersonDetailRoute
 import com.isivoltpro.maginaolivo.feature.profile.appVersionLabel
@@ -59,6 +61,7 @@ import com.isivoltpro.maginaolivo.feature.home.WeatherWeekRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
+import com.isivoltpro.maginaolivo.ui.components.MoTopAppBar
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
@@ -89,6 +92,7 @@ private val bottomBarItems = bottomNavigationRoots.map { destination ->
             RootDestination.Notebook -> MoIcons.Notebook
             RootDestination.Alerts -> MoIcons.Bell
             RootDestination.Profile -> MoIcons.Person
+            RootDestination.Assistant -> MoIcons.Assistant
         },
     )
 }
@@ -162,6 +166,21 @@ fun AppNavigation(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        topBar = {
+            if (backStackEntry?.destination?.route in setOf(
+                    RootDestination.Olivar.route, RootDestination.Notebook.route,
+                    RootDestination.Alerts.route, AppDestination.Calendar, RootDestination.Assistant.route,
+                )) {
+                MoTopAppBar(
+                    title = "Mágina Olivo",
+                    modifier = Modifier.statusBarsPadding(),
+                    action = {
+                        ProfileAvatarAction(compositionRoot.accountRepository,
+                            onClick = { navController.navigate(RootDestination.Profile.route) { launchSingleTop = true } })
+                    },
+                )
+            }
+        },
         bottomBar = {
             if (currentRoot != null) {
                 MoBottomBar(
@@ -208,6 +227,10 @@ fun AppNavigation(
                         clock = compositionRoot.clock,
                         onCalendar = { navController.navigate(AppDestination.Calendar) },
                         onAlerts = { navController.navigate(RootDestination.Alerts.route) { launchSingleTop = true } },
+                        profileAvatar = {
+                            ProfileAvatarAction(compositionRoot.accountRepository,
+                                onClick = { navController.navigate(RootDestination.Profile.route) { launchSingleTop = true } })
+                        },
                         // CR-011 §17: a running campaign opens its Farm's Cuaderno on Campaña.
                         onCampaign = { farmId ->
                             if (farmId == null) {
@@ -353,6 +376,7 @@ fun AppNavigation(
             }
             composable(RootDestination.Profile.route) {
                 ProfileRoute(
+                    onBack = { navController.popBackStack() },
                     accountRepository = compositionRoot.accountRepository,
                     onAccount = if(compositionRoot.accountRepository.isConfigured) ({ navController.navigate(AppDestination.Account) }) else null,
                     appearanceStore = compositionRoot.appearanceStore,
@@ -370,6 +394,13 @@ fun AppNavigation(
                         ?.takeIf { compositionRoot.environment == AppEnvironment.DEV }
                         ?.let { com.isivoltpro.maginaolivo.app.DevTools.demoFarm(it) },
                     onHelp = { topic -> navController.navigate(AppDestination.help(topic.route)) },
+                )
+            }
+            composable(RootDestination.Assistant.route) {
+                NavigationPlaceholderScreen(
+                    title = "Asistente IA",
+                    description = "Estamos preparando este espacio para ayudarte con tu olivar. Por ahora, tus datos y registros siguen disponibles en las otras secciones.",
+                    testTag = "assistant-placeholder",
                 )
             }
             composable(AppDestination.Account) {

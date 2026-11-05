@@ -85,7 +85,7 @@ class DarkSurfacesScreenshotTest {
         }
         capture("profile-root", "profile")
         compose.onNodeWithTag("profile-municipality").performScrollTo().performClick()
-        compose.onNodeWithTag("profile-municipality-field").assertIsDisplayed()
+        compose.onNodeWithTag("profile-location-province").assertIsDisplayed()
         capture("profile-location-sheet", "profile-sheet")
     }
 

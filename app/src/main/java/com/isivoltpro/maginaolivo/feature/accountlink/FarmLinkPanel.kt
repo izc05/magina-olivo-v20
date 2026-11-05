@@ -8,6 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
@@ -33,24 +34,28 @@ fun FarmLinkPanel(repository: LocalFarmLinkRepository, userId: UUID) {
     }
     LaunchedEffect(repository,userId) { reload() }
     Column(Modifier.fillMaxWidth().testTag("farm-link-panel"),verticalArrangement=Arrangement.spacedBy(MoSpacing.sm)) {
-        HorizontalDivider()
-        Text("Fincas y cuenta",style=MaterialTheme.typography.titleLarge,color=MoColors.current.primaryText)
+        Text("Mis fincas",style=MaterialTheme.typography.titleLarge,color=MoColors.current.primaryText)
         local.ledger?.let {
-            Text("${it.activeFarmIds.size} fincas preparadas en este móvil. Pendiente de confirmar en el servidor. No se han enviado datos.",Modifier.testTag("farm-link-pending"),color=MoSurfaceTokens.secondaryText)
+            Text("${it.activeFarmIds.size} fincas con consentimiento local. Su estado en el servidor aún no se ha comprobado aquí.",Modifier.testTag("farm-link-pending"),color=MoSurfaceTokens.secondaryText)
             if (it.revokedFarmIds.isNotEmpty()) Text("${it.revokedFarmIds.size} fincas con vinculación revocada; no se enviarán sus datos.",color=MoSurfaceTokens.secondaryText)
             Text("Todas las fincas de este móvil están protegidas con esta cuenta, incluidas las no seleccionadas. Para abrirlas después de cerrar sesión, vuelve a entrar con esta misma cuenta.",Modifier.testTag("farm-link-protection-scope"),color=MoSurfaceTokens.secondaryText)
         }
-        Text("Elige las fincas que quieres asociar a esta cuenta. Se conservarán tus registros, fotos y documentos.",color=MoSurfaceTokens.secondaryText)
+        Text("Selecciona las fincas que quieres vincular.",color=MoSurfaceTokens.secondaryText)
         val known=local.ledger?.farmIds.orEmpty()
         val revoked=local.ledger?.revokedFarmIds.orEmpty()
         choices?.forEach { farm ->
             val prepared=farm.id in known
             val blocked=farm.id in revoked
-            Row(Modifier.fillMaxWidth().toggleable(value=(prepared && !blocked) || farm.id in selected,enabled=!busy && !prepared,role=Role.Checkbox,
-                onValueChange={ checked -> selected=if(checked)selected+farm.id else selected-farm.id;accepted=false })
-                .padding(vertical=MoSpacing.sm).testTag("farm-link-choice-${farm.id}"),verticalAlignment=Alignment.CenterVertically) {
-                Checkbox(checked=(prepared && !blocked) || farm.id in selected,onCheckedChange=null,enabled=!busy && !prepared)
-                Text(if(blocked)"${farm.name} · vinculación revocada" else if(prepared)"${farm.name} · pendiente de confirmar" else farm.name,color=MoColors.current.bodyText)
+            Surface(shape=MoShape.card,color=MoSurfaceTokens.cardSurface,border=androidx.compose.foundation.BorderStroke(1.dp,MoSurfaceTokens.cardStroke)) {
+                Row(Modifier.fillMaxWidth().toggleable(value=(prepared && !blocked) || farm.id in selected,enabled=!busy && !prepared,role=Role.Checkbox,
+                    onValueChange={ checked -> selected=if(checked)selected+farm.id else selected-farm.id;accepted=false })
+                    .padding(MoSpacing.sm).testTag("farm-link-choice-${farm.id}"),verticalAlignment=Alignment.CenterVertically) {
+                    Checkbox(checked=(prepared && !blocked) || farm.id in selected,onCheckedChange=null,enabled=!busy && !prepared)
+                    Column {
+                        Text(farm.name,style=MaterialTheme.typography.titleSmall,color=MoColors.current.bodyText)
+                        Text(if(blocked)"Vinculación revocada" else if(prepared)"Consentimiento local · servidor sin comprobar" else "Guardada en este teléfono · vinculación pendiente",style=MaterialTheme.typography.bodySmall,color=MoSurfaceTokens.secondaryText)
+                    }
+                }
             }
         }
         if(choices?.isEmpty()==true)Text("Todavía no hay fincas para seleccionar.",color=MoSurfaceTokens.secondaryText)

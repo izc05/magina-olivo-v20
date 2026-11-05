@@ -46,11 +46,11 @@ class HomeWeatherRefreshTest {
     @Test fun resumingInicioAsksForTheFarmsPlaceAgain() = runTest(dispatcher) {
         val model = model(farms = listOf(farm("Bedmar")))
         backgroundScope.launch(dispatcher) { model.state.collect() }
-        assertEquals(listOf(FeedLocation("Bedmar", "Jaén")), asked)
+        assertEquals(listOf(FeedLocation("Bedmar", "Jaén", "23902")), asked)
         model.onResumed()
         model.onResumed()
         assertEquals(3, asked.size)
-        assertEquals(setOf(FeedLocation("Bedmar", "Jaén").key), asked.map { it.key }.toSet())
+        assertEquals(setOf(FeedLocation("Bedmar", "Jaén", "23902").key), asked.map { it.key }.toSet())
     }
 
     @Test fun withoutAPlaceResumingAsksNothing() = runTest(dispatcher) {

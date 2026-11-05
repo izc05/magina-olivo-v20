@@ -129,17 +129,44 @@ class FarmScreensTest {
         }
 
         composeRule.onNodeWithText("Crear mi primera finca").performClick()
-        composeRule.onNodeWithText("Más detalles").assertIsDisplayed()
-        assertEquals(0, composeRule.onAllNodesWithText("Municipio (opcional)").fetchSemanticsNodes().size)
-        composeRule.onNodeWithText("Más detalles").performClick()
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
-        composeRule.onNodeWithText("Municipio (opcional)").performTextInput("Huelma")
-        composeRule.onNodeWithText("Provincia (opcional)").performTextInput("Jaén")
+        composeRule.waitForIdle(); captureReviewScreenshot("nueva-finca-identificacion")
+        composeRule.onNodeWithTag("farm-next").performClick()
+        composeRule.onNodeWithTag("farm-location-municipality").assertIsDisplayed()
+        composeRule.onNodeWithTag("farm-location-province").performClick()
+        composeRule.onNodeWithTag("farm-location-search").performTextInput("Jaen")
+        composeRule.onNodeWithTag("farm-location-province-23").performClick()
+        composeRule.onNodeWithTag("farm-location-municipality").performClick()
+        composeRule.onNodeWithTag("farm-location-search").performTextInput("huelma")
+        composeRule.onNodeWithTag("farm-location-municipality-23044").performClick()
+        composeRule.waitForIdle(); captureReviewScreenshot("nueva-finca-ubicacion")
+        composeRule.onNodeWithTag("farm-next").performClick()
+        composeRule.onNodeWithTag("farm-next").performClick()
+        composeRule.waitForIdle(); captureReviewScreenshot("nueva-finca-confirmacion")
         composeRule.onNodeWithTag("save-farm").performScrollTo().performClick()
 
         assertEquals("La Solana", captured?.name)
         assertEquals("Huelma", captured?.municipality)
         assertEquals("Jaén", captured?.province)
+    }
+
+    @Test fun wizardBackKeepsNameAndAllowsBasicFarmWithoutLocation() {
+        var captured: FarmDraft? = null
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmListScreen(FarmListUiState(isLoading = false), {},
+                    onCreate = { captured = it }, onRestore = {}, onRetry = {})
+            }
+        }
+        composeRule.onNodeWithText("Crear mi primera finca").performClick()
+        composeRule.onNodeWithTag("farm-name").performTextInput("El Olivar")
+        composeRule.onNodeWithTag("farm-next").performClick()
+        composeRule.onNodeWithTag("farm-previous").performClick()
+        composeRule.onNodeWithTag("farm-name").assertTextContains("El Olivar")
+        composeRule.onNodeWithTag("save-farm").performClick()
+        assertEquals("El Olivar", captured?.name)
+        assertEquals("", captured?.municipality)
+        assertEquals("", captured?.province)
     }
 
     @Test

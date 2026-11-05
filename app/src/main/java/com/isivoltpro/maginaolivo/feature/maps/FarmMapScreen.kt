@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -209,6 +210,7 @@ fun FarmMapScreen(
     var layerMenu by remember { mutableStateOf(false) }
     var polygonSheet by rememberSaveable { mutableStateOf(false) }
     var reviewSheet by rememberSaveable { mutableStateOf(false) }
+    var guideExpanded by rememberSaveable { mutableStateOf(false) }
     var topOverlayHeightPx by remember { mutableStateOf(0) }
     var bottomOverlayHeightPx by remember { mutableStateOf(0) }
     val mapped = remember(state.parcels, state.candidates, state.taken, state.inspected) {
@@ -224,7 +226,7 @@ fun FarmMapScreen(
     }
     val withBoundary = state.parcels.count { it.geometryGeoJson != null }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).imePadding().testTag("farm-map-root")) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(MoSurfaceTokens.appBackground).statusBarsPadding().imePadding().testTag("farm-map-root")) {
         val searchPanelMaxHeight = maxHeight * 0.6f
         val compactHeader = maxWidth >= 600.dp && maxHeight < 400.dp
         if (showMap) {
@@ -272,7 +274,7 @@ fun FarmMapScreen(
                     color = MoColors.current.primaryText,
                     maxLines = 1,
                 )
-                if (state.mode != FarmMapMode.VIEW || searchOpen) Text(
+                if (searchOpen) Text(
                     when (state.mode) {
                         FarmMapMode.LOCATE -> "Toca donde está tu parcela y elige su número."
                         FarmMapMode.ADD -> "Toca donde están tus parcelas y marca sus números."
@@ -427,14 +429,17 @@ fun FarmMapScreen(
                 Notice("El punto azul es tu ubicación.", MoColors.current.secondaryText, Modifier.testTag("farm-map-my-location-shown"))
             }
             if (state.mode != FarmMapMode.LOCATE && state.parcels.none { it.geometryGeoJson != null } && state.selected.isEmpty()
+                && state.inspected == null && state.selectedSavedId == null
                 && !searchOpen && state.locationProblem == null && tileError == null) {
-                FarmMapGuide(Modifier.testTag("farm-map-guide"))
+                MoTertiaryButton(if (guideExpanded) "Ocultar ayuda" else "¿Cómo añado parcelas?", { guideExpanded = !guideExpanded },
+                    Modifier.testTag("farm-map-help"))
+                if (guideExpanded) FarmMapGuide(Modifier.testTag("farm-map-guide"))
             }
             state.error?.let { Notice(it, MoColors.current.errorText, Modifier.testTag("farm-map-error")) }
             state.message?.let { Notice(it, MoColors.current.successText, Modifier.testTag("farm-map-message")) }
             BottomPanel(
                 state, onOpenParcel, onSearchByReference, onReview = { reviewSheet = true }, onLink = onLink,
-                onAddInspected = onAddInspected, onDismissInspected = onDismissInspected,
+                onAddInspected = { onAddInspected(); reviewSheet = true }, onDismissInspected = onDismissInspected,
                 compact = compactHeader,
             )
         }
@@ -560,12 +565,12 @@ private fun BottomPanel(
             val parcel = state.parcels.firstOrNull { it.id == state.selectedSavedId }
             val read = state.inspected
             if (read != null) {
-                OfficialParcelCard(read, state.inspectedPlace, onAdd = onAddInspected, onDismiss = onDismissInspected)
+                OfficialParcelCard(read, state.inspectedPlace, state.farm?.name.orEmpty(), onAdd = onAddInspected, onDismiss = onDismissInspected)
             } else if (parcel != null) {
                 MoSectionCard(title = parcel.displayName, icon = MoIcons.Parcels, modifier = Modifier.testTag("farm-map-parcel-card")) {
                     // #361: say it is the selected, saved parcel, and where it is.
                     Text(
-                        listOfNotNull("Seleccionada · Guardada", parcel.municipality?.takeIf { it.isNotBlank() }).joinToString(" · "),
+                        "Ya añadida a esta finca",
                         style = MaterialTheme.typography.bodySmall,
                         color = MoColors.current.successText,
                         modifier = Modifier.testTag("farm-map-parcel-status"),
@@ -583,7 +588,7 @@ private fun BottomPanel(
                 // One short line per marked parcel instead of a list of every number under the map.
                 state.selectedCandidates.lastOrNull()?.let { last ->
                     Text(
-                        selectionLine(last) + if (state.selected.size > 1) " · y ${state.selected.size - 1} más" else "",
+                        defaultParcelName(last.reference) + if (state.selected.size > 1) " · y ${state.selected.size - 1} más" else "",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MoColors.current.primaryText,
                         maxLines = 1,
@@ -594,8 +599,8 @@ private fun BottomPanel(
                     MoPrimaryButton(
                         text = when (state.selected.size) {
                             0 -> "Toca los números de tus parcelas"
-                            1 -> "Añadir 1 parcela"
-                            else -> "Añadir ${state.selected.size} parcelas"
+                            1 -> "Revisar 1 parcela"
+                            else -> "Revisar ${state.selected.size} parcelas"
                         },
                         onClick = onReview,
                         enabled = state.selected.isNotEmpty() && !state.saving,
@@ -635,36 +640,39 @@ private fun BottomPanel(
 private fun OfficialParcelCard(
     candidate: CadastralCandidate,
     place: com.isivoltpro.maginaolivo.domain.registry.RegistryLocation?,
+    farmName: String,
     onAdd: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    MoSectionCard(
-        title = defaultParcelName(candidate.reference),
-        icon = MoIcons.Parcels,
-        modifier = Modifier.testTag("farm-map-official-card"),
-    ) {
-        Text(
-            "Parcela de Catastro · no está en tu olivar",
-            style = MaterialTheme.typography.bodySmall,
-            color = MoColors.current.secondaryText,
-            modifier = Modifier.testTag("farm-map-official-status"),
-        )
-        MoLabeledValue("Referencia catastral", candidate.reference, Modifier.fillMaxWidth())
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-            MoLabeledValue("Superficie catastral", candidate.areaM2?.let(::hectares), Modifier.weight(1f))
-            MoLabeledValue(
-                "Municipio",
-                place?.let { listOfNotNull(it.municipality, it.province).joinToString(" · ") },
-                Modifier.weight(1f),
-            )
+    var expanded by rememberSaveable(candidate.reference) { mutableStateOf(false) }
+    Surface(Modifier.fillMaxWidth().testTag("farm-map-official-card"), shape = MoShape.card,
+        color = MoSurfaceTokens.cardSurface.copy(alpha = 0.98f), shadowElevation = 3.dp) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(defaultParcelName(candidate.reference), style = MaterialTheme.typography.titleMedium,
+                    color = MoColors.current.primaryText)
+                TextButton(onClick = onDismiss, modifier = Modifier.testTag("farm-map-official-close")) { Text("Cerrar") }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("Parcela no añadida", style = MaterialTheme.typography.bodySmall,
+                    color = MoColors.current.secondaryText, modifier = Modifier.testTag("farm-map-official-status"))
+                Text(candidate.areaM2?.let(::hectares) ?: "Superficie pendiente",
+                    style = MaterialTheme.typography.bodyMedium, color = MoColors.current.primaryText)
+            }
+            MoPrimaryButton(if (farmName.isBlank()) "Añadir a la finca" else "Añadir a $farmName", onAdd,
+                Modifier.fillMaxWidth().testTag("farm-map-official-add"))
+            TextButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("farm-map-official-more")) {
+                Text(if (expanded) "Ver menos" else "Ver más")
+            }
+            if (expanded) {
+                MoLabeledValue("Referencia catastral", candidate.reference, Modifier.fillMaxWidth())
+                MoLabeledValue("Municipio", place?.let { listOfNotNull(it.municipality, it.province).joinToString(" · ") }, Modifier.fillMaxWidth())
+                Text("Datos de Catastro. El contorno guardado es una referencia, no un certificado catastral.",
+                    style = MaterialTheme.typography.bodySmall, color = MoColors.current.secondaryText)
+            }
         }
-        Text(
-            "Datos de Catastro. El contorno guardado es una referencia, no un certificado catastral.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MoColors.current.secondaryText,
-        )
-        MoPrimaryButton("Añadir a la finca", onAdd, Modifier.fillMaxWidth().testTag("farm-map-official-add"))
-        MoTertiaryButton("Cerrar", onDismiss, Modifier.align(Alignment.CenterHorizontally).testTag("farm-map-official-close"))
     }
 }
 

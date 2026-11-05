@@ -243,6 +243,22 @@ class OfflineFirstParcelRepository(
         }
     }
 
+    override suspend fun fillMissingCadastralLocation(
+        parcelId: UUID, reference: String, municipality: String, province: String,
+    ): AppResult<Unit> = mutate(parcelId, "fill_cadastral_location") { current, now ->
+        if (current.source != ParcelSource.CATASTRO.name || current.metadata.deletedAt != null ||
+            current.cadastralReference?.trim()?.uppercase() != reference.trim().uppercase()
+        ) return@mutate AppResult.Failure(AppError.Conflict("parcel_identity_changed"))
+        val newMunicipality = current.municipality?.takeIf { it.isNotBlank() } ?: municipality.trim().takeIf { it.isNotEmpty() }
+        val newProvince = current.province?.takeIf { it.isNotBlank() } ?: province.trim().takeIf { it.isNotEmpty() }
+        if (newMunicipality == current.municipality && newProvince == current.province) return@mutate AppResult.Success(Unit)
+        database.parcelDao().upsert(current.copy(
+            municipality = newMunicipality, province = newProvince, metadata = current.metadata.next(now),
+        ))
+        enqueue(parcelId, OutboxOperation.UPDATE, now)
+        AppResult.Success(Unit)
+    }
+
     override suspend fun archive(parcelId: UUID): AppResult<Unit> = mutate(parcelId, "archive_parcel") { current, now ->
         if (current.metadata.deletedAt != null) return@mutate AppResult.Success(Unit)
         // #427: a snapshot is history; current Campaign/work/planned money must be resolved explicitly.

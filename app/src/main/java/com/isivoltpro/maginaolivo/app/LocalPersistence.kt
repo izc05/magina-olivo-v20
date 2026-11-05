@@ -23,6 +23,10 @@ import com.isivoltpro.maginaolivo.domain.market.OilMarketFeed
 import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
 import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryResourceRepository
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
+import com.isivoltpro.maginaolivo.domain.weather.WeatherLocationPreferenceStore
+import com.isivoltpro.maginaolivo.domain.weather.WeatherPreferenceIdentity
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 data class LocalPersistence(
     val database: MaginaOlivoDatabase,
@@ -57,4 +61,8 @@ data class LocalPersistence(
     val profileRepository: ProfileRepository? = null,
     /** CUE v24: reusable applicators/advisors and regulatory Machine resources. */
     val phytosanitaryResourceRepository: PhytosanitaryResourceRepository? = null,
+    /** National Weather Selector 1.0: personal weather municipality preference isolated by identity & workspace. */
+    val weatherLocationStore: WeatherLocationPreferenceStore? = null,
+    /** Verified identity scope for personal weather preferences. */
+    val weatherIdentity: Flow<WeatherPreferenceIdentity> = flowOf(WeatherPreferenceIdentity.Local),
 )

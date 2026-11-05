@@ -9,12 +9,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
+import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
 import com.isivoltpro.maginaolivo.feature.catastro.CadastralCandidate
 import com.isivoltpro.maginaolivo.feature.maps.FarmMapMode
 import com.isivoltpro.maginaolivo.feature.maps.FarmMapScreen
 import com.isivoltpro.maginaolivo.feature.maps.FarmMapState
 import com.isivoltpro.maginaolivo.feature.maps.GeoPoint
+import com.isivoltpro.maginaolivo.feature.maps.MapFocus
 import com.isivoltpro.maginaolivo.feature.maps.LocationProblem
 import com.isivoltpro.maginaolivo.feature.maps.ImportReview
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
@@ -48,7 +50,7 @@ class FarmMapScreenTest {
                 screen(FarmMapState(mode = FarmMapMode.ADD, candidates = listOf(candidate("23044A00400021"), candidate("23044A00400022")), selected = setOf("23044A00400021", "23044A00400022")))
             }
         }
-        composeRule.onNodeWithTag("farm-map-add-selected").assertIsEnabled().assertTextContains("Añadir 2 parcelas", substring = true)
+        composeRule.onNodeWithTag("farm-map-add-selected").assertIsEnabled().assertTextContains("Revisar 2 parcelas", substring = true)
         // The marked parcel is named once in the panel; no list of every number under the map.
         composeRule.onNodeWithTag("farm-map-selection").assertTextContains("Pol. 4 · Parc. 22", substring = true)
         composeRule.onNodeWithTag("farm-map-selection").assertTextContains("y 1 más", substring = true)
@@ -74,6 +76,8 @@ class FarmMapScreenTest {
     @Test fun anEmptyFarmMapSaysWhatToDoFirst() {
         val modes = mutableListOf<FarmMapMode>()
         composeRule.setContent { MaginaOlivoTheme { screen(FarmMapState(mode = FarmMapMode.VIEW), onMode = { modes += it }) } }
+        composeRule.onNodeWithTag("farm-map-guide").assertDoesNotExist()
+        composeRule.onNodeWithTag("farm-map-help").performClick()
         hasTextUnder("farm-map-guide", "Cómo añadir tus parcelas")
         composeRule.onNodeWithTag("farm-map-mode-add").assertDoesNotExist()
         composeRule.onNodeWithTag("farm-map-layer").performClick()
@@ -132,11 +136,14 @@ class FarmMapScreenTest {
             MaginaOlivoTheme { screen(state.value, onAddInspected = { added++ }, onDismissInspected = { dismissed++ }) }
         }
         composeRule.onNodeWithTag("farm-map-official-card").assertExists()
-        hasTextUnder("farm-map-official-card", "23044A00400022")
+        composeRule.onNodeWithTag("farm-map-official-status").assertTextContains("Parcela no añadida", substring = true)
         hasTextUnder("farm-map-official-card", "1,2 ha")
+        composeRule.waitForIdle(); captureReviewScreenshot("mapa-parcela-compacta")
+        composeRule.onNodeWithTag("farm-map-official-more").performClick()
+        composeRule.waitForIdle(); captureReviewScreenshot("mapa-parcela-detalles")
+        hasTextUnder("farm-map-official-card", "23044A00400022")
         hasTextUnder("farm-map-official-card", "Huelma · Jaén")
         // It is said plainly that this is not one of the farmer's parcels, and not a certificate.
-        composeRule.onNodeWithTag("farm-map-official-status").assertTextContains("no está en tu olivar", substring = true)
         hasTextUnder(
             "farm-map-official-card",
             "Datos de Catastro. El contorno guardado es una referencia, no un certificado catastral.",
@@ -151,6 +158,24 @@ class FarmMapScreenTest {
         // Nothing read, nothing selected: the card goes away and no stale data is left on screen.
         state.value = FarmMapState(mode = FarmMapMode.VIEW)
         composeRule.onNodeWithTag("farm-map-official-card").assertDoesNotExist()
+    }
+
+    @Test fun selectedParcelKeepsMapAndDestinationVisible() {
+        val farm = Farm(UUID.randomUUID(), UUID.randomUUID(), "Salinillas", null, "Huelma", "Jaén",
+            null, null, 0, null, null, null, 1)
+        val state = FarmMapState(farm = farm, inspected = candidate("23044A00400022"),
+            focus = MapFocus(GeoPoint(37.635, -3.475)))
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmMapScreen(state, {}, {}, {}, { _, _, _, _ -> }, {}, { _, _ -> }, {}, {}, {}, {}, showMap = true)
+            }
+        }
+        composeRule.onNodeWithText("Salinillas").assertExists()
+        composeRule.onNodeWithTag("farm-map-official-add").assertTextContains("Añadir a Salinillas")
+        composeRule.onNodeWithTag("farm-map-layer").performClick()
+        composeRule.onNodeWithTag("farm-map-base-NONE").performClick()
+        composeRule.waitForIdle()
+        captureReviewScreenshot("mapa-parcela-seleccionada")
     }
 
     /** The notices are plain containers: their text lives in child nodes. */

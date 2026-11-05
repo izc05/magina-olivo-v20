@@ -15,7 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
@@ -33,13 +33,17 @@ import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
 class FarmLinkScreenTest {
+    // v2 queues recomposition: the legacy unconfined clock could apply a rotated
+    // view's changes on the IO thread that completed an account/Room operation.
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val context=ApplicationProvider.getApplicationContext<Context>()
     private val fixture=UUID.randomUUID()
@@ -89,6 +93,15 @@ class FarmLinkScreenTest {
         }
     }
     private fun waitFor(tag:String) = compose.waitUntil(20_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+    /** Drive the UI clock while Room/Auth runs, instead of blocking its queued continuations. */
+    private fun <T> background(action:suspend ()->T):T {
+        val scope=CoroutineScope(Dispatchers.IO)
+        val result=scope.async { action() }
+        try {
+            compose.waitUntil(20_000) { result.isCompleted }
+            return runBlocking { result.await() }
+        } finally { scope.cancel() }
+    }
     private fun rotate(orientation:Int,configuration:Int) {
         val previous=compose.activity
         compose.activityRule.scenario.onActivity { it.requestedOrientation=orientation }
@@ -109,8 +122,8 @@ class FarmLinkScreenTest {
             File(folder,"$label.png").outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) };bitmap.recycle()
         }
     }
-    @Test fun onlySelectedFarmsArePreparedButConsentProtectsTheEntireLocalDataset(): Unit = runBlocking {
-        seed();content();waitFor("farm-link-choice-${ids[0]}")
+    @Test fun onlySelectedFarmsArePreparedButConsentProtectsTheEntireLocalDataset() {
+        background { seed() };content();waitFor("farm-link-choice-${ids[0]}")
         compose.onNodeWithTag("farm-link-choice-${ids[0]}").performScrollTo().performClick()
         compose.onNodeWithTag("farm-link-confirm").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("farm-link-cancel").performScrollTo().performClick();assertNull(ledger.read())
@@ -128,32 +141,32 @@ class FarmLinkScreenTest {
             .assertTextContains("incluidas las no seleccionadas",substring=true).assertIsDisplayed()
         compose.onNodeWithTag("farm-link-pending").performScrollTo();capture("pending")
     }
-    @Test fun logoutSwitchAndRecreatedActivityCannotShowPreviousAgriculture(): Unit = runBlocking {
-        seed();repository.consent(account.state.value.userId!!,repository.choices().take(2),true)
+    @Test fun logoutSwitchAndRecreatedActivityCannotShowPreviousAgriculture() {
+        background { seed();repository.consent(account.state.value.userId!!,repository.choices().take(2),true) }
         content();waitFor("private-agriculture")
-        account.logout(false);waitFor("farm-link-locked")
+        background { account.logout(false) };waitFor("farm-link-locked")
         compose.onNodeWithTag("private-agriculture").assertDoesNotExist()
         compose.onNodeWithTag("farm-link-choice-${ids[2]}").assertDoesNotExist()
-        account.login("b@example.test","password42",true);waitFor("farm-link-locked")
+        background { account.login("b@example.test","password42",true) };waitFor("farm-link-locked")
         compose.onNodeWithTag("farm-link-choice-${ids[2]}").assertDoesNotExist()
         compose.onNodeWithTag("private-agriculture").assertDoesNotExist();capture("other-account-locked")
         compose.activityRule.scenario.recreate();content();waitFor("farm-link-locked")
         compose.onNodeWithTag("private-agriculture").assertDoesNotExist()
-        account.logout(false);account.login("a@example.test","password42",true);account.resume(false)
+        background { account.logout(false);account.login("a@example.test","password42",true);account.resume(false) }
         waitFor("private-agriculture");compose.onNodeWithTag("farm-link-locked").assertDoesNotExist();capture("restored-offline")
     }
-    @Test fun remoteLogoutSurvivesDestructionOfItsViewModel(): Unit = runBlocking {
-        seed();repository.consent(account.state.value.userId!!,repository.choices().take(1),true)
+    @Test fun remoteLogoutSurvivesDestructionOfItsViewModel() {
+        background { seed();repository.consent(account.state.value.userId!!,repository.choices().take(1),true) }
         slowSignOut=true;content();waitFor("test-link-logout")
         compose.onNodeWithTag("test-link-logout").performScrollTo().performClick()
         waitFor("farm-link-locked")
-        withTimeout(10_000) { signOutEntered.await() }
+        compose.waitUntil(10_000) { signOutEntered.isCompleted }
         finishSignOut.complete(Unit)
         compose.waitUntil(10_000) { revoked }
         assertNull(session.read().session)
     }
-    @Test fun realRotationPreservesProtectionAcrossLogoutOtherAccountAndRestoredOwner(): Unit = runBlocking {
-        seed();repository.consent(account.state.value.userId!!,repository.choices().take(1),true)
+    @Test fun realRotationPreservesProtectionAcrossLogoutOtherAccountAndRestoredOwner() {
+        background { seed();repository.consent(account.state.value.userId!!,repository.choices().take(1),true) }
         // Establish a known starting orientation before observing actual Android recreations.
         compose.activityRule.scenario.onActivity { it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
         compose.waitUntil(20_000) {
@@ -164,16 +177,16 @@ class FarmLinkScreenTest {
         content();waitFor("private-agriculture")
         rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,Configuration.ORIENTATION_LANDSCAPE)
         waitFor("private-agriculture");compose.onNodeWithTag("farm-link-locked").assertDoesNotExist()
-        account.logout(false);waitFor("farm-link-locked")
+        background { account.logout(false) };waitFor("farm-link-locked")
         rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,Configuration.ORIENTATION_PORTRAIT)
         waitFor("farm-link-locked");compose.onNodeWithTag("private-agriculture").assertDoesNotExist()
-        account.login("b@example.test","password42",true);waitFor("farm-link-locked")
+        background { account.login("b@example.test","password42",true) };waitFor("farm-link-locked")
         rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,Configuration.ORIENTATION_LANDSCAPE)
         waitFor("farm-link-locked");compose.onNodeWithTag("private-agriculture").assertDoesNotExist()
         compose.onNodeWithTag("farm-link-choice-${ids[2]}").assertDoesNotExist()
         compose.activityRule.scenario.recreate();content();waitFor("farm-link-locked")
         compose.onNodeWithTag("private-agriculture").assertDoesNotExist();capture("rotation-other-account-locked")
-        account.logout(false);account.login("a@example.test","password42",true);account.resume(false)
+        background { account.logout(false);account.login("a@example.test","password42",true);account.resume(false) }
         waitFor("private-agriculture")
         rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,Configuration.ORIENTATION_PORTRAIT)
         waitFor("private-agriculture");compose.onNodeWithTag("farm-link-locked").assertDoesNotExist()

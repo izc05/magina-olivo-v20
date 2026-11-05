@@ -70,8 +70,8 @@ class ContextNotificationPermissionTest {
     @After fun cancelOnlyTheSyntheticAlarm() { if (seeded) AndroidReminderScheduler(context).cancel(notificationCode) }
 
     @Test fun actualProfileRequestsOnlyAfterSuccessfulReminderActivation() {
-        compose.waitUntil(15_000) { runCatching { compose.onAllNodesWithTag("bottom-Perfil").fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false) }
-        compose.onNodeWithTag("bottom-Perfil").performClick()
+        compose.waitUntil(15_000) { runCatching { compose.onAllNodesWithTag("top-profile-avatar").fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false) }
+        compose.onNodeWithTag("top-profile-avatar").performClick()
         compose.waitUntil(15_000) {
             runCatching { compose.onNodeWithTag("profile-reminders-switch").fetchSemanticsNode().config[SemanticsProperties.ToggleableState] == ToggleableState.Off }.getOrDefault(false)
         }
@@ -104,7 +104,16 @@ class ContextNotificationPermissionTest {
         capture("result")
         assertWorkPreserved()
         compose.activityRule.scenario.recreate()
-        compose.waitUntil(15_000) { compose.onAllNodesWithTag("bottom-Perfil").fetchSemanticsNodes().isNotEmpty() }
+        // Recreation restores the visible Perfil entry, rather than navigating to Inicio.
+        // Keep checking both navigation restoration and the persisted reminder choice.
+        compose.waitUntil(15_000) {
+            compose.onAllNodesWithTag("profile-root").fetchSemanticsNodes().isNotEmpty() &&
+                runCatching {
+                    compose.onNodeWithTag("profile-reminders-switch").fetchSemanticsNode()
+                        .config[SemanticsProperties.ToggleableState] == ToggleableState.On
+                }.getOrDefault(false)
+        }
+        compose.onNodeWithTag("profile-reminders-switch").performScrollTo().assertIsOn()
         compose.onNodeWithTag("notification-permission-dialog").assertDoesNotExist()
         assertWorkPreserved()
     }

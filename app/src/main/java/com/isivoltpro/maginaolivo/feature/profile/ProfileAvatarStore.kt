@@ -9,7 +9,13 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Almacenamiento local seguro de fotografas de perfil de usuario.
@@ -24,6 +30,8 @@ class ProfileAvatarStore(
     private val avatarDirectory: File,
 ) {
     companion object {
+        private val mutableChanges = MutableStateFlow(0L)
+        val changes = mutableChanges.asStateFlow()
         const val MAX_INPUT_BYTES: Int = 5 * 1024 * 1024 // 5 MiB
         const val MAX_DIMENSION: Int = 1024 // 1024 px
         private const val JPEG_QUALITY: Int = 85
@@ -122,22 +130,19 @@ class ProfileAvatarStore(
 
         return try {
             FileOutputStream(tempFile).use { out ->
-                finalBitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
+                if (!finalBitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)) {
+                    throw IOException("avatar_compress_failed")
+                }
                 out.flush()
             }
 
-            if (targetFile.exists()) {
-                targetFile.delete()
+            try {
+                Files.move(tempFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                Files.move(tempFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
             }
-
-            if (tempFile.renameTo(targetFile)) {
-                AppResult.Success(targetFile)
-            } else {
-                // Fallback por si renameTo falla en algn FS
-                tempFile.copyTo(targetFile, overwrite = true)
-                tempFile.delete()
-                AppResult.Success(targetFile)
-            }
+            mutableChanges.update { it + 1 }
+            AppResult.Success(targetFile)
         } catch (e: Exception) {
             if (tempFile.exists()) tempFile.delete()
             AppResult.Failure(AppError.Storage(operation = "write_avatar_file", cause = e))
@@ -155,9 +160,8 @@ class ProfileAvatarStore(
     fun deleteAvatar(userId: UUID): AppResult<Unit> {
         return try {
             val file = File(avatarDirectory, "$userId.jpg")
-            if (file.exists()) {
-                file.delete()
-            }
+            if (file.exists() && !file.delete()) throw java.io.IOException("avatar_delete_failed")
+            mutableChanges.update { it + 1 }
             AppResult.Success(Unit)
         } catch (e: Exception) {
             AppResult.Failure(AppError.Storage(operation = "delete_avatar", cause = e))

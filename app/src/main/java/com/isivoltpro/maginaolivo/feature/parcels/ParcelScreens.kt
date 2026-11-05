@@ -73,6 +73,8 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.app.LocalPersistence
+import com.isivoltpro.maginaolivo.domain.feed.SpanishMunicipalityCatalog
+import com.isivoltpro.maginaolivo.ui.components.ProvinceMunicipalityPicker
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
@@ -273,6 +275,7 @@ fun ParcelDetailRoute(
         onLocate = onLocate,
         onRegister = onRegister,
         locatePlace = CATASTRO_PLACE,
+        onRecoverLocation = { viewModel.recoverCadastralLocation(CATASTRO_PLACE) },
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.PARCEL, parcelId),
@@ -294,11 +297,17 @@ fun ParcelDetailScreen(
     onLocate: ((UUID) -> Unit)? = null,
     onRegister: ((farmId: UUID, parcelName: String) -> Unit)? = null,
     locatePlace: PlaceLookup? = null,
+    onRecoverLocation: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message == "Parcela archivada") onArchived() }
     OnEachSave(state.saveCount) { editorVisible = false }
+    LaunchedEffect(state.parcel?.id) {
+        val parcel = state.parcel
+        if (parcel?.source == ParcelSource.CATASTRO &&
+            (parcel.municipality.isNullOrBlank() || parcel.province.isNullOrBlank())) onRecoverLocation?.invoke()
+    }
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("parcel-detail-root"),
         containerColor = MoSurfaceTokens.appBackground,
@@ -319,6 +328,7 @@ fun ParcelDetailScreen(
                 farmName = state.farmName,
                 activities = state.activities,
                 onEdit = { editorVisible = true },
+                onRecoverLocation = onRecoverLocation,
                 onArchive = { archiveConfirmation = true },
                 attachmentContent = attachmentContent,
                 modifier = Modifier.padding(padding),
@@ -345,6 +355,7 @@ fun ParcelDetailScreen(
                 onCancel = { editorVisible = false },
                 oliveError = state.oliveError,
                 locatePlace = locatePlace,
+                cadastralSource = parcel.source == ParcelSource.CATASTRO,
             )
         }
     }
@@ -365,6 +376,7 @@ private fun ParcelDetailContent(
     farmName: String?,
     activities: List<Activity>,
     onEdit: () -> Unit,
+    onRecoverLocation: (() -> Unit)?,
     onArchive: () -> Unit,
     attachmentContent: @Composable () -> Unit,
     modifier: Modifier,
@@ -421,7 +433,7 @@ private fun ParcelDetailContent(
             ParcelTabs(tab) { tab = it }
             when (tab) {
                 ParcelTab.ACTIVITY -> ParcelActivities(activities)
-                ParcelTab.DATA -> ParcelDataBlocks(parcel)
+                ParcelTab.DATA -> ParcelDataBlocks(parcel, onEdit, onRecoverLocation)
                 ParcelTab.DOCUMENTS -> attachmentContent()
             }
             MoPrimaryButton("Editar parcela", onEdit, Modifier.fillMaxWidth().testTag("parcel-edit"))
@@ -436,7 +448,7 @@ private fun ParcelDetailContent(
  * map, Catastro identity, geometry and additional information. Only stored values; nothing new.
  */
 @Composable
-private fun ParcelDataBlocks(parcel: Parcel) {
+private fun ParcelDataBlocks(parcel: Parcel, onEdit: () -> Unit, onRecoverLocation: (() -> Unit)?) {
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
         Surface(shape = MoShape.card, color = MoSurfaceTokens.cardSurface, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -454,7 +466,17 @@ private fun ParcelDataBlocks(parcel: Parcel) {
         MoSectionCard(title = "Datos catastrales", icon = MoIcons.Document, modifier = Modifier.testTag("parcel-cadastral")) {
             MoLabeledValue("Referencia catastral", parcel.cadastralReference ?: "Sin registrar")
             ValuePair("Polígono", parcel.cadastralPolygon, "Parcela", parcel.cadastralParcel)
-            ValuePair("Municipio", parcel.municipality, "Provincia", parcel.province)
+            if (parcel.source == ParcelSource.CATASTRO &&
+                (parcel.municipality.isNullOrBlank() || parcel.province.isNullOrBlank())) {
+                Text("Ubicación pendiente de verificar", color = MoSurfaceTokens.secondaryText)
+                ValuePair("Municipio", parcel.municipality, "Provincia", parcel.province)
+                MoTertiaryButton("Elegir provincia y municipio", onEdit, Modifier.fillMaxWidth())
+                onRecoverLocation?.let { retry ->
+                    MoTertiaryButton("Reintentar consulta de Catastro", retry, Modifier.fillMaxWidth())
+                }
+            } else {
+                ValuePair("Municipio", parcel.municipality, "Provincia", parcel.province)
+            }
         }
         MoSectionCard(title = "Geometría", icon = MoIcons.Map, modifier = Modifier.testTag("parcel-geometry")) {
             ValuePair(
@@ -599,6 +621,7 @@ internal fun ParcelEditor(
     oliveError: String? = null,
     /** Catastro's municipality/province for a reference; null where no lookup is offered. */
     locatePlace: PlaceLookup? = null,
+    cadastralSource: Boolean = false,
 ) {
     var draft by remember(initial) { mutableStateOf(initial) }
     var placeStatus by remember(initial) { mutableStateOf<String?>(null) }
@@ -652,7 +675,7 @@ internal fun ParcelEditor(
                             val current = draft
                             when {
                                 current.cadastralReference.trim().uppercase() != reference -> placeStatus = null
-                                place == null -> placeStatus = "Catastro no lo ha indicado: escríbelo a mano."
+                                place == null -> placeStatus = "Ubicación pendiente de verificar: selecciónala abajo."
                                 else -> {
                                     draft = current.copy(
                                         municipality = current.municipality.ifBlank { place.municipality },
@@ -666,11 +689,33 @@ internal fun ParcelEditor(
                     modifier = Modifier.heightIn(min = 48.dp).testTag("parcel-locate-place"),
                 ) { Text("Completar municipio y provincia desde Catastro") }
             }
-            MoTextField(
-                draft.municipality, { draft = draft.copy(municipality = it); placeStatus = null }, "Municipio",
-                Modifier.fillMaxWidth().testTag("parcel-municipality"), supportingText = placeStatus,
-            )
-            MoTextField(draft.province, { draft = draft.copy(province = it) }, "Provincia", Modifier.fillMaxWidth().testTag("parcel-province"))
+            if (cadastralSource) {
+                val province = SpanishMunicipalityCatalog.resolveProvince(draft.province)
+                val municipality = SpanishMunicipalityCatalog.resolve(draft.municipality, draft.province)
+                if (placeStatus != null) Text(placeStatus!!, color = MoSurfaceTokens.secondaryText)
+                ProvinceMunicipalityPicker(
+                    provinceCode = province?.code,
+                    municipality = municipality,
+                    onProvinceSelected = { code ->
+                        draft = draft.copy(
+                            province = SpanishMunicipalityCatalog.resolveProvince(code)?.name.orEmpty(),
+                            municipality = "",
+                        )
+                        placeStatus = null
+                    },
+                    onMunicipalitySelected = { chosen ->
+                        draft = draft.copy(province = chosen.provinceName, municipality = chosen.displayName)
+                        placeStatus = null
+                    },
+                    tagPrefix = "parcel-location",
+                )
+            } else {
+                MoTextField(
+                    draft.municipality, { draft = draft.copy(municipality = it); placeStatus = null }, "Municipio",
+                    Modifier.fillMaxWidth().testTag("parcel-municipality"), supportingText = placeStatus,
+                )
+                MoTextField(draft.province, { draft = draft.copy(province = it) }, "Provincia", Modifier.fillMaxWidth().testTag("parcel-province"))
+            }
             MoTextField(draft.notes, { draft = draft.copy(notes = it) }, "Notas", Modifier.fillMaxWidth(), singleLine = false)
             Text("Los datos escritos aquí se guardan como entrada manual; la app no los presenta como verificados por Catastro.", color = MoSurfaceTokens.secondaryText)
         }

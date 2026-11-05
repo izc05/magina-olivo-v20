@@ -191,6 +191,27 @@ class ParcelDetailViewModel(
         }
     }
 
+    fun recoverCadastralLocation(locate: suspend (String) -> com.isivoltpro.maginaolivo.domain.registry.RegistryLocation?) {
+        val parcel = mutableState.value.parcel ?: return
+        if (parcel.source != ParcelSource.CATASTRO ||
+            (!parcel.municipality.isNullOrBlank() && !parcel.province.isNullOrBlank())) return
+        val reference = parcel.cadastralReference ?: return
+        viewModelScope.launch {
+            val serviceLocation = try {
+                kotlinx.coroutines.withTimeoutOrNull(4_000) { locate(reference) }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                null
+            }
+            val location = serviceLocation
+                ?: com.isivoltpro.maginaolivo.feature.catastro.CadastralMunicipalityCatalog.resolve(reference)
+            if (location != null && location.municipality.isNotBlank() && !location.province.isNullOrBlank()) {
+                repository.fillMissingCadastralLocation(parcelId, reference, location.municipality, location.province)
+            }
+        }
+    }
+
     fun archive() = mutate("Parcela archivada") { repository.archive(parcelId) }
 
     fun restore() {

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.profile
 
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
+
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import androidx.compose.foundation.layout.Arrangement
@@ -176,21 +178,27 @@ fun MyProfileSection(
         seenSaves = state.saved
     }
     val settings = state.settings
-    MoSectionHeader("Mi perfil")
+    MoSectionHeader("Mi actividad agrícola")
     MoCompactListItem(
-        title = "Tu municipio",
+        title = "Municipio principal",
         subtitle = settings.location?.let { listOfNotNull(it.municipality, it.province).joinToString(" · ") }
             ?: "Sin indicar · Inicio lo usa para el tiempo si tus fincas no tienen ubicación",
         icon = MoIcons.Location,
+        iconTint = MoColors.current.primaryText,
+        iconContainer = MoSurfaceTokens.appBackground,
         onClick = { onClearError(); sheet = SHEET_LOCATION },
         modifier = Modifier.testTag("profile-municipality"),
+        borderColor = MoSurfaceTokens.cardStroke.copy(alpha = 0.38f),
     )
     MoCompactListItem(
-        title = "Tu cooperativa",
+        title = "Mi cooperativa o almazara",
         subtitle = settings.preferredCooperative?.name ?: "Sin elegir · la cooperativa o almazara donde entregas",
         icon = MoIcons.People,
+        iconTint = MoColors.current.primaryText,
+        iconContainer = MoSurfaceTokens.appBackground,
         onClick = { onClearError(); sheet = SHEET_COOPERATIVE },
         modifier = Modifier.testTag("profile-cooperative"),
+        borderColor = MoSurfaceTokens.cardStroke.copy(alpha = 0.38f),
     )
     when (sheet) {
         SHEET_LOCATION -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
@@ -225,14 +233,27 @@ private fun LocationSheet(
             .testTag("profile-location-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Tu municipio", style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
+        Text("Municipio principal", style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
         Text(
-            "Se usa para el tiempo de Inicio cuando tus fincas no tienen municipio o están en varios. Déjalo vacío para quitarlo.",
+            "Tu ubicación habitual. El tiempo puede seguir la finca activa o la ubicación que elijas por separado.",
             style = MaterialTheme.typography.bodySmall,
             color = MoColors.current.secondaryText,
         )
-        MoTextField(municipality, { municipality = it }, "Municipio", Modifier.fillMaxWidth().testTag("profile-municipality-field"))
-        MoTextField(province, { province = it }, "Provincia (opcional)", Modifier.fillMaxWidth().testTag("profile-province-field"))
+        val selectedProvince = com.isivoltpro.maginaolivo.domain.feed.SpanishMunicipalityCatalog.resolveProvince(province)
+        val selectedMunicipality = com.isivoltpro.maginaolivo.domain.feed.SpanishMunicipalityCatalog.resolve(municipality, province)
+        if (municipality.isNotBlank() && selectedMunicipality == null) {
+            Text("Ubicación guardada: $municipality${province.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}", color = MoColors.current.secondaryText)
+        }
+        com.isivoltpro.maginaolivo.ui.components.ProvinceMunicipalityPicker(
+            provinceCode = selectedProvince?.code,
+            municipality = selectedMunicipality,
+            onProvinceSelected = { code ->
+                province = com.isivoltpro.maginaolivo.domain.feed.SpanishMunicipalityCatalog.resolveProvince(code)?.name.orEmpty()
+                municipality = ""
+            },
+            onMunicipalitySelected = { chosen -> municipality = chosen.displayName; province = chosen.provinceName },
+            tagPrefix = "profile-location",
+        )
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("profile-error")) }
         MoPrimaryButton(
             "Guardar",

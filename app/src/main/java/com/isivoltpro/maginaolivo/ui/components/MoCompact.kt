@@ -188,6 +188,9 @@ fun MoCompactListItem(
     /** A pending row (planned, draft) sits on the softer surface so it reads as "not done yet". */
     container: Color = MoSurfaceTokens.cardSurface,
     trailing: (@Composable () -> Unit)? = null,
+    borderColor: Color = MoSurfaceTokens.cardStroke,
+    titleMaxLines: Int = 2,
+    subtitleMaxLines: Int = 2,
 ) {
     Surface(
         modifier = modifier
@@ -196,7 +199,7 @@ fun MoCompactListItem(
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
         shape = MoShape.card,
         color = container,
-        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+        border = BorderStroke(1.dp, borderColor),
     ) {
         Row(
             Modifier.padding(horizontal = MoSpacing.sm, vertical = 10.dp),
@@ -208,9 +211,9 @@ fun MoCompactListItem(
                 MoIconBadge(icon, tint = iconTint ?: tone.tint, container = iconContainer ?: tone.container)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, color = MoColors.current.bodyText, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(title, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleSmall, color = MoColors.current.bodyText, maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
                 if (subtitle != null) {
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(subtitle, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText, maxLines = subtitleMaxLines, overflow = TextOverflow.Ellipsis)
                 }
             }
             trailing?.invoke()

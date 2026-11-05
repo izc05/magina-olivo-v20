@@ -68,10 +68,11 @@ class OfficialCadastreClient : CadastreClient {
         if (!REFERENCE.matches(normalized)) return null
         return try {
             parseDnprcLocation(download(URL("$DNPRC?Provincia=&Municipio=&RC=$normalized")))
+                ?: CadastralMunicipalityCatalog.resolve(normalized)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            null
+            CadastralMunicipalityCatalog.resolve(normalized)
         }
     }
 

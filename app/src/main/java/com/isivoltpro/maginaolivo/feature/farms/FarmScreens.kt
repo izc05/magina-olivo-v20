@@ -44,6 +44,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.farm.Farm
+import com.isivoltpro.maginaolivo.domain.feed.SpanishMunicipalityCatalog
+import com.isivoltpro.maginaolivo.ui.components.ProvinceMunicipalityPicker
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
@@ -351,6 +353,9 @@ fun FarmListScreen(
             FarmEditor(
                 title = "Nueva finca",
                 initial = FarmDraft(),
+                suggestedPlace = state.farms.mapNotNull {
+                    SpanishMunicipalityCatalog.resolve(it.municipality, it.province)
+                }.distinctBy { it.ineCode }.singleOrNull(),
                 isSaving = state.isSaving,
                 nameError = state.nameError,
                 onSave = onCreate,
@@ -667,6 +672,7 @@ private fun FarmCard(
 private fun FarmEditor(
     title: String,
     initial: FarmDraft,
+    suggestedPlace: com.isivoltpro.maginaolivo.domain.feed.IneMunicipality? = null,
     isSaving: Boolean,
     nameError: String?,
     onSave: (FarmDraft) -> Unit,
@@ -677,19 +683,32 @@ private fun FarmEditor(
     var province by rememberSaveable(initial.province) { mutableStateOf(initial.province) }
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
-    var detailsExpanded by rememberSaveable(
-        initial.municipality,
-        initial.province,
-        initial.description,
-        initial.notes,
-    ) {
-        mutableStateOf(
-            initial.municipality.isNotBlank() || initial.province.isNotBlank() ||
-                initial.description.isNotBlank() || initial.notes.isNotBlank(),
-        )
+    var step by rememberSaveable { mutableStateOf(0) }
+    val originalPlace = remember(initial.municipality, initial.province) {
+        SpanishMunicipalityCatalog.resolve(initial.municipality, initial.province)
     }
+    var provinceCode by rememberSaveable(initial.province) {
+        mutableStateOf(SpanishMunicipalityCatalog.resolveProvince(initial.province)?.code)
+    }
+    var municipalityCode by rememberSaveable(initial.municipality, initial.province) {
+        mutableStateOf(originalPlace?.ineCode)
+    }
+    var placeChanged by rememberSaveable { mutableStateOf(false) }
+    val chosenMunicipality = municipalityCode?.let(SpanishMunicipalityCatalog::findByCode)
+        ?.takeIf { it.provinceCode == provinceCode }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    fun save() {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        onSave(initial.copy(
+            name = name,
+            municipality = if (placeChanged) chosenMunicipality?.displayName.orEmpty() else municipality,
+            province = if (placeChanged) provinceCode?.let { SpanishMunicipalityCatalog.resolveProvince(it)?.name }.orEmpty() else province,
+            description = description,
+            notes = notes,
+        ))
+    }
 
     Column(
         modifier = Modifier
@@ -699,80 +718,54 @@ private fun FarmEditor(
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
-        Text(
-            "Se guardará primero en este dispositivo.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MoSurfaceTokens.secondaryText,
-        )
-        MoTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = "Nombre de la finca",
-            isError = nameError != null,
-            supportingText = nameError,
-            enabled = !isSaving,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("farm-name"),
-        )
-        MoTertiaryButton(
-            text = if (detailsExpanded) "Ocultar detalles" else "Más detalles",
-            onClick = { detailsExpanded = !detailsExpanded },
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (detailsExpanded) {
-            MoTextField(
-                value = municipality,
-                onValueChange = { municipality = it },
-                label = "Municipio (opcional)",
-                enabled = !isSaving,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            MoTextField(
-                value = province,
-                onValueChange = { province = it },
-                label = "Provincia (opcional)",
-                enabled = !isSaving,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            MoTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = "Descripción (opcional)",
-                singleLine = false,
-                enabled = !isSaving,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            MoTextField(
-                value = notes,
-                onValueChange = { notes = it },
-                label = "Notas (opcional)",
-                singleLine = false,
-                enabled = !isSaving,
-                modifier = Modifier.fillMaxWidth(),
-            )
+        Text("Paso ${step + 1} de 4 · ${listOf("Identificación", "Ubicación", "Información adicional", "Confirmación")[step]}",
+            style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
+        when (step) {
+            0 -> {
+                Text("¿Cómo llamas a esta finca? Solo necesitas el nombre para empezar.", color = MoSurfaceTokens.secondaryText)
+                MoTextField(name, { name = it }, "Nombre de la finca", Modifier.fillMaxWidth().testTag("farm-name"),
+                    enabled = !isSaving, isError = nameError != null, supportingText = nameError,
+                    containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite)
+                MoSecondaryButton(if (title == "Nueva finca") "Crear finca básica" else "Guardar cambios",
+                    ::save, Modifier.fillMaxWidth().testTag("save-farm"), !isSaving && name.isNotBlank())
+            }
+            1 -> {
+                Text("Puedes dejar la ubicación para más adelante.", color = MoSurfaceTokens.secondaryText)
+                if (suggestedPlace != null && chosenMunicipality == null) MoSecondaryButton(
+                    "Usar ${suggestedPlace.displayName} de otra finca", {
+                        provinceCode = suggestedPlace.provinceCode
+                        municipalityCode = suggestedPlace.ineCode
+                        placeChanged = true
+                    }, Modifier.fillMaxWidth().testTag("farm-use-suggestion"), !isSaving)
+                if (!placeChanged && originalPlace == null && (municipality.isNotBlank() || province.isNotBlank()))
+                    Text("Ubicación guardada anteriormente: ${listOf(municipality, province).filter(String::isNotBlank).joinToString(", ")}",
+                        color = MoSurfaceTokens.secondaryText)
+                ProvinceMunicipalityPicker(provinceCode, chosenMunicipality,
+                    onProvinceSelected = { provinceCode = it; municipalityCode = null; placeChanged = true },
+                    onMunicipalitySelected = { municipalityCode = it.ineCode; placeChanged = true },
+                    enabled = !isSaving, tagPrefix = "farm-location")
+            }
+            2 -> {
+                Text("Añade detalles si te ayudan a reconocerla. Las parcelas se podrán asociar después desde la finca, SIGPAC o el mapa.",
+                    color = MoSurfaceTokens.secondaryText)
+                MoTextField(description, { description = it }, "Descripción (opcional)", Modifier.fillMaxWidth().testTag("farm-description"),
+                    enabled = !isSaving, singleLine = false, containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite)
+                MoTextField(notes, { notes = it }, "Notas (opcional)", Modifier.fillMaxWidth().testTag("farm-notes"),
+                    enabled = !isSaving, singleLine = false, containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite)
+            }
+            else -> {
+                Text("Revisa tu finca", style = MaterialTheme.typography.titleMedium)
+                Text("Nombre: ${name.ifBlank { "Sin nombre" }}")
+                Text("Ubicación: ${chosenMunicipality?.let { "${it.displayName}, ${it.provinceName}" } ?: if (!placeChanged) listOf(municipality, province).filter(String::isNotBlank).joinToString(", ").ifBlank { "Pendiente" } else "Pendiente"}")
+                if (description.isNotBlank()) Text("Descripción: $description")
+                if (notes.isNotBlank()) Text("Notas: $notes")
+                MoPrimaryButton(if (isSaving) "Guardando…" else if (title == "Nueva finca") "Crear finca" else "Guardar cambios",
+                    ::save, Modifier.fillMaxWidth().testTag("save-farm"), !isSaving && name.isNotBlank())
+            }
         }
-        MoPrimaryButton(
-            text = if (isSaving) "Guardando…" else "Guardar finca",
-            onClick = {
-                focusManager.clearFocus(force = true)
-                keyboardController?.hide()
-                onSave(
-                    initial.copy(
-                        name = name,
-                        municipality = municipality,
-                        province = province,
-                        description = description,
-                        notes = notes,
-                    ),
-                )
-            },
-            enabled = !isSaving,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("save-farm"),
-        )
+        if (step > 0) MoSecondaryButton("Anterior", { step-- }, Modifier.fillMaxWidth().testTag("farm-previous"), !isSaving)
+        if (step < 3) MoPrimaryButton("Siguiente", { focusManager.clearFocus(); keyboardController?.hide(); step++ },
+            Modifier.fillMaxWidth().testTag("farm-next"), !isSaving && (step != 0 || name.isNotBlank()))
         MoTertiaryButton(
             text = "Cancelar",
             onClick = onCancel,

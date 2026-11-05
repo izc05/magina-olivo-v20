@@ -55,6 +55,7 @@ data class AppCompositionRoot(
     /** UX-C: the Farm Mi Cuaderno opens on (device preference). */
     val activeFarmStore: ActiveFarmStore = InMemoryActiveFarmStore(),
     val appearanceStore: AppearanceStore = InMemoryAppearanceStore(),
+    val weatherLocationStore: com.isivoltpro.maginaolivo.domain.weather.WeatherLocationPreferenceStore = com.isivoltpro.maginaolivo.domain.weather.InMemoryWeatherLocationPreferenceStore(),
     val accountRepository: com.isivoltpro.maginaolivo.feature.account.AccountRepository = com.isivoltpro.maginaolivo.feature.account.AccountRepository(null),
     val farmLinks: com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository? = null,
     /** Manual sync («Sincronizar ahora»): dev flavor only; null in staging and production. Never automatic. */
@@ -215,6 +216,7 @@ data class AppCompositionRoot(
             val phytosanitaryResourceRepository = OfflineFirstPhytosanitaryResourceRepository(
                 database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
             )
+            val weatherLocationStore = AndroidWeatherLocationPreferenceStore(applicationContext)
             return defaults.copy(
                 accountRepository = account,
                 farmLinks = farmLinks,
@@ -223,6 +225,7 @@ data class AppCompositionRoot(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 activeFarmStore = AndroidActiveFarmStore(applicationContext),
                 appearanceStore = AndroidAppearanceStore(applicationContext),
+                weatherLocationStore = weatherLocationStore,
                 localPersistence = LocalPersistence(
                     database = database,
                     farmRepository = farmRepository,
@@ -247,6 +250,8 @@ data class AppCompositionRoot(
                     oilMarketFeed = oilMarketFeed,
                     profileRepository = profileRepository,
                     phytosanitaryResourceRepository = phytosanitaryResourceRepository,
+                    weatherLocationStore = weatherLocationStore,
+                    weatherIdentity = WeatherIdentityMapper.observe(account),
                 ),
             )
         }

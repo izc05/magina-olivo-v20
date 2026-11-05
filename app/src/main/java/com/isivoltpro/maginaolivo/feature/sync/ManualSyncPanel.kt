@@ -33,20 +33,22 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ManualSyncPanel(sync: ManualSync?, online: Boolean) {
     Column(Modifier.fillMaxWidth().testTag("manual-sync-panel"), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-        HorizontalDivider()
         Text("Sincronización", style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
         if (sync == null) {
+            MoPrimaryButton("Sincronizar ahora", {}, Modifier.fillMaxWidth().testTag("manual-sync-now"), enabled = false)
             Text("La sincronización no está disponible en esta versión. Tus datos siguen guardados en este teléfono.",
                 Modifier.testTag("manual-sync-unavailable"), color = MoSurfaceTokens.secondaryText)
             return@Column
         }
         val state by sync.state.collectAsStateWithLifecycle()
         val running = state is ManualSyncState.Running
-        Text("Envía lo que has registrado en este teléfono y recibe lo de tus otros dispositivos. Solo se sincroniza cuando pulsas el botón.",
-            color = MoSurfaceTokens.secondaryText)
+        if (state is ManualSyncState.Idle) Text("Aún no hay una ejecución conocida en esta apertura de la app.",
+            Modifier.testTag("manual-sync-idle"), color = MoSurfaceTokens.secondaryText)
         MoPrimaryButton(if (running) "Sincronizando…" else "Sincronizar ahora", { sync.requestSync() },
             Modifier.fillMaxWidth().testTag("manual-sync-now"), enabled = online && !running)
         if (!online && !running) Text("Sin conexión. Conéctate para sincronizar.", color = MoSurfaceTokens.secondaryText)
+        Text("Solo se envían los tipos de datos admitidos en esta versión. Una ejecución completada no es una copia de seguridad de todo el teléfono.",
+            Modifier.testTag("manual-sync-scope"), color = MoSurfaceTokens.secondaryText)
         val live = Modifier.testTag("manual-sync-status").semantics { liveRegion = LiveRegionMode.Polite }
         when (val s = state) {
             ManualSyncState.Idle -> Unit
@@ -55,7 +57,7 @@ fun ManualSyncPanel(sync: ManualSync?, online: Boolean) {
                 Text("Sincronizando · ${s.step}", live, color = MoColors.current.bodyText)
             }
             is ManualSyncState.Completed -> {
-                Text("Completado · ${time(s.at)} · ${s.sent} enviados, ${s.received} recibidos", live, color = MoColors.current.bodyText)
+                Text("Datos admitidos confirmados · ${time(s.at)} · ${s.sent} enviados, ${s.received} recibidos", live, color = MoColors.current.bodyText)
                 s.notes.forEach { Text(it, color = MoSurfaceTokens.secondaryText) }
             }
             is ManualSyncState.Pending -> {

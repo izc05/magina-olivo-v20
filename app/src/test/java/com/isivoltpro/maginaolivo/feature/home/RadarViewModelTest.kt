@@ -78,4 +78,17 @@ class RadarViewModelTest {
             radarTimeLabel(Instant.parse("2026-09-25T10:40:00Z"), latest, madrid),
         )
     }
+
+    @Test fun emptyRadarFramesAreTreatedAsUnavailableAndConcurrentLoadsAreCoalesced() = runTest(dispatcher) {
+        var calls = 0
+        val viewModel = RadarViewModel(source {
+            calls++
+            RadarFrames("RainViewer", "Radar: RainViewer", null, emptyList())
+        })
+        // A second load() while the initial coroutine is still pending does not launch a duplicate request.
+        viewModel.load()
+        advanceUntilIdle()
+        assertEquals(1, calls)
+        assertEquals(RadarUiState.Unavailable, viewModel.state.value)
+    }
 }

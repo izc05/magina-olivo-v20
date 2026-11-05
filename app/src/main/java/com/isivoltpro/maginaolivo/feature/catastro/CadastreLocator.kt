@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.catastro
 
 import com.isivoltpro.maginaolivo.domain.registry.RegistryLocation
+import com.isivoltpro.maginaolivo.domain.feed.SpanishMunicipalityCatalog
 import java.net.URLEncoder
 import java.text.Normalizer
 import org.w3c.dom.Element
@@ -50,7 +51,16 @@ internal fun parseDnprcLocation(xml: ByteArray): RegistryLocation? {
     val municipality = root.child("nm")?.let(::spanishPlaceCase) ?: return null
     val province = root.child("cp")?.toIntOrNull()?.let(SPANISH_PROVINCES::get)
         ?: root.child("np")?.let(::spanishPlaceCase)
-    return RegistryLocation(municipality, province)
+    val fromIneCode = root.child("cm")?.toIntOrNull()?.let { code ->
+        root.child("cp")?.toIntOrNull()?.let { provinceCode ->
+            SpanishMunicipalityCatalog.findByCode("%02d%03d".format(provinceCode, code))
+        }
+    }
+    val fromName = SpanishMunicipalityCatalog.resolve(municipality, province)
+    if (fromIneCode != null && fromName != null && fromIneCode.ineCode != fromName.ineCode) return null
+    val official = fromIneCode ?: fromName
+    return if (official != null) RegistryLocation(official.displayName, official.provinceName)
+        else RegistryLocation(municipality, province)
 }
 
 /** "BEDMAR Y GARCIEZ" → "Bedmar y Garciez"; "VILLANUEVA DEL ARZOBISPO" → "Villanueva del Arzobispo". */

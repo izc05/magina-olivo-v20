@@ -464,6 +464,43 @@ class OfflineFirstFarmRepositoryTest {
     }
 
     @Test
+    fun cadastralLocationRecoveryFillsOnlyMissingFieldsAndSurvivesRoomReopen() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000190")
+        val farmId = uuid("20000000-0000-0000-0000-000000000190")
+        val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            seedSelectedWorkspace(database, workspaceId, TEST_INSTANT)
+            repository(database, TEST_INSTANT, listOf(farmId, uuid("30000000-0000-0000-0000-000000000190")))
+                .create(NewFarm(workspaceId, "Cortijo"))
+            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT),
+                com.isivoltpro.maginaolivo.core.id.UuidGenerator(), TestDispatchers,
+                workspaceRepository = FixtureWorkspace { database })
+            val id = (parcels.create(NewParcel(farmId, "Parcela", cadastralReference = "23013A01500072",
+                source = ParcelSource.CATASTRO, geometryGeoJson = geometry, province = "Mi provincia")) as AppResult.Success).value
+            assertEquals(AppResult.Success(Unit), parcels.fillMissingCadastralLocation(id, "23013A01500072", "Bedmar y Garcíez", "Jaén"))
+            val saved = parcels.observeById(id).first()!!
+            assertEquals("Bedmar y Garcíez", saved.municipality)
+            assertEquals("Mi provincia", saved.province)
+            assertEquals(geometry, saved.geometryGeoJson)
+            assertEquals("23013A01500072", saved.cadastralReference)
+            val version = saved.version
+            assertEquals(AppResult.Success(Unit), parcels.fillMissingCadastralLocation(id, "23013A01500072", "Otra", "Otra"))
+            assertEquals(version, parcels.observeById(id).first()!!.version)
+            assertTrue(parcels.fillMissingCadastralLocation(id, "23013A01500073", "Otra", "Otra") is AppResult.Failure)
+        } finally {
+            database.close()
+        }
+        val reopened = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            val stored = reopened.parcelDao().findActiveByCadastralReference(workspaceId, "23013A01500072")
+            assertTrue(stored != null)
+        } finally {
+            reopened.close()
+        }
+    }
+
+    @Test
     fun handMadeParcelLinkedToCatastroKeepsItsOwnDataAndRefusesATakenReference() = runBlocking {
         val workspaceId = uuid("10000000-0000-0000-0000-000000000180")
         val farmId = uuid("20000000-0000-0000-0000-000000000180")

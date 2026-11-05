@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -55,6 +56,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
+import com.isivoltpro.maginaolivo.ui.components.MoBackButton
 import kotlinx.coroutines.launch
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
@@ -62,11 +64,15 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
+import com.isivoltpro.maginaolivo.core.common.AppError
+import com.isivoltpro.maginaolivo.core.common.AppResult
+import java.util.UUID
 
 /** Perfil (UI polish v2): real settings only; what belongs to a later phase says so. */
 @Composable
 fun ProfileRoute(
     appVersion: String,
+    onBack: () -> Unit = {},
     onMachinery: () -> Unit,
     developerGalleryEnabled: Boolean,
     onDeveloperGallery: () -> Unit,
@@ -83,9 +89,12 @@ fun ProfileRoute(
 ) {
     val context = LocalContext.current
     val avatarStore = remember(context) { ProfileAvatarStore.fromContext(context) }
-    var avatarVersion by remember { mutableStateOf(0) }
+    val avatarRevision by ProfileAvatarStore.changes.collectAsStateWithLifecycle()
     val accountState by (accountRepository?.state ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
-    val personalProfile = remember(accountState, avatarVersion) {
+    val currentAccount by rememberUpdatedState(accountState)
+    var pickerAccountId by remember { mutableStateOf<UUID?>(null) }
+    var avatarMessage by remember(accountState?.userId) { mutableStateOf<String?>(null) }
+    val personalProfile = remember(accountState, avatarRevision) {
         val uid = accountState?.userId
         val avatarFile = uid?.let { avatarStore.getAvatarFile(it) }
         accountState?.let { PersonalProfile.fromAccountState(it, avatarFile) }
@@ -93,22 +102,35 @@ fun ProfileRoute(
     val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        val uid = accountState?.userId
-        if (uri != null && uid != null) {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                val result = avatarStore.saveAvatar(uid, stream)
-                if (result is com.isivoltpro.maginaolivo.core.common.AppResult.Success) {
-                    avatarVersion++
+        val uid = pickerAccountId
+        pickerAccountId = null
+        if (uri != null && uid != null && currentAccount?.userId == uid) {
+            val result = runCatching { context.contentResolver.openInputStream(uri)?.use { avatarStore.saveAvatar(uid, it) } }.getOrNull()
+            avatarMessage = when (result) {
+                is AppResult.Success -> null
+                is AppResult.Failure -> when ((result.error as? AppError.Validation)?.code) {
+                    "FILE_TOO_LARGE" -> "La foto supera 5 MB. Elige una imagen más pequeña."
+                    "INVALID_IMAGE" -> "No se pudo leer la imagen. Elige otra foto."
+                    else -> "No se pudo guardar la foto en este teléfono. Inténtalo de nuevo."
                 }
+                else -> "No se pudo abrir la foto. Elige otra imagen."
             }
         }
     }
     val onPickAvatar = if (personalProfile != null) ({
+        pickerAccountId = personalProfile.userId
+        avatarMessage = null
         photoPicker.launch(
             androidx.activity.result.PickVisualMediaRequest(
                 androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
             )
         )
+    }) else null
+    val onDeleteAvatar = if (personalProfile?.avatarFile != null) ({
+        avatarMessage = when (avatarStore.deleteAvatar(personalProfile.userId)) {
+            is AppResult.Success -> null
+            is AppResult.Failure -> "No se pudo quitar la foto. Inténtalo de nuevo."
+        }
     }) else null
     val profileRepository = persistence?.profileRepository
     val profileViewModel: MyProfileViewModel? = if (persistence != null && profileRepository != null) {
@@ -129,9 +151,14 @@ fun ProfileRoute(
         else context.startActivity(notificationSettingsIntent(context, ReminderNotifier.CHANNEL_ID))
     }
     ProfileScreen(
+        onBack = onBack,
         onAccount = onAccount,
+        onLogout = if (personalProfile != null) ({ accountRepository?.requestLogout(accountState?.online == true) }) else null,
         personalProfile = personalProfile,
         onPickAvatar = onPickAvatar,
+        onDeleteAvatar = onDeleteAvatar,
+        avatarRevision = avatarRevision,
+        avatarMessage = avatarMessage,
         appVersion = appVersion,
         notificationsOn = notificationsOn,
         onNotifications = openNotifications,
@@ -155,6 +182,24 @@ fun ProfileRoute(
         } else {
             null
         },
+        weatherSettings = if (persistence != null && persistence.weatherLocationStore != null) {
+            {
+                val weatherPersistence = persistence
+                val store = weatherPersistence.weatherLocationStore
+                if (store != null) {
+                    val weatherViewModel: WeatherLocationSettingsViewModel = viewModel(
+                        key = "profile-weather-location",
+                        factory = viewModelFactory {
+                            initializer {
+                                WeatherLocationSettingsViewModel(weatherPersistence.workspaceRepository, weatherPersistence.farmRepository, store, weatherPersistence.weatherIdentity)
+                            }
+                        },
+                    )
+                    val weatherState by weatherViewModel.state.collectAsStateWithLifecycle()
+                    WeatherLocationSettingsRow(weatherState, weatherViewModel::select, weatherViewModel::clear)
+                }
+            }
+        } else null,
         devTools = demoFarm?.let { tools -> { DemoFarmSection(tools) } },
         reminderSettings = if (profileViewModel != null) {
             {
@@ -187,6 +232,7 @@ fun ProfileScreen(
     onHelp: ((HelpTopic) -> Unit)? = null,
     /** Phase 21A: «Mi perfil» (municipality + cooperative); absent where no storage exists. */
     myProfile: (@Composable () -> Unit)? = null,
+    weatherSettings: (@Composable () -> Unit)? = null,
     /** Phase 21B: Perfil → Avisos (switch + day-before hour); absent where no storage exists. */
     reminderSettings: (@Composable () -> Unit)? = null,
     /** #399: «Herramientas de desarrollo», only in the dev flavor. */
@@ -195,9 +241,22 @@ fun ProfileScreen(
     onAgronomicPeople: () -> Unit = {},
     appearanceSettings: (@Composable () -> Unit)? = null,
     onAccount: (() -> Unit)? = null,
+    onLogout: (() -> Unit)? = null,
     personalProfile: PersonalProfile? = null,
     onPickAvatar: (() -> Unit)? = null,
+    onDeleteAvatar: (() -> Unit)? = null,
+    avatarRevision: Long = 0L,
+    avatarMessage: String? = null,
+    onBack: (() -> Unit)? = null,
 ) {
+    var confirmLogout by remember { mutableStateOf(false) }
+    if (confirmLogout) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { confirmLogout = false },
+        title = { Text("Cerrar sesión") },
+        text = { Text("La sesión se cerrará en este teléfono. Tus fincas, parcelas y documentos locales se conservan.") },
+        confirmButton = { MoDestructiveButton("Cerrar sesión", { confirmLogout = false; onLogout?.invoke() }) },
+        dismissButton = { MoTertiaryButton("Cancelar", { confirmLogout = false }) },
+    )
     Column(
         Modifier
             .fillMaxSize()
@@ -209,38 +268,48 @@ fun ProfileScreen(
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
         Spacer(Modifier.height(MoSpacing.sm))
-        Text("Perfil", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            onBack?.let { MoBackButton("Volver", it, Modifier.testTag("profile-back")) }
+            Text("Perfil", style = MaterialTheme.typography.headlineLarge, color = MoColors.current.primaryText)
+        }
         Spacer(Modifier.height(MoSpacing.xs))
         PersonalProfileHeader(
             profile = personalProfile,
             onAccount = onAccount,
             onPickAvatar = onPickAvatar,
+            avatarRevision = avatarRevision,
         )
+        if (onPickAvatar != null) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                MoTertiaryButton("Cambiar foto", onPickAvatar, Modifier.testTag("profile-change-photo"))
+                if (onDeleteAvatar != null) MoTertiaryButton("Quitar foto", onDeleteAvatar, Modifier.testTag("profile-remove-photo"))
+            }
+        }
+        avatarMessage?.let { Text(it,Modifier.testTag("profile-avatar-message"),color=MoColors.current.errorText) }
         Spacer(Modifier.height(MoSpacing.xs))
         myProfile?.invoke()
-        MoSectionHeader("Tu olivar")
-        MoCompactListItem(
-            title = "Mis máquinas",
-            subtitle = "Tus máquinas, para anotarlas en los trabajos",
+        ProfileListItem(
+            title = "Maquinaria y herramientas",
+            subtitle = "Equipos para tus trabajos",
             icon = MoIcons.Tractor,
             onClick = onMachinery,
             modifier = Modifier.testTag("profile-machinery"),
             trailing = { Chevron() },
         )
-        MoSectionHeader("Datos del cuaderno")
-        MoCompactListItem(
+        ProfileListItem(
             title = "Aplicadores y asesores",
-            subtitle = "Personas y credenciales para el cuaderno",
+            subtitle = "Personas del cuaderno",
             icon = MoIcons.People,
             onClick = onAgronomicPeople,
             modifier = Modifier.testTag("profile-agronomic-people"),
             trailing = { Chevron() },
         )
-        MoSectionHeader("Ajustes")
+        MoSectionHeader("Preferencias")
+        weatherSettings?.invoke()
         appearanceSettings?.invoke()
         ProfileStatusRow(
             title = "Notificaciones",
-            subtitle = "Avisos de los trabajos planificados",
+            subtitle = "Permisos de avisos",
             icon = MoIcons.Bell,
             onClick = onNotifications,
             modifier = Modifier.testTag("profile-notifications"),
@@ -248,30 +317,29 @@ fun ProfileScreen(
             tone = if (notificationsOn) MoStatusTone.Success else MoStatusTone.Warning,
         )
         reminderSettings?.invoke()
-        ProfileStatusRow(
-            title = "Modo sin conexión",
-            subtitle = "Los registros se guardan en este teléfono. Para actualizar mapas, tiempo y otros datos necesitas conexión.",
-            icon = MoIcons.Checklist,
-            modifier = Modifier.testTag("profile-offline"),
-            status = "Siempre",
-            tone = MoStatusTone.Success,
-        )
         if (onAccount != null) {
-            MoSectionHeader("Cuenta")
-            MoCompactListItem(title="Cuenta",subtitle="Acceso y recuperación. Tus fincas siguen guardadas en este teléfono.",
-                onClick=onAccount,modifier=Modifier.testTag("profile-account"),trailing={Chevron()})
+            MoSectionHeader("Cuenta y seguridad")
+            ProfileListItem(title="Cuenta y sincronización",subtitle="Acceso, recuperación y sincronización manual",
+                icon=MoIcons.Person,onClick=onAccount,modifier=Modifier.testTag("profile-account"),trailing={Chevron()})
+            if (onLogout != null) ProfileListItem(
+                title = "Cerrar sesión", subtitle = "Los datos de este teléfono se conservan",
+                icon = MoIcons.Person, onClick = { confirmLogout = true },
+                modifier = Modifier.testTag("profile-logout"), trailing = { Chevron() },
+            )
         }
         if (onHelp != null) {
-            MoSectionHeader("Ayuda y privacidad")
+            MoSectionHeader("Información")
             HelpTopic.entries.forEach { topic ->
-                MoCompactListItem(
+                ProfileListItem(
                     title = topic.title,
                     subtitle = when (topic) {
+                        HelpTopic.GENERAL -> "Primeros pasos y dónde encontrar cada opción"
                         HelpTopic.NEWS -> "Lo que ha cambiado en cada versión"
                         HelpTopic.PRIVACY -> "Qué se guarda en el teléfono y qué servicios se consultan"
-                        HelpTopic.OFFLINE -> "Qué funciona en modo avión"
+                        HelpTopic.OFFLINE -> "Sin cobertura"
                     },
                     icon = when (topic) {
+                        HelpTopic.GENERAL -> MoIcons.Checklist
                         HelpTopic.NEWS -> MoIcons.Bell
                         HelpTopic.PRIVACY -> MoIcons.Checklist
                         HelpTopic.OFFLINE -> MoIcons.Map
@@ -282,21 +350,20 @@ fun ProfileScreen(
                 )
             }
         }
-        MoSectionHeader("Acerca de")
-        MoCompactListItem(
+        ProfileListItem(
             title = "Mágina Olivo",
             subtitle = "Versión $appVersion",
             modifier = Modifier.testTag("profile-about"),
             trailing = { OliveMark(Modifier.size(32.dp)) },
         )
-        MoCompactListItem(
+        ProfileListItem(
             title = "Datos de parcelas",
             subtitle = "Consulta al servicio INSPIRE de la Dirección General del Catastro. La copia guardada no sustituye una certificación oficial.",
             icon = MoIcons.Map,
             modifier = Modifier.testTag("profile-catastro-source"),
         )
         if (developerGalleryEnabled) {
-            MoCompactListItem(
+            ProfileListItem(
                 title = "Catálogo de diseño (DEV)",
                 subtitle = "Solo en la versión de desarrollo",
                 icon = MoIcons.Parcels,
@@ -308,6 +375,22 @@ fun ProfileScreen(
         Spacer(Modifier.height(MoSpacing.lg))
     }
 }
+
+@Composable
+private fun ProfileListItem(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    icon: ImageVector? = null,
+    onClick: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) = MoCompactListItem(
+    title = title, modifier = modifier, subtitle = subtitle, icon = icon,
+    iconTint = MoColors.current.primaryText, iconContainer = MoSurfaceTokens.appBackground,
+    onClick = onClick, trailing = trailing,
+    borderColor = MoSurfaceTokens.cardStroke.copy(alpha = 0.38f),
+    titleMaxLines = 4, subtitleMaxLines = 3,
+)
 
 /** Profile-only: the status never competes with the title/explanation for horizontal space. */
 @Composable
@@ -325,7 +408,7 @@ private fun ProfileStatusRow(
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
         shape = MoShape.card,
         color = MoSurfaceTokens.cardSurface,
-        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke.copy(alpha = 0.38f)),
     ) {
         Row(
             Modifier.padding(horizontal = MoSpacing.sm, vertical = 10.dp),

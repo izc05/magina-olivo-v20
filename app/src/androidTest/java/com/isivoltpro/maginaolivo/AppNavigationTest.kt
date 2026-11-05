@@ -3,7 +3,11 @@ package com.isivoltpro.maginaolivo
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.SystemClock
+import android.os.Build
 import android.view.KeyEvent
+import android.view.inspector.WindowInspector
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -35,7 +39,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.printToString
-import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.isivoltpro.maginaolivo.feature.deliveries.PESADA_NO_RUNNING_CAMPAIGN
@@ -62,13 +65,27 @@ class AppNavigationTest {
             .outerRule(IsolatedAppStateRule())
             .around(composeRule)
 
+    @Test
+    fun assistantIsReservedAndAvatarOpensProfileFromEachMainSection() {
+        enterMainShell()
+        for (tab in listOf("Inicio", "Mi Campo", "Cuaderno", "Asistente IA")) {
+            composeRule.onNodeWithTag("bottom-$tab").performClick()
+            if (tab == "Asistente IA") waitForTag("assistant-placeholder")
+            composeRule.onNodeWithTag("top-profile-avatar").performClick()
+            waitForTag("profile-root")
+            composeRule.onNodeWithTag("bottom-Perfil").assertDoesNotExist()
+            pressBack()
+            if (tab == "Asistente IA") waitForTag("assistant-placeholder")
+        }
+    }
+
     /** #705 / CR-014: the central control is an action, never a selected fifth tab. */
     @Test
     fun centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation() {
         enterMainShell()
         val before = agriculturalCounts()
         composeRule.onNodeWithTag("bottom-Avisos").assertDoesNotExist()
-        for (label in listOf("Inicio", "Mi Campo", "Cuaderno", "Perfil")) {
+        for (label in listOf("Inicio", "Mi Campo", "Cuaderno", "Asistente IA")) {
             composeRule.onNodeWithTag("bottom-$label").performClick().assertIsSelected()
             val add = composeRule.onNodeWithTag("bottom-add-record")
             val semantics = add.fetchSemanticsNode().config
@@ -104,7 +121,7 @@ class AppNavigationTest {
         waitForSaved("farm-name", "Finca CR014")
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         chooseNotebookFarm("Finca CR014")
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         composeRule.onNodeWithTag("bottom-add-record").performClick()
         waitForTag("quick-register-sheet")
         for (action in listOf("work", "irrigation", "treatment", "weighing", "labour", "expense")) {
@@ -139,14 +156,21 @@ class AppNavigationTest {
         composeRule.onNode(hasText("Finca Contexto B") and hasAnyAncestor(hasTestTag("quick-register-sheet")))
             .performScrollTo().performClick()
         composeRule.onNodeWithTag("quick-register-farm").assertTextContains("Finca Contexto B")
-        pressBack()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("quick-register-sheet").fetchSemanticsNodes().isEmpty()
+        }
         composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca Contexto A", substring = true)
         for (recreate in listOf(false, true)) {
             if (recreate) composeRule.activityRule.scenario.recreate()
+            waitForTag("bottom-add-record")
             composeRule.onNodeWithTag("bottom-add-record").performClick()
             waitForTag("quick-register-farm")
             composeRule.onNodeWithTag("quick-register-farm").assertTextContains("Finca Contexto A")
-            pressBack()
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                composeRule.onAllNodesWithTag("quick-register-sheet").fetchSemanticsNodes().isEmpty()
+            }
         }
     }
 
@@ -188,7 +212,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("home-open-alerts").performClick()
         composeRule.onNodeWithTag("calendar-root").assertIsDisplayed()
 
-        composeRule.onNodeWithTag("bottom-Perfil").performClick().assertIsSelected()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         composeRule.onNodeWithTag("profile-root").assertIsDisplayed()
 
         composeRule.onNodeWithTag("bottom-Inicio").performClick().assertIsSelected()
@@ -198,7 +222,7 @@ class AppNavigationTest {
     @Test
     fun backFromAnotherRootReturnsToHome() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
 
         pressBack()
 
@@ -237,7 +261,8 @@ class AppNavigationTest {
         // Deep inside Inicio (weekly weather), then Perfil deep inside (Maquinaria)...
         composeRule.onNodeWithTag("home-weather-hero").performClick()
         waitForTag("weather-week-root")
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("bottom-Inicio").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         clickByTag("profile-machinery")
         waitForTag("machinery-root")
 
@@ -247,13 +272,11 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("weather-week-root").assertDoesNotExist()
 
         // Perfil is the profile, not the Maquinaria screen left open under it.
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         waitForTag("profile-root")
         composeRule.onNodeWithTag("machinery-root").assertDoesNotExist()
 
-        // Tapping the tab already showing stays on its root; Back returns to Inicio.
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
-        waitForTag("profile-root")
+        // Profile is opened from the avatar; Back returns to Inicio.
         pressBack()
         waitForTag("home-reference-root")
         composeRule.onNodeWithTag("bottom-Inicio").assertIsSelected()
@@ -262,13 +285,13 @@ class AppNavigationTest {
     @Test
     fun backWalksTheScreensActuallyVisited() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         clickByTag("profile-machinery")
         waitForTag("machinery-root")
 
         pressBack()
         waitForTag("profile-root")
-        composeRule.onNodeWithTag("bottom-Perfil").assertIsSelected()
+        composeRule.onNodeWithTag("profile-root").assertIsDisplayed()
         pressBack()
         waitForTag("home-reference-root")
     }
@@ -1118,10 +1141,10 @@ class AppNavigationTest {
     fun profileShowsMisMaquinasAndNoProntoRows() {
         // CR-011 §7/§25: «Mis máquinas», and no provisional «Pronto» rows.
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         waitForTag("profile-root")
         composeRule.onNodeWithTag("profile-machinery").assertExists()
-        waitForText("Mis máquinas")
+        waitForText("Maquinaria y herramientas")
         assertEquals(0, composeRule.onAllNodesWithText("Pronto").fetchSemanticsNodes().size)
         composeRule.onNodeWithTag("profile-account-later").assertDoesNotExist()
     }
@@ -1130,7 +1153,7 @@ class AppNavigationTest {
     @Test
     fun helpAndPrivacyAreReachableFromPerfil() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         clickByTag("profile-help-news")
         waitForTag("help-news")
         // The CHANGELOG bundled at build time is read and shown as notes.
@@ -1144,7 +1167,7 @@ class AppNavigationTest {
     @Test
     fun developerGalleryIsReachableFromDevProfile() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
 
         composeRule.onNodeWithText("Catálogo de diseño (DEV)").performScrollTo().performClick()
 
@@ -1156,7 +1179,7 @@ class AppNavigationTest {
     fun physicalBackDismissesKeyboardBottomSheetAndNavigatesBetweenScreens() {
         enterMainShell()
         // 1. Inter-screen navigation: go to Perfil, physical back returns to Inicio
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         waitForTag("profile-root")
         composeRule.waitForIdle()
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
@@ -1190,8 +1213,13 @@ class AppNavigationTest {
     }
 
     private fun enterMainShell() {
-        waitForText("Saltar")
-        composeRule.onNodeWithText("Saltar").performClick()
+        composeRule.waitUntil(30_000) {
+            composeRule.onAllNodesWithText("Saltar").fetchSemanticsNodes().isNotEmpty() ||
+                composeRule.onAllNodesWithTag("home-reference-root").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (composeRule.onAllNodesWithText("Saltar").fetchSemanticsNodes().isNotEmpty()) {
+            composeRule.onNodeWithText("Saltar").performClick()
+        }
         waitForTag("home-reference-root")
         composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
     }
@@ -1244,7 +1272,10 @@ class AppNavigationTest {
             .getOrElse { "(screen not readable: $it)" }
         val screenshotPath = runCatching {
             val bitmap = composeRule.onRoot().captureToImage().asAndroidBitmap()
-            val dir = File("/sdcard/evidence").apply { mkdirs() }
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val dir = File(context.getExternalFilesDir(null), "navigation-evidence").apply {
+                check(mkdirs() || isDirectory)
+            }
             val file = File(dir, "nav-timeout-$tag.png")
             FileOutputStream(file).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
@@ -1539,7 +1570,28 @@ class AppNavigationTest {
     }
 
     private fun safeCloseSoftKeyboard() {
-        runCatching { closeSoftKeyboard() }
+        // A sheet owns a different window from the Activity. Espresso's root picker
+        // can wait on an unfocused Activity, then silently fail inside runCatching.
+        // Hide the IME on the attached windows and require the real insets/focus state
+        // before the next touch or single Back event; never retry navigation itself.
+        fun roots() = if (Build.VERSION.SDK_INT >= 29) WindowInspector.getGlobalWindowViews()
+            else listOf(composeRule.activity.window.decorView)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.runOnMainSync {
+            roots().filter { it.isAttachedToWindow }.forEach {
+                ViewCompat.getWindowInsetsController(it)?.hide(WindowInsetsCompat.Type.ime())
+            }
+        }
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            var ready = false
+            instrumentation.runOnMainSync {
+                val attached = roots().filter { it.isAttachedToWindow }
+                ready = attached.any { it.hasWindowFocus() } && attached.all {
+                    ViewCompat.getRootWindowInsets(it)?.isVisible(WindowInsetsCompat.Type.ime()) != true
+                }
+            }
+            ready
+        }
     }
 
     private fun pressBack() {

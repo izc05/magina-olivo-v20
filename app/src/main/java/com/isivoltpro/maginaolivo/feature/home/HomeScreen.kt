@@ -12,12 +12,18 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.isivoltpro.maginaolivo.domain.feed.IneMunicipality
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -62,6 +68,7 @@ fun HomeRoute(
     /** Phase 20D-3: the oil market screen (12-week official chart). */
     onOilMarket: () -> Unit = {},
     onAlerts: () -> Unit = onCalendar,
+    profileAvatar: (@Composable () -> Unit)? = null,
 ) {
     val viewModel: HomeViewModel = viewModel(
         key = "home",
@@ -78,6 +85,8 @@ fun HomeRoute(
                     oilMarketFeed = persistence.oilMarketFeed,
                     profile = persistence.profileRepository,
                     parcels = persistence.parcelRepository,
+                    weatherLocationStore = persistence.weatherLocationStore,
+                    weatherIdentity = persistence.weatherIdentity,
                 )
             }
         },
@@ -93,6 +102,9 @@ fun HomeRoute(
         onOilMarket = onOilMarket,
         onRetryLocalData = viewModel::retryLocalData,
         onAlerts = onAlerts,
+        profileAvatar = profileAvatar,
+        onSelectWeatherMunicipality = viewModel::selectWeatherMunicipality.takeIf { persistence.weatherLocationStore != null },
+        onClearWeatherMunicipality = viewModel::clearWeatherMunicipality,
     )
 }
 
@@ -102,6 +114,7 @@ fun HomeRoute(
  * work. Weather is integrated into the hero; market and cooperative notices come last
  * (Phase 20), each saying what it knows and from when — never sample figures.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: HomeUiState,
@@ -117,7 +130,23 @@ fun HomeScreen(
     onOilMarket: (() -> Unit)? = null,
     onRetryLocalData: () -> Unit = {},
     onAlerts: () -> Unit = onCalendar,
+    profileAvatar: (@Composable () -> Unit)? = null,
+    /** Selector 1.0: null hides «Cambiar» on the weather card (no store wired, e.g. previews). */
+    onSelectWeatherMunicipality: ((IneMunicipality) -> Unit)? = null,
+    onClearWeatherMunicipality: () -> Unit = {},
 ) {
+    var weatherSelectorOpen by rememberSaveable { mutableStateOf(false) }
+    if (weatherSelectorOpen && onSelectWeatherMunicipality != null) {
+        ModalBottomSheet(onDismissRequest = { weatherSelectorOpen = false }) {
+            WeatherLocationSelectorContent(
+                currentLocation = state.weatherLocation.takeIf { state.hasExplicitWeatherLocation },
+                farmSuggestion = state.farmWeatherSuggestion,
+                onSelectMunicipality = { onSelectWeatherMunicipality(it); weatherSelectorOpen = false },
+                onClearLocation = { onClearWeatherMunicipality(); weatherSelectorOpen = false },
+                onCancel = { weatherSelectorOpen = false },
+            )
+        }
+    }
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
         Modifier.fillMaxSize().testTag("home-reference-root"),
@@ -136,6 +165,8 @@ fun HomeScreen(
                 weatherMotion = weatherMotion,
                 onForecast = onWeatherWeek,
                 onAlerts = onAlerts,
+                profileAvatar = profileAvatar,
+                onChangeLocation = if (onSelectWeatherMunicipality != null) ({ weatherSelectorOpen = true }) else null,
             )
             Column(
                 Modifier.padding(horizontal = MoSpacing.screen),

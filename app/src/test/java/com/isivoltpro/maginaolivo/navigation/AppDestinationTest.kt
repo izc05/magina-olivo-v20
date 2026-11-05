@@ -8,11 +8,12 @@ class AppDestinationTest {
     @Test
     fun routeOwnersKeepLegacyAlertsButTheBottomBarHasFourTabs() {
         assertEquals(
-            listOf("Inicio", "Mi Campo", "Cuaderno", "Avisos", "Perfil"),
+            listOf("Inicio", "Mi Campo", "Cuaderno", "Avisos", "Perfil", "Asistente IA"),
             RootDestination.entries.map { it.label },
         )
-        assertEquals(listOf("Inicio", "Mi Campo", "Cuaderno", "Perfil"), bottomNavigationRoots.map { it.label })
+        assertEquals(listOf("Inicio", "Mi Campo", "Cuaderno", "Asistente IA"), bottomNavigationRoots.map { it.label })
         assertEquals(-1, bottomNavigationRoots.indexOf(RootDestination.Alerts))
+        assertEquals(-1, bottomNavigationRoots.indexOf(RootDestination.Profile))
         assertEquals(emptyList<RootDestination>(), RootDestination.entries.filter { it.isPrimaryAction })
     }
 
@@ -43,6 +44,7 @@ class AppDestinationTest {
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.TodayHarvestPattern))
         assertEquals(2, bottomNavigationRoots.indexOf(RootDestination.Notebook))
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))
+        assertEquals(RootDestination.Assistant, AppDestination.rootForRoute(RootDestination.Assistant.route))
         // Phase 20B-radar: the radar belongs to Inicio.
         assertEquals(RootDestination.Home, AppDestination.rootForRoute(AppDestination.Radar))
         assertEquals(RootDestination.Home, AppDestination.rootForRoute(AppDestination.OilMarket))
