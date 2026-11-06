@@ -1,6 +1,6 @@
 # CR-015 — Propuesta técnica P2: ciclos agrícolas por finca
 
-**Fecha:** 06/11/2026. **Estado:** propuesta para revisión; NO autoriza implementación.
+**Fecha:** 06/11/2026. **Estado:** versión consolidada para aprobación de los siete criterios indicados por el propietario; NO autoriza implementación. Lectura íntegra del adjunto pendiente de recepción.
 
 **Objetivo:** definir ciclos por finca con cierres explícitos, conservando los registros canónicos, el histórico y el aislamiento entre cuentas.
 
@@ -10,13 +10,15 @@
 
 **Fuentes:** [CR-015](https://github.com/izc05/magina-olivo-v20/blob/docs/campana-agricola-ciclo-finca-20261105/docs/00-master/CR-015-CAMPANA-AGRICOLA-CICLO-POR-FINCA.md), [#855](https://github.com/izc05/magina-olivo-v20/issues/855), plan P0 [#856](https://github.com/izc05/magina-olivo-v20/pull/856), decisiones posteriores del propietario y código P1 `cddf94ecf9e4231b2f8497d3ccd9412f3290b2bd`.
 
-**Pendiente documental concreto:** el mensaje anuncia `MAGINA_OLIVO_AUDITORIA_ANTIGRAVITY_P2_Y_ECONOMIA.md`, pero el archivo y sus siete precisiones no están disponibles entre los adjuntos ni en las ubicaciones locales comprobadas. Esta propuesta no afirma haberlas contrastado. Antes de llamarla definitiva hay que leer ese apartado y resolver cualquier discrepancia con las decisiones aprobadas. No hace falta repetir la auditoría de código.
+**Cierre de P1:** el propietario confirma el cierre técnico y visual de `cddf94ecf9e4231b2f8497d3ccd9412f3290b2bd` y sus cuatro checks aplicables verdes. Esta revisión solo modifica documentación de P2 en `docs/cr015-p2-cycle-proposal`; no altera P1 ni la rama separada de Riego B5.
+
+**Alcance verificable del contraste:** se han contrastado los siete puntos reproducidos expresamente por el propietario en «CIERRE P1 Y REVISIÓN DEFINITIVA DE P2». El archivo anunciado `MAGINA_OLIVO_AUDITORIA_ANTIGRAVITY_P2_Y_ECONOMIA.md` aún no aparece entre los adjuntos accesibles ni en las ubicaciones locales comprobadas. No se atribuye al documento completo ninguna conclusión no leída. El contraste de esos siete criterios queda documentado abajo; la lectura íntegra sigue pendiente antes de certificar la revisión completa de Antigravity.
 
 ## 1. Límites y situación actual
 
 - P1 mantiene la agrupación provisional septiembre–agosto. No hay ciclos flexibles implementados ni balance completo.
 - `Campaign` sigue siendo **recolección**; no se cambia su identidad, tabla, UUID ni semántica para convertirla en ciclo agrícola.
-- Room está en versión 34. P2 entrega diseño, no entidades, esquemas, migraciones ejecutables ni cambios de escritores.
+- Room está en versión **34**, verificada en `app/src/main/java/com/isivoltpro/maginaolivo/data/local/MaginaOlivoDatabase.kt` (`DATABASE_VERSION`) sobre la base P1 aprobada. Se volverán a comprobar HEAD, versión y rutas vigentes antes de diseñar o ejecutar cualquier migración P3; no se presupone la 35. P2 entrega diseño, no entidades, esquemas, migraciones ejecutables ni cambios de escritores.
 - P3 requerirá autorización de implementación local; P4 requerirá autorización independiente de contratos y despliegues remotos. P5, ingresos, liquidaciones y ampliación de jornales generales con personas/horas/pagos, queda fuera.
 - La sincronización manual actual es parcial: los flujos documentados cubren workspace, finca, parcela, recolección, jornada y pesada, incluyendo su borrado. No certifican recuperación completa de actividades, gastos generales, documentos ni fotos. No se ha consultado ni modificado el servidor para esta propuesta.
 
@@ -38,7 +40,7 @@ La pertenencia de pesadas/jornadas sigue su recolección. El gasto vinculado a a
 
 1. Fechas civiles `LocalDate` según el contexto temporal del workspace; cierre inclusivo C y siguiente inicio a partir de C + 1 día, editable antes de confirmar. Sin solapamientos y como máximo un ciclo abierto por finca. Se admiten huecos declarados.
 2. El rótulo «2026/27» es descriptivo; no identifica ni calcula el intervalo. Cambiarlo no reasigna registros.
-3. Cerrar requiere confirmar el final de toda la recolección de esa finca y revisar la fecha efectiva. También se admite declaración expresa «Sin recolección», sin fabricar pesadas de cero ni ventas.
+3. Cerrar requiere confirmar el final de toda la recolección de esa finca y revisar la fecha efectiva. La última pesada puede sugerir una fecha, con su origen visible; nunca la impone, sustituye la confirmación ni dispara el cierre. También se admite declaración expresa «Sin recolección», sin fabricar pesadas de cero ni ventas.
 4. La previsualización muestra actividades y registros físicos que quedarían fuera del intervalo. Se bloquea el cierre hasta corregir individualmente las incompatibilidades; no hay reclasificación masiva.
 5. Cerrar el ciclo no cierra silenciosamente las recolecciones actuales. Las recolecciones vinculadas deben estar finalizadas conforme a sus reglas existentes, o resolverse expresamente antes del cierre agrícola.
 6. Los trabajos ordinarios posteriores pertenecen al siguiente ciclo. Si no existe, se solicita iniciar/asignar conservando el borrador. Una consulta de histórico nunca cambia automáticamente el destino de escritura.
@@ -56,7 +58,7 @@ El comando de confirmación incluirá identidad de operación, finca/workspace, 
 
 P3 podrá funcionar offline localmente, pero no prometerá coherencia de cierres entre dispositivos. No enviará tipos desconocidos por el outbox G2.6. La operación local quedará trazada para un transporte futuro expresamente autorizado.
 
-P4 necesitará revisión CAS **por finca**, además de versiones por ciclo, recibos idempotentes, dependencias padre-hijo y autorización remota. Dos dispositivos offline que proponen cierres incompatibles producirán conflicto visible; no prevalecerá silenciosamente la última escritura. Repetir un envío tras perder el ACK debe devolver el mismo resultado. Clientes antiguos que escriban sin ciclo dejarán registros pendientes de atribución; no se puede garantizar bloqueo remoto de ciclos cerrados hasta definir esa compatibilidad y desplegarla con autorización.
+P4 necesitará revisión CAS **por finca**, además de versiones por ciclo, recibos idempotentes, dependencias padre-hijo y autorización remota. Dos dispositivos offline que proponen cierres incompatibles producirán conflicto visible; no prevalecerá silenciosamente la última escritura. **Resolver un conflicto no cambia automáticamente el ciclo de ningún registro histórico**: cualquier cambio de asociación requiere previsualización, confirmación explícita y auditoría. Repetir un envío tras perder el ACK debe devolver el mismo resultado. Clientes antiguos que escriban sin ciclo dejarán registros pendientes de atribución; no se puede garantizar bloqueo remoto de ciclos cerrados hasta definir esa compatibilidad y desplegarla con autorización.
 
 ## 5. Migración e históricos
 
@@ -66,6 +68,8 @@ No sustituir globalmente `OliveSeason`: mantenerlo para la lectura histórica pr
 
 Costes: sumar una sola vez cada `Expense` canónico POSTED por moneda, sin añadir otra vez el coste de actividad/jornal que lo originó. No convertir monedas automáticamente. Kilos: conservar entregas canónicas y distinguir históricos manuales de agregados de jornada. Rendimiento ponderado con cobertura; desconocido no equivale a cero. Ingresos y balance completo siguen pendientes de P5.
 
+**Restricción para el futuro P5, sin diseñar ni implementar su módulo:** distinguir anticipos, liquidaciones provisionales y definitivas, y sus cobros. Un anticipo aplicado a una liquidación o una provisional sustituida por una definitiva no suman de nuevo el mismo ingreso. Bruto, neto y retenciones se mantienen diferenciados y conciliables con el documento de origen; no se tratan como tres ingresos sumables. Importes, fechas, moneda y vínculos por UUID deben conservar su trazabilidad. La regla económica concreta y sus pruebas se aprobarán en P5; no se deduce un balance completo del cierre agrícola.
+
 Una migración aditiva de Room no garantiza que una APK antigua abra la nueva base. Antes de P3 se comprobarán copia recuperable y estrategia de corrección hacia delante; queda prohibido recurrir a migración destructiva o downgrade ciego.
 
 ## 6. Pruebas previstas antes de autorizar implementación
@@ -73,22 +77,39 @@ Una migración aditiva de Room no garantiza que una APK antigua abra la nueva ba
 | Área | Evidencia exigida |
 |---|---|
 | Fechas por finca | Ejemplo A/B anterior, C y C+1, huecos, solapamientos, año bisiesto y cambios de hora; rótulo editable sin reasignación |
-| Cierres | Sin recolección, pendientes, trabajo posterior al cierre propuesto, intervalo de trabajo que cruza ciclos; reapertura contra vecinos |
+| Cierres | Última pesada sugerida y fecha distinta confirmada por el usuario; sin cierre ni escritura por aceptar una sugerencia visual. Sin recolección, pendientes, trabajo posterior al cierre propuesto, intervalo de trabajo que cruza ciclos; reapertura contra vecinos |
 | Históricos | Cancelar previsualización no escribe; confirmar solo los vínculos seleccionados; corrección individual auditable; gastos sin finca y parcelas compartidas visibles |
 | Room | Rutas de migración soportadas desde 1..34 hasta N; comparación exacta de registros y payloads canónicos antes/después; tablas nuevas vacías; fallo transaccional sin cambios parciales |
 | Seguridad | Cambio de cuenta/logout entre previsualizar y confirmar, autorización revocada, workspace no seleccionado, acceso a finca ajena; ninguna escritura ni filtración |
 | Offline | Crear/cerrar y reiniciar, doble toque, reintento de operación; mismos UUID y cantidades, sin perder borradores ni duplicar registros |
 | Agregados | Gastos POSTED/DRAFT, monedas distintas, costes derivados sin doble suma, límites de enteros, entregas e históricos manuales, cobertura de rendimiento |
-| Compatibilidad P4 | Dos dispositivos/ciclos distintos sobre la misma revisión de finca, ACK perdido, hash incompatible, mensajes desordenados y cliente sin soporte; conflicto explícito |
+| Compatibilidad P4 | Dos dispositivos/ciclos distintos sobre la misma revisión de finca, ACK perdido, hash incompatible, mensajes desordenados y cliente sin soporte; conflicto explícito. Sin confirmar la resolución, los UUID de asociación de los históricos no cambian |
 | Interfaz | Seis escritores canónicos, + desde cada raíz, histórico consultado frente a escritura actual, teclado, volver atrás y 360/390/430 dp |
 
 Riesgos principales: atribución histórica incorrecta, cierres concurrentes, clientes antiguos, datos aún no sincronizados y downgrade Room. Las medidas anteriores son condiciones de aceptación, no garantías ya implementadas.
 
-## 7. Secuencia propuesta tras revisión
+## 7. Contraste de las siete precisiones aprobadas
 
-- [ ] Contrastar las siete precisiones del documento real de Antigravity y resolver diferencias con CR-015; aprobar este diseño.
+Fuente de esta matriz: texto explícito del propietario en la solicitud de cierre y revisión definitiva. No equivale a afirmar la lectura del archivo todavía no recibido.
+
+| Precisión | Resultado respecto a la propuesta anterior | Referencia y ajuste mínimo |
+|---|---|---|
+| 1. Ciclo y cierre efectivo independientes por finca | Conforme; sin discrepancia | §§2–3: identidad por finca, fecha inclusiva elegida y confirmación explícita |
+| 2. No reasignar históricos ni resolver conflictos offline cambiando ciclos sin confirmar | Conforme en históricos; aclaración necesaria en conflictos | §§4–6: prohibición explícita de cambiar vínculos durante la resolución sin previsualización y confirmación; prueba de asociaciones invariables |
+| 3. Última pesada solo como sugerencia | No estaba explicitado; omisión documental | §3.3 y prueba de cierre: puede sugerirse, nunca imponerse ni cerrar automáticamente |
+| 4. Asociaciones por UUID, no septiembre–agosto | Conforme; sin discrepancia | §§2 y 5: vínculos explícitos; `OliveSeason` solo para lectura histórica provisional, nunca para asignar ciclos |
+| 5. Verificar Room vigente, sin asumir 35 | Conforme; evidencia precisada | §§1–2: versión 34 comprobada sobre P1; nueva comprobación obligatoria antes de P3 según su HEAD y rutas vigentes |
+| 6. Anticipos/provisionales/definitivas y bruto/neto/retenciones diferenciados | P5 ya estaba separado; faltaba explicitar esta restricción | §5: trazabilidad y conciliación sin doble cómputo; ninguna entidad, cálculo de ingresos o implementación económica añadida a P2/P3 |
+| 7. Preservar G2.6 y GO separados P3/P4/P5 | Conforme; sin discrepancia | §§1, 4 y 8: no alterar DTO/outbox/recibos actuales ni enviar tipos nuevos; autorización independiente por fase |
+
+No se ha identificado una contradicción de arquitectura con estos siete criterios. Se han completado las omisiones de los puntos 2, 3 y 6 y precisado la evidencia del 5, sin rehacer el modelo ni ampliar el alcance. El resto de los informes de Antigravity solo podrá contrastarse cuando se disponga del archivo real; sus recomendaciones antiguas no prevalecen sobre las decisiones aprobadas.
+
+## 8. Secuencia propuesta tras revisión
+
+- [x] Contrastar los siete criterios reproducidos por el propietario con la propuesta existente y documentar los ajustes reales.
+- [ ] Leer el archivo consolidado real de Antigravity y registrar únicamente discrepancias adicionales, si las hubiera; solicitar aprobación definitiva de este diseño.
 - [ ] Solicitar GO específico de P3 con alcance local: reglas puras y tests; modelo/migración aditiva verificada; comandos transaccionales y vínculos explícitos; integración de escritores y pantallas sin pérdida de históricos. Cada bloque tendrá pruebas rojas/verdes y commit propio.
 - [ ] Mantener G2.6 intacto durante P3 y documentar su límite entre dispositivos. P4 requerirá contrato, pruebas de conflictos y autorización separada antes de cualquier SQL remoto.
 - [ ] Mantener P5 sin iniciar: ingresos, anticipos, cobros, liquidaciones y jornales generales con personas/horas/pagos necesitan diseño y autorización propios.
 
-**Decisión solicitada:** revisión de la propuesta, no autorización implícita de cambios Room/Supabase. Hasta recibir el documento pendiente y el GO correspondiente, P2 permanece exclusivamente documental.
+**Decisión solicitada:** aprobación documental, no autorización implícita de cambios Room/Supabase. La revisión de los siete criterios está completada; la certificación del contraste íntegro requiere recibir el archivo pendiente. P3, P4 y P5 permanecen sin iniciar y necesitan autorizaciones independientes.
