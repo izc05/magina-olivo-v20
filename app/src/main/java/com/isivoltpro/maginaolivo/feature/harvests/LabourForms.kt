@@ -31,6 +31,7 @@ internal fun LabourSheet(
     currency: String = rates?.currency ?: "EUR",
     title: String = "Registrar jornal",
     currencyResetToken: Int = 0,
+    scrollable: Boolean = true,
 ) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     var newPerson by rememberSaveable { mutableStateOf(false) }
@@ -89,7 +90,9 @@ internal fun LabourSheet(
         initialPayment == "FULL" && total == 0L -> "Un jornal sin coste no necesita pago"
         else -> null
     }
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("labour-sheet"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+    val scroll = rememberScrollState()
+    Column(Modifier.fillMaxWidth().then(if (scrollable) Modifier.verticalScroll(scroll) else Modifier)
+        .padding(horizontal = MoSpacing.screen).testTag("labour-sheet"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text("Persona", style = MaterialTheme.typography.titleMedium, color = MoColors.current.labourText)
         if (workers.isEmpty()) Text("Añade una persona para guardar su jornal.", color = MoColors.current.secondaryText)

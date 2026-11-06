@@ -258,7 +258,7 @@ internal fun FarmCostsView(notebook: FarmNotebook, campaign: com.isivoltpro.magi
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         MoKpiMetric("Recogida", if (recollection.isEmpty()) "—" else recollection.moneyLabel(), Modifier.fillMaxWidth().testTag("notebook-costs-recollection"),
             icon = MoIcons.Delivery, kind = MoKpiKind.COSTES, supportingText = "Solo lo vinculado a una campaña")
-        MoKpiMetric("Fuera de campaña", if (general.isEmpty()) "—" else general.moneyLabel(), Modifier.fillMaxWidth().testTag("notebook-costs-general"),
+        MoKpiMetric("Gastos generales", if (general.isEmpty()) "—" else general.moneyLabel(), Modifier.fillMaxWidth().testTag("notebook-costs-general"),
             icon = MoIcons.Euro, kind = MoKpiKind.COSTES, supportingText = "Poda, tratamientos, riego, gasóleo y otros gastos de la finca")
         MoKpiMetric("Jornales", currencies.moneyLabel(RecollectionBucket.LABOUR), Modifier.fillMaxWidth().testTag("notebook-costs-labour"),
             icon = MoIcons.People, kind = MoKpiKind.JORNALES,

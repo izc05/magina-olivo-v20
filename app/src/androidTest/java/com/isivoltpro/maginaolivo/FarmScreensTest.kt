@@ -209,11 +209,11 @@ class FarmScreensTest {
 
     /** #359/#363/#364: Olivos in the header and a 2×2 on each card, at 360 dp with large text. */
     @Test
-    fun headerAndCardsShowOlivesAndCampaignKilosWithoutInventingZeros() {
+    fun headerAndCardsKeepOlivesWhileProductionMovesToCampaign() {
         val estacas = farm(1).copy(name = "Estacas", oliveTreeCount = 82, oliveTreeCountComplete = true)
         val salinillas = farm(2).copy(name = "Salinillas", oliveTreeCount = null, oliveTreeCountComplete = false)
         val sinCampana = farm(3).copy(name = "La Loma", oliveTreeCount = 40, oliveTreeCountComplete = true)
-        val kilos = mapOf(estacas.id to 0L, salinillas.id to 3_150_000L)
+        // Production belongs to the Campaign root; these cards show only farm attributes.
         composeRule.setContent {
             val density = androidx.compose.ui.platform.LocalDensity.current
             androidx.compose.runtime.CompositionLocalProvider(
@@ -227,7 +227,6 @@ class FarmScreensTest {
                             onCreate = {},
                             onRestore = {},
                             onRetry = {},
-                            campaignKilos = { id -> kilos[id] },
                         )
                     }
                 }
@@ -240,29 +239,29 @@ class FarmScreensTest {
         ).assertExists()
         // Cards: running campaign without Pesadas, with Pesadas, and no running campaign («—», not 0).
         composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-${estacas.id}"))
-        composeRule.onNodeWithTag("farm-${estacas.id}").assertTextContains("82").assertTextContains("Sin pesadas")
+        composeRule.onNodeWithTag("farm-${estacas.id}").assertTextContains("82").assertTextContains("Olivos")
         composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-${salinillas.id}"))
-        composeRule.onNodeWithTag("farm-${salinillas.id}").assertTextContains(Weight.format(3_150_000)).assertTextContains("Kg campaña")
+        composeRule.onNodeWithTag("farm-${salinillas.id}").assertTextContains("Olivos")
         composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-${sinCampana.id}"))
-        composeRule.onNodeWithTag("farm-${sinCampana.id}").assertTextContains("40").assertTextContains("—")
+        composeRule.onNodeWithTag("farm-${sinCampana.id}").assertTextContains("40").assertTextContains("Olivos")
         assertEquals(0, composeRule.onAllNodesWithText("0 kg").fetchSemanticsNodes().size)
     }
 
     /** Codex #371: while the Pesadas load, «Kg campaña» is unknown — never «Sin pesadas» or «—». */
     @Test
-    fun campaignKilosAreUnknownWhileLoading() {
+    fun farmCardsDoNotDependOnProductionLoading() {
         val estacas = farm(1).copy(name = "Estacas", oliveTreeCount = 82, oliveTreeCountComplete = true)
         composeRule.setContent {
             MaginaOlivoTheme {
                 FarmListScreen(
                     state = FarmListUiState(isLoading = false, farms = listOf(estacas)),
                     onFarmSelected = {}, onCreate = {}, onRestore = {}, onRetry = {},
-                    campaignKilos = null,
                 )
             }
         }
         composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-${estacas.id}"))
-        composeRule.onNodeWithTag("farm-${estacas.id}").assertTextContains("…")
+        composeRule.onNodeWithTag("farm-${estacas.id}").assertTextContains("Olivos")
+        assertEquals(0, composeRule.onAllNodesWithText("Kg campaña").fetchSemanticsNodes().size)
         assertEquals(0, composeRule.onAllNodesWithText("Sin pesadas").fetchSemanticsNodes().size)
     }
 

@@ -2,7 +2,7 @@ name: Mágina Olivo 1.0 integrated DEV APK
 
 on:
   pull_request:
-    branches: [codex/g26-808-manual-sync]
+    branches: [codex/g26-808-manual-sync, feat/integration-1-0-dev-apk]
 
 permissions:
   contents: read
@@ -20,6 +20,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '9.4.1'
+      - name: Verify integrated runner controls (fake adb)
+        run: bash .github/scripts/test-integration-dev-instrumentation.sh
       - name: Build integrated DEV APK and tests
         run: gradle --no-daemon --max-workers=1 --no-parallel testDevDebugUnitTest assembleDevDebug assembleDevDebugAndroidTest
       - name: Record APK checksum
@@ -46,14 +48,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: |
-            set -e
-            trap 'adb pull /sdcard/Android/data/com.isivoltpro.maginaolivo.dev/files/navigation-evidence navigation-evidence >/dev/null 2>&1 || true' EXIT
-            adb install -r app/build/outputs/apk/dev/debug/app-dev-debug.apk
-            adb install -r app/build/outputs/apk/androidTest/dev/debug/app-dev-debug-androidTest.apk
-            adb shell am instrument -w -r -e class com.isivoltpro.maginaolivo.AccountAuthGateTest,com.isivoltpro.maginaolivo.FarmLinkScreenTest,com.isivoltpro.maginaolivo.AppNavigationTest,com.isivoltpro.maginaolivo.HomeFeedsScreenTest,com.isivoltpro.maginaolivo.WeatherWeekScreenTest,com.isivoltpro.maginaolivo.data.local.RoomMigrationTest,com.isivoltpro.maginaolivo.data.local.WorkspaceSelectionRoomTest,com.isivoltpro.maginaolivo.data.local.WorkspaceSendRoomTest,com.isivoltpro.maginaolivo.data.local.CampaignCreateSendRoomTest com.isivoltpro.maginaolivo.dev.test/androidx.test.runner.AndroidJUnitRunner | tee integration-tests.txt
-            grep -q 'INSTRUMENTATION_CODE: -1' integration-tests.txt
-            grep -Eq 'OK \([0-9]+ tests\)' integration-tests.txt
+          script: GATE3_ALLOW_APP_DATA_RESET=1 bash .github/scripts/integration-dev-instrumentation.sh
       - name: Upload test log
         if: always()
         uses: actions/upload-artifact@v6
@@ -62,4 +57,6 @@ jobs:
           path: |
             integration-tests.txt
             navigation-evidence/
+            account-auth-evidence/
+            integration-device-evidence/
           if-no-files-found: ignore

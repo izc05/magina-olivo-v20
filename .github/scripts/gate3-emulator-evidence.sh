@@ -39,6 +39,8 @@ if [[ -z "$PHYSICAL_WIDTH" || "$PHYSICAL_WIDTH" == "$PHYSICAL_SIZE" ]]; then
 fi
 
 cleanup() {
+  # Preserve standalone Auth UI diagnostics even when the full suite fails before capture steps.
+  adb pull "/sdcard/Android/data/$PKG/files/account-auth-evidence" evidence/account-auth-evidence >/dev/null 2>&1 || true
   adb shell cmd connectivity airplane-mode disable >/dev/null 2>&1 || true
   adb shell wm density reset >/dev/null 2>&1 || true
   adb shell settings put system font_scale 1.0 >/dev/null 2>&1 || true

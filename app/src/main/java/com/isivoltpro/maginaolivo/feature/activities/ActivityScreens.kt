@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -650,12 +651,10 @@ internal fun ActivityEditor(
     val showMore = moreOpen || machinesError != null || planningError != null
 
     Column(
-        // With the keyboard open the visible area ends on the keyboard edge, and scrolling to the
-        // end parks the last control flush against it: a tap a few pixels low lands on the
-        // keyboard instead of on Guardar. This bottom gap is outside the scrolling area on
-        // purpose, so the content can never rest on that edge. Nothing else moves: no field,
-        // colour or type size changes.
-        Modifier.fillMaxWidth().padding(bottom = MoSpacing.sm)
+        // Measure the scroll viewport above the IME, including when this editor is a screen
+        // inside the main bottom bar. Already-consumed sheet/bar insets are not applied twice.
+        // Keep the existing small gap outside the scroll area so footer taps clear its edge.
+        Modifier.fillMaxWidth().imePadding().padding(bottom = MoSpacing.sm)
             .verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {

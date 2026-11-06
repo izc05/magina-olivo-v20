@@ -171,7 +171,7 @@ internal fun ExpenseEditor(
                     when {
                         workCampaign != null -> "Campaña del trabajo · ${workCampaign.choiceLabel()}"
                         work.campaignId != null -> "En la campaña del trabajo"
-                        else -> "Fuera de campaña · trabajo general de la finca"
+                        else -> "Trabajo general de la finca"
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoColors.current.secondaryText,
@@ -181,7 +181,7 @@ internal fun ExpenseEditor(
         } else if (lockedCampaignId != null) {
             val campaign = options.campaigns.firstOrNull { it.id == lockedCampaignId }
             Text(
-                "Recogida · ${campaign?.choiceLabel() ?: "Campaña seleccionada"}",
+                "Recolección · ${campaign?.choiceLabel() ?: "Campaña seleccionada"}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MoColors.current.secondaryText,
                 modifier = Modifier.testTag("expense-campaign-context"),
@@ -189,18 +189,18 @@ internal fun ExpenseEditor(
         } else if (recollection != null) {
             Column(Modifier.fillMaxWidth().selectableGroup().testTag("expense-kind")) {
                 Text("¿Dónde pertenece este gasto?", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
-                ExpenseKindRow("Recogida · ${recollection.choiceLabel()}", campaignChoiceMade && form.campaignId == recollection.id, "expense-kind-recollection") {
+                ExpenseKindRow("Recolección · ${recollection.choiceLabel()}", campaignChoiceMade && form.campaignId == recollection.id, "expense-kind-recollection") {
                     form = form.copy(campaignId = recollection.id)
                     campaignChoiceMade = true
                 }
-                ExpenseKindRow("Finca/parcela · Fuera de campaña", campaignChoiceMade && form.campaignId == null, "expense-kind-general") {
+                ExpenseKindRow("Gasto general · finca/parcela", campaignChoiceMade && form.campaignId == null, "expense-kind-general") {
                     form = form.copy(campaignId = null)
                     campaignChoiceMade = true
                 }
             }
             if (!campaignChoiceMade) {
                 Text(
-                    "Elige Recogida o Fuera de campaña antes de guardar.",
+                    "Elige Recolección o Gasto general antes de guardar.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MoColors.current.secondaryText,
                     modifier = Modifier.testTag("expense-kind-required"),

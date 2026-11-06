@@ -97,58 +97,6 @@ fun FarmListRoute(
             .groupBy { it.farmId!! }
             .mapValues { (_, entries) -> entries.minBy { it.activityDate } }
     }
-    // #364: «Kg campaña» is read from the Pesadas of each Farm's running Campaign; nothing stored.
-    // Codex #371: until both have loaded the kilos are unknown («…»), never «Sin pesadas» or «—».
-    val contexts by remember { persistence.harvestRepository.observeContexts() }.collectAsStateWithLifecycle(null)
-    val deliveries by remember { persistence.deliveryRepository.observeAll() }.collectAsStateWithLifecycle(null)
-    val campaignKilos = remember(contexts, deliveries) {
-        val loadedContexts = contexts
-        val loadedDeliveries = deliveries
-        if (loadedContexts == null || loadedDeliveries == null) null else runningCampaignKilos(loadedContexts, loadedDeliveries)
-    }
-    // #359/#616: daily UI remains active-only, but historical analytics must keep archived Farms.
-    // Archiving changes what can be operated now; it never rewrites past Campaigns or totals.
-    val historicalFarms = remember(state.farms, state.archivedFarms) {
-        (state.farms + state.archivedFarms).distinctBy { it.id }
-    }
-    val farmIds = historicalFarms.map { it.id }
-    val campaigns by remember(farmIds) {
-        if (farmIds.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
-        else kotlinx.coroutines.flow.combine(farmIds.map { persistence.campaignRepository.observeForFarm(it) }) { lists -> lists.flatMap { it } }
-    }.collectAsStateWithLifecycle(null)
-    val expenses by remember { persistence.expenseRepository.observeAll() }.collectAsStateWithLifecycle(null)
-    // #449: each campaign's jornales and machinery, so a season is never shown complete too early.
-    val campaignIds = campaigns.orEmpty().map { it.id }
-    val crews by remember(campaignIds) {
-        if (campaignIds.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyMap<UUID, Pair<List<com.isivoltpro.maginaolivo.domain.labour.LabourEntry>, List<com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine>>>())
-        else kotlinx.coroutines.flow.combine(campaignIds.map { id ->
-            kotlinx.coroutines.flow.combine(
-                persistence.labourRepository.observeForCampaign(id),
-                persistence.equipmentRepository.observeForCampaign(id),
-            ) { jornales, maquinaria -> id to (jornales to maquinaria) }
-        }) { parts -> parts.toMap() }
-    }.collectAsStateWithLifecycle(null)
-    val overviews = remember(historicalFarms, campaigns, deliveries, expenses, crews) {
-        val loadedCampaigns = campaigns
-        val loadedDeliveries = deliveries
-        val loadedExpenses = expenses
-        val loadedCrews = crews
-        if (loadedCampaigns == null || loadedDeliveries == null || loadedExpenses == null) emptyList()
-        else {
-            // #449: the summary shows as soon as its money and kilos are read, so the list
-            // never jumps; until every campaign's crews are read, completeness is unknown.
-            val incomplete = if (loadedCrews == null || !loadedCrews.keys.containsAll(loadedCampaigns.map { it.id })) null
-            else loadedCampaigns.filter { campaign ->
-                val (jornales, maquinaria) = loadedCrews.getValue(campaign.id)
-                !com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(
-                    jornales, maquinaria, loadedExpenses.filter { it.campaignId == campaign.id },
-                ).complete
-            }.map { it.id }.toSet()
-            com.isivoltpro.maginaolivo.domain.analytics.OliveSeason.available(loadedCampaigns).map { season ->
-                com.isivoltpro.maginaolivo.domain.analytics.FarmOverview.of(season, historicalFarms, loadedCampaigns, loadedDeliveries, loadedExpenses, incomplete)
-            }
-        }
-    }
     FarmListScreen(
         state = state,
         onFarmSelected = onFarmSelected,
@@ -161,8 +109,6 @@ fun FarmListRoute(
             uri
         },
         nextWork = { farmId -> nextWork[farmId]?.let { "Próximo: ${it.description} · ${relativeDay(it.activityDate, today)}" } },
-        campaignKilos = campaignKilos?.let { kilos -> { farmId: UUID -> kilos[farmId] } },
-        overviews = overviews,
     )
 }
 
@@ -187,13 +133,6 @@ fun FarmListScreen(
     cover: @Composable (UUID) -> String? = { null },
     /** A short line for the next planned work of a Farm, when there is one. */
     nextWork: (UUID) -> String? = { null },
-    /**
-     * #364: grams weighed in the Farm's running Campaign (null without one). The function itself
-     * is null while the Pesadas are still loading.
-     */
-    campaignKilos: ((UUID) -> Long?)? = { null },
-    /** #359: the holding's figures per olive season, newest first; empty while loading or with no campaign. */
-    overviews: List<com.isivoltpro.maginaolivo.domain.analytics.FarmOverview> = emptyList(),
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     // #359 follow-up: a local filter of the Farms already listed; nothing is queried or stored.
@@ -251,11 +190,6 @@ fun FarmListScreen(
                 }
             }
 
-            // #359 follow-up: the summary is read first; search and «Añadir finca» sit above the Farms.
-            if (!state.isLoading && state.error == null && state.farms.isNotEmpty() && overviews.isNotEmpty()) item {
-                FarmOverviewSection(overviews, onFarmSelected)
-            }
-
             if (state.farms.isNotEmpty()) item {
                 Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                     MoTextField(
@@ -308,8 +242,6 @@ fun FarmListScreen(
                         farm = farm,
                         coverUri = cover(farm.id),
                         nextWork = nextWork(farm.id),
-                        campaignKilos = campaignKilos?.let { it(farm.id) },
-                        kilosLoaded = campaignKilos != null,
                         onClick = { onFarmSelected(farm.id) },
                     )
                 }
@@ -374,6 +306,7 @@ fun FarmDetailRoute(
     modifier: Modifier = Modifier,
     /** UX-F (Issue #246 §5), CR-011 §18: opens the Cuaderno with this Farm chosen. */
     onRegister: (() -> Unit)? = null,
+    onCampaign: (() -> Unit)? = null,
 ) {
     val viewModel: FarmDetailViewModel = viewModel(
         key = "farm-$farmId",
@@ -397,6 +330,7 @@ fun FarmDetailRoute(
         onOpenSection = onOpenSection,
         modifier = modifier,
         onRegister = onRegister,
+        onCampaign = onCampaign,
     )
 }
 
@@ -411,6 +345,7 @@ fun FarmDetailScreen(
     onOpenSection: (FarmSection) -> Unit = {},
     modifier: Modifier = Modifier,
     onRegister: (() -> Unit)? = null,
+    onCampaign: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -463,6 +398,7 @@ fun FarmDetailScreen(
                 onOpenSection = onOpenSection,
                 modifier = Modifier.padding(innerPadding),
                 onRegister = onRegister,
+                onCampaign = onCampaign,
             )
         }
     }
@@ -530,6 +466,7 @@ private fun FarmDetailContent(
     onOpenSection: (FarmSection) -> Unit,
     modifier: Modifier = Modifier,
     onRegister: (() -> Unit)? = null,
+    onCampaign: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -566,8 +503,9 @@ private fun FarmDetailContent(
             onRegister?.let { register ->
                 MoPrimaryButton("Registrar en esta finca", register, Modifier.fillMaxWidth().testTag("farm-register"))
             }
+            onCampaign?.let { open -> MoSecondaryButton("Ver campaña de esta finca", open, Modifier.fillMaxWidth().testTag("farm-open-campaign")) }
             SectionEntry(FarmSection.PARCELS, MoIcons.Parcels, if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas", onOpenSection)
-            SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Diario, fitosanitario, gastos y campaña", onOpenSection)
+            SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Diario, fitosanitario y gastos", onOpenSection)
             SectionEntry(FarmSection.CAMPAIGNS, MoIcons.Campaign, farm.activeCampaignName ?: "Sin campaña activa", onOpenSection)
             SectionEntry(FarmSection.DOCUMENTS, MoIcons.Document, "Escrituras, facturas y fotos", onOpenSection)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -645,8 +583,6 @@ private fun FarmCard(
     farm: Farm,
     coverUri: String?,
     nextWork: String?,
-    campaignKilos: Long?,
-    kilosLoaded: Boolean,
     onClick: () -> Unit,
 ) {
     MoFarmCard(
@@ -664,7 +600,6 @@ private fun FarmCard(
         campaignActive = farm.activeCampaignName != null,
         artworkSeed = farm.id.hashCode(),
         olives = farm.oliveTreeLabel(),
-        campaignKilos = if (kilosLoaded) campaignKilosLabel(campaignKilos) else "…",
     )
 }
 

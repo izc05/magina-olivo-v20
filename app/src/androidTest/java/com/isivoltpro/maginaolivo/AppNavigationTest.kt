@@ -50,6 +50,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -68,24 +69,69 @@ class AppNavigationTest {
     @Test
     fun assistantIsReservedAndAvatarOpensProfileFromEachMainSection() {
         enterMainShell()
-        for (tab in listOf("Inicio", "Mi Campo", "Cuaderno", "Asistente IA")) {
+        composeRule.onNodeWithTag("bottom-Asistente IA").assertDoesNotExist()
+        composeRule.onNodeWithTag("top-assistant").performClick()
+        waitForTag("assistant-placeholder")
+        pressBack()
+        for (tab in listOf("Inicio", "Mi Campo", "Cuaderno", "Campaña")) {
             composeRule.onNodeWithTag("bottom-$tab").performClick()
-            if (tab == "Asistente IA") waitForTag("assistant-placeholder")
+            if (tab == "Campaña") waitForTag("agricultural-campaign-root")
             composeRule.onNodeWithTag("top-profile-avatar").performClick()
             waitForTag("profile-root")
             composeRule.onNodeWithTag("bottom-Perfil").assertDoesNotExist()
             pressBack()
-            if (tab == "Asistente IA") waitForTag("assistant-placeholder")
+            if (tab == "Campaña") waitForTag("agricultural-campaign-root")
         }
     }
 
     /** #705 / CR-014: the central control is an action, never a selected fifth tab. */
     @Test
+    fun campaignRootKeepsFourSectionsWithoutCreatingARecollection() {
+        enterMainShell()
+        navigateToOlivar()
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca P1 sin recogida")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca P1 sin recogida")
+        val before = agriculturalCounts()
+        composeRule.onNodeWithTag("bottom-Campaña").performClick()
+        waitForTag("campaign-section-WORKS")
+        for (section in listOf("WORKS", "RECOLLECTION", "ECONOMY", "CHARTS")) {
+            composeRule.onNodeWithTag("campaign-section-$section").performScrollTo().assertExists()
+        }
+        composeRule.onNodeWithTag("campaign-section-RECOLLECTION").performScrollTo().performClick()
+        waitForTag("campaign-no-recollection")
+        composeRule.onNodeWithTag("campaign-no-recollection").assertIsDisplayed()
+        composeRule.onNodeWithTag("campaign-sections-back").assertIsDisplayed()
+        assertEquals(before, agriculturalCounts())
+        composeRule.activityRule.scenario.recreate()
+        waitForTag("campaign-no-recollection")
+        composeRule.onNodeWithTag("campaign-no-recollection").assertIsDisplayed()
+        composeRule.onNodeWithTag("campaign-sections-back").assertIsDisplayed()
+        pressBack()
+        waitForTag("campaign-section-WORKS")
+        composeRule.onNodeWithTag("campaign-section-WORKS").performScrollTo().performClick()
+        waitForTag("notebook-root")
+        assertEquals(before, agriculturalCounts())
+        composeRule.onNodeWithTag("notebook-open-campaign").performScrollTo().performClick()
+        waitForTag("agricultural-campaign-root")
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        clickByText("Finca P1 sin recogida")
+        waitForTag("farm-detail-root")
+        composeRule.onNodeWithTag("farm-open-campaign").performScrollTo().performClick()
+        waitForTag("agricultural-campaign-root")
+        pressBack()
+        waitForTag("farm-detail-root")
+        assertEquals(before, agriculturalCounts())
+    }
+
+    @Test
     fun centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation() {
         enterMainShell()
+        assertEquals(4, composeRule.onAllNodes(androidx.compose.ui.test.SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)).fetchSemanticsNodes().size)
         val before = agriculturalCounts()
         composeRule.onNodeWithTag("bottom-Avisos").assertDoesNotExist()
-        for (label in listOf("Inicio", "Mi Campo", "Cuaderno", "Asistente IA")) {
+        for (label in listOf("Inicio", "Mi Campo", "Cuaderno", "Campaña")) {
             composeRule.onNodeWithTag("bottom-$label").performClick().assertIsSelected()
             val add = composeRule.onNodeWithTag("bottom-add-record")
             val semantics = add.fetchSemanticsNode().config
@@ -131,6 +177,109 @@ class AppNavigationTest {
         waitForTag("register-activity-root")
         composeRule.onNodeWithTag("quick-register-sheet").assertDoesNotExist()
         waitForText("Finca CR014")
+    }
+
+    /** Physical IME and footer geometry, on a small screen with enlarged text. */
+    @Test
+    fun workIrrigationAndTreatmentFootersStayAboveTheOpenKeyboardWithoutWriting() {
+        verifyQuickActionFooters(listOf("work", "irrigation", "treatment"))
+    }
+
+    @Test
+    fun generalAndRecollectionLabourFootersStayAboveTheOpenKeyboardWithoutWriting() {
+        verifyQuickActionFooters(listOf("labour-general", "labour-recollection"))
+    }
+
+    private fun verifyQuickActionFooters(actions: List<String>) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
+            instrumentation.uiAutomation.executeShellCommand(command)
+        ).bufferedReader().use { it.readText().trim() }
+        assertEquals("1", shell("getprop ro.kernel.qemu"))
+        assertEquals("com.isivoltpro.maginaolivo.dev", instrumentation.targetContext.packageName)
+        val size = Regex("Override size: (\\d+x\\d+)").find(shell("wm size"))?.groupValues?.get(1) ?: "reset"
+        val density = Regex("Override density: (\\d+)").find(shell("wm density"))?.groupValues?.get(1) ?: "reset"
+        val font = shell("settings get system font_scale")
+        val showIme = shell("settings get secure show_ime_with_hard_keyboard")
+        fun keyboardTop(): Int {
+            var top = -1
+            instrumentation.runOnMainSync {
+                val view = composeRule.activity.window.decorView
+                val insets = ViewCompat.getRootWindowInsets(view)
+                if (view.hasWindowFocus() && insets?.isVisible(WindowInsetsCompat.Type.ime()) == true) {
+                    top = view.height - insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                }
+            }
+            return top
+        }
+        try {
+            shell("wm size 1080x1920")
+            shell("wm density 480")
+            shell("settings put system font_scale 1.3")
+            shell("settings put secure show_ime_with_hard_keyboard 1")
+            assertTrue(shell("wm size").contains("1080x1920"))
+            assertTrue(shell("wm density").contains("480"))
+            enterMainShell()
+            val local = checkNotNull(com.isivoltpro.maginaolivo.app.AppCompositionRoot.createAndroid(
+                instrumentation.targetContext, "DEV").localPersistence)
+            runBlocking {
+                val workspace = (local.workspaceRepository.ensureLocalWorkspace() as com.isivoltpro.maginaolivo.core.common.AppResult.Success).value
+                val farm = (local.farmRepository.create(com.isivoltpro.maginaolivo.domain.farm.NewFarm(workspace, "Finca teclado P1")) as com.isivoltpro.maginaolivo.core.common.AppResult.Success).value
+                if (actions.any { it.startsWith("labour") }) {
+                    val parcel = (local.parcelRepository.create(com.isivoltpro.maginaolivo.domain.parcel.NewParcel(farm, "Parcela teclado")) as com.isivoltpro.maginaolivo.core.common.AppResult.Success).value
+                    val campaign = (local.campaignRepository.create(com.isivoltpro.maginaolivo.domain.campaign.NewCampaign(farm, "Campaña de recogida 2026/27", java.time.LocalDate.of(2026, 10, 1), setOf(parcel))) as com.isivoltpro.maginaolivo.core.common.AppResult.Success).value
+                    assertTrue(local.campaignRepository.activate(campaign) is com.isivoltpro.maginaolivo.core.common.AppResult.Success)
+                }
+            }
+            composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+            chooseNotebookFarm("Finca teclado P1")
+            val before = agriculturalCounts()
+            for (action in actions) {
+                openGlobalQuickAction(if (action.startsWith("labour")) "labour" else action)
+                if (action == "work") {
+                    waitForTag("register-activity-type-pruning")
+                    composeRule.onNodeWithTag("register-activity-type-pruning").performClick()
+                }
+                if (action == "labour-recollection") {
+                    clickByTag("quick-labour-campaign")
+                    clickByTag("labour-unit-HOURS")
+                }
+                val field = when (action) {
+                    "labour-general" -> "expense-concept"
+                    "labour-recollection" -> "labour-hours"
+                    else -> "activity-description"
+                }
+                val save = when (action) {
+                    "labour-general" -> "save-expense"
+                    "labour-recollection" -> "labour-save"
+                    else -> "save-activity"
+                }
+                waitForTag(field)
+                composeRule.onNodeWithTag(field).performScrollTo().performClick().performTextInput(if (action == "labour-recollection") "3" else "Revisión sin guardar")
+                composeRule.waitUntil(UI_TIMEOUT_MS) { keyboardTop() > 0 }
+                for (button in listOf(composeRule.onNodeWithTag(save), composeRule.onNodeWithText("Cancelar"))) {
+                    button.performScrollTo().assertIsDisplayed()
+                    composeRule.waitForIdle()
+                    val top = keyboardTop()
+                    val bottom = button.fetchSemanticsNode().boundsInWindow.bottom
+                    assertTrue("$action footer bottom=$bottom must remain above visible IME top=$top", top > 0 && bottom <= top)
+                }
+                // A real touch while IME remains open; cancellation must remove the editor,
+                // retain Farm context and create no Activity, day, weighing or Expense.
+                composeRule.onNodeWithText("Cancelar").performClick()
+                composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithTag(field).fetchSemanticsNodes().isEmpty() }
+                safeCloseSoftKeyboard()
+                composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+                waitForTag("notebook-context")
+                composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca teclado P1", substring = true)
+                assertEquals(before, agriculturalCounts())
+            }
+        } finally {
+            shell("wm size $size")
+            shell("wm density $density")
+            shell(if (font.matches(Regex("[0-9]+(?:\\.[0-9]+)?"))) "settings put system font_scale $font" else "settings delete system font_scale")
+            shell(if (showIme.matches(Regex("[01]"))) "settings put secure show_ime_with_hard_keyboard $showIme" else "settings delete secure show_ime_with_hard_keyboard")
+        }
     }
 
     /** Cancelling a global Farm change must not replace the visible Notebook context. */
@@ -1117,7 +1266,7 @@ class AppNavigationTest {
         waitForTag("notebook-views")
         clickByTag("notebook-quick-labour")
         waitForTag("quick-labour-form")
-        waitForText("Fuera de campaña")
+        waitForText("Trabajo general")
         composeRule.onNodeWithTag("quick-labour-campaign").assertDoesNotExist()
         composeRule.onNodeWithText("Asignar a").assertDoesNotExist()
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
@@ -1572,25 +1721,37 @@ class AppNavigationTest {
     private fun safeCloseSoftKeyboard() {
         // A sheet owns a different window from the Activity. Espresso's root picker
         // can wait on an unfocused Activity, then silently fail inside runCatching.
-        // Hide the IME on the attached windows and require the real insets/focus state
-        // before the next touch or single Back event; never retry navigation itself.
+        // A text edit can still have an asynchronous IME-show request in flight. Hide
+        // while the real insets report it visible, rather than issuing one hide before
+        // that request arrives. Require the same focus/hidden state before any touch
+        // or single Back event; never retry navigation or a form submission.
         fun roots() = if (Build.VERSION.SDK_INT >= 29) WindowInspector.getGlobalWindowViews()
             else listOf(composeRule.activity.window.decorView)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        instrumentation.runOnMainSync {
-            roots().filter { it.isAttachedToWindow }.forEach {
-                ViewCompat.getWindowInsetsController(it)?.hide(WindowInsetsCompat.Type.ime())
-            }
-        }
-        composeRule.waitUntil(UI_TIMEOUT_MS) {
-            var ready = false
-            instrumentation.runOnMainSync {
-                val attached = roots().filter { it.isAttachedToWindow }
-                ready = attached.any { it.hasWindowFocus() } && attached.all {
-                    ViewCompat.getRootWindowInsets(it)?.isVisible(WindowInsetsCompat.Type.ime()) != true
+        try {
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                var ready = false
+                instrumentation.runOnMainSync {
+                    val attached = roots().filter { it.isAttachedToWindow }
+                    val showingIme = attached.filter {
+                        ViewCompat.getRootWindowInsets(it)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+                    }
+                    ready = attached.any { it.hasWindowFocus() } && showingIme.isEmpty()
+                    showingIme.forEach {
+                        ViewCompat.getWindowInsetsController(it)?.hide(WindowInsetsCompat.Type.ime())
+                    }
                 }
+                ready
             }
-            ready
+        } catch (error: androidx.compose.ui.test.ComposeTimeoutException) {
+            runCatching {
+                instrumentation.runOnMainSync {
+                    error.addSuppressed(AssertionError("IME timeout roots: " + roots().joinToString { view ->
+                        "${view.javaClass.name} attached=${view.isAttachedToWindow} shown=${view.isShown} focus=${view.hasWindowFocus()} ime=${ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime())}"
+                    }))
+                }
+            }.exceptionOrNull()?.let(error::addSuppressed)
+            throw error
         }
     }
 

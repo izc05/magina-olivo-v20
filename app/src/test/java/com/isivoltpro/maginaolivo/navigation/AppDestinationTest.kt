@@ -8,12 +8,14 @@ class AppDestinationTest {
     @Test
     fun routeOwnersKeepLegacyAlertsButTheBottomBarHasFourTabs() {
         assertEquals(
-            listOf("Inicio", "Mi Campo", "Cuaderno", "Avisos", "Perfil", "Asistente IA"),
+            listOf("Inicio", "Mi Campo", "Cuaderno", "Avisos", "Perfil", "Asistente IA", "Campaña"),
             RootDestination.entries.map { it.label },
         )
-        assertEquals(listOf("Inicio", "Mi Campo", "Cuaderno", "Asistente IA"), bottomNavigationRoots.map { it.label })
+        assertEquals(listOf("Inicio", "Mi Campo", "Cuaderno", "Campaña"), bottomNavigationRoots.map { it.label })
         assertEquals(-1, bottomNavigationRoots.indexOf(RootDestination.Alerts))
         assertEquals(-1, bottomNavigationRoots.indexOf(RootDestination.Profile))
+        assertEquals(-1, bottomNavigationRoots.indexOf(RootDestination.Assistant))
+        assertEquals(RootDestination.CampaignHub, AppDestination.rootForRoute("agricultural-campaign"))
         assertEquals(emptyList<RootDestination>(), RootDestination.entries.filter { it.isPrimaryAction })
     }
 

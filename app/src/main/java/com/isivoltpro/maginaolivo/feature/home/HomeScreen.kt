@@ -61,7 +61,7 @@ fun HomeRoute(
     persistence: LocalPersistence,
     clock: AppClock,
     onCalendar: () -> Unit,
-    /** CR-011 §17: a running campaign opens its Farm's Cuaderno (Campaña). */
+    /** CR-011 §17: a running recollection opens the Farm in the Campaña root. */
     onCampaign: (UUID?) -> Unit,
     onWeatherWeek: () -> Unit,
     onActivitySelected: (UUID) -> Unit,

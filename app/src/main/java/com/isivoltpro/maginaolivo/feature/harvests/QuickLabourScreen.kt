@@ -1,6 +1,8 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,7 +36,13 @@ internal fun QuickLabourScreen(
     val campaign = running.singleOrNull()
     val holder = rememberSaveableStateHolder()
     val date = runCatching { LocalDate.parse(generalDraft.value.date) }.getOrNull()
-    Column(Modifier.fillMaxSize().statusBarsPadding().padding(top = MoSpacing.sm).testTag("quick-labour-form")) {
+    // With an IME, a large-text header can consume the entire remaining height. Let
+    // header and form scroll together then; retain the approved fixed header otherwise.
+    val scrollWithKeyboard = WindowInsets.isImeVisible
+    val keyboardScroll = rememberScrollState()
+    Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()
+        .then(if (scrollWithKeyboard) Modifier.verticalScroll(keyboardScroll) else Modifier)
+        .padding(top = MoSpacing.sm).testTag("quick-labour-form")) {
         Column(Modifier.fillMaxWidth().padding(horizontal = MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
             Text("Añadir jornal", style = MaterialTheme.typography.headlineSmall)
             options.farms.firstOrNull { it.id == farmId }?.let { farm ->
@@ -46,10 +54,10 @@ internal fun QuickLabourScreen(
                 Text("Asignar a", style = MaterialTheme.typography.titleSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                     FilterChip(scope == "GENERAL", { scope = "GENERAL" },
-                        { Text("Fuera de campaña") }, enabled = !isSaving, modifier = Modifier.heightIn(min = 48.dp).testTag("quick-labour-general"))
+                        { Text("Trabajo general") }, enabled = !isSaving, modifier = Modifier.heightIn(min = 48.dp).testTag("quick-labour-general"))
                     if (campaign != null) FilterChip(scope == "CAMPAIGN" && selectedCampaignId == campaign.campaignId.toString(),
                         { selectedCampaignId = campaign.campaignId.toString(); scope = "CAMPAIGN" },
-                        { Text("Campaña de recogida · ${campaign.campaignName}") }, enabled = !isSaving,
+                        { Text("Recolección · ${campaign.campaignName}") }, enabled = !isSaving,
                         modifier = Modifier.heightIn(min = 48.dp).testTag("quick-labour-campaign"))
                 }
                 Text("Los borradores se conservan al cambiar de ámbito.", style = MaterialTheme.typography.bodySmall)
@@ -58,16 +66,17 @@ internal fun QuickLabourScreen(
             } else if (!ready) Text("Comprobando el contexto local…", style = MaterialTheme.typography.bodySmall)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("quick-labour-error")) }
         }
-        Box(Modifier.weight(1f)) {
+        Box(if (scrollWithKeyboard) Modifier.fillMaxWidth() else Modifier.weight(1f)) {
             if (scope == "GENERAL") {
                 // General work cannot silently become a Campaign cost through its linked Activity.
                 val generalOptions = options.copy(campaigns = emptyList(), campaignsFor = farmId,
                     activities = options.activities.filter { it.campaignId == null })
-                ExpenseEditor("Fuera de campaña", generalDraft.value, generalOptions, errors,
+                ExpenseEditor("Trabajo general", generalDraft.value, generalOptions, errors,
                     isSaving || !ready, "Guardar jornal general", {},
                     { onSaveGeneral(it.copy(category = ExpenseCategory.LABOR, campaignId = null, harvestId = null)) }, onCancel,
                     subtitle = "Mano de obra general: importe y concepto. Persona y horas todavía no disponibles.",
-                    farmLocked = true, draftState = generalDraft, categoryLocked = true)
+                    farmLocked = true, draftState = generalDraft, categoryLocked = true,
+                    scrollable = !scrollWithKeyboard)
             } else if (campaign != null && ready && selectedCampaignId == campaign.campaignId.toString()) {
                 holder.SaveableStateProvider(campaign.campaignId.toString()) {
                     val draftCurrency = rememberSaveable { mutableStateOf(currency.takeIf { campaignReady }) }
@@ -81,7 +90,7 @@ internal fun QuickLabourScreen(
                     val formDate = date ?: lastValidDate?.let(LocalDate::parse)
                     val currencyChanged = currency != null && draftCurrency.value != null && currency != draftCurrency.value
                     val blocked = isSaving || !campaignReady || date == null || currency == null || currencyChanged
-                    Column(Modifier.fillMaxSize()) {
+                    Column(if (scrollWithKeyboard) Modifier.fillMaxWidth() else Modifier.fillMaxSize()) {
                         MoDateInputField(generalDraft.value.date, { generalDraft.value = generalDraft.value.copy(date = it) },
                             "Fecha", modifier = Modifier.padding(horizontal = MoSpacing.screen).testTag("quick-labour-date"), enabled = !isSaving)
                         if (currencyChanged) {
@@ -94,7 +103,8 @@ internal fun QuickLabourScreen(
                             // A draft identity only; the transactional save replaces it with the actual day.
                             UUID(0, 0), campaign.campaignId, formDate, rates,
                             { if (!blocked) onSaveCrew(campaign.campaignId, formDate, it) }, onAddWorker, onCancel,
-                            currency = draftCurrency.value!!, title = "Recogida", currencyResetToken = currencyResetToken)
+                            currency = draftCurrency.value!!, title = "Recolección", currencyResetToken = currencyResetToken,
+                            scrollable = !scrollWithKeyboard)
                     }
                     if (reviewCurrency && currencyChanged) AlertDialog(
                         onDismissRequest = { reviewCurrency = false },
@@ -108,7 +118,7 @@ internal fun QuickLabourScreen(
             } else {
                 Column(Modifier.padding(MoSpacing.screen)) {
                     Text("La campaña seleccionada ya no está disponible. El borrador se conserva.")
-                    MoSecondaryButton("Fuera de campaña", { scope = "GENERAL" }, modifier = Modifier.testTag("quick-labour-return-general"))
+                    MoSecondaryButton("Trabajo general", { scope = "GENERAL" }, modifier = Modifier.testTag("quick-labour-return-general"))
                     MoTertiaryButton("Cancelar", onCancel)
                 }
             }

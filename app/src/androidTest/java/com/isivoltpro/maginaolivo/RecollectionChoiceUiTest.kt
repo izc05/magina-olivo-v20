@@ -99,7 +99,7 @@ class RecollectionChoiceUiTest {
     @Test fun campaignContextRemainsExplicitWhileCampaignOptionsLoad() {
         campaignExpense(options.copy(campaigns = emptyList(), campaignsFor = null)) {}
         rule.onNodeWithTag("expense-kind").assertDoesNotExist()
-        rule.onNodeWithTag("expense-campaign-context").assertTextContains("Recogida", substring = true)
+        rule.onNodeWithTag("expense-campaign-context").assertTextContains("Recolección", substring = true)
         rule.onNodeWithTag("expense-farm").assertDoesNotExist()
     }
 
@@ -269,7 +269,7 @@ class RecollectionChoiceUiTest {
         }
         rule.onNodeWithTag("add-expense").performClick()
         if (expectChoice) {
-            rule.onNodeWithText("Recogida · Campaña 2026/27").assertExists()
+            rule.onNodeWithText("Recolección · Campaña 2026/27").assertExists()
             rule.onNodeWithTag("expense-kind-recollection").assertIsNotSelected()
             rule.onNodeWithTag("expense-kind-general").assertIsNotSelected()
         } else {
@@ -327,7 +327,7 @@ class RecollectionChoiceUiTest {
         rule.onNodeWithTag("expense-activity-context").performScrollTo().assertTextContains("Poda de olivar", substring = true)
         // Codex #480: general work on a Farm with a running campaign — no Recogida choice, said as context.
         assertEquals(0, rule.onAllNodesWithTag("expense-kind").fetchSemanticsNodes().size)
-        rule.onNodeWithTag("expense-work-campaign").assertTextContains("Fuera de campaña", substring = true)
+        rule.onNodeWithTag("expense-work-campaign").assertTextContains("Trabajo general", substring = true)
         // Category on purpose: no save until chosen.
         rule.onNodeWithTag("expense-category-required").assertExists()
         rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
@@ -393,7 +393,7 @@ class RecollectionChoiceUiTest {
         rule.onNodeWithTag("expense-activity").performScrollTo().performClick()
         rule.onNodeWithTag("choice-${work.id}").performClick()
         assertEquals(0, rule.onAllNodesWithTag("expense-kind").fetchSemanticsNodes().size)
-        rule.onNodeWithTag("expense-work-campaign").assertTextContains("Fuera de campaña", substring = true)
+        rule.onNodeWithTag("expense-work-campaign").assertTextContains("Trabajo general", substring = true)
         rule.onNodeWithTag("expense-parcel").performScrollTo().performClick()
         rule.onNodeWithTag("choice-$norte").assertExists()
         rule.onNodeWithTag("choice-$norte").performClick()

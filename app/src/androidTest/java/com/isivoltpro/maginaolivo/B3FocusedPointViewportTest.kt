@@ -68,6 +68,7 @@ class B3FocusedPointViewportTest {
                         RootDestination.Alerts -> MoIcons.Bell
                         RootDestination.Profile -> MoIcons.Person
                         RootDestination.Assistant -> MoIcons.Assistant
+                        RootDestination.CampaignHub -> MoIcons.Campaign
                     })
             }
             compose.setContent {
