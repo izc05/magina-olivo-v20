@@ -1,6 +1,15 @@
 package com.isivoltpro.maginaolivo
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.os.SystemClock
+import android.os.Build
+import android.view.KeyEvent
+import android.view.inspector.WindowInspector
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.getOrNull
@@ -13,6 +22,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -21,6 +31,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -28,16 +39,18 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.printToString
-import androidx.test.espresso.Espresso.closeSoftKeyboard
-import androidx.test.espresso.Espresso.pressBack
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.isivoltpro.maginaolivo.feature.deliveries.PESADA_NO_RUNNING_CAMPAIGN
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import java.io.File
+import java.io.FileOutputStream
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -53,13 +66,72 @@ class AppNavigationTest {
             .outerRule(IsolatedAppStateRule())
             .around(composeRule)
 
+    @Test
+    fun assistantIsReservedAndAvatarOpensProfileFromEachMainSection() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Asistente IA").assertDoesNotExist()
+        composeRule.onNodeWithTag("top-assistant").performClick()
+        waitForTag("assistant-placeholder")
+        pressBack()
+        for (tab in listOf("Inicio", "Mi Campo", "Cuaderno", "Campaña")) {
+            composeRule.onNodeWithTag("bottom-$tab").performClick()
+            if (tab == "Campaña") waitForTag("agricultural-campaign-root")
+            composeRule.onNodeWithTag("top-profile-avatar").performClick()
+            waitForTag("profile-root")
+            composeRule.onNodeWithTag("bottom-Perfil").assertDoesNotExist()
+            pressBack()
+            if (tab == "Campaña") waitForTag("agricultural-campaign-root")
+        }
+    }
+
     /** #705 / CR-014: the central control is an action, never a selected fifth tab. */
+    @Test
+    fun campaignRootKeepsFourSectionsWithoutCreatingARecollection() {
+        enterMainShell()
+        navigateToOlivar()
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca P1 sin recogida")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca P1 sin recogida")
+        val before = agriculturalCounts()
+        composeRule.onNodeWithTag("bottom-Campaña").performClick()
+        waitForTag("campaign-section-WORKS")
+        for (section in listOf("WORKS", "RECOLLECTION", "ECONOMY", "CHARTS")) {
+            composeRule.onNodeWithTag("campaign-section-$section").performScrollTo().assertExists()
+        }
+        composeRule.onNodeWithTag("campaign-section-RECOLLECTION").performScrollTo().performClick()
+        waitForTag("campaign-no-recollection")
+        composeRule.onNodeWithTag("campaign-no-recollection").assertIsDisplayed()
+        composeRule.onNodeWithTag("campaign-sections-back").assertIsDisplayed()
+        assertEquals(before, agriculturalCounts())
+        composeRule.activityRule.scenario.recreate()
+        waitForTag("campaign-no-recollection")
+        composeRule.onNodeWithTag("campaign-no-recollection").assertIsDisplayed()
+        composeRule.onNodeWithTag("campaign-sections-back").assertIsDisplayed()
+        pressBack()
+        waitForTag("campaign-section-WORKS")
+        composeRule.onNodeWithTag("campaign-section-WORKS").performScrollTo().performClick()
+        waitForTag("notebook-root")
+        assertEquals(before, agriculturalCounts())
+        composeRule.onNodeWithTag("notebook-open-campaign").performScrollTo().performClick()
+        waitForTag("agricultural-campaign-root")
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        clickByText("Finca P1 sin recogida")
+        waitForTag("farm-detail-root")
+        composeRule.onNodeWithTag("farm-open-campaign").performScrollTo().performClick()
+        waitForTag("agricultural-campaign-root")
+        pressBack()
+        waitForTag("farm-detail-root")
+        assertEquals(before, agriculturalCounts())
+    }
+
     @Test
     fun centralAddIsAButtonAndCancelsOnEveryRootWithoutNavigation() {
         enterMainShell()
+        assertEquals(4, composeRule.onAllNodes(androidx.compose.ui.test.SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)).fetchSemanticsNodes().size)
         val before = agriculturalCounts()
         composeRule.onNodeWithTag("bottom-Avisos").assertDoesNotExist()
-        for (label in listOf("Inicio", "Mi Campo", "Cuaderno", "Perfil")) {
+        for (label in listOf("Inicio", "Mi Campo", "Cuaderno", "Campaña")) {
             composeRule.onNodeWithTag("bottom-$label").performClick().assertIsSelected()
             val add = composeRule.onNodeWithTag("bottom-add-record")
             val semantics = add.fetchSemanticsNode().config
@@ -72,7 +144,12 @@ class AppNavigationTest {
                 composeRule.activityRule.scenario.recreate()
                 waitForTag("quick-register-sheet")
             }
-            pressBack()
+            // ModalBottomSheet owns a separate window after recreation. Send the
+            // real Android Back key without Espresso choosing the unfocused Activity root.
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                composeRule.onAllNodesWithTag("quick-register-sheet").fetchSemanticsNodes().isEmpty()
+            }
             composeRule.onNodeWithTag("quick-register-sheet").assertDoesNotExist()
             composeRule.onNodeWithTag("bottom-$label").assertIsSelected()
         }
@@ -83,14 +160,14 @@ class AppNavigationTest {
     @Test
     fun globalAddOffersTheSixExistingActionsOnTheChosenFarm() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca CR014")
         saveEditor("save-farm", "farm-name")
         waitForSaved("farm-name", "Finca CR014")
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         chooseNotebookFarm("Finca CR014")
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         composeRule.onNodeWithTag("bottom-add-record").performClick()
         waitForTag("quick-register-sheet")
         for (action in listOf("work", "irrigation", "treatment", "weighing", "labour", "expense")) {
@@ -102,11 +179,114 @@ class AppNavigationTest {
         waitForText("Finca CR014")
     }
 
+    /** Physical IME and footer geometry, on a small screen with enlarged text. */
+    @Test
+    fun workIrrigationAndTreatmentFootersStayAboveTheOpenKeyboardWithoutWriting() {
+        verifyQuickActionFooters(listOf("work", "irrigation", "treatment"))
+    }
+
+    @Test
+    fun generalAndRecollectionLabourFootersStayAboveTheOpenKeyboardWithoutWriting() {
+        verifyQuickActionFooters(listOf("labour-general", "labour-recollection"))
+    }
+
+    private fun verifyQuickActionFooters(actions: List<String>) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
+            instrumentation.uiAutomation.executeShellCommand(command)
+        ).bufferedReader().use { it.readText().trim() }
+        assertEquals("1", shell("getprop ro.kernel.qemu"))
+        assertEquals("com.isivoltpro.maginaolivo.dev", instrumentation.targetContext.packageName)
+        val size = Regex("Override size: (\\d+x\\d+)").find(shell("wm size"))?.groupValues?.get(1) ?: "reset"
+        val density = Regex("Override density: (\\d+)").find(shell("wm density"))?.groupValues?.get(1) ?: "reset"
+        val font = shell("settings get system font_scale")
+        val showIme = shell("settings get secure show_ime_with_hard_keyboard")
+        fun keyboardTop(): Int {
+            var top = -1
+            instrumentation.runOnMainSync {
+                val view = composeRule.activity.window.decorView
+                val insets = ViewCompat.getRootWindowInsets(view)
+                if (view.hasWindowFocus() && insets?.isVisible(WindowInsetsCompat.Type.ime()) == true) {
+                    top = view.height - insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                }
+            }
+            return top
+        }
+        try {
+            shell("wm size 1080x1920")
+            shell("wm density 480")
+            shell("settings put system font_scale 1.3")
+            shell("settings put secure show_ime_with_hard_keyboard 1")
+            assertTrue(shell("wm size").contains("1080x1920"))
+            assertTrue(shell("wm density").contains("480"))
+            enterMainShell()
+            val local = checkNotNull(com.isivoltpro.maginaolivo.app.AppCompositionRoot.createAndroid(
+                instrumentation.targetContext, "DEV").localPersistence)
+            runBlocking {
+                val workspace = (local.workspaceRepository.ensureLocalWorkspace() as com.isivoltpro.maginaolivo.core.common.AppResult.Success).value
+                val farm = (local.farmRepository.create(com.isivoltpro.maginaolivo.domain.farm.NewFarm(workspace, "Finca teclado P1")) as com.isivoltpro.maginaolivo.core.common.AppResult.Success).value
+                if (actions.any { it.startsWith("labour") }) {
+                    val parcel = (local.parcelRepository.create(com.isivoltpro.maginaolivo.domain.parcel.NewParcel(farm, "Parcela teclado")) as com.isivoltpro.maginaolivo.core.common.AppResult.Success).value
+                    val campaign = (local.campaignRepository.create(com.isivoltpro.maginaolivo.domain.campaign.NewCampaign(farm, "Campaña de recogida 2026/27", java.time.LocalDate.of(2026, 10, 1), setOf(parcel))) as com.isivoltpro.maginaolivo.core.common.AppResult.Success).value
+                    assertTrue(local.campaignRepository.activate(campaign) is com.isivoltpro.maginaolivo.core.common.AppResult.Success)
+                }
+            }
+            composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+            chooseNotebookFarm("Finca teclado P1")
+            val before = agriculturalCounts()
+            for (action in actions) {
+                openGlobalQuickAction(if (action.startsWith("labour")) "labour" else action)
+                if (action == "work") {
+                    waitForTag("register-activity-type-pruning")
+                    composeRule.onNodeWithTag("register-activity-type-pruning").performClick()
+                }
+                if (action == "labour-recollection") {
+                    clickByTag("quick-labour-campaign")
+                    clickByTag("labour-unit-HOURS")
+                }
+                val field = when (action) {
+                    "labour-general" -> "expense-concept"
+                    "labour-recollection" -> "labour-hours"
+                    else -> "activity-description"
+                }
+                val save = when (action) {
+                    "labour-general" -> "save-expense"
+                    "labour-recollection" -> "labour-save"
+                    else -> "save-activity"
+                }
+                waitForTag(field)
+                composeRule.onNodeWithTag(field).performScrollTo().performClick().performTextInput(if (action == "labour-recollection") "3" else "Revisión sin guardar")
+                composeRule.waitUntil(UI_TIMEOUT_MS) { keyboardTop() > 0 }
+                for (button in listOf(composeRule.onNodeWithTag(save), composeRule.onNodeWithText("Cancelar"))) {
+                    button.performScrollTo().assertIsDisplayed()
+                    composeRule.waitForIdle()
+                    val top = keyboardTop()
+                    val bottom = button.fetchSemanticsNode().boundsInWindow.bottom
+                    assertTrue("$action footer bottom=$bottom must remain above visible IME top=$top", top > 0 && bottom <= top)
+                }
+                // A real touch while IME remains open; cancellation must remove the editor,
+                // retain Farm context and create no Activity, day, weighing or Expense.
+                composeRule.onNodeWithText("Cancelar").performClick()
+                composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithTag(field).fetchSemanticsNodes().isEmpty() }
+                safeCloseSoftKeyboard()
+                composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+                waitForTag("notebook-context")
+                composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca teclado P1", substring = true)
+                assertEquals(before, agriculturalCounts())
+            }
+        } finally {
+            shell("wm size $size")
+            shell("wm density $density")
+            shell(if (font.matches(Regex("[0-9]+(?:\\.[0-9]+)?"))) "settings put system font_scale $font" else "settings delete system font_scale")
+            shell(if (showIme.matches(Regex("[01]"))) "settings put secure show_ime_with_hard_keyboard $showIme" else "settings delete secure show_ime_with_hard_keyboard")
+        }
+    }
+
     /** Cancelling a global Farm change must not replace the visible Notebook context. */
     @Test
     fun globalAddKeepsTheVisibleNotebookFarmAfterCancellingAnotherFarm() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        navigateToOlivar()
         for (name in listOf("Finca Contexto A", "Finca Contexto B")) {
             openSheet("add-farm", "farm-name")
             composeRule.onNodeWithTag("farm-name").performTextInput(name)
@@ -125,14 +305,21 @@ class AppNavigationTest {
         composeRule.onNode(hasText("Finca Contexto B") and hasAnyAncestor(hasTestTag("quick-register-sheet")))
             .performScrollTo().performClick()
         composeRule.onNodeWithTag("quick-register-farm").assertTextContains("Finca Contexto B")
-        pressBack()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("quick-register-sheet").fetchSemanticsNodes().isEmpty()
+        }
         composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca Contexto A", substring = true)
         for (recreate in listOf(false, true)) {
             if (recreate) composeRule.activityRule.scenario.recreate()
+            waitForTag("bottom-add-record")
             composeRule.onNodeWithTag("bottom-add-record").performClick()
             waitForTag("quick-register-farm")
             composeRule.onNodeWithTag("quick-register-farm").assertTextContains("Finca Contexto A")
-            pressBack()
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                composeRule.onAllNodesWithTag("quick-register-sheet").fetchSemanticsNodes().isEmpty()
+            }
         }
     }
 
@@ -174,7 +361,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("home-open-alerts").performClick()
         composeRule.onNodeWithTag("calendar-root").assertIsDisplayed()
 
-        composeRule.onNodeWithTag("bottom-Perfil").performClick().assertIsSelected()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         composeRule.onNodeWithTag("profile-root").assertIsDisplayed()
 
         composeRule.onNodeWithTag("bottom-Inicio").performClick().assertIsSelected()
@@ -184,7 +371,7 @@ class AppNavigationTest {
     @Test
     fun backFromAnotherRootReturnsToHome() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
 
         pressBack()
 
@@ -223,7 +410,8 @@ class AppNavigationTest {
         // Deep inside Inicio (weekly weather), then Perfil deep inside (Maquinaria)...
         composeRule.onNodeWithTag("home-weather-hero").performClick()
         waitForTag("weather-week-root")
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("bottom-Inicio").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         clickByTag("profile-machinery")
         waitForTag("machinery-root")
 
@@ -233,13 +421,11 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("weather-week-root").assertDoesNotExist()
 
         // Perfil is the profile, not the Maquinaria screen left open under it.
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         waitForTag("profile-root")
         composeRule.onNodeWithTag("machinery-root").assertDoesNotExist()
 
-        // Tapping the tab already showing stays on its root; Back returns to Inicio.
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
-        waitForTag("profile-root")
+        // Profile is opened from the avatar; Back returns to Inicio.
         pressBack()
         waitForTag("home-reference-root")
         composeRule.onNodeWithTag("bottom-Inicio").assertIsSelected()
@@ -248,13 +434,13 @@ class AppNavigationTest {
     @Test
     fun backWalksTheScreensActuallyVisited() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         clickByTag("profile-machinery")
         waitForTag("machinery-root")
 
         pressBack()
         waitForTag("profile-root")
-        composeRule.onNodeWithTag("bottom-Perfil").assertIsSelected()
+        composeRule.onNodeWithTag("profile-root").assertIsDisplayed()
         pressBack()
         waitForTag("home-reference-root")
     }
@@ -263,8 +449,7 @@ class AppNavigationTest {
     @Test
     fun cuadernoWorkActionOpensTheFlowDirectly() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Acciones E2E")
         saveEditor("save-farm", "farm-name")
@@ -286,8 +471,7 @@ class AppNavigationTest {
     @Test
     fun cuadernoPesadaAndGastoOpenTheirScreensOnThatFarm() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Pesada E2E")
         saveEditor("save-farm", "farm-name")
@@ -315,7 +499,7 @@ class AppNavigationTest {
     @Test
     fun reselectingTheActiveRootKeepsItsScreenAsItIs() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        navigateToOlivar()
         listOf("Finca Reselección A", "Finca Reselección B").forEach { name ->
             waitForTag("add-farm")
             openSheet("add-farm", "farm-name")
@@ -357,8 +541,7 @@ class AppNavigationTest {
     @Test
     fun aFarmsCuadernoIsTheOneCuadernoOnThatFarm() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Única E2E")
         saveEditor("save-farm", "farm-name")
@@ -385,7 +568,7 @@ class AppNavigationTest {
     @Test
     fun theCuadernoTabChangesFarmWhileAFarmsCuadernoKeepsIt() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        navigateToOlivar()
         listOf("Finca Contexto A", "Finca Contexto B").forEach { name ->
             waitForTag("add-farm")
             openSheet("add-farm", "farm-name")
@@ -414,8 +597,7 @@ class AppNavigationTest {
     @Test
     fun aParcelsCuadernoKeepsItsParcelOnlyThere() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Parcela Contexto")
         saveEditor("save-farm", "farm-name")
@@ -447,8 +629,7 @@ class AppNavigationTest {
     @Test
     fun registerFromAFarmOpensCuadernoWithThatFarm() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("El Cerro")
         saveEditor("save-farm", "farm-name")
@@ -477,8 +658,7 @@ class AppNavigationTest {
     @Test
     fun nestedFarmRouteReturnsToOlivar() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
         saveEditor("save-farm", "farm-name")
@@ -500,8 +680,7 @@ class AppNavigationTest {
     @Test
     fun parcelCanBeCreatedAndOpenedFromItsFarm() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Los Llanos")
         saveEditor("save-farm", "farm-name")
@@ -639,8 +818,7 @@ class AppNavigationTest {
     @Test
     fun oneActivityTargetsTwoParcelsAsASingleCanonicalRecord() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
 
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Actuación E2E")
@@ -716,8 +894,7 @@ class AppNavigationTest {
     @Test
     fun registrarPlusCreatesARealActivityOnTheSelectedFarm() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
 
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Registrar E2E")
@@ -792,8 +969,7 @@ class AppNavigationTest {
     @Test
     fun registerTodayShowsInTheDiaryAndSurvivesARestart() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Diario E2E")
         waitForTag("save-farm")
@@ -865,8 +1041,7 @@ class AppNavigationTest {
     @Test
     fun theActivityEditorShowsOnlyTheTypedBlockOfTheChosenType() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
 
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Tipada E2E")
@@ -931,8 +1106,7 @@ class AppNavigationTest {
     @Test
     fun cuadernoJornalKeepsGeneralAndCampaignCostsSeparate() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Jornal E2E")
         saveEditor("save-farm", "farm-name")
@@ -998,7 +1172,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("expense-concept").performScrollTo().performTextClearance()
         composeRule.onNodeWithTag("expense-concept").performTextInput("Reparación jornal E2E")
         composeRule.onNodeWithTag("expense-amount").performScrollTo().performTextInput("65")
-        closeSoftKeyboard()
+        safeCloseSoftKeyboard()
         composeRule.onNodeWithText("Guardar jornal general").performScrollTo().performClick()
         waitForTag("notebook-root")
         assertEquals(0L, agriculturalCounts()[3])
@@ -1011,7 +1185,7 @@ class AppNavigationTest {
         assertEquals(0L, agriculturalCounts()[3])
         clickByTag("labour-new-person")
         composeRule.onNodeWithTag("labour-new-name").performScrollTo().performTextInput("Persona Jornal E2E")
-        closeSoftKeyboard()
+        safeCloseSoftKeyboard()
         clickByTag("labour-add-worker")
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("labour-worker").fetchSemanticsNodes().isNotEmpty()
@@ -1020,7 +1194,7 @@ class AppNavigationTest {
         clickByTag("labour-unit-HOURS")
         composeRule.onNodeWithTag("labour-hours").performScrollTo().performTextInput("3")
         composeRule.onNodeWithTag("labour-rate").performScrollTo().performTextInput("12")
-        closeSoftKeyboard()
+        safeCloseSoftKeyboard()
         clickByTag("labour-save")
         waitForTag("notebook-root")
         assertEquals(1L, agriculturalCounts()[3])
@@ -1043,7 +1217,11 @@ class AppNavigationTest {
         val database = MaginaOlivoDatabase.getInstance(ApplicationProvider.getApplicationContext<Context>())
         runBlocking {
             val workspace = database.workspaceDao().findFirstActive()!!.id
-            val costs = database.expenseDao().observeForWorkspace(workspace).first()
+            val costs = withTimeout(UI_TIMEOUT_MS) {
+                database.expenseDao().observeForWorkspace(workspace).first { list ->
+                    list.any { it.concept == "Reparación jornal E2E" }
+                }
+            }
             val general = costs.single { it.concept == "Reparación jornal E2E" }
             assertEquals(null, general.campaignId)
             assertEquals(null, general.harvestId)
@@ -1076,8 +1254,7 @@ class AppNavigationTest {
     @Test
     fun cuadernoJornalWithoutCampaignOpensTheFarmsLabour() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
+        navigateToOlivar()
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Sin Campaña E2E")
         saveEditor("save-farm", "farm-name")
@@ -1089,7 +1266,7 @@ class AppNavigationTest {
         waitForTag("notebook-views")
         clickByTag("notebook-quick-labour")
         waitForTag("quick-labour-form")
-        waitForText("Fuera de campaña")
+        waitForText("Trabajo general")
         composeRule.onNodeWithTag("quick-labour-campaign").assertDoesNotExist()
         composeRule.onNodeWithText("Asignar a").assertDoesNotExist()
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
@@ -1113,10 +1290,10 @@ class AppNavigationTest {
     fun profileShowsMisMaquinasAndNoProntoRows() {
         // CR-011 §7/§25: «Mis máquinas», and no provisional «Pronto» rows.
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         waitForTag("profile-root")
         composeRule.onNodeWithTag("profile-machinery").assertExists()
-        waitForText("Mis máquinas")
+        waitForText("Maquinaria y herramientas")
         assertEquals(0, composeRule.onAllNodesWithText("Pronto").fetchSemanticsNodes().size)
         composeRule.onNodeWithTag("profile-account-later").assertDoesNotExist()
     }
@@ -1125,7 +1302,7 @@ class AppNavigationTest {
     @Test
     fun helpAndPrivacyAreReachableFromPerfil() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
         clickByTag("profile-help-news")
         waitForTag("help-news")
         // The CHANGELOG bundled at build time is read and shown as notes.
@@ -1139,16 +1316,59 @@ class AppNavigationTest {
     @Test
     fun developerGalleryIsReachableFromDevProfile() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
 
         composeRule.onNodeWithText("Catálogo de diseño (DEV)").performScrollTo().performClick()
 
         composeRule.onNodeWithTag("component-catalogue-root").assertIsDisplayed()
     }
 
+    /** Verifies physical KEYCODE_BACK handling for inter-screen navigation, bottom sheet dismissal, and keyboard states. */
+    @Test
+    fun physicalBackDismissesKeyboardBottomSheetAndNavigatesBetweenScreens() {
+        enterMainShell()
+        // 1. Inter-screen navigation: go to Perfil, physical back returns to Inicio
+        composeRule.onNodeWithTag("top-profile-avatar").performClick()
+        waitForTag("profile-root")
+        composeRule.waitForIdle()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        composeRule.waitForIdle()
+        waitForTag("home-reference-root")
+        composeRule.onNodeWithTag("bottom-Inicio").assertIsSelected()
+
+        // 2. Bottom sheet dismissal: open bottom-add-record, physical back dismisses sheet without screen navigation
+        composeRule.onNodeWithTag("bottom-add-record").performClick()
+        waitForTag("quick-register-sheet")
+        composeRule.waitForIdle()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("quick-register-sheet").assertDoesNotExist()
+        composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
+
+        // 3. Bottom sheet with editor: open add-farm, physical back dismisses sheet and returns to Olivar root
+        navigateToOlivar()
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performClick()
+        composeRule.waitForIdle()
+        // First physical back dismisses keyboard if active; second dismisses bottom sheet
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        composeRule.waitForIdle()
+        if (composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isNotEmpty()) {
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            composeRule.waitForIdle()
+        }
+        waitForTag("farms-root")
+        composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
+    }
+
     private fun enterMainShell() {
-        waitForText("Saltar")
-        composeRule.onNodeWithText("Saltar").performClick()
+        composeRule.waitUntil(30_000) {
+            composeRule.onAllNodesWithText("Saltar").fetchSemanticsNodes().isNotEmpty() ||
+                composeRule.onAllNodesWithTag("home-reference-root").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (composeRule.onAllNodesWithText("Saltar").fetchSemanticsNodes().isNotEmpty()) {
+            composeRule.onNodeWithText("Saltar").performClick()
+        }
         waitForTag("home-reference-root")
         composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
     }
@@ -1193,16 +1413,37 @@ class AppNavigationTest {
      */
     /** Like [waitForTag], but a timeout reports what is on screen, so CI shows where it stopped. */
     private fun waitForTagOrDumpScreen(tag: String) {
-        try {
-            waitForTag(tag)
-        } catch (timeout: ComposeTimeoutException) {
-            val screen = runCatching { composeRule.onAllNodes(isRoot(), useUnmergedTree = true).printToString(maxDepth = Int.MAX_VALUE) }
-                .getOrElse { "(screen not readable: $it)" }
-            throw AssertionError(
-                "«$tag» not shown after $UI_TIMEOUT_MS ms.\nDatabase: ${probeDatabase()}\nThreads:\n${busyThreads()}\nOn screen:\n$screen",
-                timeout,
-            )
-        }
+        waitForTag(tag)
+    }
+
+    private fun dumpScreenAndFail(tag: String, timeoutMillis: Long, timeout: ComposeTimeoutException): Nothing {
+        val screen = runCatching { composeRule.onAllNodes(isRoot(), useUnmergedTree = true).printToString(maxDepth = Int.MAX_VALUE) }
+            .getOrElse { "(screen not readable: $it)" }
+        val screenshotPath = runCatching {
+            val bitmap = composeRule.onRoot().captureToImage().asAndroidBitmap()
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val dir = File(context.getExternalFilesDir(null), "navigation-evidence").apply {
+                check(mkdirs() || isDirectory)
+            }
+            val file = File(dir, "nav-timeout-$tag.png")
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            file.absolutePath
+        }.getOrElse { "capture failed: ${it.message}" }
+        val logcat = runCatching {
+            val process = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-t", "50"))
+            process.inputStream.bufferedReader().use { it.readText() }
+        }.getOrElse { "logcat failed: ${it.message}" }
+        throw AssertionError(
+            "«$tag» not shown after $timeoutMillis ms.\n" +
+                "Screenshot: $screenshotPath\n" +
+                "Database: ${probeDatabase()}\n" +
+                "Threads:\n${busyThreads()}\n" +
+                "On screen:\n$screen\n" +
+                "Recent logcat:\n$logcat",
+            timeout,
+        )
     }
 
     /** Whether a fresh one-shot read and fresh observations of the app's database answer now. */
@@ -1215,8 +1456,15 @@ class AppNavigationTest {
                 database.harvestDao().findById(java.util.UUID.randomUUID())
                 "ok"
             }
+            val activeWorkspace = withTimeoutOrNull(5_000) { database.workspaceDao().observeFirstActive().first()?.id }
+            val farmCount = runCatching {
+                database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM farms").use {
+                    if (it.moveToFirst()) it.getLong(0) else -1L
+                }
+            }.getOrDefault(-1L)
+            val selections = withTimeoutOrNull(5_000) { database.workspaceSelectionDao().observeAll().first().size }
             "observeAll=${flowAll ?: "NO EMISSION in 5 s"}, observeRunningCampaigns=${flowRunning ?: "NO EMISSION in 5 s"}, " +
-                "oneShot=${oneShot ?: "NO ANSWER in 5 s"}"
+                "oneShot=${oneShot ?: "NO ANSWER in 5 s"}, activeWorkspace=$activeWorkspace, farmCount=$farmCount, selections=$selections"
         }
     }.getOrElse { "probe failed: $it" }
 
@@ -1227,9 +1475,30 @@ class AppNavigationTest {
             "${thread.name} ${thread.state}: " + frames.take(8).joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }
         }
 
+    /** Navigates to the Olivar root (Mi Campo) and settles until `add-farm` is ready. */
+    private fun navigateToOlivar() {
+        composeRule.waitForIdle()
+        if (composeRule.onAllNodesWithTag("farms-root").fetchSemanticsNodes().isEmpty()) {
+            composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        }
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            if (composeRule.onAllNodesWithTag("farms-root").fetchSemanticsNodes().isEmpty()) {
+                runCatching { composeRule.onNodeWithTag("bottom-Mi Campo").performClick() }
+            }
+            composeRule.onAllNodesWithTag("farms-root").fetchSemanticsNodes().isNotEmpty()
+        }
+        waitForTag("add-farm")
+    }
+
+    private var lastRevealAttemptMs = 0L
+
     private fun waitForTag(tag: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
-        composeRule.waitUntil(timeoutMillis) {
-            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() || revealInFarmList(tag)
+        try {
+            composeRule.waitUntil(timeoutMillis) {
+                composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() || revealInFarmList(tag)
+            }
+        } catch (timeout: ComposeTimeoutException) {
+            dumpScreenAndFail(tag, timeoutMillis, timeout)
         }
     }
 
@@ -1237,11 +1506,16 @@ class AppNavigationTest {
      * #359: Mi Campo's summary sits above «Añadir finca» and the Farms; on a short screen those
      * rows are below the fold of the lazy list, so scroll the list to them.
      */
-    private fun revealInFarmList(tag: String): Boolean = runCatching {
-        if (composeRule.onAllNodesWithTag("farm-list").fetchSemanticsNodes().isEmpty()) return false
-        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag(tag))
-        composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
-    }.getOrDefault(false)
+    private fun revealInFarmList(tag: String): Boolean {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastRevealAttemptMs < 500) return false
+        lastRevealAttemptMs = now
+        return runCatching {
+            if (composeRule.onAllNodesWithTag("farm-list").fetchSemanticsNodes().isEmpty()) return false
+            composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag(tag))
+            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }.getOrDefault(false)
+    }
 
     /**
      * Waits until an editor sheet has closed and its saved name is on screen. Waiting for the
@@ -1323,7 +1597,9 @@ class AppNavigationTest {
 
     private fun awaitTag(tag: String, timeoutMillis: Long): Boolean =
         try {
-            waitForTag(tag, timeoutMillis)
+            composeRule.waitUntil(timeoutMillis) {
+                composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() || revealInFarmList(tag)
+            }
             true
         } catch (timeout: ComposeTimeoutException) {
             false
@@ -1340,7 +1616,12 @@ class AppNavigationTest {
      * no scrollable ancestor, and plenty of these nodes do not.
      */
     private fun clickByTag(tag: String) {
-        waitForNodeOrDump("clickable node <$tag>") { composeRule.onAllNodesWithTag(tag) }
+        waitForNodeOrDump("clickable node <$tag>") {
+            if (composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()) {
+                revealInFarmList(tag)
+            }
+            composeRule.onAllNodesWithTag(tag)
+        }
         // A control can be composed before the screen behind it finishes loading, and
         // stays disabled until it does. Wait for that, bounded; the assertion below still
         // fails loudly if it never becomes enabled.
@@ -1437,11 +1718,55 @@ class AppNavigationTest {
         if (first.fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) != true) first.performClick()
     }
 
+    private fun safeCloseSoftKeyboard() {
+        // A sheet owns a different window from the Activity. Espresso's root picker
+        // can wait on an unfocused Activity, then silently fail inside runCatching.
+        // A text edit can still have an asynchronous IME-show request in flight. Hide
+        // while the real insets report it visible, rather than issuing one hide before
+        // that request arrives. Require the same focus/hidden state before any touch
+        // or single Back event; never retry navigation or a form submission.
+        fun roots() = if (Build.VERSION.SDK_INT >= 29) WindowInspector.getGlobalWindowViews()
+            else listOf(composeRule.activity.window.decorView)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        try {
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                var ready = false
+                instrumentation.runOnMainSync {
+                    val attached = roots().filter { it.isAttachedToWindow }
+                    val showingIme = attached.filter {
+                        ViewCompat.getRootWindowInsets(it)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+                    }
+                    ready = attached.any { it.hasWindowFocus() } && showingIme.isEmpty()
+                    showingIme.forEach {
+                        ViewCompat.getWindowInsetsController(it)?.hide(WindowInsetsCompat.Type.ime())
+                    }
+                }
+                ready
+            }
+        } catch (error: androidx.compose.ui.test.ComposeTimeoutException) {
+            runCatching {
+                instrumentation.runOnMainSync {
+                    error.addSuppressed(AssertionError("IME timeout roots: " + roots().joinToString { view ->
+                        "${view.javaClass.name} attached=${view.isAttachedToWindow} shown=${view.isShown} focus=${view.hasWindowFocus()} ime=${ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime())}"
+                    }))
+                }
+            }.exceptionOrNull()?.let(error::addSuppressed)
+            throw error
+        }
+    }
+
+    private fun pressBack() {
+        safeCloseSoftKeyboard()
+        composeRule.waitForIdle()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        composeRule.waitForIdle()
+    }
+
     private fun pickDate(fieldTag: String, iso: String) {
         val target = java.time.LocalDate.parse(iso)
         // The field usually follows a text input: close the keyboard first so the resize it
         // causes cannot swallow the tap, and tap once more if the picker still did not open.
-        closeSoftKeyboard()
+        safeCloseSoftKeyboard()
         composeRule.waitForIdle()
         scrollIntoViewIfPossible { composeRule.onNodeWithTag(fieldTag) }
         composeRule.onNodeWithTag(fieldTag).performClick()
@@ -1498,7 +1823,7 @@ class AppNavigationTest {
      * the save button is tapped once more before the caller's own wait reports the dump.
      */
     private fun saveEditor(saveTag: String, editorTag: String) {
-        closeSoftKeyboard()
+        safeCloseSoftKeyboard()
         composeRule.waitForIdle()
         clickInSheetByTag(saveTag)
         val closed = try {
@@ -1531,6 +1856,8 @@ class AppNavigationTest {
     }
 
     private fun backToFarmHub() {
+        safeCloseSoftKeyboard()
+        composeRule.waitForIdle()
         // From the work list Back first returns to the Cuaderno, then to the hub.
         repeat(4) {
             if (composeRule.onAllNodesWithTag("farm-detail-root").fetchSemanticsNodes().isNotEmpty()) return

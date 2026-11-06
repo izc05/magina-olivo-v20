@@ -6,15 +6,18 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
+import com.isivoltpro.maginaolivo.core.regional.RegionalContext
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceSelectionEntity
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
+import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstCampaignRepository
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignPreparationChanges
 import com.isivoltpro.maginaolivo.domain.campaign.NewCampaign
@@ -96,12 +99,15 @@ class OfflineFirstCampaignRepositoryTest {
     private suspend fun seed(db: MaginaOlivoDatabase) {
         val meta = LocalMetadata(now, now)
         db.workspaceDao().upsert(WorkspaceEntity(workspaceId, "Olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta))
+        db.workspaceSelectionDao().upsert(WorkspaceSelectionEntity("", "", workspaceId))
         db.farmDao().upsert(FarmEntity(farmId, workspaceId, "Finca inicial", metadata = meta))
         db.parcelDao().upsert(ParcelEntity(parcelId, workspaceId, "Parcela inicial", source = "MANUAL", managedAreaM2 = 1200.0, metadata = meta))
         db.parcelDao().upsertMembership(FarmParcelMembershipEntity(UUID.randomUUID(), workspaceId, farmId, parcelId, now, metadata = meta))
     }
 
-    private fun repository(db: MaginaOlivoDatabase) = OfflineFirstCampaignRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+    // #615/958953be: the real fail-closed workspace repository with the explicit signed-out selection.
+    private fun repository(db: MaginaOlivoDatabase) = OfflineFirstCampaignRepository(db, FixedClock(now), RandomIds, TestDispatchers,
+        LocalWorkspaceRepository(db, FixedClock(now), RandomIds, TestDispatchers, RegionalContext.spainDefault()))
     private data class FixedClock(val value: Instant) : AppClock {
         override fun nowInstant() = value
         override fun today(zoneId: ZoneId) = LocalDate.ofInstant(value, zoneId)

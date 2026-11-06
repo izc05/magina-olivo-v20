@@ -10,10 +10,13 @@ import com.isivoltpro.maginaolivo.data.local.dao.ProfileSettingsDao
 import com.isivoltpro.maginaolivo.data.local.dao.PhytosanitaryResourceDao
 import com.isivoltpro.maginaolivo.data.local.dao.ActivityDao
 import com.isivoltpro.maginaolivo.data.local.dao.CampaignDao
+import com.isivoltpro.maginaolivo.data.local.dao.CampaignReconciliationDao
 import com.isivoltpro.maginaolivo.data.local.dao.DocumentDao
 import com.isivoltpro.maginaolivo.data.local.dao.ParcelDao
 import com.isivoltpro.maginaolivo.data.local.dao.SyncOutboxDao
 import com.isivoltpro.maginaolivo.data.local.dao.WorkspaceDao
+import com.isivoltpro.maginaolivo.data.local.dao.WorkspaceSelectionDao
+import com.isivoltpro.maginaolivo.data.local.dao.WorkspaceAuthorizationCacheDao
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityParcelTargetEntity
@@ -66,6 +69,8 @@ import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.entity.UserProfileEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WeatherCacheEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceSelectionEntity
+import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceAuthorizationCacheEntity
 import com.isivoltpro.maginaolivo.data.local.entity.AgronomicCredentialEntity
 import com.isivoltpro.maginaolivo.data.local.dao.TerritorialDao
 import com.isivoltpro.maginaolivo.data.local.entity.AgronomicPersonEntity
@@ -76,17 +81,20 @@ import com.isivoltpro.maginaolivo.data.local.entity.IrrigationCommunityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CommunityWaterNoticeEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PersonalIrrigationPlanEntity
 
-private const val DATABASE_VERSION = 26
+private const val DATABASE_VERSION = 34
 
 @Database(
     entities = [
         WorkspaceEntity::class,
+        WorkspaceSelectionEntity::class,
+        WorkspaceAuthorizationCacheEntity::class,
         FarmEntity::class,
         SyncOutboxEntity::class,
         UserProfileEntity::class,
         ParcelEntity::class,
         FarmParcelMembershipEntity::class,
         CampaignEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.CampaignReconciliationEntity::class,
         CampaignParcelSnapshotEntity::class,
         ActivityEntity::class,
         ActivityParcelTargetEntity::class,
@@ -130,6 +138,11 @@ private const val DATABASE_VERSION = 26
         IrrigationCommunityEntity::class,
         CommunityWaterNoticeEntity::class,
         PersonalIrrigationPlanEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.DeliveryHeldReceiptEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.DeliveryDispatchPrepareEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.DeliveryImportReceiptEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.SyncReceiveReceiptEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.SyncReceiveHoldEntity::class,
     ],
     version = DATABASE_VERSION,
     exportSchema = true,
@@ -137,6 +150,8 @@ private const val DATABASE_VERSION = 26
 @TypeConverters(RoomConverters::class)
 abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun workspaceDao(): WorkspaceDao
+    abstract fun workspaceSelectionDao(): WorkspaceSelectionDao
+    abstract fun workspaceAuthorizationCacheDao(): WorkspaceAuthorizationCacheDao
 
     abstract fun farmDao(): FarmDao
 
@@ -145,10 +160,22 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun parcelDao(): ParcelDao
 
     abstract fun campaignDao(): CampaignDao
+    abstract fun campaignReconciliationDao(): CampaignReconciliationDao
 
     abstract fun activityDao(): ActivityDao
 
     abstract fun syncOutboxDao(): SyncOutboxDao
+
+    abstract fun deliveryHeldReceiptDao(): com.isivoltpro.maginaolivo.data.local.dao.DeliveryHeldReceiptDao
+
+    abstract fun deliveryDispatchPrepareDao(): com.isivoltpro.maginaolivo.data.local.dao.DeliveryDispatchPrepareDao
+
+    abstract fun deliveryImportReceiptDao(): com.isivoltpro.maginaolivo.data.local.dao.DeliveryImportReceiptDao
+
+    /** #808 R3-a: receive evidence and holds (empty until the R3-c receiver exists). */
+    abstract fun syncReceiveReceiptDao(): com.isivoltpro.maginaolivo.data.local.dao.SyncReceiveReceiptDao
+
+    abstract fun syncReceiveHoldDao(): com.isivoltpro.maginaolivo.data.local.dao.SyncReceiveHoldDao
 
     abstract fun expenseDao(): ExpenseDao
 

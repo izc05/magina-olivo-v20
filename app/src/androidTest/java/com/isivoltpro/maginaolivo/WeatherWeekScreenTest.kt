@@ -146,6 +146,56 @@ class WeatherWeekScreenTest {
         assertEquals(0, composeRule.onAllNodesWithText("0 %", substring = true).fetchSemanticsNodes().size)
     }
 
+    @Test fun adverseConditionsShowForecastAdvisoriesAndSolarHours() {
+        val today = LocalDate.of(2026, 9, 28)
+        val forecast = WeatherNow(
+            temperatureC = 14,
+            condition = WeatherCondition.STORM,
+            rainProbabilityPercent = 85,
+            windKmh = 36,
+            validAt = now,
+            solarDate = today,
+            solarTimeZone = "Europe/Madrid",
+            sunriseAt = Instant.parse("2026-09-28T06:08:00Z"),
+            sunsetAt = Instant.parse("2026-09-28T18:03:00Z"),
+            daily = listOf(
+                WeatherDayForecast(today, 2, 16, WeatherCondition.STORM, 85, 22.0, 36),
+                WeatherDayForecast(today.plusDays(1), -1, 14, WeatherCondition.CLEAR, 0, 0.0, 12),
+            ),
+        )
+        show(WeatherWeekUiState(location = location, weather = FeedState.Value(forecast, "AEMET", now, stale = false)))
+        composeRule.onNodeWithTag("weather-week-current")
+            .assertTextContains("Previsión actual", substring = true)
+            .assertTextContains("Salida 08:08 · Puesta 20:03", substring = true)
+        composeRule.onNodeWithTag("weather-week-advisories").performScrollTo().assertIsDisplayed()
+            .assertTextContains("Condiciones a vigilar en tu olivar", substring = true)
+            .assertTextContains("Tormenta en la previsión de hoy", substring = true)
+            .assertTextContains("Viento fuerte (36 km/h) · precaución al tratar el olivar", substring = true)
+            .assertTextContains("Riesgo de helada mañana (mín. -1°)", substring = true)
+            .assertTextContains("Lluvia intensa hoy (22 mm)", substring = true)
+            .assertTextContains("No sustituye a los avisos oficiales de AEMET", substring = true)
+    }
+
+    @Test fun expiredDailyForecastNeverShowsPastDaysAsUpcoming() {
+        val today = LocalDate.of(2026, 9, 28)
+        val expiredForecast = WeatherNow(
+            temperatureC = 17,
+            condition = WeatherCondition.CLOUDY,
+            rainProbabilityPercent = null,
+            windKmh = 12,
+            validAt = now.minusSeconds(3 * 24 * 3600),
+            daily = listOf(
+                WeatherDayForecast(today.minusDays(3), 10, 19, WeatherCondition.RAIN, null, 4.0, 15),
+                WeatherDayForecast(today.minusDays(2), 11, 21, WeatherCondition.CLEAR, null, 0.0, 10),
+            ),
+        )
+        show(WeatherWeekUiState(location = location, weather = FeedState.Value(expiredForecast, "MET Norway", now.minusSeconds(3 * 24 * 3600), stale = true)))
+        composeRule.onNodeWithTag("weather-week-stale").assertIsDisplayed()
+        composeRule.onNodeWithTag("weather-week-expired-days").performScrollTo().assertIsDisplayed()
+            .assertTextContains("Los días guardados en el teléfono ya han pasado", substring = true)
+        composeRule.onNodeWithTag("weather-week-day-0").assertDoesNotExist()
+    }
+
     private fun show(state: WeatherWeekUiState, onRadar: (() -> Unit)? = null) {
         composeRule.setContent {
             MaginaOlivoTheme { WeatherWeekScreen(state, now = now, onRadar = onRadar) }

@@ -23,6 +23,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -70,6 +72,7 @@ data class FarmMapState(
     val selectedCandidates: List<CadastralCandidate> get() = candidates.filter { it.reference in selected }
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class FarmMapViewModel(
     private val farmId: UUID,
     private val farms: FarmRepository,
@@ -140,10 +143,16 @@ class FarmMapViewModel(
 
     init {
         viewModelScope.launch { farms.observeById(farmId).collect { farm -> mutableState.update { it.copy(farm = farm) } } }
-        viewModelScope.launch { parcels.observeActive(farmId).collect { list -> mutableState.update { it.copy(parcels = list) } } }
+        viewModelScope.launch {
+            farms.observeById(farmId).flatMapLatest { farm ->
+                if (farm == null) flowOf(emptyList()) else parcels.observeActive(farmId)
+            }.collect { list -> mutableState.update { it.copy(parcels = list) } }
+        }
         if (locateParcelId != null) {
             viewModelScope.launch {
-                parcels.observeById(locateParcelId).collect { parcel -> mutableState.update { it.copy(locateParcel = parcel) } }
+                farms.observeById(farmId).flatMapLatest { farm ->
+                    if (farm == null) flowOf(null) else parcels.observeById(locateParcelId)
+                }.collect { parcel -> mutableState.update { it.copy(locateParcel = parcel) } }
             }
         }
     }
@@ -248,7 +257,7 @@ class FarmMapViewModel(
                         selectedSavedId = own?.id,
                         taken = if (elsewhere) it.taken + candidate.reference else it.taken,
                         message = when {
-                            elsewhere -> "La parcela ${candidate.reference} ya está en otra finca de tu olivar."
+                            elsewhere -> "Parcela ya añadida a otra finca."
                             else -> null
                         },
                     )
@@ -313,7 +322,7 @@ class FarmMapViewModel(
                 it.copy(selectedSavedId = runCatching { UUID.fromString(id) }.getOrNull(), inspected = null, inspectedPlace = null)
             }
             candidate.reference in current.taken -> mutableState.update {
-                it.copy(message = "La parcela ${candidate.reference} ya está en tu olivar.")
+                it.copy(message = "Parcela ya añadida a tu olivar.")
             }
             // Viewing, touching a parcel reads it; marking parcels is what ADD is for.
             current.mode == FarmMapMode.VIEW -> {
@@ -386,10 +395,11 @@ class FarmMapViewModel(
     /** Catastro's place for a reference, or null: a failed lookup never blocks saving. */
     private suspend fun locate(reference: String) = try {
         kotlinx.coroutines.withTimeoutOrNull(com.isivoltpro.maginaolivo.feature.catastro.PLACE_TIMEOUT_MS) { client.locate(reference) }
+            ?: com.isivoltpro.maginaolivo.feature.catastro.CadastralMunicipalityCatalog.resolve(reference)
     } catch (cancelled: kotlinx.coroutines.CancellationException) {
         throw cancelled
     } catch (_: Exception) {
-        null
+        com.isivoltpro.maginaolivo.feature.catastro.CadastralMunicipalityCatalog.resolve(reference)
     }
 
     /** LOCATE: the chosen Catastro parcel becomes this parcel's identity and boundary. */

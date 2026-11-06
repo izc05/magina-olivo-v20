@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo
 
+import com.isivoltpro.maginaolivo.data.local.FixtureWorkspace
+
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.ui.test.*
@@ -55,8 +57,8 @@ class MainMapNavigationTest {
                     val now = Instant.now()
                     val workspace = UUID.randomUUID()
                     db.workspaceDao().upsert(WorkspaceEntity(workspace, "Navegación mapa sintética", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", LocalMetadata(now, now)))
-                    val farms = OfflineFirstFarmRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers())
-                    val parcels = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers())
+                    val farms = OfflineFirstFarmRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db })
+                    val parcels = OfflineFirstParcelRepository(db, SystemAppClock(), UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db })
                     farmA = ok(farms.create(NewFarm(workspace, "Finca navegación A sintética")))
                     farmB = ok(farms.create(NewFarm(workspace, "Finca navegación B sintética")))
                     parcelA = ok(parcels.create(NewParcel(farmA, "Parcela navegación A sintética", geometryGeoJson = square(37.636, -3.480))))
@@ -100,7 +102,10 @@ class MainMapNavigationTest {
 
     private fun openMap(farm: UUID, name: String) {
         waitTag("farms-root")
-        compose.onNodeWithTag("farm-" + farm).performScrollTo().performClick()
+        // During return navigation the list root can exist before its cards are
+        // available in the merged semantics tree. Await the exact interaction target.
+        waitTag("farm-" + farm)
+        compose.onNodeWithTag("farm-" + farm).performScrollTo().assertIsDisplayed().performClick()
         waitTag("farm-section-parcels")
         compose.onNodeWithTag("farm-section-parcels").performScrollTo().performClick()
         waitTag("add-parcel")

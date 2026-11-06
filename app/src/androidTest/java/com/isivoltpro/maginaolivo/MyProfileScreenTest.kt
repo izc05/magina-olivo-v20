@@ -24,6 +24,8 @@ import com.isivoltpro.maginaolivo.domain.profile.ProfileSettings
 import com.isivoltpro.maginaolivo.feature.profile.MyProfileSection
 import com.isivoltpro.maginaolivo.feature.profile.MyProfileUiState
 import com.isivoltpro.maginaolivo.feature.profile.ReminderSettings
+import com.isivoltpro.maginaolivo.feature.profile.PersonalProfile
+import com.isivoltpro.maginaolivo.feature.profile.ProfileScreen
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.time.LocalTime
 import java.util.UUID
@@ -38,20 +40,38 @@ class MyProfileScreenTest {
     private val santaIsabel = Organization(UUID.randomUUID(), "Coop. Santa Isabel", setOf(OrganizationRole.COOPERATIVE))
     private val molino = Organization(UUID.randomUUID(), "Almazara El Molino", setOf(OrganizationRole.MILL))
 
+    @Test fun profileHeaderDistinguishesLocalAndSignedInAccount() {
+        var signedIn by mutableStateOf(false)
+        composeRule.setContent { MaginaOlivoTheme {
+            ProfileScreen("DEV", false, {}, {}, onAccount = {},
+                onLogout = if (signedIn) ({}) else null,
+                personalProfile = if (signedIn) PersonalProfile(UUID.randomUUID(), "qa@example.invalid") else null)
+        } }
+        composeRule.onNodeWithText("Perfil local").assertExists()
+        composeRule.onNodeWithTag("profile-logout").assertDoesNotExist()
+        composeRule.runOnIdle { signedIn = true }
+        composeRule.onNodeWithText("qa@example.invalid").assertExists()
+        composeRule.onNodeWithTag("profile-logout").assertExists()
+    }
+
     @Test fun anEmptyProfileSaysWhatEachRowIsFor() {
         show(MyProfileUiState(isLoading = false))
         composeRule.onNodeWithTag("profile-municipality").assertTextContains("Sin indicar", substring = true)
         composeRule.onNodeWithTag("profile-cooperative").assertTextContains("Sin elegir", substring = true)
     }
 
-    @Test fun theMunicipalityIsTypedAndSaved() {
+    @Test fun theMunicipalityIsSelectedAndSaved() {
         val saved = mutableListOf<Pair<String, String>>()
         show(MyProfileUiState(isLoading = false), onSaveLocation = { m, p -> saved += m to p })
         composeRule.onNodeWithTag("profile-municipality").performClick()
-        composeRule.onNodeWithTag("profile-municipality-field").performTextInput("Bedmar")
-        composeRule.onNodeWithTag("profile-province-field").performTextInput("Jaén")
+        composeRule.onNodeWithTag("profile-location-province").performClick()
+        composeRule.onNodeWithTag("profile-location-search").performTextInput("Jaén")
+        composeRule.onNodeWithTag("profile-location-province-23").performScrollTo().performClick()
+        composeRule.onNodeWithTag("profile-location-municipality").performClick()
+        composeRule.onNodeWithTag("profile-location-search").performTextInput("Bedmar")
+        composeRule.onNodeWithTag("profile-location-municipality-23902").performScrollTo().performClick()
         composeRule.onNodeWithTag("profile-save-location").performScrollTo().performClick()
-        composeRule.runOnIdle { assertEquals(listOf("Bedmar" to "Jaén"), saved) }
+        composeRule.runOnIdle { assertEquals(listOf("Bedmar y Garcíez" to "Jaén"), saved) }
     }
 
     @Test fun theCooperativeIsChosenFromTheFarmersOwnListOrAdded() {

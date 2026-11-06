@@ -11,7 +11,7 @@ object ReservationProcessWriter {
         val checkpoint = args[1]
         require(checkpoint in setOf("prepared", "receipt-before-rename", "receipt-committed"))
         val fixture = ProcessReservationFixture
-        DurableReservationJournal(file).prepare(fixture.scope, fixture.request)
+        DurableReservationJournal(file).prepare(fixture.scope, fixture.request, fixture.receipt.remoteWorkspaceId)
         fun reachedBoundary(): Nothing {
             println("CHECKPOINT:$checkpoint")
             System.out.flush()

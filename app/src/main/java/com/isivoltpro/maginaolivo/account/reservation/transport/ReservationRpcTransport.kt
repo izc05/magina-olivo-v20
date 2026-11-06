@@ -20,7 +20,7 @@ fun interface ReservationRpcWire {
 /** Draft RPC adapter. No HTTP implementation or endpoint is installed by this class. */
 class ReservationRpcTransport(
     private val issuer:String,
-    private val remoteWorkspaceId:UUID,
+    override val remoteWorkspaceId:UUID,
     private val credentials:()->ReservationCredentials?,
     private val wire:ReservationRpcWire,
     private val now:()->Instant=Instant::now,

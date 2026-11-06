@@ -148,8 +148,8 @@ class MainReminderPersistenceTest {
         check(context.getSharedPreferences("notification_permission_history",Context.MODE_PRIVATE).edit()
             .putBoolean("runtime_requested",true).commit())
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
-        waitFor("bottom-Perfil")
-        compose.onNodeWithTag("bottom-Perfil").performClick()
+        waitFor("top-profile-avatar")
+        compose.onNodeWithTag("top-profile-avatar").performClick()
         waitFor("profile-notifications")
         compose.onNodeWithTag("profile-notifications").performScrollTo().performClick()
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation

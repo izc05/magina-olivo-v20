@@ -1039,7 +1039,7 @@ class ExpenseLedgerContractTest {
         val id = ok(expenses.create(draft(6_000, farmId = farmId).copy(campaignId = campaignId)))
         closeCampaign()
         val activeDay = runningDay(UUID.randomUUID())
-        val costs = OfflineFirstDayCostRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val costs = OfflineFirstDayCostRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
         val before = ledgerState()
 
         assertClosedMutation(costs.linkToDay(id, activeDay))
@@ -1297,7 +1297,7 @@ class ExpenseLedgerContractTest {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
         }
         expenses = OfflineFirstExpenseRepository(db, workspaces, FixedClock(now), RandomIds, TestDispatchers)
-        activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
         organizations = OfflineFirstOrganizationRepository(db, workspaces, FixedClock(now), RandomIds, TestDispatchers)
         attachments = OfflineFirstAttachmentRepository(db, AndroidAttachmentFileStore(context), workspaces, FixedClock(now), RandomIds, TestDispatchers)
         documents = OfflineFirstDocumentOcrRepository(

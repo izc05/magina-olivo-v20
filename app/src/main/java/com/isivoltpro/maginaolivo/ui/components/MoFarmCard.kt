@@ -110,7 +110,7 @@ fun MoFarmCard(
                         color = MoSurfaceTokens.secondaryText,
                     )
                 }
-                if (olives != null && campaignKilos != null) {
+                if (olives != null) {
                     // #364: a compact 2×2, so two Farms compare at a glance without opening them.
                     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs), modifier = Modifier.testTag("farm-card-metrics")) {
                         Row(Modifier.fillMaxWidth()) {
@@ -119,7 +119,7 @@ fun MoFarmCard(
                         }
                         Row(Modifier.fillMaxWidth()) {
                             FarmMetric(value = olives, label = "Olivos", modifier = Modifier.weight(1f))
-                            FarmMetric(value = campaignKilos, label = "Kg campaña", modifier = Modifier.weight(1f))
+                            if (campaignKilos != null) FarmMetric(value = campaignKilos, label = "Kg campaña", modifier = Modifier.weight(1f))
                         }
                     }
                 } else {

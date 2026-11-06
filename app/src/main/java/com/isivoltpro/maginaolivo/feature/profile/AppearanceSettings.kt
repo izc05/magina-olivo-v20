@@ -54,8 +54,11 @@ fun AppearanceSettings(store: AppearanceStore) {
         title = "Apariencia",
         subtitle = mode.label(),
         icon = MoIcons.Sun,
+        iconTint = MoColors.current.primaryText,
+        iconContainer = MoSurfaceTokens.appBackground,
         onClick = { failed = false; visible = true },
         modifier = Modifier.testTag("profile-appearance"),
+        borderColor = MoSurfaceTokens.cardStroke.copy(alpha = 0.38f),
     )
     if (visible) {
         ModalBottomSheet(

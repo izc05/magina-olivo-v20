@@ -150,7 +150,7 @@ class JornadaCostContractTest {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
         }
         expenses = OfflineFirstExpenseRepository(db, workspaces, clock, RandomIds, TestDispatchers)
-        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
+        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
     }
 
     private suspend fun seed() {

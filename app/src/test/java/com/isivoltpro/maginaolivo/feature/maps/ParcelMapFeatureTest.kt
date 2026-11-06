@@ -16,14 +16,15 @@ class ParcelMapFeatureTest {
         assertEquals(0.5, layers.getValue("sigpac").getAsJsonObject("paint")["raster-opacity"].asDouble, 0.0001)
     }
 
-    @Test fun selectedParcelUsesOliveOutlineAndLightFill() {
+    @Test fun selectedParcelUsesDistinctThickOrangeOutlineAndVisibleFill() {
         val style = JsonParser.parseString(parcelStyle(MapBase.AERIAL, false)).asJsonObject
         val layers = style.getAsJsonArray("layers").map { it.asJsonObject }.associateBy { it["id"].asString }
         val fill = layers.getValue("parcels-fill").getAsJsonObject("paint")
         val line = layers.getValue("parcels-line").getAsJsonObject("paint")
-        assertEquals("#567342", fill.getAsJsonArray("fill-color")[2].asString)
-        assertTrue(fill.getAsJsonArray("fill-opacity")[2].asDouble <= 0.2)
-        assertEquals("#567342", line.getAsJsonArray("line-color")[2].asString)
+        assertEquals("#F59E0B", fill.getAsJsonArray("fill-color")[2].asString)
+        assertTrue(fill.getAsJsonArray("fill-opacity")[2].asDouble >= 0.35)
+        assertEquals("#D45A12", line.getAsJsonArray("line-color")[2].asString)
+        assertTrue(line.getAsJsonArray("line-width")[2].asDouble >= 5.0)
         assertTrue(layers.containsKey("parcels-selection-halo"))
     }
 

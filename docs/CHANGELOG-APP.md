@@ -11,12 +11,21 @@ Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.
 
 - **Versión** (`0.2.0`): se sube a mano en `app/build.gradle.kts` (`appVersionName`) cuando se entrega un
   bloque de cambios al propietario, y se anota aquí.
-- **Compilación** (`531`): la pone la CI sola (número de ejecución de GitHub Actions, siempre creciente).
-  También es el `versionCode`, así que un APK nuevo siempre es «más nuevo» para Android.
-  Una compilación local muestra «compilación local».
+- **Compilación** (`531`): identifica la ejecución de CI. Para publicar, `versionCode` se fija por separado
+  y debe superar el último número aceptado por Google Play. Una compilación local muestra «compilación local».
 
 Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
 concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
+
+## 1.0.0 — candidato de publicación (sin publicar)
+
+- Perfil: acceso desde el avatar superior y pestaña «Asistente IA» informativa. Se agrupan actividad agrícola, preferencias, cuenta e información; municipio principal y tiempo quedan diferenciados. Cerrar sesión conserva los datos locales.
+- Cuenta: estados de sesión, datos locales, consentimiento por finca y última ejecución manual presentados sin atribuir confirmaciones remotas que la app no ha comprobado.
+- Perfil: cambiar o quitar la fotografía local con aviso de error; el avatar superior se actualiza al guardar y mantiene la separación entre cuentas. Flecha de regreso alineada en Perfil y Cuenta.
+- Parcelas de Catastro: provincia y municipio oficiales se guardan al importar y se leen sin conexión. La recuperación de parcelas antiguas solo completa campos vacíos; si no se verifica la ubicación, se puede elegir con los selectores guiados.
+- Revisión DEV de Fincas y Tiempo: provincia y municipio se eligen del catálogo INE local, con búsqueda de pueblo limitada a la provincia seleccionada. Nueva finca guía por identificación, ubicación opcional, detalles y confirmación; también permite crear una finca básica solo con nombre. Las fincas antiguas conservan su ubicación hasta que el usuario la cambie expresamente.
+- Revisión DEV del mapa de parcelas: ayuda plegada, ficha de selección con datos esenciales y detalles ampliables, y contorno seleccionado más visible. La revisión y la protección contra duplicados se conservan antes de incorporar una parcela.
+- Preparación de la variante de producción para Google Play: configuración separada por entorno, firma de subida y enlaces de privacidad y solicitud de eliminación de cuenta. La publicación requiere verificar los servicios y datos reales de producción.
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { randomUUID, createHash } from 'node:crypto';
+import { extraProposals, membershipsHardened } from './lib/extra-proposals.mjs';
 
 const project = process.env.G0_NATIVE_PROJECT_ID;
 assert.match(project ?? '', /^magina-g0-native-[a-z0-9-]+$/);
@@ -114,6 +115,7 @@ before(async () => {
   sql('DROP POLICY g0_test_legacy_public_read ON storage.objects;');
   sql(`BEGIN; ${hardening} COMMIT; NOTIFY pgrst, 'reload schema';`);
   sql(`BEGIN; ${readFileSync(new URL('../migrations/20261016041601_g0_aggregate_identity_guards.sql', import.meta.url), 'utf8')} COMMIT;`);
+  if (extraProposals()) sql(`BEGIN; ${extraProposals()} COMMIT; NOTIFY pgrst, 'reload schema';`);
   writeFileSync(`${evidence}/${baseline}-runtime.txt`, sql(`SELECT version(); SELECT 'baseline=${baseline}'; SELECT bucket_id, count(*) FROM storage.objects GROUP BY bucket_id;`));
 
   let ready = false;
@@ -128,8 +130,19 @@ before(async () => {
   farm2 = await insert('farms', 'A', { id: randomUUID(), workspace_id: workspace.id, creator_user_id: users.A.id, owner_id: users.A.id, name: 'Native separate farm' });
   sharedParcel = await insert('parcels', 'A', {workspace_id:workspace.id, display_name:'Native shared parcel'});
   const privateParcel = await insert('parcels', 'A', {workspace_id:workspace.id, display_name:'Native private parcel'});
-  await insert('farm_parcel_memberships', 'A', {workspace_id:workspace.id, farm_id:farm.id, parcel_id:sharedParcel.id});
-  await insert('farm_parcel_memberships', 'A', {workspace_id:workspace.id, farm_id:farm2.id, parcel_id:privateParcel.id});
+  if (membershipsHardened()) {
+    // Hardened schema: clients cannot write memberships directly, so the fixture seeds them as the reviewed writer would.
+    const direct = await request('/rest/v1/farm_parcel_memberships', { actor: 'A', method: 'POST',
+      body: {workspace_id:workspace.id, farm_id:farm.id, parcel_id:sharedParcel.id} });
+    assert.equal(direct.status, 403, 'Hardened memberships must reject a direct client INSERT');
+    for (const [farmId, parcelId] of [[farm.id, sharedParcel.id], [farm2.id, privateParcel.id]]) {
+      assert.match(`${farmId}${parcelId}`, /^[0-9a-f-]+$/);
+      sql(`INSERT INTO public.farm_parcel_memberships(workspace_id,farm_id,parcel_id) VALUES('${workspace.id}','${farmId}','${parcelId}');`);
+    }
+  } else {
+    await insert('farm_parcel_memberships', 'A', {workspace_id:workspace.id, farm_id:farm.id, parcel_id:sharedParcel.id});
+    await insert('farm_parcel_memberships', 'A', {workspace_id:workspace.id, farm_id:farm2.id, parcel_id:privateParcel.id});
+  }
   campaign = await insert('campaigns', 'A', { id: randomUUID(), workspace_id: workspace.id, farm_id: farm.id, name: 'Native 2026/27', start_date: '2026-10-01' });
   for (const actor of ['B', 'C']) {
     await insert('farm_access_grants', 'A', { farm_id: farm.id, user_id: users[actor].id, granted_by_user_id: users.A.id,

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo
 
+import com.isivoltpro.maginaolivo.data.local.FixtureWorkspace
+
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -75,8 +77,8 @@ class FirstReminderPermissionTest {
                 val metadata = LocalMetadata(now, now)
                 db.workspaceDao().upsert(WorkspaceEntity(workspace, "Primer aviso sintético", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", metadata))
                 db.profileSettingsDao().upsert(ProfileSettingsEntity(UUID.randomUUID(), workspace, remindersEnabled = true, metadata = metadata))
-                farm = (OfflineFirstFarmRepository(db, clock, UuidGenerator(), DefaultAppDispatchers()).create(NewFarm(workspace, "Finca sintética")) as AppResult.Success).value
-                parcel = (OfflineFirstParcelRepository(db, clock, UuidGenerator(), DefaultAppDispatchers()).create(NewParcel(farm, "Parcela sintética")) as AppResult.Success).value
+                farm = (OfflineFirstFarmRepository(db, clock, UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db }).create(NewFarm(workspace, "Finca sintética")) as AppResult.Success).value
+                parcel = (OfflineFirstParcelRepository(db, clock, UuidGenerator(), DefaultAppDispatchers(), workspaceRepository = FixtureWorkspace { db }).create(NewParcel(farm, "Parcela sintética")) as AppResult.Success).value
             }
             base.evaluate()
         }

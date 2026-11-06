@@ -155,7 +155,7 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
         // #359 follow-up: costs linked to no campaign are shown apart, never inside the recollection cost/kg.
         Text("Gastos generales del periodo", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
         MoStatStrip(listOf(
-            MoStat("Fuera de campaña", overviewCost(overview.generalCosts), MoIcons.Euro),
+            MoStat("Gastos generales", overviewCost(overview.generalCosts), MoIcons.Euro),
             MoStat("Coste total", overviewCost(overview.totalCosts), MoIcons.Euro),
             MoStat("Coste total/kg", overviewTotalCostPerKg(overview), MoIcons.Euro),
         ), Modifier.testTag("farm-overview-general"))

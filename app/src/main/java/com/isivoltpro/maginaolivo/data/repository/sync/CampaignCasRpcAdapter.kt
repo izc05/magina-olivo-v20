@@ -1,0 +1,118 @@
+package com.isivoltpro.maginaolivo.data.repository.sync
+
+import com.isivoltpro.maginaolivo.feature.account.AuthSession
+import com.isivoltpro.maginaolivo.data.repository.parseCampaignCasEnvelope
+import java.util.UUID
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
+internal data class CampaignRemoteHead(val issuer: String, val subject: UUID,
+    val version: Long, val campaign: JsonObject)
+
+internal data class CampaignCasRemoteAck(val operationId: UUID, val campaignId: UUID, val remoteVersion: Long)
+internal data class CampaignCasRemoteReceipt(
+    val operationId: UUID, val campaignId: UUID, val accountId: UUID,
+    val entityType: String, val payloadHash: String, val payloadVersion: Int, val remoteVersion: Long,
+)
+
+/** Reuses the G2.4 transport boundary; this class opens no connection. */
+internal class CampaignCasRpcAdapter(private val transport: DeliveryRpcTransport) {
+    internal companion object {
+        val NAMES = setOf("update_own_campaign_v1", "check_sync_operations", "get_own_campaign_head_v1")
+    }
+    /** Proposed isolated read RPC. The server must check current membership and JWT. */
+    suspend fun head(session: AuthSession, campaignId: UUID): CampaignRemoteHead {
+        val root = call("get_own_campaign_head_v1", """{"p_campaign_id":"$campaignId"}""", session)
+        if (root.getValue("contract_version").jsonPrimitive.long != 1L ||
+            root.getValue("subject").jsonPrimitive.content != session.userId.toString()) throw protocol()
+        val row = root["campaign"] as? JsonObject ?: throw protocol()
+        val version = root.getValue("version").jsonPrimitive.long
+        if (version < 1 || row.getValue("id").jsonPrimitive.content != campaignId.toString() ||
+            row.keys != setOf("id","workspaceId","farmId","name","startDate","endDate","status","notes"))
+            throw protocol()
+        val issuer = root.getValue("issuer").jsonPrimitive.content
+        if (parseCampaignCasEnvelope(buildJsonObject {
+            put("issuer", issuer); put("localVersion", 1); put("expectedVersion", version)
+            put("campaign", row)
+        }.toString()) == null) throw protocol()
+        return CampaignRemoteHead(issuer, session.userId, version, row)
+    }
+    suspend fun update(session: AuthSession, operationId: UUID, expectedVersion: Long,
+        campaign: JsonObject): CampaignCasRemoteAck {
+        val body = """{"p_operation_id":"$operationId","p_expected_version":$expectedVersion,"p_campaign":$campaign}"""
+        val root = call("update_own_campaign_v1", body, session)
+        val ack = CampaignCasRemoteAck(
+            UUID.fromString(root.getValue("operation_id").jsonPrimitive.content),
+            UUID.fromString(root.getValue("entity_id").jsonPrimitive.content),
+            root.getValue("remote_version").jsonPrimitive.long,
+        )
+        if (ack.operationId != operationId || ack.remoteVersion != expectedVersion + 1 ||
+            root.getValue("payload_version").jsonPrimitive.long != 1L ||
+            root.getValue("status").jsonPrimitive.content != "APPLIED") throw protocol()
+        return ack
+    }
+
+    suspend fun receipt(session: AuthSession, operationId: UUID): CampaignCasRemoteReceipt? {
+        val root = call("check_sync_operations", """{"p_operation_ids":["$operationId"]}""", session)
+        val rows = root["confirmed_receipts"] as? JsonArray ?: throw protocol()
+        if (rows.isEmpty()) return null
+        if (rows.size != 1) throw protocol()
+        val row = rows.single() as? JsonObject ?: throw protocol()
+        val found = CampaignCasRemoteReceipt(
+            UUID.fromString(row.getValue("operation_id").jsonPrimitive.content),
+            UUID.fromString(row.getValue("entity_id").jsonPrimitive.content),
+            session.userId,
+            row.getValue("entity_type").jsonPrimitive.content,
+            row.getValue("payload_hash").jsonPrimitive.content,
+            row.getValue("payload_version").jsonPrimitive.long.toInt(),
+            row.getValue("remote_version").jsonPrimitive.long,
+        )
+        if (found.operationId != operationId || found.remoteVersion < 1 ||
+            !Regex("^[0-9a-f]{64}$").matches(found.payloadHash)) throw protocol()
+        return found
+    }
+
+    private suspend fun call(name: String, body: String, session: AuthSession): JsonObject {
+        check(name in NAMES)
+        return transport.callRpcObject(name, body, session)
+    }
+
+    private fun protocol() = DeliveryRpcFailure(DeliveryRpcError.PROTOCOL)
+}
+
+private val CONFLICT_REASON = Regex("conflict: ([A-Z][A-Z_]{2,63})$")
+
+/** Shared G2.6 status/SQLSTATE mapping. Any transport exception is an unknown outcome, never success. */
+internal suspend fun DeliveryRpcTransport.callRpcObject(name: String, body: String, session: AuthSession): JsonObject {
+    val response = try { rpc(name, body, session.accessToken) }
+    catch (cancel: CancellationException) { throw cancel }
+    catch (failure: DeliveryRpcFailure) { throw failure }
+    catch (_: Exception) { throw DeliveryRpcFailure(DeliveryRpcError.NETWORK) }
+    if (response.status !in 200..299) {
+        val body = runCatching { Json.parseToJsonElement(response.body) as JsonObject }.getOrNull()
+        val code = runCatching { body!!.getValue("code").jsonPrimitive.content }.getOrNull()
+        // Only an UPPER_SNAKE token after "conflict: " is kept: never free text from the server.
+        val reason = runCatching { body!!.getValue("message").jsonPrimitive.content }.getOrNull()
+            ?.let { CONFLICT_REASON.find(it)?.groupValues?.get(1) }
+        val error = when {
+            code == "23505" || response.status == 409 -> DeliveryRpcError.CONFLICT
+            code == "42501" || response.status in listOf(401,403) -> DeliveryRpcError.FORBIDDEN
+            code == "22023" || response.status == 400 -> DeliveryRpcError.INVALID_PAYLOAD
+            response.status == 408 || response.status == 429 || response.status >= 500 -> DeliveryRpcError.NETWORK
+            else -> DeliveryRpcError.PROTOCOL
+        }
+        throw DeliveryRpcFailure(error, response.status, code, reason)
+    }
+    val parsed = runCatching { Json.parseToJsonElement(response.body) }.getOrNull()
+    return when (parsed) {
+        is JsonObject -> parsed
+        is JsonArray -> parsed.singleOrNull() as? JsonObject ?: throw DeliveryRpcFailure(DeliveryRpcError.PROTOCOL)
+        else -> throw DeliveryRpcFailure(DeliveryRpcError.PROTOCOL)
+    }
+}

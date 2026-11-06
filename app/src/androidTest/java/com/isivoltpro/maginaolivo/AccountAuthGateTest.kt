@@ -1,0 +1,759 @@
+package com.isivoltpro.maginaolivo
+
+import android.content.Context
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.isivoltpro.maginaolivo.app.AppCompositionRoot
+import com.isivoltpro.maginaolivo.app.AppEnvironment
+import com.isivoltpro.maginaolivo.app.AppearanceMode
+import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository
+import com.isivoltpro.maginaolivo.domain.farm.NewFarm
+import com.isivoltpro.maginaolivo.domain.parcel.NewParcel
+import com.isivoltpro.maginaolivo.domain.campaign.NewCampaign
+import com.isivoltpro.maginaolivo.feature.farms.FarmSection
+import com.isivoltpro.maginaolivo.feature.farms.FarmSectionRoute
+import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
+import com.isivoltpro.maginaolivo.feature.maps.FarmMapRoute
+import com.isivoltpro.maginaolivo.data.local.entity.DocumentEntity
+import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
+import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import androidx.activity.compose.setContent
+import com.isivoltpro.maginaolivo.feature.account.*
+import com.isivoltpro.maginaolivo.feature.sync.ManualSync
+import com.isivoltpro.maginaolivo.feature.sync.ManualSyncState
+import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
+import java.io.File
+import java.io.IOException
+import java.time.Instant
+import java.time.LocalDate
+import java.util.UUID
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
+import org.junit.runner.RunWith
+import org.junit.runners.model.Statement
+
+/**
+ * Android instrumented tests for Mandatory Access (Auth Gate) 1.0.
+ *
+ * Verifies:
+ * 1. First launch without session: displays Iniciar sesión and Crear cuenta, agricultural shell blocked.
+ * 2. Production fail-closed: unconfigured or unauthenticated access in PRODUCTION is strictly blocked.
+ * 3. Offline access with expired JWT: verified account offline is granted local access without remote calls.
+ * 4. Restart with saved session: opens directly into the app without prompting for password.
+ * 5. Logout: returns to access gate immediately, blocks agricultural shell, preserves local data.
+ * 6. Multi-user Room farm isolation (A -> B -> A): Real Room database, User A creates a farm,
+ *    logs out, User B logs in and sees 0 farms (A's farm is absent), B creates their farm, logs out,
+ *    A logs back in and recovers their farm intact. Works with ledger == null.
+ */
+@RunWith(AndroidJUnit4::class)
+class AccountAuthGateTest {
+    private val compose = createAndroidComposeRule<ComponentActivity>()
+    private val context = ApplicationProvider.getApplicationContext<Context>()
+
+    private val userA = UUID.fromString("00000000-0000-0000-0000-000000000001")
+    private val userB = UUID.fromString("00000000-0000-0000-0000-000000000002")
+
+    private val guard = TestRule { base, _ ->
+        object : Statement() {
+            override fun evaluate() {
+                assertEquals("com.isivoltpro.maginaolivo.dev", context.packageName)
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(
+                    InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("getprop ro.kernel.qemu")
+                ).bufferedReader().use { assertEquals("1", it.readText().trim()) }
+                base.evaluate()
+            }
+        }
+    }
+
+    @get:Rule
+    val rules: TestRule = RuleChain.outerRule(guard).around(IsolatedAppStateRule()).around(compose)
+
+    private inner class TestAuthApi : AccountAuthApi {
+        override val simulated: Boolean = false
+        override val redirectUri: String = "com.isivoltpro.maginaolivo.dev://auth/callback"
+
+        private fun makeSession(userId: UUID, email: String, expired: Boolean = false) =
+            AuthSession(
+                userId = userId,
+                email = email,
+                accessToken = "synthetic-access",
+                refreshToken = "synthetic-refresh",
+                expiresAt = if (expired) Instant.now().minusSeconds(3600) else Instant.now().plusSeconds(3600)
+            )
+
+        override suspend fun signIn(email: String, password: String): AuthSession {
+            if (password == "incorrecta") throw AuthFailure(AuthFailure.Kind.CREDENTIALS)
+            val id = if (email.startsWith("b")) userB else userA
+            return makeSession(id, email)
+        }
+
+        override suspend fun signUp(email: String, password: String, challenge: String): AuthSession? = null
+        override suspend fun recover(email: String, challenge: String) {}
+        override suspend fun exchange(code: String, verifier: String): AuthSession = makeSession(userA, "a@example.com")
+        override suspend fun refresh(session: AuthSession): AuthSession = makeSession(session.userId, session.email, expired = false)
+        override suspend fun user(session: AuthSession): Pair<UUID, String> = session.userId to session.email
+        override suspend fun changePassword(session: AuthSession, password: String) {}
+        override suspend fun signOut(session: AuthSession) {}
+    }
+
+    private fun renderGate(
+        repository: AccountRepository,
+        root: AppCompositionRoot,
+        environment: AppEnvironment = AppEnvironment.DEV,
+        contentTag: String = "agricultural-content"
+    ) {
+        compose.setContent {
+            MaginaOlivoTheme(AppearanceMode.DARK) {
+                Box(Modifier.fillMaxSize().systemBarsPadding()) {
+                    AuthGateHost(
+                        accountRepository = repository,
+                        farmLinks = root.farmLinks,
+                        simulationAllowed = true,
+                        environment = environment
+                    ) {
+                        Box(Modifier.fillMaxSize().testTag(contentTag)) {
+                            Text("Contenido agrícola protegido", Modifier.testTag("protected-label"))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun signedInAccountShowsManualSyncAndStartsOnlyOnTap(): Unit = runBlocking {
+        val repo = AccountRepository(TestAuthApi(), MemoryAccountSessionStore())
+        repo.login("a@example.com", "passwordA123", online = true)
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        var requests = 0
+        val sync = object : ManualSync {
+            override val state: StateFlow<ManualSyncState> = MutableStateFlow(ManualSyncState.Idle)
+            override fun requestSync() { requests++ }
+        }
+        compose.setContent {
+            MaginaOlivoTheme {
+                AccountRoute(repo, onBack = {}, connectivity = flowOf(true), farmLinks = root.farmLinks,
+                    workspaces = root.localPersistence?.workspaceRepository, manualSync = sync)
+            }
+        }
+        compose.waitUntil(15_000) {
+            runCatching { compose.onNodeWithTag("manual-sync-now").assertIsEnabled() }.isSuccess
+        }
+        assertEquals(0, requests)
+        compose.onNodeWithTag("manual-sync-now").performScrollTo().performClick()
+        compose.waitUntil(5_000) { requests == 1 }
+        assertEquals(1, requests)
+    }
+
+    @Test
+    fun firstLaunchShowsLoginAndRegisterAndBlocksAgriculturalContent() {
+        val store = MemoryAccountSessionStore()
+        val repo = AccountRepository(TestAuthApi(), store)
+        val root = AppCompositionRoot.createAndroid(context, "DEV")
+
+        renderGate(repo, root)
+
+        // Auth gate is displayed
+        waitFor("auth-gate-root")
+        compose.onNodeWithTag("auth-gate-root").assertIsDisplayed()
+        compose.onNodeWithTag("account-login").assertIsDisplayed() // "Iniciar sesión"
+        compose.onNodeWithTag("account-mode-register").assertIsDisplayed() // "Crear cuenta"
+
+        // Agricultural content must NOT exist
+        compose.onNodeWithTag("agricultural-content").assertDoesNotExist()
+        compose.onNodeWithTag("protected-label").assertDoesNotExist()
+    }
+
+    @Test
+    fun productionEnvironmentWithoutConfigurationFailsClosed() {
+        val unconfiguredRepo = AccountRepository(null)
+        val root = AppCompositionRoot.createAndroid(context, "DEV")
+
+        renderGate(unconfiguredRepo, root, environment = AppEnvironment.PRODUCTION)
+
+        waitFor("auth-gate-root")
+        compose.onNodeWithTag("auth-gate-root").assertIsDisplayed()
+        compose.onNodeWithTag("auth-gate-unconfigured-message").assertIsDisplayed()
+        compose.onNodeWithTag("agricultural-content").assertDoesNotExist()
+    }
+
+    @Test
+    fun restartWithSavedSessionRestoresDirectAccessWithoutPassword(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val sessionA = AuthSession(userA, "a@example.com", "access", "refresh", Instant.now().plusSeconds(3600))
+        store.write(AccountRecord(session = sessionA))
+
+        val repo = AccountRepository(TestAuthApi(), store)
+        repo.resume(online = true)
+        val root = AppCompositionRoot.createAndroid(context, "DEV")
+
+        renderGate(repo, root)
+
+        // Immediately grants access to agricultural content
+        waitFor("agricultural-content")
+        compose.onNodeWithTag("agricultural-content").assertIsDisplayed()
+        compose.onNodeWithTag("protected-label").assertIsDisplayed()
+
+        // Auth gate and password prompt must not be shown
+        compose.onNodeWithTag("auth-gate-root").assertDoesNotExist()
+        compose.onNodeWithTag("account-password").assertDoesNotExist()
+    }
+
+    @Test
+    fun offlineModeWithExpiredJwtAllowsLocalAccessForVerifiedAccount(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        // Token expired 2 hours ago
+        val sessionExpired = AuthSession(userA, "campo@example.test", "access", "refresh", Instant.now().minusSeconds(7200))
+        store.write(AccountRecord(session = sessionExpired))
+
+        val repo = AccountRepository(TestAuthApi(), store)
+        // Resume offline (no network in field)
+        repo.resume(online = false)
+        assertEquals(AccountStatus.EXPIRED, repo.state.value.status)
+        assertFalse(repo.state.value.online)
+        assertNotNull(repo.state.value.userId)
+
+        val root = AppCompositionRoot.createAndroid(context, "DEV")
+        renderGate(repo, root, environment = AppEnvironment.PRODUCTION)
+
+        // Directly enters into protected content in offline mode despite expired JWT
+        waitFor("agricultural-content")
+        compose.onNodeWithTag("agricultural-content").assertIsDisplayed()
+        compose.onNodeWithTag("auth-gate-root").assertDoesNotExist()
+    }
+
+    @Test
+    fun logoutReturnsToGateAndProtectsLocalDataWithoutDeletingIt(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val sessionA = AuthSession(userA, "a@example.com", "access", "refresh", Instant.now().plusSeconds(3600))
+        store.write(AccountRecord(session = sessionA))
+
+        val repo = AccountRepository(TestAuthApi(), store)
+        repo.resume(online = true)
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        val local = checkNotNull(root.localPersistence)
+        val workspace = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        val farm = (local.farmRepository.create(NewFarm(workspace, "Finca local preservada")) as AppResult.Success).value
+
+        renderGate(repo, root)
+        waitFor("agricultural-content")
+
+        // Perform logout
+        repo.logout(online = true)
+
+        // Screen immediately switches to Auth Gate
+        waitFor("auth-gate-root")
+        compose.onNodeWithTag("auth-gate-root").assertIsDisplayed()
+        compose.onNodeWithTag("account-login").assertIsDisplayed()
+        compose.onNodeWithTag("agricultural-content").assertDoesNotExist()
+
+        // Verify local data is completely preserved in Room
+        assertNotNull(local.database.farmDao().findById(farm))
+        assertNull(store.read().session)
+    }
+
+    @Test
+    fun realRoomMultiUserFarmIsolationAToBToA(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val repo = AccountRepository(TestAuthApi(), store)
+        // Pass repo so that all repositories (workspaceRepository, farmLinks, etc.) share the exact same AccountRepository instance
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        val local = checkNotNull(root.localPersistence)
+        val linkRepo = checkNotNull(root.farmLinks)
+
+        // 1. User A logs in
+        repo.login("a@example.com", "passwordA123", online = true)
+        assertEquals(userA, repo.state.value.userId)
+
+        // User A creates a farm in Room
+        val workspaceA = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        val farmA = (local.farmRepository.create(NewFarm(workspaceA, "Finca Olivar de A")) as AppResult.Success).value
+        val farmsForA = local.farmRepository.observeActive(workspaceA).first()
+        assertEquals(1, farmsForA.size)
+        assertEquals("Finca Olivar de A", farmsForA.first().name)
+
+        assertEquals("With ledger == null, User A sees their own farm in link choices", 1, linkRepo.choices().size)
+        assertEquals("Finca Olivar de A", linkRepo.choices().first().name)
+
+        // 2. User A logs out
+        repo.logout(online = true)
+        assertEquals(AccountStatus.SIGNED_OUT, repo.state.value.status)
+
+        // 3. User B logs in
+        repo.login("b@example.com", "passwordB123", online = true)
+        assertEquals(userB, repo.state.value.userId)
+
+        // User B resolves their own workspace
+        val workspaceB = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertNotEquals("User B must not be assigned User A's workspace", workspaceA, workspaceB)
+
+        // Assertion of absence: User B does NOT see User A's farm!
+        val farmsForBInitial = local.farmRepository.observeActive(workspaceB).first()
+        assertEquals("User B must see 0 active farms initially (A's farm is absent)", 0, farmsForBInitial.size)
+        assertEquals("With ledger == null, User B must see 0 choices (A's farm is isolated)", 0, linkRepo.choices().size)
+
+        // User B creates their own farm in Room
+        val farmB = (local.farmRepository.create(NewFarm(workspaceB, "Finca Olivar de B")) as AppResult.Success).value
+        val farmsForBAfter = local.farmRepository.observeActive(workspaceB).first()
+        assertEquals(1, farmsForBAfter.size)
+        assertEquals("Finca Olivar de B", farmsForBAfter.first().name)
+        assertEquals("With ledger == null, User B sees only their own farm", 1, linkRepo.choices().size)
+        assertEquals("Finca Olivar de B", linkRepo.choices().first().name)
+
+        // 4. User B logs out
+        repo.logout(online = true)
+
+        // 5. User A logs back in
+        repo.login("a@example.com", "passwordA123", online = true)
+        assertEquals(userA, repo.state.value.userId)
+
+        // User A resolves their workspace
+        val workspaceARecovered = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertEquals("User A must recover their original workspace", workspaceA, workspaceARecovered)
+
+        // Assertion of recovery: User A's farm is fully recovered and B's farm is not present!
+        val farmsForARecovered = local.farmRepository.observeActive(workspaceARecovered).first()
+        assertEquals(1, farmsForARecovered.size)
+        assertEquals("Finca Olivar de A", farmsForARecovered.first().name)
+        assertFalse(farmsForARecovered.any { it.name == "Finca Olivar de B" })
+        assertEquals("With ledger == null, User A recovers their farm in choices without B's farm", 1, linkRepo.choices().size)
+        assertEquals("Finca Olivar de A", linkRepo.choices().first().name)
+
+        // Verify both farms still exist unharmed in the database
+        assertNotNull(local.database.farmDao().findById(farmA))
+        assertNotNull(local.database.farmDao().findById(farmB))
+    }
+
+    /**
+     * Integration #796 + #808, owner decision (i) (PR #846): the approved G1b contract for legacy farms prevails.
+     *
+     * Replaces `historicalFarmsAreNotVisibleByDefaultToAuthenticatedUser`, whose expectation ("a historical unlinked farm
+     * is not visible to an authenticated user") contradicted G1b (#757, in `main`) and only coexisted with it through the
+     * removed `issuer == "fixture-project"` branch. The security it protected is kept and checked explicitly:
+     * - a legacy farm legitimately stored on this device, not belonging to another account, is only a CANDIDATE;
+     * - signing in never links it (no ledger, no consent); linking needs explicit consent;
+     * - linking changes no owner and grants no authorization;
+     * - a farm of a workspace that belongs to another account is never a candidate;
+     * - after logout another account is locked out of the consented local dataset and gains nothing.
+     */
+    @Test
+    fun historicalFarmsAreCandidatesButNeverLinkedOrReassignedWithoutExplicitConsent(): Unit = runBlocking {
+        // An isolated ledger and an explicit QA issuer (the QA build has no configured Auth project): the device's real
+        // consent ledger is never touched.
+        val ledgerFile = File(context.noBackupFilesDir, "qa-gate-legacy-${UUID.randomUUID()}.json")
+        val ledgerFiles = listOf(ledgerFile, File(ledgerFile.path + ".bak"), File(ledgerFile.path + ".new"))
+        val ledger = com.isivoltpro.maginaolivo.data.repository.AndroidFarmLinkLedger(ledgerFile)
+        val qaIssuer = "https://qa-gate.example"
+        try {
+            val store = MemoryAccountSessionStore()
+            val repo = AccountRepository(TestAuthApi(), store)
+            val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+            val local = checkNotNull(root.localPersistence)
+            val linkRepo = com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository(context, local.database, repo, qaIssuer, ledger)
+            val db = local.database.openHelper.writableDatabase
+            fun owner(workspace: String) = db.query("SELECT owner_user_id FROM workspaces WHERE id = ?", arrayOf(workspace)).use { it.moveToFirst(); it.getString(0) }
+            fun count(table: String) = db.query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
+
+            // A legacy farm stored on this device before any account (G1b).
+            val historicalWorkspaceId = UUID.randomUUID().toString()
+            val historicalFarmId = UUID.randomUUID()
+            db.execSQL("INSERT INTO workspaces (id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES (?,'Antiguo','local-owner','ES','Europe/Madrid','es-ES','EUR',1,1,1,'LOCAL_ONLY')", arrayOf(historicalWorkspaceId))
+            db.execSQL("INSERT INTO farms (id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES (?,?,'Finca Antigua Sin Vincular','ACTIVE',1,1,1,'LOCAL_ONLY')", arrayOf(historicalFarmId.toString(), historicalWorkspaceId))
+            // A farm of a workspace that belongs to another account (B), which B selected on this device.
+            val foreignWorkspaceId = UUID.randomUUID().toString()
+            val foreignFarmId = UUID.randomUUID()
+            db.execSQL("INSERT INTO workspaces (id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES (?,'De B',?,'ES','Europe/Madrid','es-ES','EUR',1,1,1,'PENDING')", arrayOf(foreignWorkspaceId, userB.toString()))
+            db.execSQL("INSERT INTO workspace_selections(issuer,account_id,workspace_id) VALUES (?,?,?)", arrayOf(qaIssuer, userB.toString(), foreignWorkspaceId))
+            db.execSQL("INSERT INTO farms (id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES (?,?,'Finca de B','ACTIVE',1,1,1,'LOCAL_ONLY')", arrayOf(foreignFarmId.toString(), foreignWorkspaceId))
+            val authorizationsBefore = count("workspace_authorization_cache")
+
+            // User A signs in: nothing is linked automatically.
+            repo.login("a@example.com", "passwordA123", online = true)
+            assertNull("Signing in never writes a consent", ledger.read())
+            assertFalse("Signing in never links a legacy farm", linkRepo.isFarmConsented(historicalFarmId, userA))
+
+            // The legacy farm is a candidate; the farm of another account never is.
+            val choices = linkRepo.choices()
+            assertTrue("The local legacy farm is a G1b candidate", choices.any { it.id == historicalFarmId })
+            assertFalse("A farm of another account's workspace is never a candidate", choices.any { it.id == foreignFarmId })
+
+            // Linking needs explicit consent.
+            val legacy = choices.filter { it.id == historicalFarmId }
+            try { linkRepo.consent(userA, legacy, false); fail("Consent must be explicit") } catch (_: IOException) { }
+            assertNull("A refused consent writes nothing", ledger.read())
+            val consented = linkRepo.consent(userA, legacy, true)
+            assertEquals(setOf(historicalFarmId), consented.farmIds)
+            assertTrue(linkRepo.isFarmConsented(historicalFarmId, userA))
+            // Linking changes no owner and grants no authorization.
+            assertEquals("local-owner", owner(historicalWorkspaceId))
+            assertEquals(userB.toString(), owner(foreignWorkspaceId))
+            assertEquals(authorizationsBefore, count("workspace_authorization_cache"))
+            assertFalse(linkRepo.isFarmConsented(foreignFarmId, userA))
+
+            // Logout and another account: locked out of the consented local dataset, gains nothing.
+            repo.logout(online = true)
+            repo.login("b@example.com", "passwordB123", online = true)
+            assertFalse(linkRepo.accessAllowed())
+            try { linkRepo.choices(); fail("Another account must not read A's consented dataset") } catch (_: IOException) { }
+            assertFalse(linkRepo.isFarmConsented(historicalFarmId, userB))
+            assertEquals("local-owner", owner(historicalWorkspaceId))
+
+            // Data is strictly preserved in SQLite.
+            assertNotNull("Historical farm must be preserved in SQLite", local.database.farmDao().findById(historicalFarmId))
+            assertNotNull(local.database.farmDao().findById(foreignFarmId))
+        } finally {
+            runCatching { ledger.read()?.consents?.forEach { File(context.noBackupFilesDir, "account-link-backups/${it.backupId}").deleteRecursively() } }
+            ledgerFiles.forEach { it.delete() }
+        }
+    }
+
+    @Test
+    fun stagingEnvironmentWithoutConfigurationFailsClosed(): Unit = runBlocking {
+        val unconfiguredRepo = AccountRepository(null)
+        val root = AppCompositionRoot.createAndroid(context, "STAGING", accountRepository = unconfiguredRepo)
+
+        renderGate(unconfiguredRepo, root, environment = AppEnvironment.STAGING)
+
+        waitFor("auth-gate-root")
+        compose.onNodeWithTag("auth-gate-root").assertIsDisplayed()
+        compose.onNodeWithTag("auth-gate-unconfigured-message").assertIsDisplayed()
+        compose.onNodeWithTag("agricultural-content").assertDoesNotExist()
+    }
+
+    @Test
+    fun directRouteToForeignFarmDoesNotDiscloseParcelsCampaignsOrDocumentsToAnotherUser(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val repo = AccountRepository(TestAuthApi(), store)
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        val local = checkNotNull(root.localPersistence)
+
+        // 1. User A logs in and creates Farm A, a Parcel, a Campaign, and a Document
+        repo.login("a@example.com", "passwordA123", online = true)
+        val workspaceA = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        val farmA = (local.farmRepository.create(NewFarm(workspaceA, "Finca Privada de A")) as AppResult.Success).value
+
+        val parcelA = (local.parcelRepository.create(
+            NewParcel(
+                farmId = farmA,
+                displayName = "Parcela Secreta A",
+            )
+        ) as AppResult.Success).value
+
+        val campaignA = (local.campaignRepository.create(
+            NewCampaign(
+                farmId = farmA,
+                name = "Campaña Secreta A",
+                startDate = LocalDate.of(2025, 11, 1),
+            )
+        ) as AppResult.Success).value
+
+        val docA = UUID.randomUUID()
+        val now = Instant.now()
+        local.database.documentDao().insert(
+            DocumentEntity(
+                id = docA,
+                workspaceId = workspaceA,
+                ownerType = "FARM",
+                ownerId = farmA,
+                type = "OTHER",
+                mimeType = "application/pdf",
+                displayName = "Escritura Privada A",
+                fileSizeBytes = 2048L,
+                sha256 = "dummy-sha",
+                localUri = "file:///fake/storage/doc.pdf",
+                remotePath = null,
+                uploadStatus = "LOCAL_ONLY",
+                metadata = LocalMetadata(createdAt = now, updatedAt = now, syncStatus = SyncStatus.LOCAL_ONLY),
+            )
+        )
+
+        // 2. User A logs out
+        repo.logout(online = true)
+
+        // 3. User B logs in
+        repo.login("b@example.com", "passwordB123", online = true)
+        val workspaceB = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertNotEquals(workspaceA, workspaceB)
+
+        // 4. Test direct navigation to PARCELS section of Farm A: User B must NOT see Farm A or its parcels
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                MaginaOlivoTheme {
+                    FarmSectionRoute(
+                        farmId = farmA,
+                        section = FarmSection.PARCELS,
+                        persistence = local,
+                        onParcelSelected = {},
+                        onCampaignSelected = {},
+                        onActivitySelected = {},
+                    )
+                }
+            }
+        }
+        waitFor("farm-section-unauthorized")
+        compose.onNodeWithTag("farm-section-unauthorized").assertIsDisplayed()
+        compose.onNodeWithText("Finca Privada de A").assertDoesNotExist()
+        compose.onNodeWithText("Parcela Secreta A").assertDoesNotExist()
+
+        // 5. Test direct navigation to CAMPAIGNS section of Farm A: User B must NOT see campaigns of Farm A
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                MaginaOlivoTheme {
+                    FarmSectionRoute(
+                        farmId = farmA,
+                        section = FarmSection.CAMPAIGNS,
+                        persistence = local,
+                        onParcelSelected = {},
+                        onCampaignSelected = {},
+                        onActivitySelected = {},
+                    )
+                }
+            }
+        }
+        waitFor("farm-section-unauthorized")
+        compose.onNodeWithTag("farm-section-unauthorized").assertIsDisplayed()
+        compose.onNodeWithText("Campaña Secreta A").assertDoesNotExist()
+
+        // 6. Test direct navigation to DOCUMENTS section of Farm A: User B must NOT see documents of Farm A
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                MaginaOlivoTheme {
+                    FarmSectionRoute(
+                        farmId = farmA,
+                        section = FarmSection.DOCUMENTS,
+                        persistence = local,
+                        onParcelSelected = {},
+                        onCampaignSelected = {},
+                        onActivitySelected = {},
+                    )
+                }
+            }
+        }
+        waitFor("farm-section-unauthorized")
+        compose.onNodeWithTag("farm-section-unauthorized").assertIsDisplayed()
+        compose.onNodeWithText("Escritura Privada A").assertDoesNotExist()
+    }
+
+    @Test
+    fun directRouteToForeignParcelDoesNotDiscloseParcelDetailOrLocateMapToAnotherUser(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val repo = AccountRepository(TestAuthApi(), store)
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        val local = checkNotNull(root.localPersistence)
+
+        // 1. User A logs in and creates a Farm and a Parcel
+        repo.login("a@example.com", "passwordA123", online = true)
+        val workspaceA = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        val farmA = (local.farmRepository.create(NewFarm(workspaceA, "Finca Exclusiva A")) as AppResult.Success).value
+        val parcelA = (local.parcelRepository.create(
+            NewParcel(
+                farmId = farmA,
+                displayName = "Parcela Confidencial A",
+            )
+        ) as AppResult.Success).value
+
+        // 2. User A logs out
+        repo.logout(online = true)
+
+        // 3. User B logs in
+        repo.login("b@example.com", "passwordB123", online = true)
+        val workspaceB = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertNotEquals(workspaceA, workspaceB)
+
+        // 4. Test direct navigation to ParcelDetailRoute of Parcel A: User B must see "Parcela no disponible"
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                MaginaOlivoTheme {
+                    ParcelDetailRoute(
+                        parcelId = parcelA,
+                        persistence = local,
+                        onArchived = {},
+                    )
+                }
+            }
+        }
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Parcela no disponible").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Parcela no disponible").assertIsDisplayed()
+        compose.onNodeWithText("Parcela Confidencial A").assertDoesNotExist()
+
+        // 5. Test direct navigation to FarmMapRoute with locateParcelId = Parcel A: User B must not see parcel name
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                MaginaOlivoTheme {
+                    FarmMapRoute(
+                        farmId = farmA,
+                        persistence = local,
+                        locateParcelId = parcelA,
+                        onOpenParcel = {},
+                        onSearchByReference = {},
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("Ubicar «Parcela Confidencial A»").assertDoesNotExist()
+        compose.onNodeWithText("Parcela Confidencial A").assertDoesNotExist()
+
+        // 6. User B logs out
+        repo.logout(online = true)
+
+        // 7. User A logs back in and recovers their parcel
+        repo.login("a@example.com", "passwordA123", online = true)
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                MaginaOlivoTheme {
+                    ParcelDetailRoute(
+                        parcelId = parcelA,
+                        persistence = local,
+                        onArchived = {},
+                    )
+                }
+            }
+        }
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Parcela Confidencial A").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Parcela Confidencial A").assertIsDisplayed()
+    }
+
+    @Test
+    fun foreignWorkspaceIdCannotObserveActiveOrArchivedFarms(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val repo = AccountRepository(TestAuthApi(), store)
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        val local = checkNotNull(root.localPersistence)
+
+        // 1. User A logs in, creates an active farm and an archived farm
+        repo.login("a@example.com", "passwordA123", online = true)
+        val workspaceA = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        val farmActiveA = (local.farmRepository.create(NewFarm(workspaceA, "Finca Activa A")) as AppResult.Success).value
+        val farmArchivedA = (local.farmRepository.create(NewFarm(workspaceA, "Finca Archivada A")) as AppResult.Success).value
+        local.farmRepository.archive(farmArchivedA)
+
+        // Verify User A sees both their active and archived farms
+        val activeForA = local.farmRepository.observeActive(workspaceA).first()
+        assertEquals(1, activeForA.size)
+        assertEquals("Finca Activa A", activeForA.first().name)
+        val archivedForA = local.farmRepository.observeArchived(workspaceA).first()
+        assertEquals(1, archivedForA.size)
+        assertEquals("Finca Archivada A", archivedForA.first().name)
+
+        // 2. User A logs out
+        repo.logout(online = true)
+
+        // 3. User B logs in
+        repo.login("b@example.com", "passwordB123", online = true)
+        val workspaceB = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertNotEquals(workspaceA, workspaceB)
+
+        // Negative assertion: User B queries User A's workspace ID -> MUST BE EMPTY!
+        val activeForBQueryingA = local.farmRepository.observeActive(workspaceA).first()
+        assertTrue("User B querying workspaceA active farms must get empty list", activeForBQueryingA.isEmpty())
+        val archivedForBQueryingA = local.farmRepository.observeArchived(workspaceA).first()
+        assertTrue("User B querying workspaceA archived farms must get empty list", archivedForBQueryingA.isEmpty())
+
+        // 4. User B logs out
+        repo.logout(online = true)
+
+        // 5. User A logs back in
+        repo.login("a@example.com", "passwordA123", online = true)
+        val activeForARecovered = local.farmRepository.observeActive(workspaceA).first()
+        assertEquals(1, activeForARecovered.size)
+        assertEquals("Finca Activa A", activeForARecovered.first().name)
+        val archivedForARecovered = local.farmRepository.observeArchived(workspaceA).first()
+        assertEquals(1, archivedForARecovered.size)
+        assertEquals("Finca Archivada A", archivedForARecovered.first().name)
+    }
+
+    @Test
+    fun observeLocalWorkspaceFailsClosedWhenLoggedOutWithoutExposingPreviousWorkspace(): Unit = runBlocking {
+        val store = MemoryAccountSessionStore()
+        val repo = AccountRepository(TestAuthApi(), store)
+        val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = repo)
+        val local = checkNotNull(root.localPersistence)
+
+        // 1. User A logs in
+        repo.login("a@example.com", "passwordA123", online = true)
+        val workspaceA = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertEquals(workspaceA, local.workspaceRepository.observeLocalWorkspace().first())
+
+        // 2. User A logs out
+        repo.logout(online = true)
+
+        // Flow MUST emit null immediately upon logout, NOT falling back to workspaceA!
+        val loggedOutWorkspace = local.workspaceRepository.observeLocalWorkspace().first()
+        assertNull("Logged-out session must emit null workspace, not previous user's workspace", loggedOutWorkspace)
+
+        // Calling ensureLocalWorkspace while logged out on configured account must fail closed
+        val ensureResult = local.workspaceRepository.ensureLocalWorkspace()
+        assertTrue("ensureLocalWorkspace while logged out on configured repo must fail closed", ensureResult is AppResult.Failure)
+
+        // 3. User B logs in
+        repo.login("b@example.com", "passwordB123", online = true)
+        val workspaceB = (local.workspaceRepository.ensureLocalWorkspace() as AppResult.Success).value
+        assertNotEquals(workspaceA, workspaceB)
+        assertEquals(workspaceB, local.workspaceRepository.observeLocalWorkspace().first())
+
+        // 4. User B logs out
+        repo.logout(online = true)
+        assertNull(local.workspaceRepository.observeLocalWorkspace().first())
+
+        // 5. User A logs back in
+        repo.login("a@example.com", "passwordA123", online = true)
+        assertEquals(workspaceA, local.workspaceRepository.observeLocalWorkspace().first())
+    }
+
+    @Test
+    fun androidPersistedSessionStoreSurvivesOfflineWithExpiredJwt(): Unit = runBlocking {
+        val sessionFile = File(context.noBackupFilesDir, "qa-offline-session-${UUID.randomUUID()}.json")
+        val keyAlias = "qa-key-${UUID.randomUUID()}"
+        val scope = "test-scope"
+        try {
+            val store = AndroidAccountSessionStore(sessionFile, keyAlias, scope)
+            val sessionExpired = AuthSession(userA, "persisted-offline@example.test", "access", "refresh", Instant.now().minusSeconds(3600))
+            store.write(AccountRecord(session = sessionExpired))
+
+            // Simulate application process restart: new Store and Repository reading encrypted file from disk
+            val reloadedStore = AndroidAccountSessionStore(sessionFile, keyAlias, scope)
+            val reloadedRepo = AccountRepository(TestAuthApi(), reloadedStore)
+
+            // Resume in offline mode without network
+            reloadedRepo.resume(online = false)
+
+            assertEquals(AccountStatus.EXPIRED, reloadedRepo.state.value.status)
+            assertFalse(reloadedRepo.state.value.online)
+            assertEquals(userA, reloadedRepo.state.value.userId)
+            assertEquals(userA, reloadedStore.read().session?.userId)
+
+            val root = AppCompositionRoot.createAndroid(context, "DEV", accountRepository = reloadedRepo)
+            renderGate(reloadedRepo, root, environment = AppEnvironment.PRODUCTION)
+
+            waitFor("agricultural-content")
+            compose.onNodeWithTag("agricultural-content").assertIsDisplayed()
+            compose.onNodeWithTag("auth-gate-root").assertDoesNotExist()
+        } finally {
+            sessionFile.delete()
+            File(sessionFile.path + ".bak").delete()
+        }
+    }
+
+    private fun waitFor(tag: String) =
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+}

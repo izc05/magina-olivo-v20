@@ -41,6 +41,7 @@ class ReservationProcessInterruptionTest {
                         assertTrue("Orphaned temporary must be removed on recovery", orphansAfter.isEmpty())
                     }
                     assertEquals(ProcessReservationFixture.request, restored.request)
+                    assertEquals(ProcessReservationFixture.receipt.remoteWorkspaceId, restored.expectedRemoteWorkspaceId)
                     val committed = checkpoint == "receipt-committed"
                     assertEquals(if (committed) ReservationStatus.RESERVED_REMOTE else ReservationStatus.PENDING, restored.status)
                     assertEquals(if (committed) ProcessReservationFixture.receipt else null, restored.receipt)
@@ -71,6 +72,7 @@ internal object ProcessReservationFixture {
     val request = ReservationRequest(scope.operationId, UUID(0, 2), UUID(0, 4), UUID(0, 5), 2, "a".repeat(64), 1)
     val receipt = ReservationReceipt(scope, request.farmId, request.payloadHash(), UUID(0, 6), UUID(0, 7))
     val transport = object : ReservationTransport {
+        override val remoteWorkspaceId=receipt.remoteWorkspaceId
         override fun reserve(scope: ReservationScope, request: ReservationRequest) = ReservationResponse.Accepted(receipt)
     }
 }

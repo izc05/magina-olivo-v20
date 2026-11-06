@@ -9,6 +9,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
@@ -27,6 +28,7 @@ fun MoTextField(
     trailingIcon: (@Composable () -> Unit)? = null,
     visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
     keyboardOptions: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default,
+    containerColor: Color = MoSurfaceTokens.cardElevated,
 ) {
     OutlinedTextField(
         value = value,
@@ -53,8 +55,8 @@ fun MoTextField(
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MoColors.current.actionText,
             unfocusedBorderColor = MoSurfaceTokens.cardStroke,
-            focusedContainerColor = MoSurfaceTokens.cardElevated,
-            unfocusedContainerColor = MoSurfaceTokens.cardElevated,
+            focusedContainerColor = containerColor,
+            unfocusedContainerColor = containerColor,
             focusedLabelColor = MoColors.current.actionText,
             unfocusedLabelColor = MoSurfaceTokens.secondaryText,
         ),

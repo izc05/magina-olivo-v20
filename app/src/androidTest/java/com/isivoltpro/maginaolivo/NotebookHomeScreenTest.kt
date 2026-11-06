@@ -120,7 +120,7 @@ class NotebookHomeScreenTest {
         assertEquals(1, composeRule.onAllNodesWithTag("notebook-change-farm").fetchSemanticsNodes().size)
     }
 
-    @Test fun inicioCanOpenTheCampaignView() {
+    @Test fun legacyCampaignRequestOpensTheNewRoot() {
         var handled = 0
         composeRule.setContent {
             MaginaOlivoTheme {
@@ -128,16 +128,32 @@ class NotebookHomeScreenTest {
                     isLoading = false, error = null, farms = UiPolishFixtures.farms, activeFarm = farm,
                     notebook = NotebookUiState(isLoading = false, campaigns = listOf(campaign), selectedCampaignId = campaign.id, notebook = notebook),
                     actions = NotebookActions(), onSelectFarm = {}, onSelectCampaign = {}, onQuickAction = {},
-                    tabRequest = NotebookHubTab.CAMPAIGN, onTabRequestHandled = { handled++ },
+                    tabRequest = NotebookHubTab.CAMPAIGN, onTabRequestHandled = {}, onCampaign = { handled++ },
                 )
             }
         }
-        composeRule.onNodeWithTag("notebook-summary").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-open-campaign").performScrollTo().assertIsDisplayed()
         composeRule.runOnIdle { assertEquals(1, handled) }
     }
 
-    @Test fun theFourTabsShowTheSameRecords() {
+    @Test fun legacyCampaignRequestWaitsForTheAuthorizedFarmToLoad() {
+        var loaded by androidx.compose.runtime.mutableStateOf(false)
+        var opened = 0
+        composeRule.setContent { MaginaOlivoTheme {
+            NotebookHomeScreen(isLoading = !loaded, error = null,
+                farms = if (loaded) listOf(farm) else emptyList(), activeFarm = farm.takeIf { loaded },
+                notebook = NotebookUiState(isLoading = false), actions = NotebookActions(),
+                onSelectFarm = {}, onSelectCampaign = {}, onQuickAction = {},
+                tabRequest = NotebookHubTab.CAMPAIGN, onCampaign = { opened++ })
+        } }
+        composeRule.runOnIdle { assertEquals(0, opened); loaded = true }
+        composeRule.waitForIdle()
+        composeRule.runOnIdle { assertEquals(1, opened) }
+    }
+
+    @Test fun theThreeViewsKeepTheSameRecordsAndCampaignHasItsOwnRoot() {
         show()
+        assertEquals(0, composeRule.onAllNodesWithTag("notebook-tab-campaign").fetchSemanticsNodes().size)
         // UX-E Diario: the treatment is in the one timeline, under its day.
         composeRule.onNodeWithTag("notebook-tab-diary").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("notebook-diary").performScrollTo().assertIsDisplayed()
@@ -154,9 +170,7 @@ class NotebookHomeScreenTest {
         composeRule.onNodeWithTag("notebook-costs-machinery").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("notebook-costs-documents").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("notebook-expenses-empty").performScrollTo().assertIsDisplayed()
-        // Campaña: the summary derived from the same records.
-        composeRule.onNodeWithTag("notebook-tab-campaign").performScrollTo().performClick()
-        composeRule.onNodeWithTag("notebook-summary").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-open-campaign").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun anEmptyCampaignSaysSoInTheDiary() {
@@ -173,7 +187,7 @@ class NotebookHomeScreenTest {
         NotebookQuickAction.entries.forEach { action ->
             composeRule.onNodeWithTag(action.tag).performScrollTo().assertHasClickAction().assertTextContains(action.label)
         }
-        NotebookHubTab.entries.forEach { tab ->
+        NotebookHubTab.entries.filter { it != NotebookHubTab.CAMPAIGN }.forEach { tab ->
             composeRule.onNodeWithTag(tab.tag).performScrollTo().assertHasClickAction().assertTextContains(tab.label)
         }
     }
@@ -247,12 +261,7 @@ class NotebookHomeScreenTest {
         ).performScrollTo().performClick()
         composeRule.runOnIdle { assertEquals(running.id, labourCampaign) }
 
-        // Only the Campaign tab says which historical Campaign is being consulted.
-        composeRule.onNodeWithTag("notebook-tab-campaign").performScrollTo().performClick()
-        composeRule.onNodeWithTag("notebook-selected-campaign-context")
-            .performScrollTo()
-            .assertTextContains("2025/26", substring = true)
-            .assertTextContains("Cerrada", substring = true)
+        assertEquals(0, composeRule.onAllNodesWithTag("notebook-tab-campaign").fetchSemanticsNodes().size)
     }
 
     @Test fun withoutACampaignTheNotebookSaysSo() {
@@ -264,8 +273,7 @@ class NotebookHomeScreenTest {
         composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo", substring = true)
         // #417: the Diario is the Farm's and opens without a Campaign; only Campaña asks for one.
         composeRule.onNodeWithTag("notebook-diary-empty").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("notebook-tab-campaign").performScrollTo().performClick()
-        composeRule.onNodeWithTag("notebook-no-campaign").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-open-campaign").performScrollTo().assertIsDisplayed()
     }
 
     /** #417: with no Campaign at all, the Farm's work and costs are in Diario, Fitosanitario and Gastos. */
@@ -341,7 +349,7 @@ class NotebookHomeScreenTest {
             val layout = textLayout(composeRule.onNodeWithText(label, useUnmergedTree = true))
             assertEquals("«$label» in one line", 1, layout.lineCount)
         }
-        NotebookHubTab.entries.forEach { view ->
+        NotebookHubTab.entries.filter { it != NotebookHubTab.CAMPAIGN }.forEach { view ->
             composeRule.onNodeWithTag(view.tag).performScrollTo().assertIsDisplayed()
             val layout = textLayout(composeRule.onAllNodesWithText(view.label, useUnmergedTree = true)[0])
             // Whole = one line, laid out at least as wide as the label needs (nothing clipped).

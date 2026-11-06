@@ -91,4 +91,22 @@ class EdgeWeatherResponseTest {
         assertThrows(Exception::class.java) { EdgeWeatherResponse.parse("""{"error":"providers_unavailable"}""") }
         assertThrows(Exception::class.java) { EdgeWeatherResponse.parse(aemet.replace("\"temperatureC\":16,", "")) }
     }
+
+    @Test
+    fun dailyForecastIsSortedDeduplicatedAndClampedToValidRanges() {
+        val unsorted = aemet.replace(
+            "\"current\":{",
+            "\"daily\":[" +
+                "{\"date\":\"2026-09-26\",\"minTemperatureC\":11,\"maxTemperatureC\":22,\"condition\":\"CLEAR\",\"rainProbabilityPercent\":-10,\"rainMm\":-4.0,\"windKmh\":-3}," +
+                "{\"date\":\"2026-09-25\",\"minTemperatureC\":13,\"maxTemperatureC\":25,\"condition\":\"RAIN\",\"rainProbabilityPercent\":130,\"rainMm\":1.2,\"windKmh\":18}," +
+                "{\"date\":\"2026-09-25\",\"minTemperatureC\":99,\"maxTemperatureC\":99,\"condition\":\"CLEAR\"}" +
+                "],\"current\":{",
+        )
+        val days = EdgeWeatherResponse.parse(unsorted).weather.daily
+        assertEquals(listOf(LocalDate.parse("2026-09-25"), LocalDate.parse("2026-09-26")), days.map { it.date })
+        assertEquals(100, days[0].rainProbabilityPercent)
+        assertEquals(0, days[1].rainProbabilityPercent)
+        assertNull(days[1].rainMm)
+        assertNull(days[1].windKmh)
+    }
 }

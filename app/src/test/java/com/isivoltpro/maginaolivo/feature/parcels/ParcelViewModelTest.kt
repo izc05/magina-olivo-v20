@@ -143,6 +143,7 @@ class ParcelViewModelTest {
         override fun observeArchived(farmId: UUID): Flow<List<Parcel>> = archived
         override fun observeById(parcelId: UUID): Flow<Parcel?> = selected
         override suspend fun linkToRegistry(parcelId: UUID, link: RegistryLink): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun fillMissingCadastralLocation(parcelId: UUID, reference: String, municipality: String, province: String): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID? =
             active.value.firstOrNull { it.workspaceId == workspaceId && it.cadastralReference == reference }?.id
         override suspend fun create(command: NewParcel): AppResult<UUID> {

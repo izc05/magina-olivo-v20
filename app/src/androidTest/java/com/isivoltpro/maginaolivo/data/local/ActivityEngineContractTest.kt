@@ -66,7 +66,7 @@ class ActivityEngineContractTest {
     fun before() = runBlocking {
         context.deleteDatabase(DB)
         db = MaginaOlivoDatabase.create(context, DB)
-        repository = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        repository = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
         seed()
     }
 
@@ -510,7 +510,7 @@ class ActivityEngineContractTest {
         db.close()
 
         db = MaginaOlivoDatabase.create(context, DB)
-        val restored = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val restored = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
             .observe(id).first()!!
         assertEquals(ActivityStatus.COMPLETED, restored.status)
         assertEquals(2, restored.targets.size)

@@ -48,10 +48,17 @@ class QuickLabourFormTest {
                 true, false, ExpenseFormErrors(), null, {}, { _, _, _ -> }, {}, {},
                 campaignReady = loaded.value, currency = currency.value)
         } }
-        compose.onNodeWithTag("quick-labour-campaign").performClick()
+        scopeControl("quick-labour-campaign").performClick()
         compose.runOnIdle { currency.value = "JPY"; loaded.value = true }
         compose.onNodeWithTag("quick-labour-review-currency").assertDoesNotExist()
         compose.onNodeWithTag("labour-rate").performScrollTo().assertTextContains("JPY", substring = true)
+    }
+    /** The header can scroll with an open IME on a compact screen; touch its real visible control. */
+    private fun scopeControl(tag: String): SemanticsNodeInteraction {
+        compose.waitForIdle()
+        val control = compose.onNodeWithTag(tag)
+        if (runCatching { control.assertIsDisplayed() }.isFailure) control.performScrollTo()
+        return control.assertIsDisplayed().assertIsEnabled()
     }
     private fun verify(dark: Boolean) {
         compose.activityRule.scenario.onActivity {
@@ -84,6 +91,8 @@ class QuickLabourFormTest {
                         RootDestination.Olivar -> MoIcons.Tree
                         RootDestination.Notebook -> MoIcons.Notebook
                         RootDestination.Profile -> MoIcons.Person
+                        RootDestination.Assistant -> MoIcons.Assistant
+                        RootDestination.CampaignHub -> MoIcons.Campaign
                         RootDestination.Alerts -> MoIcons.Bell
                     })
                 }, selectedIndex = 2, onSelected = {}, onAddRecord = {})
@@ -99,17 +108,17 @@ class QuickLabourFormTest {
         compose.onNodeWithText("Añadir jornal").assertIsDisplayed()
         compose.onNodeWithTag("quick-labour-farm-context").assertTextContains("Finca sintética · Parcela sintética")
         capture(dark, "general")
-        compose.onNodeWithTag("quick-labour-general").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        scopeControl("quick-labour-general").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         compose.onNodeWithTag("expense-concept").performScrollTo().performTextClearance()
         compose.onNodeWithTag("expense-concept").performTextInput("Reparación de riego")
         compose.onNodeWithTag("expense-amount").performScrollTo().performTextInput("65")
-        compose.onNodeWithTag("quick-labour-campaign").performClick()
+        scopeControl("quick-labour-campaign").performClick()
         compose.onNodeWithTag("labour-worker").performScrollTo().performClick()
         compose.onNodeWithTag("labour-unit-HOURS").performScrollTo().performClick()
         compose.onNodeWithTag("labour-hours").performScrollTo().performTextInput("3")
         capture(dark, "campaign-hours")
-        compose.onNodeWithTag("quick-labour-general").assertIsDisplayed()
-        compose.onNodeWithTag("quick-labour-general").performClick()
+        scopeControl("quick-labour-general").assertIsDisplayed()
+        scopeControl("quick-labour-general").performClick()
         compose.onNodeWithTag("expense-concept").performScrollTo().assertTextContains("Reparación de riego")
         compose.onNodeWithTag("expense-amount").assertTextContains("65")
         compose.onNodeWithText("Guardar jornal general").performScrollTo().performClick()
@@ -118,7 +127,7 @@ class QuickLabourFormTest {
             assertEquals(ExpenseCategory.LABOR, savedGeneral!!.category); assertNull(savedCrew)
             assertEquals(parcel, savedGeneral!!.parcelId); assertEquals(farm, savedGeneral!!.farmId)
         }
-        compose.onNodeWithTag("quick-labour-campaign").performClick()
+        scopeControl("quick-labour-campaign").performClick()
         compose.onNodeWithTag("labour-hours").performScrollTo().assertTextContains("3")
         compose.runOnIdle { campaignReady.value = false }
         compose.onNodeWithTag("labour-save").performScrollTo().assertIsNotEnabled()
@@ -136,8 +145,8 @@ class QuickLabourFormTest {
         compose.onNodeWithTag("labour-rate").performScrollTo().assert(SemanticsMatcher.expectValue(
             androidx.compose.ui.semantics.SemanticsProperties.EditableText, androidx.compose.ui.text.AnnotatedString("")))
         compose.onNodeWithTag("labour-rate").performScrollTo().performTextInput("1200")
-        compose.onNodeWithTag("quick-labour-general").performClick()
-        compose.onNodeWithTag("quick-labour-campaign").performClick()
+        scopeControl("quick-labour-general").performClick()
+        scopeControl("quick-labour-campaign").performClick()
         compose.onNodeWithTag("labour-rate").performScrollTo().assertTextContains("1200")
         compose.onNodeWithTag("labour-hours").performScrollTo().assertTextContains("3")
         capture(dark, "revised-currency")

@@ -757,7 +757,7 @@ class DayCostContractTest {
         val workspaces = object : WorkspaceRepository {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
         }
-        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
+        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
         labour = OfflineFirstLabourRepository(db, workspaces, clock, RandomIds, TestDispatchers)
         equipment = OfflineFirstEquipmentRepository(db, clock, RandomIds, TestDispatchers)
         expenses = OfflineFirstExpenseRepository(db, workspaces, clock, RandomIds, TestDispatchers)

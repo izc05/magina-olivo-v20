@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,7 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.isivoltpro.maginaolivo.app.AppCompositionRoot
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
@@ -26,6 +30,7 @@ import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -47,6 +52,13 @@ class AccountAuthScreenTest {
     } }
     @get:Rule val rules:TestRule=RuleChain.outerRule(guard).around(IsolatedAppStateRule()).around(compose)
     private val photo=File(context.noBackupFilesDir,"qa-account-photo-${UUID.randomUUID()}.bin")
+    @Before fun matchProductionKeyboardResize() {
+        // MainActivity declares adjustResize. The generic test Activity otherwise lets the
+        // IME cover the mode buttons while performScrollTo considers them inside its viewport.
+        compose.activityRule.scenario.onActivity {
+            it.window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        }
+    }
     @After fun removeOwnPhoto() { check(photo.name.startsWith("qa-account-photo-"));photo.delete() }
     private inner class Api:AccountAuthApi {
         override val simulated=true
@@ -84,12 +96,12 @@ class AccountAuthScreenTest {
         compose.onNodeWithTag("account-simulation").assertIsDisplayed()
         compose.onNodeWithTag("account-email").performScrollTo().performTextReplacement("qa@example.com")
         compose.onNodeWithTag("account-password").performScrollTo().performTextReplacement("password42")
-        compose.onNodeWithTag("account-login").performScrollTo().performClick()
+        clickAccountAction("account-login")
         waitFor("account-logout");assertNotNull(store.read().session);capture("signed-in")
         online.value=false
         compose.waitUntil(15_000) { repo.state.value.status==AccountStatus.OFFLINE }
         compose.activityRule.scenario.recreate();content();waitFor("account-logout");capture("offline-restored")
-        compose.onNodeWithTag("account-logout").performScrollTo().performClick();waitFor("account-login")
+        clickAccountAction("account-logout");waitFor("account-login")
         assertNull(store.read().session);assertEquals(before,fingerprint(local.database));assertArrayEquals(byteArrayOf(4,2,1,9),photo.readBytes())
         assertNotNull(local.database.farmDao().findById(farm));capture("logged-out")
         assertNotNull(local.database.parcelDao().findById(parcel))
@@ -103,24 +115,24 @@ class AccountAuthScreenTest {
         waitFor("account-email")
         compose.onNodeWithTag("account-email").performScrollTo().performTextReplacement("qa@example.com")
         compose.onNodeWithTag("account-password").performScrollTo().performTextReplacement("incorrecta")
-        compose.onNodeWithTag("account-login").performScrollTo().performClick()
+        clickAccountAction("account-login")
         compose.waitUntil(15_000) { repo.state.value.error!=null && !repo.state.value.busy };assertNull(store.read().session);assertEquals(1,api.calls)
-        compose.onNodeWithTag("account-mode-register").performScrollTo().assertIsEnabled().performClick()
+        clickAccountAction("account-mode-register")
         waitFor("account-register")
         compose.onNodeWithTag("account-password").performScrollTo().performTextReplacement("password42")
-        compose.onNodeWithTag("account-register").performScrollTo().performClick()
+        clickAccountAction("account-register")
         // Pending is persisted before the IO request finishes; only published idle state
         // guarantees the mode controls can accept a click.
         compose.waitUntil(15_000) { store.read().pending?.purpose==LinkPurpose.SIGNUP && repo.state.value.pendingPurpose==LinkPurpose.SIGNUP && !repo.state.value.busy }
         assertNull(store.read().session);capture("confirm-pending")
-        compose.onNodeWithTag("account-mode-recover").performScrollTo().assertIsEnabled().performClick()
+        clickAccountAction("account-mode-recover")
         waitFor("account-recover")
-        compose.onNodeWithTag("account-recover").performScrollTo().assertIsEnabled().performClick()
+        clickAccountAction("account-recover")
         compose.waitUntil(15_000) { store.read().pending?.purpose==LinkPurpose.RECOVERY && repo.state.value.pendingPurpose==LinkPurpose.RECOVERY && !repo.state.value.busy }
         runBlocking { repo.completeLink("${api.redirectUri}?code=synthetic-code",true) }
         waitFor("account-new-password")
         compose.onNodeWithTag("account-new-password").performScrollTo().performTextReplacement("New-password42")
-        compose.onNodeWithTag("account-save-password").performScrollTo().performClick()
+        clickAccountAction("account-save-password")
         compose.waitUntil(15_000) { store.read().recovery==null && repo.state.value.message?.contains("actualizada")==true }
         assertNull(store.read().session);capture("password-updated")
     }
@@ -129,6 +141,41 @@ class AccountAuthScreenTest {
         compose.setContent { MaginaOlivoTheme { AccountRoute(repo,{}) } }
         waitFor("account-login");compose.onNodeWithTag("account-login").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("account-status").performScrollTo().assertTextContains("Configuración de pruebas pendiente")
+    }
+    @Test fun emailAndPasswordAcceptFocusedInputAndPasswordCanBeRevealed() {
+        val repo=AccountRepository(Api(),MemoryAccountSessionStore())
+        compose.setContent { MaginaOlivoTheme(AppearanceMode.LIGHT) { AccountRoute(repo,{},connectivity=MutableStateFlow(true)) } }
+        waitFor("account-email")
+        compose.onNodeWithTag("account-logo").assertIsDisplayed()
+        compose.onNodeWithTag("account-mode-login").assertDoesNotExist()
+        compose.onNodeWithTag("account-email").performScrollTo().performClick()
+        compose.onNodeWithTag("account-email").assertIsFocused().performTextInput("qa854@example.invalid")
+        compose.onNodeWithTag("account-email").assertTextContains("qa854@example.invalid")
+        compose.onNodeWithTag("account-password").performScrollTo().performClick()
+        compose.onNodeWithTag("account-password").assertIsFocused().performTextInput("password42")
+        compose.onNodeWithTag("account-password-visibility").performClick()
+        compose.onNodeWithTag("account-password").assertTextContains("password42")
+        compose.onNodeWithTag("account-password-visibility").performClick()
+        clickAccountAction("account-mode-recover")
+        waitFor("account-recover")
+        clickAccountAction("account-mode-login")
+        waitFor("account-login")
+        compose.onNodeWithTag("account-mode-login").assertDoesNotExist()
+    }
+    private fun clickAccountAction(tag:String) {
+        // IME resize and focused-field bring-into-view run outside the Compose test clock.
+        // Settle the actual window before deriving coordinates and injecting a real click.
+        Espresso.closeSoftKeyboard()
+        compose.waitUntil(15_000) {
+            var ready=false
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                val view=compose.activity.window.decorView
+                val insets=ViewCompat.getRootWindowInsets(view)
+                ready=view.hasWindowFocus() && insets!=null && !insets.isVisible(WindowInsetsCompat.Type.ime())
+            }
+            ready
+        }
+        compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertIsEnabled().performClick()
     }
     private fun fingerprint(db:com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase):String {
         val sqlite=db.openHelper.readableDatabase
@@ -140,7 +187,17 @@ class AccountAuthScreenTest {
             }
         }
     }
-    private fun waitFor(tag:String)=compose.waitUntil(15_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+    private fun waitFor(tag:String) {
+        try {
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+        } catch (failure: ComposeTimeoutException) {
+            runCatching {
+                capture("failure-$tag")
+                compose.onRoot(useUnmergedTree=true).printToLog("AccountFailure")
+            }.exceptionOrNull()?.let(failure::addSuppressed)
+            throw failure
+        }
+    }
     private fun capture(stage:String) {
         compose.waitForIdle()
         val config=context.resources.configuration;val out=File(context.getExternalFilesDir(null),"account-auth-evidence/$stage-sw${config.smallestScreenWidthDp}dp-font${config.fontScale}.png")

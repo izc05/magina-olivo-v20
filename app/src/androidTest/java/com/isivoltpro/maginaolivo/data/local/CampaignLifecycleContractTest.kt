@@ -7,6 +7,7 @@ import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
+import com.isivoltpro.maginaolivo.core.regional.RegionalContext
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryEntity
@@ -16,10 +17,12 @@ import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceSelectionEntity
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
+import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstCampaignRepository
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignPreparationChanges
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
@@ -69,7 +72,10 @@ class CampaignLifecycleContractTest {
     fun before() = runBlocking {
         context.deleteDatabase(DB)
         db = MaginaOlivoDatabase.create(context, DB)
-        repository = OfflineFirstCampaignRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        // #615/958953be: campaign writes resolve the active workspace through the real fail-closed
+        // repository; with no session it only accepts the explicitly persisted local selection.
+        repository = OfflineFirstCampaignRepository(db, FixedClock(now), RandomIds, TestDispatchers,
+            LocalWorkspaceRepository(db, FixedClock(now), RandomIds, TestDispatchers, RegionalContext.spainDefault()))
         seed()
     }
 
@@ -537,6 +543,7 @@ class CampaignLifecycleContractTest {
         db.workspaceDao().upsert(
             WorkspaceEntity(workspaceId, "Olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
         )
+        db.workspaceSelectionDao().upsert(WorkspaceSelectionEntity("", "", workspaceId))
         db.farmDao().upsert(FarmEntity(farmId, workspaceId, "Finca inicial", metadata = meta))
         db.parcelDao().upsert(
             ParcelEntity(parcelId, workspaceId, "Parcela inicial", source = "MANUAL", managedAreaM2 = 1200.0, metadata = meta),

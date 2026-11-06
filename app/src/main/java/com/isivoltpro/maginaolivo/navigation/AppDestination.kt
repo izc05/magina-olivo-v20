@@ -35,11 +35,21 @@ enum class RootDestination(
         label = "Perfil",
         symbol = "○",
     ),
+    Assistant(
+        route = "assistant",
+        label = "Asistente IA",
+        symbol = "✦",
+    ),
+    CampaignHub(
+        route = "agricultural-campaign",
+        label = "Campaña",
+        symbol = "⚑",
+    ),
 }
 
 /** CR-014: + is an action between Mi Campo and Cuaderno, never a route or tab. */
 val bottomNavigationRoots = listOf(
-    RootDestination.Home, RootDestination.Olivar, RootDestination.Notebook, RootDestination.Profile,
+    RootDestination.Home, RootDestination.Olivar, RootDestination.Notebook, RootDestination.CampaignHub,
 )
 
 object AppDestination {
@@ -230,6 +240,8 @@ object AppDestination {
             "document",
             -> RootDestination.Notebook
             RootDestination.Alerts.route, Calendar, PlanWork -> RootDestination.Alerts
+            RootDestination.Assistant.route -> RootDestination.Assistant
+            RootDestination.CampaignHub.route -> RootDestination.CampaignHub
             RootDestination.Profile.route, Account, DeveloperGallery, "help", AgronomicPeople, "agronomic-person" -> RootDestination.Profile
             else -> null
         }

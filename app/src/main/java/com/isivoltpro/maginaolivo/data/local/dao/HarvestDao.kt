@@ -29,7 +29,7 @@ interface HarvestDao {
         SELECT * FROM harvests
         WHERE farm_id = :farmId AND campaign_id = :campaignId AND harvest_date = :date
           AND day_origin = 'AUTO_DAY' AND deleted_at IS NULL
-        ORDER BY created_at, id LIMIT 1
+        ORDER BY (remote_version IS NULL), created_at, id LIMIT 1
         """,
     )
     suspend fun findAutoDay(farmId: UUID, campaignId: UUID, date: LocalDate): HarvestEntity?
@@ -85,6 +85,10 @@ interface HarvestDao {
 
     @Query("SELECT * FROM harvests WHERE campaign_id = :campaignId AND deleted_at IS NULL")
     suspend fun listLiveForCampaign(campaignId: UUID): List<HarvestEntity>
+
+    /** #808 R3-c: Jornadas of a farm and campaign the server already confirmed (REMOTE_MISSING detection). */
+    @Query("SELECT * FROM harvests WHERE farm_id = :farmId AND campaign_id = :campaignId AND remote_version IS NOT NULL")
+    suspend fun listRemoteForCampaign(farmId: UUID, campaignId: UUID): List<HarvestEntity>
 
     @Query("SELECT MAX(harvest_date) FROM harvests WHERE campaign_id = :campaignId AND deleted_at IS NULL")
     suspend fun lastLiveDateForCampaign(campaignId: UUID): LocalDate?

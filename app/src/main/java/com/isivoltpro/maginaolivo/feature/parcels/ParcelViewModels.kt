@@ -153,9 +153,11 @@ class ParcelDetailViewModel(
     val state: StateFlow<ParcelDetailUiState> = mutableState.asStateFlow()
 
     init {
-        activities?.let { repository ->
+        activities?.let { activityRepo ->
             viewModelScope.launch {
-                repository.observeForParcel(parcelId).collect { list ->
+                repository.observeById(parcelId).flatMapLatest { parcel ->
+                    if (parcel == null) flowOf(emptyList()) else activityRepo.observeForParcel(parcelId)
+                }.collect { list ->
                     mutableState.value = mutableState.value.copy(
                         activities = list.sortedByDescending { it.activityDate },
                     )
@@ -186,6 +188,27 @@ class ParcelDetailViewModel(
         val area = validate(draft) ?: return
         mutate("Cambios guardados en este dispositivo") {
             repository.update(parcelId, draft.toChanges(area))
+        }
+    }
+
+    fun recoverCadastralLocation(locate: suspend (String) -> com.isivoltpro.maginaolivo.domain.registry.RegistryLocation?) {
+        val parcel = mutableState.value.parcel ?: return
+        if (parcel.source != ParcelSource.CATASTRO ||
+            (!parcel.municipality.isNullOrBlank() && !parcel.province.isNullOrBlank())) return
+        val reference = parcel.cadastralReference ?: return
+        viewModelScope.launch {
+            val serviceLocation = try {
+                kotlinx.coroutines.withTimeoutOrNull(4_000) { locate(reference) }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                null
+            }
+            val location = serviceLocation
+                ?: com.isivoltpro.maginaolivo.feature.catastro.CadastralMunicipalityCatalog.resolve(reference)
+            if (location != null && location.municipality.isNotBlank() && !location.province.isNullOrBlank()) {
+                repository.fillMissingCadastralLocation(parcelId, reference, location.municipality, location.province)
+            }
         }
     }
 

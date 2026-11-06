@@ -61,7 +61,7 @@ class CachedWeatherFeed(
     /** One fetch; the cache changes only when the source answered. */
     private suspend fun fetchAndStore(location: FeedLocation): Boolean {
         val provider = source ?: return false
-        val workspaceId = (workspaces.ensureLocalWorkspace() as? AppResult.Success)?.value ?: return false
+        val workspaceId = (workspaces.activeWorkspace() as? AppResult.Success)?.value ?: return false
         val reading = try {
             withTimeout(timeoutMillis) { provider.fetch(location) }
         } catch (cancelled: CancellationException) {

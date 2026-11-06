@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.data.remote.weather
 
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
+import com.isivoltpro.maginaolivo.domain.feed.SpanishMunicipalityCatalog
 import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
 import com.isivoltpro.maginaolivo.domain.weather.WeatherDayForecast
@@ -24,13 +25,29 @@ class EdgeWeatherSource(
     private val timeoutMillis: Int = 10_000,
 ) : WeatherSource {
     override suspend fun fetch(location: FeedLocation): WeatherReading = withContext(Dispatchers.IO) {
-        val request = JSONObject().apply {
-            put("municipality", location.municipality)
-            location.province?.let { put("province", it) }
-        }
+        val request = buildRequestJson(location)
         EdgeWeatherResponse.parse(
             EdgeFunctionHttp.post(functionsUrl, "weather-forecast", anonKey, request.toString(), timeoutMillis),
         )
+    }
+
+    companion object {
+        /**
+         * Builds the JSON payload for `weather-forecast`. Includes `municipalityCode` (5-digit INE
+         * code) only when verified against the official [SpanishMunicipalityCatalog].
+         */
+        fun buildRequestJson(location: FeedLocation): JSONObject {
+            val validatedEntry = SpanishMunicipalityCatalog.resolve(
+                municipality = location.municipality,
+                province = location.province,
+                ineCode = location.ineCode,
+            )
+            return JSONObject().apply {
+                validatedEntry?.ineCode?.let { put("municipalityCode", it) }
+                put("municipality", location.municipality)
+                (location.province ?: validatedEntry?.provinceName)?.let { put("province", it) }
+            }
+        }
     }
 }
 
@@ -58,19 +75,19 @@ object EdgeWeatherResponse {
                 minTemperatureC = day.optIntOrNull("minTemperatureC"),
                 maxTemperatureC = day.optIntOrNull("maxTemperatureC"),
                 condition = dayCondition,
-                rainProbabilityPercent = day.optIntOrNull("rainProbabilityPercent"),
-                rainMm = day.optDoubleOrNull("rainMm"),
-                windKmh = day.optIntOrNull("windKmh"),
+                rainProbabilityPercent = day.optIntOrNull("rainProbabilityPercent")?.coerceIn(0, 100),
+                rainMm = day.optDoubleOrNull("rainMm")?.takeIf { it.isFinite() && it >= 0.0 },
+                windKmh = day.optIntOrNull("windKmh")?.takeIf { it >= 0 },
             )
-        }.take(7)
+        }.sortedBy { it.date }.distinctBy { it.date }.take(7)
         val solar = body.optJSONObject("solar")
         return WeatherReading(
             provider = provider,
             weather = WeatherNow(
                 temperatureC = current.getInt("temperatureC"),
                 condition = condition,
-                rainProbabilityPercent = current.optIntOrNull("rainProbabilityPercent"),
-                windKmh = current.optIntOrNull("windKmh"),
+                rainProbabilityPercent = current.optIntOrNull("rainProbabilityPercent")?.coerceIn(0, 100),
+                windKmh = current.optIntOrNull("windKmh")?.takeIf { it >= 0 },
                 validAt = Instant.parse(current.getString("validAt")),
                 updatedAt = Instant.parse(body.getString("updatedAt")),
                 attribution = body.optString("attribution").ifBlank { null },

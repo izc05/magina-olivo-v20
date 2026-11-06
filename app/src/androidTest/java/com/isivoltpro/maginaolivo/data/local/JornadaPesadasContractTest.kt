@@ -5,9 +5,11 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.local.entity.HarvestParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
@@ -63,6 +65,10 @@ import org.junit.runner.RunWith
 class JornadaPesadasContractTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val workspaceId = UUID.fromString("10000000-0000-0000-0000-0000000019b1")
+    /** G2.6 (#615): production always injects the active workspace (ActiveWorkspaceScope); the fixture's own plays that role. */
+    private val activeWorkspace = object : WorkspaceRepository {
+        override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
+    }
     private val farmId = UUID.fromString("20000000-0000-0000-0000-0000000019b1")
     private val campaignId = UUID.fromString("40000000-0000-0000-0000-0000000019b1")
     private val north = UUID.fromString("30000000-0000-0000-0000-0000000019b1")
@@ -117,8 +123,9 @@ class JornadaPesadasContractTest {
     }
 
     @Test
-    fun aDaysOriginIsTheUnionOfItsPesadasParcelsWithoutASplit() = runBlocking {
-        // CR-010 (note 2): exact kilos stay on each Pesada; the day only knows where they came from.
+    fun aDaysOriginIsTheUnionOfItsPesadasParcelsWithTheServerSplit() = runBlocking {
+        // CR-010 (note 2): exact kilos stay on each Pesada. Amendment J (J-D1) supersedes "the day only knows where they
+        // came from": per Parcel the day is EXACT with the sum when every live share is EXACT (the server rule).
         val a = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1").copy(shares = listOf(DeliveryShareInput(north, 2_000_000)))))
         val dayId = deliveries.observe(a).first()!!.harvestId!!
         assertEquals(setOf(north), harvests.observe(dayId).first()!!.shares.map { it.parcelId }.toSet())
@@ -126,7 +133,8 @@ class JornadaPesadasContractTest {
         ok(deliveries.create(pesada(1_000_000, "Coop. San Isidro", "V-2").copy(shares = listOf(DeliveryShareInput(south, 1_000_000)))))
         val day = harvests.observe(dayId).first()!!
         assertEquals(setOf(north, south), day.shares.map { it.parcelId }.toSet())
-        assertTrue(day.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
+        assertEquals(mapOf(north to (2_000_000L to HarvestAllocation.EXACT), south to (1_000_000L to HarvestAllocation.EXACT)),
+            day.shares.associate { it.parcelId to (it.weightGrams to it.allocation) })
         assertEquals(3_000_000L, day.totalGrams)
         // The single-Parcel Pesadas keep their exact kilos; none is inferred for the day.
         assertEquals(2_000_000L, deliveries.observe(a).first()!!.shares.single().weightGrams)
@@ -163,25 +171,29 @@ class JornadaPesadasContractTest {
         val a = ok(deliveries.create(pesada(2_200_000, "Coop. San Isidro", "V-9").copy(deliveryDate = yesterday)))
         linkAsBeforeCr010(a, legacy)
 
-        // Edited on the same date, it stays in its Jornada, whose kilos follow it (Phase 19B).
+        // Edited on the same date, it stays in its Jornada. Amendment J (J-D2) supersedes Phase 19B here: the Jornada keeps
+        // the kilos the farmer typed; the Pesada's kilos are only a separate informative figure, never added or replacing.
         ok(deliveries.update(a, pesada(2_300_000, "Coop. San Isidro", "V-9").copy(deliveryDate = yesterday)))
         assertEquals(legacy, deliveries.observe(a).first()!!.harvestId)
-        assertEquals(2_300_000L, harvests.observe(legacy).first()!!.totalGrams)
-        assertEquals(2_300_000L, harvests.observe(legacy).first()!!.shares.single().weightGrams)
-        // Its kilos never come from the Jornada form while it has Pesadas.
+        assertEquals(1_000_000L, harvests.observe(legacy).first()!!.totalGrams)
+        assertEquals(1_000_000L, harvests.observe(legacy).first()!!.shares.single().weightGrams)
+        assertEquals(2_300_000L, harvests.observe(legacy).first()!!.linkedPesadasGrams)
+        // Its kilos never come from its Pesadas: only its own form changes them (J-D2), with the rest of the form.
         ok(harvests.update(legacy, HarvestDraft(farmId, yesterday, 7_777_000, listOf(HarvestShareInput(north, 7_777_000)), workerCount = 5)))
-        assertEquals(2_300_000L, harvests.observe(legacy).first()!!.totalGrams)
+        assertEquals(7_777_000L, harvests.observe(legacy).first()!!.totalGrams)
         assertEquals(5, harvests.observe(legacy).first()!!.workerCount)
+        assertEquals(2_300_000L, harvests.observe(legacy).first()!!.linkedPesadasGrams)
 
-        // A new date moves it to that date's automatic day; the Jornada it left keeps no kilos of it
-        // (they were the Pesada's): back to «Kg pendientes de pesada», never shown as history.
+        // A new date moves it to that date's automatic day; the Jornada it left keeps the farmer's typed kilos and no
+        // longer shows the Pesada (J-D2: leaving never overwrites, sums or zeroes them).
         ok(deliveries.update(a, pesada(2_300_000, "Coop. San Isidro", "V-9")))
         val moved = deliveries.observe(a).first()!!.harvestId!!
         assertTrue(moved != legacy)
         assertTrue(harvests.observe(moved).first()!!.automatic)
         val left = harvests.observe(legacy).first()!!
-        assertTrue(left.awaitingPesadas)
-        assertEquals(HarvestAllocation.UNALLOCATED, left.shares.single().allocation)
+        assertEquals(7_777_000L, left.totalGrams)
+        assertNull(left.linkedPesadasGrams)
+        assertTrue(!left.awaitingPesadas)
 
         // #457: a day with Pesadas is never removed from under them; they keep it, intact.
         db.expenseDao().upsert(expenseOn(moved)) // so the day would stay even without its Pesada
@@ -312,28 +324,37 @@ class JornadaPesadasContractTest {
         assertEquals(version, harvests.observe(empty).first()!!.version)
     }
 
-    /** #458 C/D: a day's Parcel rows are kept as recorded; only Parcels joining or leaving change. */
+    /**
+     * #458 C/D: a day's Parcel rows are kept as recorded (same row, Parcel, campaign Parcel and recorded name); only Parcels
+     * joining or leaving add or drop rows. Amendment J (J-D1): each row's kilos follow the server rule (EXACT sum).
+     */
     @Test
     fun aDayKeepsItsParcelRowsAndNamesWhenItsPesadasChange() = runBlocking {
+        fun identity(row: HarvestParcelEntity) = listOf(row.id, row.parcelId, row.campaignParcelId, row.parcelNameAtHarvest)
+        fun kilos(row: HarvestParcelEntity) = row.weightGrams to row.allocationMode
         val a = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1").copy(shares = listOf(DeliveryShareInput(north, 2_000_000)))))
         val dayId = deliveries.observe(a).first()!!.harvestId!!
         val recorded = db.harvestDao().listParcels(dayId).single()
+        assertEquals(2_000_000L to "EXACT", kilos(recorded))
         val parcel = db.parcelDao().findById(north)!!
         db.parcelDao().upsert(parcel.copy(displayName = "Parcela 1"))
 
-        // Another Pesada of the same Parcel: the day's row for it is untouched.
+        // Another Pesada of the same Parcel: the day's row for it is the same row with its recorded name; its kilos are the sum.
         ok(deliveries.create(pesada(500_000, "Coop. San Isidro", "V-2").copy(shares = listOf(DeliveryShareInput(north, 500_000)))))
-        assertEquals(listOf(recorded), db.harvestDao().listParcels(dayId))
+        val same = db.harvestDao().listParcels(dayId).single()
+        assertEquals(identity(recorded), identity(same)); assertEquals(2_500_000L to "EXACT", kilos(same))
 
         // A Pesada of another Parcel adds only that Parcel's row.
         val b = ok(deliveries.create(pesada(700_000, "Coop. San Isidro", "V-3").copy(shares = listOf(DeliveryShareInput(south, 700_000)))))
         val rows = db.harvestDao().listParcels(dayId).associateBy { it.parcelId }
         assertEquals(setOf(north, south), rows.keys)
-        assertEquals(recorded, rows.getValue(north))
+        assertEquals(identity(recorded), identity(rows.getValue(north))); assertEquals(2_500_000L to "EXACT", kilos(rows.getValue(north)))
+        assertEquals(700_000L to "EXACT", kilos(rows.getValue(south)))
 
         // It leaving drops only its row.
         ok(deliveries.delete(b))
-        assertEquals(listOf(recorded), db.harvestDao().listParcels(dayId))
+        val left = db.harvestDao().listParcels(dayId).single()
+        assertEquals(identity(recorded), identity(left)); assertEquals(2_500_000L to "EXACT", kilos(left))
         assertEquals(recorded.parcelNameAtHarvest, harvests.observe(dayId).first()!!.shares.single().parcelName)
     }
 
@@ -416,8 +437,8 @@ class JornadaPesadasContractTest {
     private fun open() {
         db = MaginaOlivoDatabase.create(context, DB)
         val clock = FixedClock(now)
-        deliveries = OfflineFirstDeliveryRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
-        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
+        deliveries = OfflineFirstDeliveryRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = activeWorkspace) { ZoneOffset.UTC }
+        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = activeWorkspace) { ZoneOffset.UTC }
     }
 
     private suspend fun seed() {

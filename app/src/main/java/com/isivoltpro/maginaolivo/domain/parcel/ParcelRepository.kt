@@ -113,6 +113,7 @@ interface ParcelRepository {
     suspend fun create(command: NewParcel): AppResult<UUID>
     suspend fun update(parcelId: UUID, changes: ParcelChanges): AppResult<Unit>
     suspend fun linkToRegistry(parcelId: UUID, link: RegistryLink): AppResult<Unit>
+    suspend fun fillMissingCadastralLocation(parcelId: UUID, reference: String, municipality: String, province: String): AppResult<Unit>
     suspend fun archive(parcelId: UUID): AppResult<Unit>
     suspend fun restore(parcelId: UUID, farmId: UUID): AppResult<Unit>
     suspend fun membershipHistory(parcelId: UUID): List<ParcelMembership>

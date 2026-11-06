@@ -1,0 +1,30 @@
+name: G2.6 campaign CAS isolated
+
+on:
+  pull_request:
+    branches: [codex/g26-remote-workspace-auth]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  campaign-cas:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact SHA
+        run: git rev-parse HEAD
+      - name: Verify isolated campaign SQL
+        run: echo '7f771415720feab118eb50cd45704a113525ffc07366e8957997e6405f49b618  supabase/migrations/20261029104720_g26_campaign_cas.sql' | sha256sum -c -
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: '2.120.0'
+      - name: Disposable native campaign CAS contract
+        run: bash supabase/tests/g26-campaign-cas/run.sh

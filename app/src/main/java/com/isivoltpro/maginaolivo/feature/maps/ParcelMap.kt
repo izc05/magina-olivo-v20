@@ -619,7 +619,7 @@ internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: St
     val background = if (dark) "#171914" else "#F3F1E6"
     val savedLine = if (dark && base == MapBase.NONE) "#B6D39E" else "#25371C"
     val candidateLine = if (dark && base == MapBase.NONE) "#E2CC90" else "#8A6A1F"
-    val selectedLine = if (dark && base == MapBase.NONE) "#B6D39E" else "#567342"
+    val selectedLine = "#D45A12"
     val sources = buildList {
         add(""""saved-parcels":{"type":"geojson","data":{"type":"FeatureCollection","features":[]}}""")
         if (myLocation) add(""""my-location":{"type":"geojson","data":{"type":"FeatureCollection","features":[]}}""")
@@ -644,9 +644,9 @@ internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: St
         if (cadastreLines && base != MapBase.NONE) add("""{"id":"cadastre","type":"raster","source":"cadastre","minzoom":15,"paint":{"raster-opacity":$cadastreOpacity}}""")
         if (sigpacLines && base != MapBase.NONE) add("""{"id":"sigpac","type":"raster","source":"sigpac","minzoom":15,"paint":{"raster-opacity":$sigpacOpacity}}""")
         if (overlayTiles != null && base != MapBase.NONE) add("""{"id":"overlay","type":"raster","source":"overlay","paint":{"raster-opacity":0.7}}""")
-        add("""{"id":"parcels-fill","type":"fill","source":"saved-parcels","paint":{"fill-color":["case",["get","selected"],"#567342",["==",["get","kind"],"CANDIDATE"],"#F4EAD0","#567342"],"fill-opacity":["case",["get","selected"],0.15,["==",["get","kind"],"CANDIDATE"],0.30,0.38]}}""")
-        add("""{"id":"parcels-selection-halo","type":"line","source":"saved-parcels","filter":["==",["get","selected"],true],"paint":{"line-color":"#F3F1E6","line-width":6}}""")
-        add("""{"id":"parcels-line","type":"line","source":"saved-parcels","paint":{"line-color":["case",["get","selected"],"$selectedLine",["==",["get","kind"],"CANDIDATE"],"$candidateLine","$savedLine"],"line-width":["case",["get","selected"],4,["==",["get","kind"],"CANDIDATE"],2,3]}}""")
+        add("""{"id":"parcels-fill","type":"fill","source":"saved-parcels","paint":{"fill-color":["case",["get","selected"],"#F59E0B",["==",["get","kind"],"CANDIDATE"],"#F4EAD0","#567342"],"fill-opacity":["case",["get","selected"],0.38,["==",["get","kind"],"CANDIDATE"],0.20,0.25]}}""")
+        add("""{"id":"parcels-selection-halo","type":"line","source":"saved-parcels","filter":["==",["get","selected"],true],"paint":{"line-color":"#FFFFFF","line-width":9}}""")
+        add("""{"id":"parcels-line","type":"line","source":"saved-parcels","paint":{"line-color":["case",["get","selected"],"$selectedLine",["==",["get","kind"],"CANDIDATE"],"$candidateLine","$savedLine"],"line-width":["case",["get","selected"],5.5,["==",["get","kind"],"CANDIDATE"],2,2.5]}}""")
         // #361: «Mi ubicación» — a blue dot with a soft halo, above everything else.
         if (myLocation) {
             add("""{"id":"my-location-halo","type":"circle","source":"my-location","paint":{"circle-radius":18,"circle-color":"#1D6FD8","circle-opacity":0.18}}""")

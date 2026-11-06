@@ -436,6 +436,25 @@ Examples:
 
 `Estos kilos pertenecen a la finca, pero no sabemos el reparto exacto por parcela.`
 
+### Attributed and not attributed kilos (CR-010 amendment J)
+
+`1.500 kg atribuidos a parcelas · 400 kg sin atribuir`
+
+- An automatic day shows, per Parcel, exact kilos only when every Pesada share of that Parcel is exact;
+  otherwise the Parcel is listed without kilos («sin reparto exacto»).
+- Kilos of Pesadas without Parcels count in the day total and in «sin atribuir», never as «toda la finca».
+
+### Hand-recorded Jornada with linked Pesadas (CR-010 amendment J)
+
+`4.242 kg (anotados a mano)`  
+`Pesadas enlazadas: 2.500 kg`
+
+The typed kilos are the Jornada's kilos; the linked Pesadas are an informative figure, never summed into them.
+
+### Jornada retained for review (CR-010 amendment J)
+
+`Esta jornada se ha retenido para revisión: sus kilos podrían haberse recalculado automáticamente.`
+
 ### No harvest expenses
 
 `Todavía no has añadido gastos de recolección.`
@@ -445,7 +464,7 @@ Examples:
 1. Delivery/Pesada cooperative belongs to each Pesada.
 2. Later yield never mutates the original Pesada.
 3. Farm metrics may include mixed/unallocated deliveries.
-4. Parcel metrics never receive guessed kg.
+4. Parcel metrics never receive guessed kg. Automatic days aggregate exact Parcel kilos only when every share is exact (CR-010 amendment J).
 5. Expense is authoritative for money.
 6. Missing data is unknown, not zero.
 7. User never types the same kg twice as a mandatory workflow.

@@ -33,7 +33,401 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(26, MaginaOlivoDatabase.VERSION)
+        assertEquals(34, MaginaOlivoDatabase.VERSION)
+    }
+
+    /**
+     * #808 R3-a: 33 -> 34 only adds two empty tables. Every pre-existing table is dumped row by row before and after
+     * (workspace, farm, campaign, AUTO_DAY and MANUAL Jornadas with versions, a deleted Pesada and its parcels, outbox
+     * operations in every state, an unsettled PREPARE, a held receipt, a G2.5 import receipt and a campaign
+     * reconciliation): the dumps are identical, and the schema validates against 34.json.
+     */
+    @Test
+    fun migration33To34AddsEmptyReceiveTablesAndPreservesEveryRowVersionReceiptOutboxAndPrepare() {
+        val a64 = "a".repeat(64)
+        val b64 = "b".repeat(64)
+        val c64 = "c".repeat(64)
+        val before = migrationHelper.createDatabase(TEST_DATABASE, 33).use { database ->
+            listOf(
+                "INSERT INTO workspaces(id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status,remote_version) VALUES ('w','QA','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,2,'SYNCED',2)",
+                "INSERT INTO farms(id,workspace_id,name,status,created_at,updated_at,version,sync_status,remote_version) VALUES ('f','w','Farm','ACTIVE',1000,1000,1,'SYNCED',1)",
+                "INSERT INTO campaigns(id,workspace_id,farm_id,name,start_date,status,created_at,updated_at,version,sync_status,remote_version) VALUES ('c','w','f','2026/27','2026-10-01','HARVEST',1000,1000,1,'SYNCED',1)",
+                "INSERT INTO harvests(id,workspace_id,campaign_id,farm_id,harvest_date,weight_grams,day_origin,created_at,updated_at,version,sync_status,remote_version) VALUES ('h-auto','w','c','f','2026-11-18',1400000,'AUTO_DAY',1000,2000,3,'PENDING',1)",
+                "INSERT INTO harvests(id,workspace_id,campaign_id,farm_id,harvest_date,weight_grams,day_origin,notes,created_at,updated_at,version,sync_status,remote_version) VALUES ('h-manual','w','c','f','2026-11-19',4242000,'MANUAL','typed',1000,1000,1,'SYNCED',1)",
+                "INSERT INTO deliveries(id,workspace_id,farm_id,campaign_id,delivery_date,destination_name,net_grams,source,harvest_id,created_at,updated_at,version,sync_status,remote_version) VALUES ('d-live','w','f','c','2026-11-18','Coop',1400000,'MANUAL','h-auto',1000,1000,1,'SYNCED',1)",
+                "INSERT INTO deliveries(id,workspace_id,farm_id,campaign_id,delivery_date,destination_name,net_grams,source,harvest_id,created_at,updated_at,deleted_at,version,sync_status,remote_version) VALUES ('d-gone','w','f','c','2026-11-18','Coop',600000,'MANUAL','h-auto',1000,2000,2000,2,'PENDING',1)",
+                "INSERT INTO parcels(id,workspace_id,display_name,source,status,created_at,updated_at,version,sync_status,remote_version) VALUES ('p','w','Norte','MANUAL','ACTIVE',1000,1000,1,'SYNCED',1)",
+                "INSERT INTO delivery_parcels(id,workspace_id,delivery_id,parcel_id,parcel_name_at_delivery,weight_grams,allocation_mode,created_at,updated_at,version,sync_status) VALUES ('dp','w','d-gone','p','Norte',600000,'EXACT',1000,1000,1,'SYNCED')",
+                "INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,account_id,payload_json,farm_id,created_at,updated_at) VALUES ('op-pending','DELIVERY','d-gone','DELETE',3,'PENDING',0,'a','{\"kind\":\"DELETE\"}','f',1000,1000)",
+                "INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,last_error_code,account_id,payload_json,farm_id,created_at,updated_at) VALUES ('op-processing','DELIVERY','d-live','UPDATE',2,'PROCESSING',1,'lease:1','a','{}','f',1000,1000)",
+                "INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,last_error_code,created_at,updated_at) VALUES ('op-unknown','HARVEST','h-auto','UPDATE',1,'FAILED',2,'OUTCOME_UNKNOWN',1000,1000)",
+                "INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,last_error_code,last_error_message,created_at,updated_at) VALUES ('op-held','DELIVERY','d-live','CREATE',3,'BLOCKED',1,'V3_ACK_AWAITING_HEAD','HEAD_SUPERSEDED',1000,1000)",
+                "INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,created_at,updated_at) VALUES ('op-done','HARVEST','h-manual','CREATE',1,'CONFIRMED',1,1000,1000)",
+                "INSERT INTO delivery_dispatch_prepare(operation_id,delivery_id,farm_id,account_id,issuer,subject,local_workspace_id,consent_operation_id,consent_text_version,payload_version,payload_hash,lease_marker,prepared_at) VALUES ('op-processing','d-live','f','a','iss','iss|a','w','consent',2,2,'$a64','lease:1',1000)",
+                "INSERT INTO delivery_held_receipts(operation_id,delivery_id,account_id,farm_id,remote_version,payload_hash,payload_version,revocation_operation_id,state,received_at) VALUES ('op-old','d-live','a','f',1,'$b64',2,'rev','HELD',1000)",
+                "INSERT INTO delivery_import_receipts(delivery_id,account_id,issuer,head_payload_hash,head_version,receive_contract_version,received_at) VALUES ('d-imported','a','iss','$c64',1,1,1000)",
+                "INSERT INTO campaign_reconciliations(original_operation_id,issuer,account_id,workspace_id,farm_id,campaign_id,reason,local_payload_json,remote_payload_json,remote_version,captured_at) VALUES ('rec','iss','a','w','f','c','CAS_CONFLICT','{}','{}',2,1000)",
+            ).forEach(database::execSQL)
+            dumpTables(database)
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 34, true, DatabaseMigrations.MIGRATION_33_34).use { database ->
+            assertEquals(before, dumpTables(database, exclude = setOf("sync_receive_receipts", "sync_receive_holds")))
+            for (table in listOf("sync_receive_receipts", "sync_receive_holds")) {
+                database.query("SELECT COUNT(*) FROM $table").use { c -> assertTrue(c.moveToFirst()); assertEquals(0, c.getInt(0)) }
+            }
+        }
+    }
+
+    /** Every user table, every row (by rowid), every column, NULL kept distinct from text. */
+    private fun dumpTables(database: androidx.sqlite.db.SupportSQLiteDatabase, exclude: Set<String> = emptySet()): String {
+        val tables = database.query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' " +
+                "AND name NOT IN ('room_master_table','android_metadata') ORDER BY name",
+        ).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }.filterNot { it in exclude }
+        return tables.joinToString("\n") { table ->
+            database.query("SELECT * FROM $table ORDER BY rowid").use { c ->
+                val rows = buildList {
+                    while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { i -> if (c.isNull(i)) "<NULL>" else c.getString(i) })
+                }
+                "$table(${c.columnNames.joinToString(",")}):${rows.joinToString(";")}"
+            }
+        }
+    }
+
+    /** Every table with its columns and rows (each row as column -> value), to compare a source version with the target. */
+    private fun snapshot(database: androidx.sqlite.db.SupportSQLiteDatabase): Map<String, Pair<List<String>, List<Map<String, String?>>>> {
+        val tables = database.query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' " +
+                "AND name NOT IN ('room_master_table','android_metadata') ORDER BY name",
+        ).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+        return tables.associateWith { table ->
+            database.query("SELECT * FROM $table").use { c ->
+                val columns = c.columnNames.toList()
+                columns to buildList { while (c.moveToNext()) add(columns.indices.associate { i -> columns[i] to (if (c.isNull(i)) null else c.getString(i)) }) }
+            }
+        }
+    }
+
+    /**
+     * Integration #796 + #808: every table of [before] still exists after migrating, with exactly the same rows over its
+     * ORIGINAL columns (order-independent); new columns and new tables may only be added.
+     */
+    private fun assertPreserved(before: Map<String, Pair<List<String>, List<Map<String, String?>>>>,
+        after: Map<String, Pair<List<String>, List<Map<String, String?>>>>) {
+        for ((table, source) in before) {
+            val (columns, rows) = source
+            val target = after[table] ?: error("table $table disappeared")
+            assertTrue("$table lost columns: ${columns - target.first.toSet()}", target.first.containsAll(columns))
+            fun key(row: Map<String, String?>) = columns.joinToString("|") { row[it] ?: "<NULL>" }
+            assertEquals("rows of $table", rows.map(::key).sorted(), target.second.map(::key).sorted())
+        }
+    }
+
+    private fun count(database: androidx.sqlite.db.SupportSQLiteDatabase, table: String) =
+        database.query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
+
+    /**
+     * Integration #796 + #808: a device still on schema 26 (the one of `main`) with a representative field dataset migrates
+     * through EVERY step to 34 (the chain's), with the app's own migration list: nothing is lost or altered and the
+     * receive tables arrive empty.
+     */
+    @Test
+    fun chain26To34PreservesARepresentativeFieldDataset() {
+        val before = migrationHelper.createDatabase(TEST_DATABASE, 26).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos','Olivos centenarios','Bedmar y Garcíez','Jaén','ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO parcels (id, workspace_id, display_name, cadastral_reference, managed_area_m2, source, status, created_at, updated_at, version, sync_status) VALUES ('p','w','Parcela El Cerrón','23902A001000010000AB',15000.0,'MANUAL','ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','HARVEST',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO harvests (id, workspace_id, campaign_id, farm_id, harvest_date, weight_grams, created_at, updated_at, version, sync_status) VALUES ('h','w','c','f','2025-11-20',4242000,1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, harvest_id, created_at, updated_at, version, sync_status) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL','h',1000,1000,2,'SYNCED')")
+            database.execSQL("INSERT INTO harvest_labour (id, workspace_id, harvest_id, quantity, unit, created_at, updated_at, version, sync_status) VALUES ('l','w','h',4,'DAY',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO expenses (id, workspace_id, campaign_id, farm_id, expense_date, concept, category, amount_minor, currency, status, origin, created_at, updated_at, version, sync_status) VALUES ('e','w','c','f','2025-11-20','Gasóleo tractor','FUEL',8500,'EUR','POSTED','MANUAL',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO documents (id, workspace_id, owner_type, owner_id, type, mime_type, display_name, local_uri, upload_status, created_at, updated_at, version, sync_status) VALUES ('doc','w','FARM','f','PHOTO','image/jpeg','Foto Olivar','file:///photos/olivar.jpg','UPLOADED',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO sync_outbox (id, entity_type, entity_id, operation, payload_version, base_remote_version, status, attempt_count, next_attempt_at, last_error_code, last_error_message, created_at, updated_at) VALUES ('op-1','DELIVERY','d','UPDATE',1,1,'PENDING',0,NULL,NULL,NULL,1000,1000)")
+            snapshot(database)
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 34, true, *DatabaseMigrations.all).use { database ->
+            assertPreserved(before, snapshot(database))
+            assertEquals(0, count(database, "sync_receive_receipts")); assertEquals(0, count(database, "sync_receive_holds"))
+            database.query("SELECT weight_grams FROM harvests WHERE id='h'").use { assertTrue(it.moveToFirst()); assertEquals(4242000L, it.getLong(0)) }
+        }
+    }
+
+    /**
+     * Integration #796 + #808: a device on schema 32 (the one of #796) with a representative dataset, including a blocked
+     * campaign CAS operation, a workspace selection and its authorization cache, migrates 32 -> 33 -> 34 with nothing lost.
+     */
+    @Test
+    fun chain32To34PreservesARepresentativeDatasetWithSelectionAndAuthorization() {
+        val before = migrationHelper.createDatabase(TEST_DATABASE, 32).use { database ->
+            database.execSQL("INSERT INTO workspaces(id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','QA','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO farms(id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('f','w','Farm','ACTIVE',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO parcels (id, workspace_id, display_name, source, status, created_at, updated_at, version, sync_status) VALUES ('p','w','Parcela','MANUAL','ACTIVE',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO campaigns(id,workspace_id,farm_id,name,start_date,status,created_at,updated_at,version,sync_status) VALUES ('c','w','f','Edited','2026-01-01','HARVEST',1000,1000,2,'CONFLICT')")
+            database.execSQL("INSERT INTO harvests (id, workspace_id, campaign_id, farm_id, harvest_date, weight_grams, created_at, updated_at, version, sync_status) VALUES ('h','w','c','f','2026-01-20',4242000,1000,1000,1,'PENDING')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, source, harvest_id, created_at, updated_at, version, sync_status) VALUES ('d','w','f','c','2026-01-20','Coop',1500000,'MANUAL','h',1000,1000,1,'PENDING')")
+            database.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,last_error_code,created_at,updated_at) VALUES ('op','CAMPAIGN','c','UPDATE',1,'BLOCKED',1,'CAS_CONFLICT',1000,1000)")
+            database.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,created_at,updated_at) VALUES ('op-d','DELIVERY','d','CREATE',2,'PENDING',0,1000,1000)")
+            database.execSQL("INSERT INTO workspace_selections(issuer,account_id,workspace_id) VALUES ('issuer','a','w')")
+            database.execSQL("INSERT INTO workspace_authorization_cache(issuer,account_id,contract_json) VALUES ('issuer','a','{}')")
+            snapshot(database)
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 34, true, DatabaseMigrations.MIGRATION_32_33, DatabaseMigrations.MIGRATION_33_34).use { database ->
+            assertPreserved(before, snapshot(database))
+            assertEquals(0, count(database, "sync_receive_receipts")); assertEquals(0, count(database, "sync_receive_holds"))
+            assertEquals(0, count(database, "campaign_reconciliations"))
+        }
+    }
+
+    @Test
+    fun migration32To33PreservesCampaignOutboxAndAuthorization() {
+        migrationHelper.createDatabase(TEST_DATABASE, 32).use { database ->
+            database.execSQL("INSERT INTO workspaces(id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','QA','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO farms(id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('f','w','Farm','ACTIVE',1000,1000,1,'SYNCED')")
+            database.execSQL("INSERT INTO campaigns(id,workspace_id,farm_id,name,start_date,status,created_at,updated_at,version,sync_status) VALUES ('c','w','f','Edited','2026-01-01','PREPARATION',1000,1000,2,'CONFLICT')")
+            database.execSQL("INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,status,attempt_count,last_error_code,created_at,updated_at) VALUES ('op','CAMPAIGN','c','UPDATE',1,'BLOCKED',1,'CAS_CONFLICT',1000,1000)")
+            database.execSQL("INSERT INTO workspace_selections(issuer,account_id,workspace_id) VALUES ('issuer','a','w')")
+            database.execSQL("INSERT INTO workspace_authorization_cache(issuer,account_id,contract_json) VALUES ('issuer','a','{}')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE,33,true,DatabaseMigrations.MIGRATION_32_33).use { database ->
+            database.query("SELECT name,sync_status FROM campaigns WHERE id='c'").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals("Edited",c.getString(0)); assertEquals("CONFLICT",c.getString(1))
+            }
+            database.query("SELECT status,last_error_code FROM sync_outbox WHERE id='op'").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals("BLOCKED",c.getString(0)); assertEquals("CAS_CONFLICT",c.getString(1))
+            }
+            database.query("SELECT COUNT(*) FROM campaign_reconciliations").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals(0,c.getInt(0))
+            }
+            database.query("SELECT COUNT(*) FROM workspace_authorization_cache").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals(1,c.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migration31To32AddsEmptyAuthorizationCacheAndPreservesSelection() {
+        migrationHelper.createDatabase(TEST_DATABASE, 31).use { database ->
+            database.execSQL("INSERT INTO workspace_selections (issuer,account_id,workspace_id) VALUES ('https://project.example','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','11111111-1111-1111-1111-111111111111')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 32, true, DatabaseMigrations.MIGRATION_31_32).use { database ->
+            database.query("SELECT workspace_id FROM workspace_selections").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("11111111-1111-1111-1111-111111111111", cursor.getString(0))
+            }
+            database.query("SELECT COUNT(*) FROM workspace_authorization_cache").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migration30To31AddsEmptySelectionWithoutChangingExistingWorkspaceOrOutbox() {
+        migrationHelper.createDatabase(TEST_DATABASE, 30).use { database ->
+            database.execSQL("INSERT INTO workspaces (id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','Unbound','generated-owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'PENDING')")
+            database.execSQL("INSERT INTO sync_outbox (id,entity_type,entity_id,operation,payload_version,status,attempt_count,created_at,updated_at) VALUES ('op','WORKSPACE','w','CREATE',1,'PENDING',0,1000,1000)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 31, true, DatabaseMigrations.MIGRATION_30_31).use { database ->
+            database.query("SELECT name,owner_user_id,sync_status FROM workspaces WHERE id='w'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Unbound", cursor.getString(0))
+                assertEquals("generated-owner", cursor.getString(1))
+                assertEquals("PENDING", cursor.getString(2))
+            }
+            database.query("SELECT status FROM sync_outbox WHERE id='op'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("PENDING", cursor.getString(0))
+            }
+            database.query("SELECT COUNT(*) FROM workspace_selections").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migration29To30AddsDeliveryImportReceiptsTableAndKeepsExistingDataIntact() {
+        migrationHelper.createDatabase(TEST_DATABASE, 29).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos',NULL,NULL,NULL,'ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','PREPARATION',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, created_at, updated_at, version, sync_status, remote_version) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL',1000,1000,2,'PENDING',4)")
+            database.execSQL("INSERT INTO delivery_dispatch_prepare (operation_id, delivery_id, farm_id, account_id, issuer, subject, local_workspace_id, remote_workspace_id, consent_operation_id, consent_text_version, payload_version, payload_hash, base_remote_version, lease_marker, prepared_at, settled_at, settled_outcome) VALUES ('op-prep','d','f','account-a','https://example.com','sub','w',NULL,'consent-op',2,2,'hash123',NULL,'lease',1000,1100,'CONFIRMED')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 30, true, DatabaseMigrations.MIGRATION_29_30).use { database ->
+            database.query("SELECT net_grams, version, sync_status, remote_version FROM deliveries WHERE id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(3500000L, cursor.getLong(0))
+                assertEquals(2L, cursor.getLong(1))
+                assertEquals("PENDING", cursor.getString(2))
+                assertEquals(4L, cursor.getLong(3))
+            }
+            database.query("SELECT operation_id, settled_outcome FROM delivery_dispatch_prepare WHERE delivery_id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("op-prep", cursor.getString(0))
+                assertEquals("CONFIRMED", cursor.getString(1))
+            }
+            database.query("SELECT COUNT(*) FROM delivery_import_receipts").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+            database.execSQL("INSERT INTO delivery_import_receipts (delivery_id, account_id, issuer, head_payload_hash, head_version, receive_contract_version, received_at) VALUES ('d','account-a','https://issuer.com','abc123hash',1,1,2000)")
+            database.query("SELECT account_id, issuer, head_payload_hash, head_version, receive_contract_version, received_at FROM delivery_import_receipts WHERE delivery_id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("account-a", cursor.getString(0))
+                assertEquals("https://issuer.com", cursor.getString(1))
+                assertEquals("abc123hash", cursor.getString(2))
+                assertEquals(1L, cursor.getLong(3))
+                assertEquals(1, cursor.getInt(4))
+                assertEquals(2000L, cursor.getLong(5))
+            }
+        }
+    }
+
+    @Test
+    fun migration28Through30PreservesAgriculturalRowsOutboxAndReceipts() {
+        migrationHelper.createDatabase(TEST_DATABASE, 28).use { database ->
+            database.execSQL("INSERT INTO workspaces (id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','Olivar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,3,'PENDING')")
+            database.execSQL("INSERT INTO farms (id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('f','w','Finca','ACTIVE',1000,1000,2,'PENDING')")
+            database.execSQL("INSERT INTO campaigns (id,workspace_id,farm_id,name,start_date,status,created_at,updated_at,version,sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','HARVEST',1000,1000,3,'PENDING')")
+            database.execSQL("INSERT INTO deliveries (id,workspace_id,farm_id,campaign_id,delivery_date,destination_name,net_grams,source,created_at,updated_at,version,sync_status,remote_version) VALUES ('d','w','f','c','2025-11-20','Cooperativa',1540000,'MANUAL',1000,1000,2,'SYNCED',1)")
+            database.execSQL("INSERT INTO sync_outbox (id,entity_type,entity_id,operation,payload_version,status,attempt_count,created_at,updated_at,account_id,payload_json,farm_id) VALUES ('op','CAMPAIGN','c','CREATE',1,'PENDING',0,1000,1000,'account-a','{\"name\":\"2025/2026\"}','f')")
+            database.execSQL("INSERT INTO delivery_held_receipts (operation_id,delivery_id,account_id,farm_id,remote_version,payload_hash,payload_version,revocation_operation_id,state,received_at) VALUES ('held','d','account-a','f',2,'${"a".repeat(64)}',2,'rev','HELD',2000)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 29, true, DatabaseMigrations.MIGRATION_28_29).use { database ->
+            database.execSQL("INSERT INTO delivery_dispatch_prepare (operation_id,delivery_id,farm_id,account_id,issuer,subject,local_workspace_id,consent_operation_id,consent_text_version,payload_version,payload_hash,lease_marker,prepared_at) VALUES ('prep','d','f','account-a','https://example.com','sub','w','consent',1,2,'hash','lease',3000)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 30, true, DatabaseMigrations.MIGRATION_29_30).use { database ->
+            val expected = mapOf(
+                "workspaces" to "SELECT name || ':' || version || ':' || sync_status FROM workspaces WHERE id='w'" to "Olivar:3:PENDING",
+                "farms" to "SELECT name || ':' || version || ':' || sync_status FROM farms WHERE id='f'" to "Finca:2:PENDING",
+                "campaigns" to "SELECT status || ':' || version || ':' || sync_status FROM campaigns WHERE id='c'" to "HARVEST:3:PENDING",
+                "deliveries" to "SELECT net_grams || ':' || remote_version || ':' || sync_status FROM deliveries WHERE id='d'" to "1540000:1:SYNCED",
+                "sync_outbox" to "SELECT status || ':' || account_id || ':' || payload_json FROM sync_outbox WHERE id='op'" to "PENDING:account-a:{\"name\":\"2025/2026\"}",
+                "delivery_held_receipts" to "SELECT state || ':' || remote_version FROM delivery_held_receipts WHERE operation_id='held'" to "HELD:2",
+                "delivery_dispatch_prepare" to "SELECT lease_marker || ':' || payload_hash FROM delivery_dispatch_prepare WHERE operation_id='prep'" to "lease:hash",
+            )
+            expected.forEach { (tableAndQuery, value) ->
+                val (table, query) = tableAndQuery
+                database.query(query).use { cursor ->
+                    assertTrue("Missing row in $table", cursor.moveToFirst())
+                    assertEquals("Changed row in $table", value, cursor.getString(0))
+                    assertTrue("Duplicate row in $table", !cursor.moveToNext())
+                }
+            }
+            database.query("SELECT COUNT(*) FROM delivery_import_receipts").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migration28To29AddsTheDurablePrepareTableAndKeepsHeldReceiptsAndIntentsIntact() {
+        migrationHelper.createDatabase(TEST_DATABASE, 28).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos',NULL,NULL,NULL,'ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','PREPARATION',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, created_at, updated_at, version, sync_status, remote_version) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL',1000,1000,2,'PENDING',4)")
+            database.execSQL("INSERT INTO sync_outbox (id, entity_type, entity_id, operation, payload_version, base_remote_version, status, attempt_count, next_attempt_at, last_error_code, last_error_message, created_at, updated_at, account_id, payload_json, farm_id) VALUES ('op-1','DELIVERY','d','UPDATE',2,4,'BLOCKED',1,NULL,'REVOKED_ACK_HELD',NULL,1000,1000,'account-a','{\"netGrams\":3500000}','f')")
+            database.execSQL("INSERT INTO delivery_held_receipts (operation_id, delivery_id, account_id, farm_id, remote_version, payload_hash, payload_version, revocation_operation_id, state, conflict_remote_version, conflict_payload_hash, received_at, resolved_at) VALUES ('op-1','d','account-a','f',7,'${"a".repeat(64)}',2,'rev-1','HELD',NULL,NULL,2000,NULL)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 29, true, DatabaseMigrations.MIGRATION_28_29).use { database ->
+            database.query("SELECT net_grams, version, sync_status, remote_version FROM deliveries WHERE id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(3500000L, cursor.getLong(0))
+                assertEquals(2L, cursor.getLong(1))
+                assertEquals("PENDING", cursor.getString(2))
+                assertEquals(4L, cursor.getLong(3))
+            }
+            database.query("SELECT status, last_error_code, account_id, payload_json, farm_id, base_remote_version FROM sync_outbox WHERE id='op-1'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("BLOCKED", cursor.getString(0))
+                assertEquals("REVOKED_ACK_HELD", cursor.getString(1))
+                assertEquals("account-a", cursor.getString(2))
+                assertEquals("{\"netGrams\":3500000}", cursor.getString(3))
+                assertEquals("f", cursor.getString(4))
+                assertEquals(4L, cursor.getLong(5))
+            }
+            database.query("SELECT state, remote_version, payload_hash FROM delivery_held_receipts WHERE operation_id='op-1'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("The held receipt survives untouched", "HELD", cursor.getString(0))
+                assertEquals(7L, cursor.getLong(1))
+                assertEquals("a".repeat(64), cursor.getString(2))
+            }
+            database.query("SELECT COUNT(*) FROM delivery_dispatch_prepare").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("No PREPARE is invented for intents enqueued before G2.4", 0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migration27To28IsAdditiveAndKeepsBlockedDeliveryIntentsIntact() {
+        migrationHelper.createDatabase(TEST_DATABASE, 27).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos','Olivos centenarios','Bedmar y Garcíez','Jaén','ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','PREPARATION',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, created_at, updated_at, version, sync_status, remote_version) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL',1000,1000,2,'PENDING',4)")
+            database.execSQL("INSERT INTO sync_outbox (id, entity_type, entity_id, operation, payload_version, base_remote_version, status, attempt_count, next_attempt_at, last_error_code, last_error_message, created_at, updated_at, account_id, payload_json, farm_id) VALUES ('op-1','DELIVERY','d','UPDATE',2,4,'BLOCKED',1,NULL,'DELIVERY_LEASE_V2:x:y',NULL,1000,1000,'account-a','{\"netGrams\":3500000}','f')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 28, true, DatabaseMigrations.MIGRATION_27_28).use { database ->
+            database.query("SELECT net_grams, version, sync_status, remote_version FROM deliveries WHERE id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(3500000L, cursor.getLong(0))
+                assertEquals(2L, cursor.getLong(1))
+                assertEquals("PENDING", cursor.getString(2))
+                assertEquals(4L, cursor.getLong(3))
+            }
+            database.query("SELECT status, attempt_count, base_remote_version, last_error_code, account_id, payload_json, farm_id FROM sync_outbox WHERE id='op-1'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("BLOCKED", cursor.getString(0))
+                assertEquals(1, cursor.getInt(1))
+                assertEquals(4L, cursor.getLong(2))
+                assertEquals("DELIVERY_LEASE_V2:x:y", cursor.getString(3))
+                assertEquals("account-a", cursor.getString(4))
+                assertEquals("{\"netGrams\":3500000}", cursor.getString(5))
+                assertEquals("f", cursor.getString(6))
+            }
+            database.query("SELECT COUNT(*) FROM delivery_held_receipts").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("No receipt is invented for existing blocked intents", 0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migration26To27PreservesFarmsDeliveriesAndExtendsSyncOutbox() {
+        migrationHelper.createDatabase(TEST_DATABASE, 26).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Olivar Bedmar','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO farms (id, workspace_id, name, description, municipality, province, status, created_at, updated_at, version, sync_status) VALUES ('f','w','Finca Los Olivos','Olivos centenarios','Bedmar y Garcíez','Jaén','ACTIVE',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO campaigns (id, workspace_id, farm_id, name, start_date, status, created_at, updated_at, version, sync_status) VALUES ('c','w','f','2025/2026','2025-10-01','PREPARATION',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO deliveries (id, workspace_id, farm_id, campaign_id, delivery_date, destination_name, net_grams, ticket_number, source, created_at, updated_at, version, sync_status) VALUES ('d','w','f','c','2025-11-20','S.C.A. Bedmarense',3500000,'T-101','MANUAL',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO sync_outbox (id, entity_type, entity_id, operation, payload_version, base_remote_version, status, attempt_count, next_attempt_at, last_error_code, last_error_message, created_at, updated_at) VALUES ('op-1','DELIVERY','d','CREATE',1,NULL,'PENDING',0,NULL,NULL,NULL,1000,1000)")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 27, true, DatabaseMigrations.MIGRATION_26_27).use { database ->
+            database.query("SELECT name, municipality FROM farms WHERE id='f'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Finca Los Olivos", cursor.getString(0))
+                assertEquals("Bedmar y Garcíez", cursor.getString(1))
+            }
+            database.query("SELECT destination_name, net_grams FROM deliveries WHERE id='d'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("S.C.A. Bedmarense", cursor.getString(0))
+                assertEquals(3500000L, cursor.getLong(1))
+            }
+            database.query("SELECT id, entity_type, operation, status, account_id, payload_json, farm_id FROM sync_outbox WHERE id='op-1'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("op-1", cursor.getString(0))
+                assertEquals("DELIVERY", cursor.getString(1))
+                assertEquals("CREATE", cursor.getString(2))
+                assertEquals("PENDING", cursor.getString(3))
+                assertTrue(cursor.isNull(4)) // account_id defaults to null on existing rows
+                assertTrue(cursor.isNull(5)) // payload_json defaults to null on existing rows
+                assertTrue(cursor.isNull(6)) // farm_id defaults to null on existing rows
+            }
+        }
     }
 
     @Test
@@ -130,13 +524,13 @@ class RoomMigrationTest {
     }
 
     @Test
-    fun everySupportedVersionUpgradesTo26KeepingItsWorkspace() {
+    fun everySupportedVersionUpgradesToTheLatestKeepingItsWorkspace() {
         for (version in 1 until MaginaOlivoDatabase.VERSION) {
             context.deleteDatabase(TEST_DATABASE)
             migrationHelper.createDatabase(TEST_DATABASE, version).use { database ->
                 database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Historical farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,7,'PENDING')")
             }
-            migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 26, true, *DatabaseMigrations.all).use { database ->
+            migrationHelper.runMigrationsAndValidate(TEST_DATABASE, MaginaOlivoDatabase.VERSION, true, *DatabaseMigrations.all).use { database ->
                 database.query("SELECT name, version, sync_status FROM workspaces WHERE id='w'").use { cursor ->
                     assertTrue("Missing workspace upgrading v$version", cursor.moveToFirst())
                     assertEquals("Historical farm", cursor.getString(0))

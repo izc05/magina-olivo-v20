@@ -50,10 +50,10 @@ class CadastreLocatorTest {
     // Owner 2026-10-03: a Catastro parcel brings its municipality and province.
     @Test fun readsMunicipalityAndProvinceOfAReference() {
         val xml = """<consulta_dnp xmlns="http://www.catastro.meh.es/"><control><cudnp>1</cudnp></control>
-            <bico><bi><idbi><cn>RU</cn><rc><pc1>23014A0</pc1><pc2>0400021</pc2></rc></idbi>
-            <dt><loine><cp>23</cp><cm>14</cm></loine><cmc>14</cmc><np>JAEN</np><nm>BEDMAR Y GARCIEZ</nm></dt></bi></bico>
+            <bico><bi><idbi><cn>RU</cn><rc><pc1>23013A0</pc1><pc2>1500072</pc2></rc></idbi>
+            <dt><loine><cp>23</cp><cm>902</cm></loine><cmc>13</cmc><np>JAEN</np><nm>BEDMAR Y GARCIEZ</nm></dt></bi></bico>
             </consulta_dnp>""".toByteArray()
-        assertEquals(com.isivoltpro.maginaolivo.domain.registry.RegistryLocation("Bedmar y Garciez", "Jaén"), parseDnprcLocation(xml))
+        assertEquals(com.isivoltpro.maginaolivo.domain.registry.RegistryLocation("Bedmar y Garcíez", "Jaén"), parseDnprcLocation(xml))
     }
 
     @Test fun anUnknownProvinceCodeUsesCatastrosName() {

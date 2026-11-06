@@ -86,9 +86,9 @@ object WeatherCodec {
         weather.windKmh?.let { "w=$it" },
         "at=${weather.validAt.epochSecond}",
         weather.updatedAt?.let { "u=${it.epochSecond}" },
-        weather.attribution?.let { "a=${it.replace('\n', ' ')}" },
+        weather.attribution?.let { "a=${it.replace(LINE_BREAKS, " ").trim()}" },
         weather.solarDate?.let { "sd=$it" },
-        weather.solarTimeZone?.let { "sz=$it" },
+        weather.solarTimeZone?.let { "sz=${it.replace(LINE_BREAKS, " ").trim()}" },
         weather.sunriseAt?.let { "sr=${it.epochSecond}" },
         weather.sunsetAt?.let { "ss=${it.epochSecond}" },
     ) + weather.daily.map { day ->
@@ -97,9 +97,9 @@ object WeatherCodec {
                 day.minTemperatureC?.toString().orEmpty(),
                 day.maxTemperatureC?.toString().orEmpty(),
                 day.condition?.name.orEmpty(),
-                day.rainProbabilityPercent?.toString().orEmpty(),
-                day.rainMm?.toString().orEmpty(),
-                day.windKmh?.toString().orEmpty(),
+                day.rainProbabilityPercent?.coerceIn(0, 100)?.toString().orEmpty(),
+                day.rainMm?.takeIf { it.isFinite() && it >= 0.0 }?.toString().orEmpty(),
+                day.windKmh?.takeIf { it >= 0 }?.toString().orEmpty(),
             ).joinToString("|")}"
         }).joinToString("\n")
 
@@ -121,16 +121,16 @@ object WeatherCodec {
                 minTemperatureC = columns[1].toIntOrNull(),
                 maxTemperatureC = columns[2].toIntOrNull(),
                 condition = WeatherCondition.entries.firstOrNull { it.name == columns[3] },
-                rainProbabilityPercent = columns[4].toIntOrNull(),
-                rainMm = columns[5].toDoubleOrNull(),
-                windKmh = columns[6].toIntOrNull(),
+                rainProbabilityPercent = columns[4].toIntOrNull()?.coerceIn(0, 100),
+                rainMm = columns[5].toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 },
+                windKmh = columns[6].toIntOrNull()?.takeIf { it >= 0 },
             )
-        }
+        }.sortedBy { it.date }.distinctBy { it.date }
         return WeatherNow(
             temperatureC = temperature,
             condition = condition,
-            rainProbabilityPercent = fields["p"]?.toIntOrNull(),
-            windKmh = fields["w"]?.toIntOrNull(),
+            rainProbabilityPercent = fields["p"]?.toIntOrNull()?.coerceIn(0, 100),
+            windKmh = fields["w"]?.toIntOrNull()?.takeIf { it >= 0 },
             validAt = validAt,
             updatedAt = fields["u"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
             attribution = fields["a"]?.takeIf { it.isNotBlank() },
@@ -141,4 +141,6 @@ object WeatherCodec {
             sunsetAt = fields["ss"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
         )
     }
+
+    private val LINE_BREAKS = Regex("[\\r\\n]+")
 }

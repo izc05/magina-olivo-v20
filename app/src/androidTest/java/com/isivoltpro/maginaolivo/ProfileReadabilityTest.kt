@@ -32,7 +32,7 @@ class ProfileReadabilityTest {
         compose.setContent {
             MaginaOlivoTheme(mode) {
                 Box(Modifier.fillMaxSize().systemBarsPadding()) {
-                    ProfileScreen("DEV QA", false, { clicks.incrementAndGet() }, {})
+                    ProfileScreen("DEV QA", false, { clicks.incrementAndGet() }, {}, onHelp = {})
                 }
             }
         }
@@ -40,13 +40,13 @@ class ProfileReadabilityTest {
         val title = layout("Notificaciones", "profile-notifications")
         assertEquals("The whole notification word fits without splitting off its last letter", 1, title.lineCount)
         capture(mode, "notifications")
-        assertComplete(layout("Avisos de los trabajos planificados", "profile-notifications"))
+        assertComplete(layout("Permisos de avisos", "profile-notifications"))
         compose.onNode(hasText("Desactivadas") and hasAnyAncestor(hasTestTag("profile-notifications")), useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("profile-notifications").assertHasClickAction().performClick()
         assertEquals("The existing notification action remains reachable", 1, clicks.get())
 
-        compose.onNodeWithTag("profile-offline").performScrollTo().assertHasNoClickAction()
-        assertComplete(layout("Los registros se guardan en este teléfono. Para actualizar mapas, tiempo y otros datos necesitas conexión.", "profile-offline"))
+        compose.onNodeWithTag("profile-help-offline").performScrollTo().assertHasClickAction()
+        assertComplete(layout("Sin cobertura", "profile-help-offline"))
         capture(mode, "offline")
     }
 
@@ -58,7 +58,7 @@ class ProfileReadabilityTest {
     }
 
     private fun assertComplete(result: TextLayoutResult) {
-        assertFalse("No horizontal text clipping: size=${result.size.width}, paragraph=${result.multiParagraph.width}, lineRights=${(0 until result.lineCount).map(result::getLineRight)}", result.didOverflowWidth)
+        assertFalse("No horizontal text clipping: text=${result.layoutInput.text}, size=${result.size.width}, paragraph=${result.multiParagraph.width}, lineRights=${(0 until result.lineCount).map(result::getLineRight)}", result.didOverflowWidth)
         assertFalse("No vertical text clipping", result.didOverflowHeight)
         for (line in 0 until result.lineCount) assertFalse("No elided explanation", result.isLineEllipsized(line))
     }

@@ -131,8 +131,8 @@ fun GlobalQuickActions(
                 Text(farm.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag("quick-register-farm"))
                 Text(when {
                     !campaignKnown -> "Consultando la campaña…"
-                    running != null -> "Campaña ${running.name} · En marcha"
-                    else -> "Fuera de campaña"
+                    running != null -> "Recolección ${running.name} · En marcha"
+                    else -> "Trabajo general"
                 }, color = MoSurfaceTokens.secondaryText)
                 parcel?.let { Text("Parcela: ${it.displayName}", color = MoSurfaceTokens.secondaryText) }
                 if (farms.farms.size > 1) MoTertiaryButton("Cambiar finca", { choosing = true })

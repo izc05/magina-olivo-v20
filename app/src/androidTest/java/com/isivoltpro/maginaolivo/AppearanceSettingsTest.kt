@@ -121,7 +121,8 @@ class AppearanceSettingsTest {
                 val restoredRoot = root(AndroidAppearanceStore(isolated))
                 activity.setContent { AppRoot(restoredRoot) }
             }
-            compose.onNodeWithTag("bottom-Perfil").performClick()
+            openProfileWithoutPersistence()
+            compose.onNodeWithTag("profile-root").assertExists()
             compose.onNodeWithTag("profile-appearance").performScrollTo()
             expectBackground(0xFF171914.toInt(), lightIcons = false)
             expectSummary("Oscuro")
@@ -145,7 +146,7 @@ class AppearanceSettingsTest {
             }
             CompositionLocalProvider(LocalConfiguration provides config) { AppRoot(root) }
         }
-        compose.onNodeWithTag("bottom-Perfil").performClick()
+        openProfileWithoutPersistence()
         expectBackground(0xFFF1ECDF.toInt(), lightIcons = true)
         compose.runOnIdle { night = true }
         expectBackground(0xFF171914.toInt(), lightIcons = false)
@@ -159,8 +160,15 @@ class AppearanceSettingsTest {
     private fun showProfile(store: AppearanceStore) {
         val root = root(store)
         compose.setContent { AppRoot(root) }
-        compose.onNodeWithTag("bottom-Perfil").performClick()
+        openProfileWithoutPersistence()
         compose.onNodeWithTag("profile-root").assertIsDisplayed()
+    }
+
+    private fun openProfileWithoutPersistence() {
+        // This fixture deliberately has no Room store. Inicio correctly shows its
+        // storage error; Mi Campo retains the global header and real Perfil route.
+        compose.onNodeWithTag("bottom-Mi Campo").performClick()
+        compose.onNodeWithTag("top-profile-avatar").performClick()
     }
 
     private fun root(store: AppearanceStore) = AppCompositionRoot.createDefault("DEV").copy(

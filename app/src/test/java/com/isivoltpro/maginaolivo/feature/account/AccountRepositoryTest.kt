@@ -132,4 +132,54 @@ class AccountRepositoryTest {
         val repo=AccountRepository(api,store,{time});repo.resume(true)
         assertEquals(AccountStatus.SIGNED_IN,repo.state.value.status);assertEquals("nuevo@example.com",store.read().session!!.email)
     }
+    @Test fun workspaceSessionReadsAreLockFreeAndConsistentDuringConcurrentLoginLogoutAndTokenRefresh() = kotlinx.coroutines.runBlocking {
+        val api=Api();val store=MemoryAccountSessionStore();val repo=AccountRepository(api,store,{time})
+        val readCount = java.util.concurrent.atomic.AtomicInteger(0)
+        kotlinx.coroutines.coroutineScope {
+            val readers = (1..6).map {
+                launch(kotlinx.coroutines.Dispatchers.Default) {
+                    repeat(100) {
+                        val s = repo.workspaceSession()
+                        assertTrue(s is WorkspaceSession.Authenticated || s is WorkspaceSession.SignedOut || s is WorkspaceSession.Expired)
+                        readCount.incrementAndGet()
+                        kotlinx.coroutines.yield()
+                    }
+                }
+            }
+            val writer = launch(kotlinx.coroutines.Dispatchers.Default) {
+                repeat(3) {
+                    repo.login("qa@example.com", "password42", true)
+                    repo.logout(false)
+                    repo.login("qa@example.com", "password42", true)
+                    repo.resume(true)
+                    repo.logout(true)
+                    kotlinx.coroutines.yield()
+                }
+            }
+            writer.join()
+            readers.forEach { it.join() }
+        }
+        assertTrue(readCount.get() >= 100)
+        assertEquals(AccountStatus.SIGNED_OUT, repo.state.value.status)
+        assertTrue(repo.workspaceSession() is WorkspaceSession.SignedOut)
+    }
+
+    @Test fun brokenStorageOnInitFailsClosedAndThrowsAuthFailureOnAccess() = runTest {
+        val broken = object : AccountSessionStore {
+            override fun read(): AccountRecord = throw AuthFailure(AuthFailure.Kind.STORAGE)
+            override fun write(record: AccountRecord) = Unit
+            override fun clear() = Unit
+        }
+        val api = object : AccountAuthApi by Api() {
+            override val simulated = false
+        }
+        val repo = AccountRepository(api, broken, { time })
+        assertEquals(WorkspaceSession.SignedOut, repo.workspaceSession())
+        try {
+            repo.withCachedLocalAccess { it }
+            fail("Expected AuthFailure")
+        } catch (e: AuthFailure) {
+            assertEquals(AuthFailure.Kind.STORAGE, e.kind)
+        }
+    }
 }

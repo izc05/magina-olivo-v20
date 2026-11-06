@@ -8,7 +8,7 @@ ACTIVITY="com.isivoltpro.maginaolivo.MainActivity"
 TEST_PKG="com.isivoltpro.maginaolivo.dev.test"
 RUNNER="androidx.test.runner.AndroidJUnitRunner"
 SCREENSHOT_TEST="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest"
-OFFLINE_ROOM_TESTS="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest,com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest,com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmCoverRepositoryTest,com.isivoltpro.maginaolivo.data.local.AttachmentContractTest,com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest,com.isivoltpro.maginaolivo.data.local.HarvestContractTest,com.isivoltpro.maginaolivo.data.local.DeliveryContractTest,com.isivoltpro.maginaolivo.data.local.MachineryContractTest,com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest"
+OFFLINE_ROOM_TESTS="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest,com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest,com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmCoverRepositoryTest,com.isivoltpro.maginaolivo.data.local.AttachmentContractTest,com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest,com.isivoltpro.maginaolivo.data.local.HarvestContractTest,com.isivoltpro.maginaolivo.data.local.DeliveryContractTest,com.isivoltpro.maginaolivo.data.local.BootstrapSnapshotReaderTest,com.isivoltpro.maginaolivo.data.local.MachineryContractTest,com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest"
 
 # G1 preservation must run on the disposable CI emulator, not merely compile.
 OFFLINE_ROOM_TESTS="$OFFLINE_ROOM_TESTS,com.isivoltpro.maginaolivo.data.local.LocalLinkBackupTest"
@@ -39,6 +39,8 @@ if [[ -z "$PHYSICAL_WIDTH" || "$PHYSICAL_WIDTH" == "$PHYSICAL_SIZE" ]]; then
 fi
 
 cleanup() {
+  # Preserve standalone Auth UI diagnostics even when the full suite fails before capture steps.
+  adb pull "/sdcard/Android/data/$PKG/files/account-auth-evidence" evidence/account-auth-evidence >/dev/null 2>&1 || true
   adb shell cmd connectivity airplane-mode disable >/dev/null 2>&1 || true
   adb shell wm density reset >/dev/null 2>&1 || true
   adb shell settings put system font_scale 1.0 >/dev/null 2>&1 || true
@@ -366,8 +368,11 @@ set_airplane_mode disable 0 | tee -a evidence/airplane-mode.txt
 set +e
 # The live Catastro WFS check has its own Gate 17 workflow; ordinary emulator
 # validation remains deterministic when the external service is unavailable.
+# Integration #796 + #808 (owner decision D2, option A): the seven *HttpsEphemeralTest classes need the disposable TLS
+# Supabase fixture and run in the https-regression job (supabase/tests/g26-*-android*/run.sh). Listed BY NAME on purpose:
+# a new HTTPS class is not excluded and stays visible here until it is added to https-regression and to this list.
 adb shell am instrument -w \
-  -e notClass com.isivoltpro.maginaolivo.CatastroLiveImportTest,com.isivoltpro.maginaolivo.Phase18OnlineImportTest,com.isivoltpro.maginaolivo.Phase18OfflineReopenTest,com.isivoltpro.maginaolivo.Phase18PolygonParcelLookupTest \
+  -e notClass com.isivoltpro.maginaolivo.CatastroLiveImportTest,com.isivoltpro.maginaolivo.Phase18OnlineImportTest,com.isivoltpro.maginaolivo.Phase18OfflineReopenTest,com.isivoltpro.maginaolivo.Phase18PolygonParcelLookupTest,com.isivoltpro.maginaolivo.data.local.CampaignCasHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.DeliveryV3HttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.FarmSendHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.ParcelConvergenceHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.ParcelSendHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.ParentReceiveHttpsEphemeralTest,com.isivoltpro.maginaolivo.data.local.WorkspaceSendHttpsEphemeralTest \
   "$TEST_PKG/$RUNNER" > evidence/instrumentation-all.txt 2>&1
 INSTRUMENTATION_RC=$?
 set -e

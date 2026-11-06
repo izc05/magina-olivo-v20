@@ -22,17 +22,37 @@ class LocalFarmLinkRepository(
     private val account: AccountRepository,
     private val issuer: String,
     private val store: FarmLinkLedgerStore = AndroidFarmLinkLedger.forContext(context),
-) {
+    /**
+     * #808: fresh server check that the session owns the workspace, required to PREPARE a v3 Pesada.
+     * Null in production: no v3 operation can be prepared until a later owner decision wires it.
+     */
+    private val ownerVerifier: WorkspaceOwnerVerifier? = null,
+) : DeliveryWriteScope {
     private val mutable = MutableStateFlow(load())
     val state: StateFlow<FarmLinkLocalState> = mutable
+
+    override suspend fun <T> withAccount(farmId: UUID, action: suspend (String?) -> T): T =
+        account.withLocalWriteIdentity { userId -> withContext(Dispatchers.IO) {
+            // The account's LOCAL identity lock stays held through the Room write; consent,
+            // revocation and logout take that same lock before Room (same lock order). Auth HTTP
+            // never holds it, so a stuck refresh or login cannot delay saving field data.
+            val bound = userId?.takeIf { isFarmConsented(farmId, it) }?.toString()
+            action(bound)
+        } }
     private fun load() = try { FarmLinkLocalState(store.read()) } catch (_: IOException) { FarmLinkLocalState(unreadable=true) }
     fun subject(userId: UUID) = "$issuer|$userId"
     fun accessAllowed(userId: UUID? = account.state.value.userId): Boolean {
         val value=mutable.value
-        return !value.unreadable && (value.ledger == null || (userId != null && value.ledger.subject == subject(userId)))
+        if (value.unreadable) return false
+        if (account.isConfigured && userId == null) return false
+        if (value.ledger != null) {
+            return userId != null && value.ledger.subject == subject(userId)
+        }
+        return true
     }
-    private fun reloadAndRequire(userId: UUID): FarmLinkLedger? {
-        mutable.value=load()
+    private suspend fun reloadAndRequire(userId: UUID): FarmLinkLedger? {
+        val loaded = load()
+        mutable.value = loaded
         if (!accessAllowed(userId)) throw IOException("Estas fincas están protegidas con otra cuenta o no se pudo comprobar su protección.")
         return mutable.value.ledger
     }
@@ -47,25 +67,293 @@ class LocalFarmLinkRepository(
         val old=reloadAndRequire(userId)
         val pending=selected.filter { it.id !in old?.farmIds.orEmpty() }
         if (pending.isEmpty()) return@withContext checkNotNull(old)
-        database.withTransaction {
+        val entry = database.withTransaction {
             val actual=readChoices().associateBy { it.id }
             if (pending.any { actual[it.id] != it }) throw IOException("Las fincas han cambiado. Revisa de nuevo la selección.")
             // A fresh operation on each uncommitted attempt. Never reuse an old backup as current consent.
             val backupId=UUID.randomUUID()
             val receipt=LocalLinkBackup(context,database).capture(backupId)
             val manifest=File(receipt.directory,"manifest.json").readBytes()
-            val entry=FarmLinkConsent(UUID.randomUUID(),subject(userId),pending.sortedBy { it.id.toString() },backupId,
+            FarmLinkConsent(UUID.randomUUID(),subject(userId),pending.sortedBy { it.id.toString() },backupId,
                 AndroidFarmLinkLedger.hash(manifest),Instant.now())
-            try { store.append(entry).also { mutable.value=FarmLinkLocalState(it) } }
-            catch (error: Exception) { mutable.value=load();throw error }
         }
+        val newState = try {
+            val updated = store.append(entry)
+            FarmLinkLocalState(updated)
+        } catch (error: Exception) {
+            val rolledBack = load()
+            mutable.value = rolledBack
+            throw error
+        }
+        mutable.value = newState
+        newState.ledger!!
     } }
 
-    private fun readChoices(): List<FarmChoice> {
-        val values=mutableListOf<FarmChoice>()
-        database.openHelper.readableDatabase.query("SELECT id,workspace_id,name,version FROM farms WHERE deleted_at IS NULL AND status='ACTIVE' ORDER BY name,id").use { c ->
-            while(c.moveToNext()) values.add(FarmChoice(UUID.fromString(c.getString(0)),UUID.fromString(c.getString(1)),c.getString(2),c.getLong(3)))
+    /**
+     * Integration #796 + #808, owner decision D1 (option A): the farms this account may consent to link, never by issuer.
+     *
+     * - its OWN workspaces (owner = the signed-in account);
+     * - G1b legacy workspaces: local, never bound to any account ([com.isivoltpro.maginaolivo.data.local.dao.WorkspaceDao.listUnboundLocal]),
+     *   unless another account already selected them (so B never sees A's fresh local workspace);
+     * - workspaces where the account holds a VALID remote authorization with the `write` permission (G2.6 membership:
+     *   server evidence for this issuer and account, not expired), present on this device.
+     *
+     * Linking never changes a workspace or farm owner (no adoption, a collaborator gains no ownership); consent stays
+     * explicit and the G1b ledger still locks every other account out ([accessAllowed]). No account: nothing (fail-closed).
+     */
+    private suspend fun readChoices(): List<FarmChoice> {
+        val userId = account.state.value.userId ?: return emptyList()
+        val eligible = buildSet {
+            database.openHelper.readableDatabase.query(
+                "SELECT id FROM workspaces WHERE deleted_at IS NULL AND owner_user_id = ?", arrayOf<Any>(userId.toString()),
+            ).use { c -> while (c.moveToNext()) add(UUID.fromString(c.getString(0))) }
+            val claimed = mutableSetOf<UUID>()
+            database.openHelper.readableDatabase.query(
+                "SELECT workspace_id FROM workspace_selections WHERE account_id <> '' AND account_id <> ?", arrayOf<Any>(userId.toString()),
+            ).use { c -> while (c.moveToNext()) claimed += UUID.fromString(c.getString(0)) }
+            database.workspaceDao().listUnboundLocalIds().filterNot { it in claimed }.forEach(::add)
+            addAll(authorizedForWrite(userId))
+        }
+        val values = mutableListOf<FarmChoice>()
+        database.openHelper.readableDatabase.query(
+            "SELECT id,workspace_id,name,version FROM farms WHERE deleted_at IS NULL AND status='ACTIVE' ORDER BY name,id",
+        ).use { c ->
+            while (c.moveToNext()) {
+                val choice = FarmChoice(UUID.fromString(c.getString(0)), UUID.fromString(c.getString(1)), c.getString(2), c.getLong(3))
+                if (choice.workspaceId in eligible) values.add(choice)
+            }
         }
         return values
     }
+
+    /** G2.6 memberships with `write` from this account's cached server evidence; invalid, foreign or expired evidence: none. */
+    private suspend fun authorizedForWrite(userId: UUID): Set<UUID> {
+        val cached = database.workspaceAuthorizationCacheDao().find(issuer, userId.toString()) ?: return emptySet()
+        val contract = runCatching { WorkspaceAuthorizationContract.parse(cached.contractJson) }.getOrNull() ?: return emptySet()
+        val now = Instant.now()
+        if (!contract.validFor(issuer, userId, now)) return emptySet()
+        return contract.available(now).filter { "write" in it.permissions }.map { it.id }.toSet()
+    }
+
+    /**
+     * G2.3: Returns true if the farm has active G1b consent under the currently logged-in account.
+     * Operations belonging to unconsented farms will remain local only and are not eligible for dispatch.
+     */
+    fun isFarmConsented(farmId: UUID, userId: UUID? = account.state.value.userId): Boolean {
+        // A caller must not obtain A's consent by supplying A's old userId after
+        // logout/account switch. The identity argument is a consistency assertion,
+        // never an authorization override.
+        if (userId == null || userId != account.state.value.userId) return false
+        // Authorization must use the latest on-disk ledger, not a potentially stale StateFlow
+        // snapshot held by another repository instance in this Android process.
+        // A corrupt or unreadable ledger fails closed.
+        mutable.value = load()
+        if (!accessAllowed(userId)) return false
+        val ledger = mutable.value.ledger ?: return false
+        return farmId in ledger.activeFarmIds
+    }
+
+    /**
+     * G2.4: explicit renewed consent for one revoked farm, appended AFTER its revocation in the
+     * durable ledger. It only restores eligibility for new work: operations blocked by the
+     * revocation stay BLOCKED until their own explicit, authenticated reconciliation.
+     */
+    suspend fun reconsentFarm(expectedUserId: UUID, farmId: UUID, accepted: Boolean): FarmLinkLedger = account.withLocalIdentity { userId -> withContext(Dispatchers.IO) {
+        if (userId != expectedUserId) throw IOException("La cuenta ha cambiado. Revisa de nuevo la selección.")
+        if (!accepted) throw IOException("Confirma tu consentimiento para volver a vincular la finca.")
+        val old = reloadAndRequire(userId) ?: throw IOException("No hay consentimiento local para esta finca.")
+        val revocation = old.latestRevocation(farmId) ?: throw IOException("La finca no tiene una revocación vigente.")
+        val next = store.reconsent(FarmLinkReconsent(UUID.randomUUID(), subject(userId), farmId, revocation.operationId, Instant.now()))
+        mutable.value = FarmLinkLocalState(next)
+        next
+    } }
+
+    /** Fresh durable ledger for an explicit reconciliation; null when missing, unreadable or another account's. */
+    internal fun ledgerFor(userId: UUID): FarmLinkLedger? {
+        mutable.value = load()
+        if (!accessAllowed(userId)) return null
+        return mutable.value.ledger
+    }
+
+    /**
+     * G2.4: the farmer's explicit "reconcile this Pesada". The server confirms the identity and
+     * [lookup] reads the operation's server record and head with that session (no local lock
+     * held); the Room decision then runs under the local identity lock against the fresh ledger.
+     */
+    internal suspend fun reconcileBlockedDelivery(
+        operationId: UUID,
+        farmerConfirmed: Boolean,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        lookup: suspend (com.isivoltpro.maginaolivo.feature.account.AuthSession) -> RemoteDeliveryState,
+        ids: com.isivoltpro.maginaolivo.core.id.IdGenerator,
+        at: Instant = Instant.now(),
+    ): HeldReconciliationOutcome {
+        if (!farmerConfirmed) return HeldReconciliationOutcome.NOT_CONFIRMED
+        return account.withServerVerifiedIdentity(lookup) { userId, remote -> withContext(Dispatchers.IO) {
+            database.reconcileBlockedDelivery(
+                operationId,
+                HeldReconciliationAuthority(farmerConfirmed, userId.toString(), subject(userId), ledgerFor(userId), lease),
+                remote, ids, at,
+            )
+        } }
+    }
+
+    /**
+     * G2.4: the durable PREPARE step. A transport MUST call this and get
+     * [PrepareOutcome.PREPARED] or [PrepareOutcome.ALREADY_PREPARED] before issuing any
+     * request for that Pesada: [recordAuthenticatedDeliveryAck] refuses an ACK that has no
+     * PREPARE record, so an unprepared dispatch can never become local truth.
+     *
+     * The server confirms whose session this is; the Room decision then runs under the local
+     * identity lock against the fresh ledger. Nothing is sent from here.
+     */
+    internal suspend fun prepareDeliveryForDispatch(
+        operationId: UUID,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        remoteWorkspaceId: UUID? = null,
+        at: Instant = Instant.now(),
+    ): PrepareOutcome = account.withServerVerifiedIdentity({ session ->
+        // #808: a v3 operation needs the server's fresh word that this session owns the farm's
+        // workspace, read with the verified session before any write. v1/v2 never ask.
+        val staged = withContext(Dispatchers.IO) { database.syncOutboxDao().findById(operationId) }
+        val workspace = staged?.takeIf { it.payloadVersion == 3 }?.farmId
+            ?.let { withContext(Dispatchers.IO) { database.farmDao().findById(it) } }?.workspaceId
+        workspace?.takeIf { ownerVerifier?.isCurrentOwner(session, it) == true }
+    }) { userId, ownerWorkspace -> withContext(Dispatchers.IO) {
+        val operation = database.syncOutboxDao().findById(operationId)
+        val farm = operation?.farmId?.let { database.farmDao().findById(it) }
+        if (operation == null || farm == null) return@withContext PrepareOutcome.REJECTED
+        database.prepareDeliveryDispatch(
+            lease,
+            operationId,
+            DispatchIdentity(
+                accountId = userId.toString(),
+                issuer = issuer,
+                subject = subject(userId),
+                localWorkspaceId = farm.workspaceId,
+                remoteWorkspaceId = remoteWorkspaceId,
+                ownerVerifiedWorkspaceId = ownerWorkspace,
+            ),
+            ledgerFor(userId),
+            at,
+        )
+    } }
+
+    /**
+     * G2.4: the only entry point that turns an authenticated server ACK into local state.
+     * [fetch] performs the authenticated read with the verified session while no local lock is
+     * held; the correlation against the durable PREPARE record then runs under the local
+     * identity lock against the fresh ledger. A revoked farm retains the ACK as evidence and
+     * leaves the operation BLOCKED.
+     */
+    internal suspend fun recordAuthenticatedDeliveryAck(
+        fetch: suspend (com.isivoltpro.maginaolivo.feature.account.AuthSession) -> AuthenticatedDeliveryAck?,
+        at: Instant = Instant.now(),
+    ): AckCorrelationOutcome = account.withServerVerifiedIdentity(fetch) { userId, ack -> withContext(Dispatchers.IO) {
+        if (ack == null) return@withContext AckCorrelationOutcome.REJECTED
+        val farm = database.farmDao().findById(ack.farmId)
+            ?: return@withContext AckCorrelationOutcome.REJECTED
+        database.correlateAuthenticatedDeliveryAck(
+            ack,
+            DispatchIdentity(
+                accountId = userId.toString(),
+                issuer = issuer,
+                subject = subject(userId),
+                localWorkspaceId = farm.workspaceId,
+            ),
+            ledgerFor(userId),
+            at,
+        )
+    } }
+
+    /**
+     * #808: the only entry point that leaves a v3 Pesada BLOCKED for review or awaiting a strict HEAD
+     * read. [fetch] performs the authenticated requests with the verified session; the retention is
+     * then written under the local identity lock, and refused if the account changed meanwhile.
+     */
+    internal suspend fun retainDeliveryDispatch(
+        operationId: UUID,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        fetch: suspend (com.isivoltpro.maginaolivo.feature.account.AuthSession) -> DeliveryRetention?,
+        at: Instant = Instant.now(),
+    ): RetentionOutcome = account.withServerVerifiedIdentity(fetch) { userId, retention -> withContext(Dispatchers.IO) {
+        if (retention == null) return@withContext RetentionOutcome.NONE
+        database.retainPreparedDelivery(lease, operationId, userId.toString(), retention, at)
+    } }
+
+    /**
+     * #808 recovery of a held v3 Pesada. The fresh server owner check runs first, with the verified
+     * session; [fetch] then reads the receipt and the v3 HEAD. The confirmation or the recorded cause is
+     * written under the local identity lock and refused if the account changed meanwhile. Without an
+     * owner verifier (production) nothing is read or written.
+     */
+    internal suspend fun resolveAwaitingV3Delivery(
+        operationId: UUID,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        fetch: suspend (com.isivoltpro.maginaolivo.feature.account.AuthSession) -> V3HeadEvidence?,
+        at: Instant = Instant.now(),
+    ): V3ResolveOutcome {
+        val verifier = ownerVerifier ?: return V3ResolveOutcome.NOT_AUTHORIZED
+        // #808 hardening: an operation prepared under another project (issuer), account or subject is not
+        // this repository's to touch. Refused locally, before any network call: no session check, no owner
+        // read, no RPC, no write.
+        val prepared = withContext(Dispatchers.IO) { database.deliveryDispatchPrepareDao().findByOperation(operationId) }
+            ?: return V3ResolveOutcome.REJECTED
+        val current = account.state.value.userId ?: return V3ResolveOutcome.NOT_AUTHORIZED
+        if (prepared.issuer != issuer || prepared.accountId != current.toString() || prepared.subject != subject(current)) {
+            return V3ResolveOutcome.REJECTED
+        }
+        return account.withServerVerifiedIdentity({ session ->
+            // The verified session must still be the account that prepared it; otherwise nothing is read.
+            if (session.userId.toString() != prepared.accountId) return@withServerVerifiedIdentity null
+            val workspace = withContext(Dispatchers.IO) {
+                database.syncOutboxDao().findById(operationId)?.farmId?.let { database.farmDao().findById(it) }?.workspaceId
+            } ?: return@withServerVerifiedIdentity null
+            if (!verifier.isCurrentOwner(session, workspace)) V3HeadEvidence.Hold(V3RecoveryCauses.NOT_OWNER) else fetch(session)
+        }) { userId, evidence -> withContext(Dispatchers.IO) {
+            if (evidence == null) return@withContext V3ResolveOutcome.NOT_AUTHORIZED
+            val farm = database.syncOutboxDao().findById(operationId)?.farmId?.let { database.farmDao().findById(it) }
+                ?: return@withContext V3ResolveOutcome.REJECTED
+            database.resolveAwaitingV3Delivery(
+                lease, operationId,
+                DispatchIdentity(userId.toString(), issuer, subject(userId), farm.workspaceId),
+                ledgerFor(userId), evidence, at,
+            )
+        } }
+    }
+
+    /**
+     * G2.4: after a brutal close, reacquiring the OS lock proves no conforming sender still
+     * owns these intents. Their PREPARE records settle as OUTCOME_UNKNOWN and the SAME UUID,
+     * bytes and base version stay eligible, so the server's idempotency decides. Nothing is
+     * resent from here.
+     */
+    internal suspend fun settleInterruptedDeliveryDispatches(
+        farmId: UUID,
+        lease: com.isivoltpro.maginaolivo.data.repository.sync.DeliveryDispatchLease,
+        at: Instant = Instant.now(),
+    ): Int = account.withLocalIdentity { userId -> withContext(Dispatchers.IO) {
+        if (ledgerFor(userId) == null) return@withContext 0
+        database.settleAbandonedPreparedDispatches(lease, userId.toString(), farmId, at)
+    } }
+
+    /**
+     * G2.3: Revokes local consent eligibility for a farm, transitioning its pending outbox operations
+     * to BLOCKED status in Room so they cannot be dispatched.
+     */
+    suspend fun revokeConsentForFarm(farmId: UUID) = account.withLocalIdentity { userId -> withContext(Dispatchers.IO) {
+        val old = reloadAndRequire(userId) ?: throw IOException("No hay consentimiento local para revocar.")
+        if (farmId !in old.farmIds) throw IOException("La finca no tiene consentimiento para esta cuenta.")
+        // Persist the denial first. If Room fails, a later dispatch must still recheck this
+        // durable ledger; the operation remains blocked from authorization after process death.
+        val next = store.revoke(FarmLinkRevocation(UUID.randomUUID(), subject(userId), farmId, Instant.now()))
+        mutable.value = FarmLinkLocalState(next)
+        database.withTransaction {
+            database.syncOutboxDao().updateStatusForFarm(
+                farmId = farmId,
+                status = com.isivoltpro.maginaolivo.data.local.model.OutboxStatus.BLOCKED,
+                nowEpochMillis = System.currentTimeMillis(),
+            )
+        }
+    } }
 }

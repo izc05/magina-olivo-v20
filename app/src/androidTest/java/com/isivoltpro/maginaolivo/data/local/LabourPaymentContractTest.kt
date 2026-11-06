@@ -135,7 +135,7 @@ class LabourPaymentContractTest {
         assertEquals(18_000L, balance(worker).paidMinor)
         assertEquals(6_000L, balance(worker).pendingMinor)
         assertEquals(LabourPaymentState.PARTIAL, balance(worker).state)
-        val deliveries = com.isivoltpro.maginaolivo.data.repository.OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val deliveries = com.isivoltpro.maginaolivo.data.repository.OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
         ok(deliveries.create(com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft(
             farmId, day, null, "Cooperativa", 3_200_000,
             listOf(com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput(north, 3_200_000)),
@@ -548,11 +548,11 @@ class LabourPaymentContractTest {
         val workspaces = object : WorkspaceRepository {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
         }
-        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
+        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
         labour = OfflineFirstLabourRepository(db, workspaces, clock, RandomIds, TestDispatchers)
         equipment = OfflineFirstEquipmentRepository(db, clock, RandomIds, TestDispatchers)
         expenses = OfflineFirstExpenseRepository(db, workspaces, clock, RandomIds, TestDispatchers)
-        costs = OfflineFirstDayCostRepository(db, clock, RandomIds, TestDispatchers)
+        costs = OfflineFirstDayCostRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
     }
 
     private suspend fun seed() {

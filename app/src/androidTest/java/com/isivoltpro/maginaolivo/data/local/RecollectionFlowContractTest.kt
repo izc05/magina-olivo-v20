@@ -190,8 +190,8 @@ class RecollectionFlowContractTest {
         val workspaces = object : WorkspaceRepository {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
         }
-        deliveries = OfflineFirstDeliveryRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
-        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
+        deliveries = OfflineFirstDeliveryRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
+        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
         labour = OfflineFirstLabourRepository(db, workspaces, clock, RandomIds, TestDispatchers)
         expenses = OfflineFirstExpenseRepository(db, workspaces, clock, RandomIds, TestDispatchers)
         attachments = OfflineFirstAttachmentRepository(db, AndroidAttachmentFileStore(context), workspaces, clock, RandomIds, TestDispatchers)

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    #461: until Mágina Olivo has its own account/sync, farm data lives only on this phone.
+    Android backup is disabled so an account's local database and encrypted session cannot be
+    restored independently of the app's own verified synchronization and authorization.
     Android 12+ still runs device-to-device transfer when allowBackup is false, so both the
     cloud backup and the D2D transfer exclude every domain: the Room database, the attachment
     copies, the camera cache and the preferences never leave the phone half-restored.

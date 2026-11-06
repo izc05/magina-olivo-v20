@@ -67,4 +67,34 @@ class FeedTest {
         val legacy = WeatherCodec.decode("t=22\nc=CLEAR\np=5\nw=11\nat=1795687200")
         assertEquals(emptyList<WeatherDayForecast>(), legacy?.daily)
     }
+
+    @Test
+    fun theCacheCodecSanitizesLineBreaksAndOutOfRangeFigures() {
+        val dirty = WeatherNow(
+            temperatureC = 19,
+            condition = WeatherCondition.RAIN,
+            rainProbabilityPercent = 140,
+            windKmh = -5,
+            validAt = Instant.parse("2026-11-26T10:00:00Z"),
+            attribution = "© AEMET\r\nAgencia Estatal",
+            daily = listOf(
+                WeatherDayForecast(LocalDate.parse("2026-11-27"), 10, 18, WeatherCondition.RAIN, -10, -2.5, -8),
+                WeatherDayForecast(LocalDate.parse("2026-11-26"), 8, 16, WeatherCondition.CLOUDY, 120, Double.NaN, 22),
+                WeatherDayForecast(LocalDate.parse("2026-11-26"), 9, 17, WeatherCondition.CLEAR, 50, 1.0, 10),
+            ),
+        )
+        val decoded = WeatherCodec.decode(WeatherCodec.encode(dirty))!!
+        assertEquals(100, decoded.rainProbabilityPercent)
+        assertNull(decoded.windKmh)
+        assertEquals("© AEMET Agencia Estatal", decoded.attribution)
+        assertEquals(2, decoded.daily.size)
+        assertEquals(LocalDate.parse("2026-11-26"), decoded.daily[0].date)
+        assertEquals(100, decoded.daily[0].rainProbabilityPercent)
+        assertNull(decoded.daily[0].rainMm)
+        assertEquals(22, decoded.daily[0].windKmh)
+        assertEquals(LocalDate.parse("2026-11-27"), decoded.daily[1].date)
+        assertEquals(0, decoded.daily[1].rainProbabilityPercent)
+        assertNull(decoded.daily[1].rainMm)
+        assertNull(decoded.daily[1].windKmh)
+    }
 }

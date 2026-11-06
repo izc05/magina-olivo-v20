@@ -86,7 +86,7 @@ class OfflineFirstFarmCoverRepositoryTest {
                 database,
                 FixedClock(now),
                 FixedIds(farmId, uuid("30000000-0000-0000-0000-000000000070")),
-                TestDispatchers,
+                TestDispatchers, workspaceRepository = FixtureWorkspace { database }
             )
             assertEquals(
                 AppResult.Success(farmId),

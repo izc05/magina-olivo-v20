@@ -433,7 +433,7 @@ class AttachmentContractTest {
     }
 
     private suspend fun activity(): UUID {
-        val activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db })
         val result = activities.create(
             NewActivity(farmId, null, ActivityType.PRUNING, LocalDate.parse("2026-02-10"), "Poda", setOf(parcelA)),
         )

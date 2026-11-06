@@ -70,11 +70,11 @@ class FarmMapViewModelTest {
         assertEquals(listOf("Olivar de arriba", "Pol. 4 · Parc. 22"), parcels.created.map { it.displayName })
         assertTrue(parcels.created.all { it.source == ParcelSource.CATASTRO && it.farmId == farmId && it.geometryGeoJson != null })
         assertEquals("004", parcels.created.first().cadastralPolygon)
-        // Owner 2026-10-03: Catastro's place fills the parcel; without an answer it stays for the farmer.
+        // Service metadata wins; the second parcel uses the official offline code concordance.
         assertEquals("Huelma", parcels.created.first().municipality)
         assertEquals("Jaén", parcels.created.first().province)
-        assertNull(parcels.created[1].municipality)
-        assertNull(parcels.created[1].province)
+        assertEquals("Huelma", parcels.created[1].municipality)
+        assertEquals("Jaén", parcels.created[1].province)
         assertEquals(FarmMapMode.VIEW, viewModel.state.value.mode)
         assertEquals("2 parcelas incorporadas a la finca.", viewModel.state.value.message)
         assertTrue(viewModel.state.value.importCompleted)
@@ -165,7 +165,7 @@ class FarmMapViewModelTest {
         viewModel.importSelected(emptyMap())
         advanceUntilIdle()
         assertEquals(1, parcels.created.size)
-        assertNull(parcels.created.single().municipality)
+        assertEquals("Huelma", parcels.created.single().municipality)
         assertTrue(viewModel.state.value.importCompleted)
     }
 
@@ -188,7 +188,7 @@ class FarmMapViewModelTest {
         viewModel.importSelected(emptyMap())
         advanceUntilIdle()
         assertEquals(2, parcels.created.size)
-        assertTrue(parcels.created.all { it.municipality == null })
+        assertTrue(parcels.created.all { it.municipality == "Huelma" && it.province == "Jaén" })
         // Both lookups ran together and were cut at the bound, not 2 × 60 s.
         assertTrue(testScheduler.currentTime - start <= com.isivoltpro.maginaolivo.feature.catastro.PLACE_TIMEOUT_MS)
     }
@@ -523,6 +523,7 @@ class FarmMapViewModelTest {
             linked = parcelId to link
             return AppResult.Success(Unit)
         }
+        override suspend fun fillMissingCadastralLocation(parcelId: UUID, reference: String, municipality: String, province: String): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun archive(parcelId: UUID): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun restore(parcelId: UUID, farmId: UUID): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun membershipHistory(parcelId: UUID): List<ParcelMembership> = emptyList()

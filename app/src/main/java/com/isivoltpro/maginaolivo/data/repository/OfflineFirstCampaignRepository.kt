@@ -16,6 +16,7 @@ import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.data.local.model.CampaignWithSnapshots
 import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
+import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
@@ -224,8 +225,24 @@ class OfflineFirstCampaignRepository(
     override suspend fun archivePreparation(id: UUID): AppResult<Unit> = mutate(id, "archive_campaign", allowArchived = true) { current, now ->
         if (current.metadata.deletedAt != null) return@mutate AppResult.Success(Unit)
         if (current.status != CampaignStatus.PREPARATION) return@mutate conflict("protected_campaign")
+        // 2c-4 (C14, #810 §4.2.a): the campaign never left this device only when its single marker is
+        // a CREATE that was never prepared, bound or attempted. Then it is annulled locally in this
+        // same transaction (kept for audit as BLOCKED + RESOLVED_LOCAL_ANNULLED) and no DELETE is queued.
+        // Anything else (prepared, attempted, in flight, unknown, confirmed, other markers) keeps the
+        // previous path: a missing receipt never proves the server has nothing.
+        val markers = database.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
+        val create = markers.singleOrNull()?.takeIf {
+            it.operation == OutboxOperation.CREATE && it.status == OutboxStatus.PENDING && it.attemptCount == 0 &&
+                it.accountId == null && it.payloadJson == null && it.baseRemoteVersion == null
+        }
         database.campaignDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
-        enqueue(id, OutboxOperation.DELETE, now)
+        if (create != null) {
+            // Re-checked by the UPDATE itself; any mismatch aborts and rolls the archive back too.
+            if (database.syncOutboxDao().annulNeverSentCampaignCreate(create.id, id, now.toEpochMilli()) != 1)
+                throw AnnulmentRaced()
+        } else {
+            enqueue(id, OutboxOperation.DELETE, now)
+        }
         AppResult.Success(Unit)
     }
 
@@ -238,6 +255,15 @@ class OfflineFirstCampaignRepository(
 
     private suspend fun replaceSnapshots(campaignId: UUID, parcelIds: Set<UUID>, now: Instant) {
         val campaign = database.campaignDao().findById(campaignId) ?: error("campaign missing")
+        // Phase 2 snapshot contract: once the server holds the campaign (remote version), its parcel snapshots are server
+        // facts with no contract to change them. They are kept exactly (ids, content, sync state) so later edits and the
+        // activation travel through CAMPAIGN CAS; a different parcel set is a real change and is refused, never applied
+        // locally in a way the server would not have. An unconfirmed campaign still rebuilds them (they go in its CREATE).
+        if (campaign.metadata.remoteVersion != null) {
+            val current = database.campaignDao().listSnapshots(campaignId).filter { it.metadata.deletedAt == null }
+            if (current.map { it.parcelId }.toSet() != parcelIds) throw InvalidSelection("confirmed_campaign_parcels_locked")
+            return
+        }
         val farm = database.farmDao().findById(campaign.farmId) ?: error("farm missing")
         val rows = parcelIds.sortedBy(UUID::toString).map { parcelId ->
             val parcel = database.parcelDao().findById(parcelId) ?: throw InvalidSelection("parcel_not_found")
@@ -254,8 +280,19 @@ class OfflineFirstCampaignRepository(
 
     private suspend fun enqueue(id: UUID, requested: OutboxOperation, now: Instant) {
         val existing = database.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
-        val operation = if (existing.any { it.operation == OutboxOperation.CREATE } && requested != OutboxOperation.DELETE) OutboxOperation.CREATE else requested
-        database.syncOutboxDao().deletePendingForEntity(SyncEntityType.CAMPAIGN, id)
+        // Coalesce into CREATE only while the remote CREATE is unconfirmed. After it, a change is a
+        // CAS UPDATE: a second CREATE could never be sent and would hold a parcel ARCHIVE forever (G2.6 2b).
+        val createOpen = existing.any { it.operation == OutboxOperation.CREATE && it.status != OutboxStatus.CONFIRMED }
+        val operation = if (createOpen && requested != OutboxOperation.DELETE) OutboxOperation.CREATE else requested
+        // A staged or attempted CAS operation has immutable bytes and UUID. A later local edit
+        // must leave it available for receipt recovery, even when the HTTP response was lost.
+        database.syncOutboxDao().deleteUnstagedCampaignMarkers(id)
+        // One aggregate, one pending CREATE: a never-prepared CREATE already covers later local edits
+        // (regression of 8f025c7fd, which stopped replacing it). A prepared or attempted CREATE is kept
+        // as it is and the edit is queued after it, as before.
+        if (operation == OutboxOperation.CREATE && existing.any { it.operation == OutboxOperation.CREATE &&
+                it.status == OutboxStatus.PENDING && it.attemptCount == 0 && it.payloadJson == null && it.accountId == null }
+        ) return
         database.syncOutboxDao().insert(SyncOutboxEntity(idGenerator.newId(), SyncEntityType.CAMPAIGN, id, operation, 1, createdAt = now, updatedAt = now))
     }
 
@@ -291,6 +328,8 @@ class OfflineFirstCampaignRepository(
     private fun String?.normalized() = this?.trim()?.ifEmpty { null }
     private fun conflict(code: String): AppResult.Failure = AppResult.Failure(AppError.Conflict(code))
     private class InvalidSelection(message: String) : RuntimeException(message)
+    /** The CREATE changed between the read and the annulment: the whole archive is rolled back. */
+    private class AnnulmentRaced : RuntimeException("campaign create annulment raced")
     private fun CampaignWithSnapshots.toDomain() = Campaign(campaign.id, campaign.workspaceId, campaign.farmId,
         campaign.name, campaign.startDate, campaign.endDate, campaign.status, campaign.notes,
         snapshots.map { CampaignParcelSnapshot(it.parcelId, it.farmNameAtStart, it.parcelNameAtStart,

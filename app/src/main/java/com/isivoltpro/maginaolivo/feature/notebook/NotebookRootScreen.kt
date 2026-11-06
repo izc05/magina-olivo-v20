@@ -86,7 +86,7 @@ enum class NotebookQuickAction(val label: String, val tag: String, val descripti
     EXPENSE("Gasto", "notebook-quick-expense", "Gasto, ticket o factura"),
 }
 
-/** Issue #246 §4: Diario · Fitosanitario · Gastos · Campaña — views of the same records. */
+/** CR-015 P1: three notebook views; CAMPAIGN is retained only for legacy saved requests. */
 enum class NotebookHubTab(val label: String, val tag: String) {
     DIARY("Diario", "notebook-tab-diary"),
     PHYTO("Fitosanitario", "notebook-tab-phyto"),
@@ -145,6 +145,7 @@ fun NotebookRootRoute(
     origin: NotebookOrigin = NotebookOrigin.ROOT,
     /** Validated visible context for global actions on this navigation entry. */
     onActiveFarmChanged: (UUID?) -> Unit = {},
+    onCampaign: (UUID) -> Unit = {},
 ) {
     // The same Farm list the register flow already uses; no second source.
     val farmsViewModel: RegisterActivityViewModel = viewModel(
@@ -228,6 +229,7 @@ fun NotebookRootRoute(
         tabRequest = tabRequest,
         onTabRequestHandled = onTabRequestHandled,
         canChangeFarm = origin == NotebookOrigin.ROOT,
+        onCampaign = { activeFarm?.let { onCampaign(it.id) } },
     )
     labourCampaign?.let { id ->
         androidx.compose.material3.ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, onDismissRequest = { labourCampaign = null }) {
@@ -276,12 +278,19 @@ fun NotebookHomeScreen(
     onTabRequestHandled: () -> Unit = {},
     /** #369: false when the Cuaderno was opened from a Farm or a Parcel, whose Farm stays fixed. */
     canChangeFarm: Boolean = true,
+    onCampaign: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(NotebookHubTab.DIARY) }
     LaunchedEffect(tabRequest) {
         tabRequest?.let {
             tab = it
             onTabRequestHandled()
+        }
+    }
+    LaunchedEffect(tab, isLoading, error, activeFarm?.id) {
+        if (tab == NotebookHubTab.CAMPAIGN && !isLoading && error == null && activeFarm != null) {
+            tab = NotebookHubTab.DIARY
+            onCampaign()
         }
     }
     var choosingFarm by remember { mutableStateOf(false) }
@@ -371,6 +380,8 @@ fun NotebookHomeScreen(
                     }
                     Text("¿Qué has hecho hoy?", style = MaterialTheme.typography.bodyLarge, color = MoSurfaceTokens.secondaryText)
                     QuickActionGrid(onAction)
+                    MoSecondaryButton("Ver campaña de esta finca", onCampaign,
+                        Modifier.fillMaxWidth().testTag("notebook-open-campaign"))
                     NotebookHub(notebook, actions, tab, { tab = it }, onSelectCampaign)
                 }
             }
@@ -461,7 +472,7 @@ private fun NotebookHub(
                 Modifier.fillMaxWidth().testTag("notebook-views"),
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
             ) {
-                NotebookHubTab.entries.forEach { option ->
+                NotebookHubTab.entries.filter { it != NotebookHubTab.CAMPAIGN }.forEach { option ->
                     FilterChip(
                         selected = option == tab,
                         border = BorderStroke(1.dp, if (option == tab) MaterialTheme.colorScheme.primary else MoSurfaceTokens.cardStroke),
@@ -484,42 +495,7 @@ private fun NotebookHub(
                         .maxByOrNull { it.startDate }
                     FarmCostsView(farmNotebook, runningCampaign, actions)
                 }
-                NotebookHubTab.CAMPAIGN -> {
-                    val notebook = state.notebook
-                    if (notebook == null) {
-                        MoEmptyState(
-                            "Aún no hay campañas",
-                            "La campaña es la recogida: pesadas, días y jornales. El resto del año ya se anota en Diario.",
-                            actionText = "Ir a Campañas",
-                            onAction = actions.onCampaigns,
-                            icon = MoIcons.Campaign,
-                            modifier = Modifier.testTag("notebook-no-campaign"),
-                        )
-                    } else {
-                        if (state.campaigns.size > 1) {
-                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                                state.campaigns.sortedByDescending { it.startDate }.forEach { campaign ->
-                                    FilterChip(
-                                        selected = campaign.id == state.selectedCampaignId,
-                                        border = BorderStroke(1.dp, if (campaign.id == state.selectedCampaignId) MaterialTheme.colorScheme.primary else MoSurfaceTokens.cardStroke),
-                                        onClick = { onSelectCampaign(campaign.id) },
-                                        label = { Text(campaign.name) },
-                                        modifier = Modifier.testTag("notebook-campaign"),
-                                    )
-                                }
-                            }
-                        }
-                        if (!notebook.campaign.status.isRunning) {
-                            Text(
-                                "Viendo ${campaignChipText(notebook.campaign.name, notebook.campaign.status)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MoSurfaceTokens.secondaryText,
-                                modifier = Modifier.testTag("notebook-selected-campaign-context"),
-                            )
-                        }
-                        CampaignView(notebook, state, actions, onSelectCampaign)
-                    }
-                }
+                NotebookHubTab.CAMPAIGN -> Unit // Legacy saved state redirects to the new root.
             }
         }
     }

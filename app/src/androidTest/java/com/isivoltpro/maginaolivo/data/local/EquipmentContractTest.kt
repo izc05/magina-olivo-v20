@@ -184,7 +184,7 @@ class EquipmentContractTest {
         }
         equipment = OfflineFirstEquipmentRepository(db, clock, RandomIds, TestDispatchers)
         machines = OfflineFirstMachineRepository(db, workspaces, clock, RandomIds, TestDispatchers)
-        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
+        harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers, workspaceRepository = FixtureWorkspace { db }) { ZoneOffset.UTC }
     }
 
     private suspend fun seed() {

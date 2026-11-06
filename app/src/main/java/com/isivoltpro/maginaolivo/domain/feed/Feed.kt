@@ -48,12 +48,34 @@ object FeedAge {
 }
 
 /**
- * The place a feed is asked about. It comes from the farms (no GPS): their municipality and
- * province when every farm shares one place. `key` is stable across spellings and accents.
+ * The place a feed is asked about. It comes from the user's explicit weather location preference
+ * or from the farms (no GPS): their municipality and province when every farm shares one place.
+ * `key` is stable across spellings and accents, and includes `ineCode` when confirmed.
  */
-data class FeedLocation(val municipality: String, val province: String?) {
+data class FeedLocation(
+    val municipality: String,
+    val province: String?,
+    val ineCode: String? = null,
+) {
     val label: String get() = listOfNotNull(municipality, province).joinToString(", ")
-    val key: String get() = listOfNotNull(municipality, province).joinToString("|") { normalize(it) }
+    val key: String
+        get() = listOfNotNull(ineCode?.takeIf { it.isNotBlank() }, municipality, province)
+            .joinToString("|") { normalize(it) }
+
+    /**
+     * Enriches this location with its official 5-digit INE code if it matches a single
+     * unambiguous municipality in [SpanishMunicipalityCatalog], while preserving the
+     * user-visible [municipality] and [province] labels if already set.
+     */
+    fun withValidatedIneCode(): FeedLocation {
+        if (!ineCode.isNullOrBlank()) return this
+        val match = SpanishMunicipalityCatalog.resolve(municipality = municipality, province = province)
+            ?: return this
+        return copy(
+            province = province ?: match.provinceName,
+            ineCode = match.ineCode,
+        )
+    }
 
     companion object {
         /** The one place of these (municipality, province) pairs, or null when none or several. */
