@@ -92,4 +92,3 @@ Riesgos principales: atribución histórica incorrecta, cierres concurrentes, cl
 - [ ] Mantener P5 sin iniciar: ingresos, anticipos, cobros, liquidaciones y jornales generales con personas/horas/pagos necesitan diseño y autorización propios.
 
 **Decisión solicitada:** revisión de la propuesta, no autorización implícita de cambios Room/Supabase. Hasta recibir el documento pendiente y el GO correspondiente, P2 permanece exclusivamente documental.
-
