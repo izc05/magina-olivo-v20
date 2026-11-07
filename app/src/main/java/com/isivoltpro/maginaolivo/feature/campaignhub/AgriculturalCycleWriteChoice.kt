@@ -20,6 +20,35 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 import java.time.LocalDate
 import java.util.UUID
 
+/**
+ * Compact and read-only, for writers that inherit their cycle from a parent record (campaign jornal).
+ * Shows a single line only when saving would be rejected: the parent is not linked, or its cycle is closed.
+ */
+@Composable
+fun AgriculturalCycleParentNotice(repository: AgriculturalCycleRepository?, farmId: UUID?, parentRecordId: UUID,
+    modifier: Modifier=Modifier) {
+    if(repository==null || farmId==null) return
+    val result by remember(repository,farmId) {repository.observe(farmId)}.collectAsStateWithLifecycle(initialValue=null)
+    val message=when(val current=result) {
+        null -> null
+        is AppResult.Failure -> cycleMessage(current.error)
+        is AppResult.Success -> parentNoticeMessage(current.value,parentRecordId)
+    } ?: return
+    Text(message,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error,
+        modifier=modifier.testTag("cycle-parent-notice"))
+}
+
+internal fun parentNoticeMessage(snapshot: com.isivoltpro.maginaolivo.domain.cycle.CycleSnapshot, parentRecordId: UUID): String? {
+    if(snapshot.cycles.isEmpty()) return null
+    val parent=snapshot.records.firstOrNull {it.id==parentRecordId}?.cycleId
+    val cycle=snapshot.cycles.firstOrNull {it.id==parent}
+    return when {
+        cycle==null -> "Vincula primero la recolección a una campaña agrícola para guardar jornales."
+        cycle.effectiveEndDate!=null -> "La campaña agrícola «${cycle.label}» está cerrada y no admite jornales nuevos."
+        else -> null
+    }
+}
+
 /** Only new drafts. Never receives the cycle selected while browsing the historical dashboard. */
 @Composable
 fun AgriculturalCycleWriteChoice(repository: AgriculturalCycleRepository?, farmId: UUID?, value: UUID?,

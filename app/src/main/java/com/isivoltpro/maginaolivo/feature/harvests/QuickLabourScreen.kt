@@ -64,6 +64,9 @@ internal fun QuickLabourScreen(
                 Text("Los borradores se conservan al cambiar de ámbito.", style = MaterialTheme.typography.bodySmall)
                 if (campaign == null) Text("Hay varias campañas operativas. Abre la campaña concreta para registrar su jornal.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                // Compact, read-only: the jornal inherits its cycle from the recollection.
+                if (scope == "CAMPAIGN" && campaign != null)
+                    com.isivoltpro.maginaolivo.feature.campaignhub.AgriculturalCycleParentNotice(agriculturalCycles, farmId, campaign.campaignId)
             } else if (!ready) Text("Comprobando el contexto local…", style = MaterialTheme.typography.bodySmall)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("quick-labour-error")) }
         }
@@ -92,7 +95,6 @@ internal fun QuickLabourScreen(
                     val currencyChanged = currency != null && draftCurrency.value != null && currency != draftCurrency.value
                     val blocked = isSaving || !campaignReady || date == null || currency == null || currencyChanged
                     Column(if (scrollWithKeyboard) Modifier.fillMaxWidth() else Modifier.fillMaxSize()) {
-                        com.isivoltpro.maginaolivo.feature.campaignhub.AgriculturalCycleWriteChoice(agriculturalCycles, farmId, null, {}, campaign.campaignId, !isSaving)
                         MoDateInputField(generalDraft.value.date, { generalDraft.value = generalDraft.value.copy(date = it) },
                             "Fecha", modifier = Modifier.padding(horizontal = MoSpacing.screen).testTag("quick-labour-date"), enabled = !isSaving)
                         if (currencyChanged) {
