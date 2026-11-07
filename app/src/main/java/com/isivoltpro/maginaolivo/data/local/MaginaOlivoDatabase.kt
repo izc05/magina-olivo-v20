@@ -81,7 +81,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.IrrigationCommunityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CommunityWaterNoticeEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PersonalIrrigationPlanEntity
 
-private const val DATABASE_VERSION = 36
+private const val DATABASE_VERSION = 37
 
 @Database(
     entities = [
@@ -92,6 +92,9 @@ private const val DATABASE_VERSION = 36
         com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleRecollectionEntity::class,
         com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleOperationEntity::class,
         com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleSyncStateEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.CooperativeSettlementEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.SettlementAdvanceApplicationEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.SettlementPaymentEntity::class,
         WorkspaceEntity::class,
         WorkspaceSelectionEntity::class,
         WorkspaceAuthorizationCacheEntity::class,
@@ -157,6 +160,7 @@ private const val DATABASE_VERSION = 36
 @TypeConverters(RoomConverters::class)
 abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun agriculturalCycleDao(): com.isivoltpro.maginaolivo.data.local.dao.AgriculturalCycleDao
+    abstract fun economyDao(): com.isivoltpro.maginaolivo.data.local.dao.EconomyDao
     abstract fun workspaceDao(): WorkspaceDao
     abstract fun workspaceSelectionDao(): WorkspaceSelectionDao
     abstract fun workspaceAuthorizationCacheDao(): WorkspaceAuthorizationCacheDao

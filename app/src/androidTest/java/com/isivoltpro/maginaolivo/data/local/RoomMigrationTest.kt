@@ -33,7 +33,7 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(36, MaginaOlivoDatabase.VERSION)
+        assertEquals(37, MaginaOlivoDatabase.VERSION)
     }
 
     @Test
@@ -55,6 +55,29 @@ class RoomMigrationTest {
         migrationHelper.runMigrationsAndValidate(TEST_DATABASE,35,true,AGRICULTURAL_CYCLE_MIGRATION_34_35).use { database ->
             assertEquals(before,dumpTables(database,exclude=sidecars))
             sidecars.forEach { table -> database.query("SELECT COUNT(*) FROM $table").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals(table,0,c.getInt(0))
+            } }
+            database.query("PRAGMA foreign_key_check").use { c -> assertTrue(!c.moveToFirst()) }
+        }
+    }
+
+    /** CR-015 P5: 36 -> 37 adds three empty local-economy tables; expenses and cycles stay identical. */
+    @Test
+    fun migration36To37AddsEmptyEconomyTablesWithoutRewritingHistory() {
+        val before = migrationHelper.createDatabase(TEST_DATABASE,36).use { database ->
+            listOf(
+                "INSERT INTO workspaces(id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','QA','owner','ES','Europe/Madrid','es-ES','EUR',1,2,3,'PENDING')",
+                "INSERT INTO farms(id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('f','w','Histórica','ACTIVE',1,2,4,'SYNCED')",
+                "INSERT INTO expenses(id,workspace_id,farm_id,expense_date,concept,category,amount_minor,currency,status,origin,created_at,updated_at,version,sync_status) VALUES ('e','w','f','2026-05-01','Abono','OTHER',12345,'EUR','POSTED','MANUAL',1,2,7,'PENDING')",
+                "INSERT INTO agricultural_cycles(id,workspace_id,farm_id,label,start_date,no_recollection,version) VALUES ('y','w','f','2026/27','2026-02-01',0,1)",
+                "INSERT INTO agricultural_cycle_sync_state(farm_id,account_id,remote_revision,synced_local_revision,status,updated_at) VALUES ('f','owner',1,1,'SYNCED',5)",
+            ).forEach(database::execSQL)
+            dumpTables(database)
+        }
+        val economy=setOf("cooperative_settlements","settlement_advance_applications","settlement_payments")
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE,37,true,ECONOMY_MIGRATION_36_37).use { database ->
+            assertEquals(before,dumpTables(database,exclude=economy))
+            economy.forEach { table -> database.query("SELECT COUNT(*) FROM $table").use { c ->
                 assertTrue(c.moveToFirst()); assertEquals(table,0,c.getInt(0))
             } }
             database.query("PRAGMA foreign_key_check").use { c -> assertTrue(!c.moveToFirst()) }
