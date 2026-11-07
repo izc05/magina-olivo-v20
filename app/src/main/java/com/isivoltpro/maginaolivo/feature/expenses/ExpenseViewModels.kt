@@ -66,6 +66,7 @@ data class ExpenseForm(
     val dayCostRole: DayCostRole = DayCostRole.ADDITIVE,
     val campaignId: UUID? = null,
     val currency: String = "EUR",
+    val agriculturalCycleId: UUID? = null,
 )
 
 data class LineForm(
@@ -123,6 +124,7 @@ internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDra
     if (!errors.isEmpty) return null to errors
     return ExpenseDraft(
         expenseDate = parsedDate!!,
+        agriculturalCycleId = agriculturalCycleId,
         concept = concept.trim(),
         category = category,
         amountMinor = amountMinor ?: 0L,
@@ -186,6 +188,7 @@ internal fun postErrorMessage(error: AppError): String = when {
 
 internal fun expenseErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> when {
+        error.field == "agriculturalCycleId" -> com.isivoltpro.maginaolivo.feature.campaignhub.cycleMessage(error)
         error.field == "expenseDate" && error.code == "future_real_expense" ->
             "La fecha es futura. Los Gastos reflejan importes ya realizados."
         error.code == "campaign_closed" -> "La campaña está cerrada: el coste histórico no se modifica."

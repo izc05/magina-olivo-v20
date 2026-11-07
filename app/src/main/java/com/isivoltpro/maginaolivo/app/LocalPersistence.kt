@@ -65,4 +65,6 @@ data class LocalPersistence(
     val weatherLocationStore: WeatherLocationPreferenceStore? = null,
     /** Verified identity scope for personal weather preferences. */
     val weatherIdentity: Flow<WeatherPreferenceIdentity> = flowOf(WeatherPreferenceIdentity.Local),
+    /** CR-015 P3: local only, no transport wiring. Null in older read-only/test composition roots. */
+    val agriculturalCycles: com.isivoltpro.maginaolivo.domain.cycle.AgriculturalCycleRepository? = null,
 )

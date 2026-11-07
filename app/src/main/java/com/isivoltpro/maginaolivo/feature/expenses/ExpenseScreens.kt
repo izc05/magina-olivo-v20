@@ -147,6 +147,7 @@ fun ExpensesRoute(
         state = state,
         today = clock.today(ZoneId.systemDefault()),
         onCreate = viewModel::create,
+        agriculturalCycles = persistence.agriculturalCycles,
         onCreateWithPhoto = viewModel::createAndOpen,
         onFarmSelected = viewModel::selectFarm,
         onDocumentPicked = viewModel::importDocument,
@@ -191,6 +192,7 @@ fun ExpensesScreen(
     onCreateWithPhoto: ((ExpenseForm) -> Unit)? = null,
     /** #475: the question a day's jornales/maquinaria cost gets, from the day as it is. */
     dayCostQuestion: suspend (UUID, ExpenseCategory) -> com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? = { _, _ -> null },
+    agriculturalCycles: com.isivoltpro.maginaolivo.domain.cycle.AgriculturalCycleRepository? = null,
 ) {
     // #416/#415: a work's «Añadir gasto relacionado» or Cuaderno → Gasto opens the form at once
     // and returns to where it started; the plain Gastos screen opens on its list.
@@ -310,6 +312,7 @@ fun ExpensesScreen(
         }
         ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, onDismissRequest = { closeEditor() }) {
             ExpenseEditor(
+                agriculturalCycles = agriculturalCycles,
                 // #378: outside a campaign, Jornal is the Farm's labour — said so, with Mano de obra chosen.
                 title = if (presetLabour) LABOUR_OUTSIDE_CAMPAIGN_TITLE else "Nuevo gasto",
                 subtitle = if (presetLabour) LABOUR_OUTSIDE_CAMPAIGN_NOTE else "Se guardará primero en este dispositivo.",

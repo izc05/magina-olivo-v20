@@ -113,7 +113,9 @@ fun FarmCampaignsRoute(farmId: UUID, persistence: LocalPersistence, onCampaignSe
                 loadedCrews.first, loadedCrews.second)
         }
     }
-    FarmCampaignsSection(state, onCampaignSelected, vm::create, summaries)
+    FarmCampaignsSection(state, onCampaignSelected, vm::create, summaries, cycleChoice = { value, _, changed ->
+        com.isivoltpro.maginaolivo.feature.campaignhub.AgriculturalCycleWriteChoice(persistence.agriculturalCycles, farmId, value, changed, enabled = !state.isSaving)
+    })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,6 +126,7 @@ fun FarmCampaignsSection(
     onCreate: (CampaignDraft) -> Unit,
     /** #246: figures per campaign; a campaign missing here (still loading) shows its header only. */
     summaries: Map<UUID, CampaignCardSummary> = emptyMap(),
+    cycleChoice: @Composable (UUID?, UUID?, (UUID?) -> Unit) -> Unit = { _, _, _ -> },
 ) {
     var editor by rememberSaveable { mutableStateOf(false) }
     OnEachSave(state.saveCount) { editor = false }
@@ -141,7 +144,7 @@ fun FarmCampaignsSection(
         }
     }
     if (editor) ModalBottomSheet(onDismissRequest = { editor = false }) {
-        CampaignEditor(state.parcels, state.nameError, state.dateError, state.isSaving, onCreate, { editor = false })
+        CampaignEditor(state.parcels, state.nameError, state.dateError, state.isSaving, onCreate, { editor = false }, cycleChoice = cycleChoice, saveError = state.error)
     }
 }
 
@@ -168,13 +171,18 @@ internal fun CampaignEditor(
     parcels: List<CampaignParcelOption>, nameError: String?, dateError: String?, isSaving: Boolean,
     onSave: (CampaignDraft) -> Unit, onCancel: () -> Unit, initial: CampaignDraft = CampaignDraft(),
     isEditing: Boolean = false,
+    cycleChoice: @Composable (UUID?, UUID?, (UUID?) -> Unit) -> Unit = { _, _, _ -> },
+    saveError: String? = null,
 ) {
+    var agriculturalCycleId by rememberSaveable(initial.agriculturalCycleId) { mutableStateOf(initial.agriculturalCycleId?.toString()) }
     var name by rememberSaveable(initial.name) { mutableStateOf(initial.name) }
     var date by rememberSaveable(initial.startDate) { mutableStateOf(initial.startDate?.toString().orEmpty()) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.md)) {
         Text(if (isEditing) "Editar campaña" else "Nueva campaña", style = MaterialTheme.typography.headlineSmall)
+        saveError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        cycleChoice(agriculturalCycleId?.let(UUID::fromString), null) { agriculturalCycleId = it?.toString() }
         MoTextField(name, { name = it }, "Nombre", isError = nameError != null, supportingText = nameError, modifier = Modifier.testTag("campaign-name"))
         MoDateInputField(date, { date = it }, "Fecha de inicio", isError = dateError != null, supportingText = dateError, modifier = Modifier.testTag("campaign-start-date"))
         MoSectionHeader("Parcelas")
@@ -187,7 +195,7 @@ internal fun CampaignEditor(
             }
         }
         MoTextField(notes, { notes = it }, "Notas")
-        MoPrimaryButton("Guardar campaña", { onSave(CampaignDraft(name, runCatching { LocalDate.parse(date) }.getOrNull(), selected.map(UUID::fromString).toSet(), notes)) }, modifier = Modifier.fillMaxWidth().testTag("save-campaign"), enabled = !isSaving)
+        MoPrimaryButton("Guardar campaña", { onSave(CampaignDraft(name, runCatching { LocalDate.parse(date) }.getOrNull(), selected.map(UUID::fromString).toSet(), notes, agriculturalCycleId?.let(UUID::fromString))) }, modifier = Modifier.fillMaxWidth().testTag("save-campaign"), enabled = !isSaving)
         MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
     }
 }

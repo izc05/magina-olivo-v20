@@ -227,6 +227,8 @@ data class AppCompositionRoot(
                 appearanceStore = AndroidAppearanceStore(applicationContext),
                 weatherLocationStore = weatherLocationStore,
                 localPersistence = LocalPersistence(
+                    agriculturalCycles = com.isivoltpro.maginaolivo.data.repository.LocalAgriculturalCycleRepository(
+                        database, workspaceRepository, defaults.clock, account),
                     database = database,
                     farmRepository = farmRepository,
                     farmCoverRepository = farmCoverRepository,

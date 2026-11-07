@@ -120,6 +120,8 @@ data class NewActivity(
      */
     val parcelAreasM2: Map<UUID, Double?> = emptyMap(),
     val activityEndDate: LocalDate? = null,
+    /** Local association confirmed by the form; excluded from G2.6 DTOs. */
+    val agriculturalCycleId: UUID? = null,
 )
 
 data class ActivityChanges(

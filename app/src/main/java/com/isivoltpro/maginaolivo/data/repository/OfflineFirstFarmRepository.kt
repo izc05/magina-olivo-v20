@@ -206,6 +206,8 @@ class OfflineFirstFarmRepository(
 
                     // #427: archive is not a cascade. Operational state must be resolved by the farmer first.
                     when {
+                        database.agriculturalCycleDao().list(farmId).any { it.effectiveEndDate == null } ->
+                            return@withTransaction AppResult.Failure(AppError.Conflict("archive_blocked_agricultural_cycle"))
                         database.campaignDao().countBlockingForFarm(farmId) > 0 ->
                             return@withTransaction AppResult.Failure(AppError.Conflict("archive_blocked_campaign"))
                         database.activityDao().countPlannedForFarm(farmId) > 0 ->

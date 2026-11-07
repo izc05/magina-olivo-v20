@@ -159,6 +159,7 @@ fun DeliveriesRoute(
         presetFarmId = presetFarmId,
         presetParcelId = presetParcelId,
         allowCreate = campaignId == null || state.contexts.isNotEmpty(),
+        agriculturalCycles = persistence.agriculturalCycles,
     )
 }
 
@@ -185,6 +186,7 @@ fun DeliveriesScreen(
     presetParcelId: UUID? = null,
     /** False for a scoped closed Campaign: history remains visible, creation disappears. */
     allowCreate: Boolean = true,
+    agriculturalCycles: com.isivoltpro.maginaolivo.domain.cycle.AgriculturalCycleRepository? = null,
 ) {
     // Phase 19C: find a Pesada by its ticket days later, and the ones still without yield.
     var searchText by rememberSaveable { mutableStateOf("") }
@@ -386,6 +388,7 @@ fun DeliveriesScreen(
                     )
                 }
                 DeliveryEditor(
+                    agriculturalCycles = agriculturalCycles,
                     title = "Registrar pesada",
                     initial = ticketSeed ?: next ?: start,
                     contexts = state.contexts,
@@ -599,6 +602,7 @@ internal fun DeliveryEditor(
     onSaveAndAddAnother: ((DeliveryForm) -> Unit)? = null,
     /** Codex #377: the running campaigns are still being read; the context is not known yet. */
     contextLoading: Boolean = false,
+    agriculturalCycles: com.isivoltpro.maginaolivo.domain.cycle.AgriculturalCycleRepository? = null,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
     var picker by rememberSaveable { mutableStateOf<String?>(null) }
@@ -611,6 +615,8 @@ internal fun DeliveryEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
+        com.isivoltpro.maginaolivo.feature.campaignhub.AgriculturalCycleWriteChoice(agriculturalCycles,
+            form.farmId, null, {}, context?.campaignId, !isSaving)
         if (farmLocked) {
             // #373/#375: «Salinillas · Campaña 2026-2027» as fixed context, never a selector.
             Text(

@@ -148,6 +148,7 @@ fun QuickLabourRoute(farmId: UUID, parcelId: UUID?, persistence: LocalPersistenc
         ready = state.contextsLoaded && state.options.campaignsKnownFor(farmId),
         isSaving = state.isSaving, errors = state.errors, error = state.error ?: state.dayCurrency?.error,
         onSaveGeneral = model::saveGeneral, onSaveCrew = model::saveCrew, onAddWorker = model::addWorker, onCancel = onDone,
+        agriculturalCycles = persistence.agriculturalCycles,
         campaignReady = state.workersLoaded && state.ratesLoaded && state.dayDate == model.generalDraft.value.date,
         currency = state.dayCurrency?.currency, alreadyRecorded = state.recorded)
 }

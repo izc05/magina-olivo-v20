@@ -95,6 +95,7 @@ fun DocumentReviewRoute(
     DocumentReviewScreen(
         state = state,
         onRead = viewModel::read,
+        agriculturalCycles = persistence.agriculturalCycles,
         onCreateDraft = viewModel::createDraft,
         onKeep = viewModel::keepWithoutExpense,
         onDiscard = viewModel::discard,
@@ -121,6 +122,7 @@ fun DocumentReviewScreen(
     contextFarmId: UUID? = null,
     contextCampaignId: UUID? = null,
     requireCampaignChoice: Boolean = false,
+    agriculturalCycles: com.isivoltpro.maginaolivo.domain.cycle.AgriculturalCycleRepository? = null,
 ) {
     // The Farm's parcels, works and campaigns are offered in the reviewed form from the start.
     LaunchedEffect(contextFarmId) { contextFarmId?.let(onFarmSelected) }
@@ -180,6 +182,7 @@ fun DocumentReviewScreen(
                     extraction.toReviewForm(contextFarmId, contextCampaignId)
                 }
                 ExpenseEditor(
+                agriculturalCycles = agriculturalCycles,
                     title = "Datos para el gasto",
                     subtitle = "Lo que leímos aparece rellenado: revísalo y corrígelo. Se creará un borrador que no suma hasta que lo confirmes.",
                     initial = initial,

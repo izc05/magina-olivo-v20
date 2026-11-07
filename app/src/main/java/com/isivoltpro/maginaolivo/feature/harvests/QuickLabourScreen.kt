@@ -28,6 +28,7 @@ internal fun QuickLabourScreen(
     ready: Boolean, isSaving: Boolean, errors: ExpenseFormErrors, error: String?,
     onSaveGeneral: (ExpenseForm) -> Unit,
     onSaveCrew: (UUID, LocalDate, CrewDraft) -> Unit, onAddWorker: (String) -> Unit, onCancel: () -> Unit,
+    agriculturalCycles: com.isivoltpro.maginaolivo.domain.cycle.AgriculturalCycleRepository? = null,
     campaignReady: Boolean = true, currency: String? = rates?.currency ?: "EUR", alreadyRecorded: Set<UUID> = emptySet(),
 ) {
     var scope by rememberSaveable { mutableStateOf("GENERAL") }
@@ -63,6 +64,9 @@ internal fun QuickLabourScreen(
                 Text("Los borradores se conservan al cambiar de ámbito.", style = MaterialTheme.typography.bodySmall)
                 if (campaign == null) Text("Hay varias campañas operativas. Abre la campaña concreta para registrar su jornal.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                // Compact, read-only: the jornal inherits its cycle from the recollection.
+                if (scope == "CAMPAIGN" && campaign != null)
+                    com.isivoltpro.maginaolivo.feature.campaignhub.AgriculturalCycleParentNotice(agriculturalCycles, farmId, campaign.campaignId)
             } else if (!ready) Text("Comprobando el contexto local…", style = MaterialTheme.typography.bodySmall)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("quick-labour-error")) }
         }
@@ -75,7 +79,7 @@ internal fun QuickLabourScreen(
                     isSaving || !ready, "Guardar jornal general", {},
                     { onSaveGeneral(it.copy(category = ExpenseCategory.LABOR, campaignId = null, harvestId = null)) }, onCancel,
                     subtitle = "Mano de obra general: importe y concepto. Persona y horas todavía no disponibles.",
-                    farmLocked = true, draftState = generalDraft, categoryLocked = true,
+                    farmLocked = true, draftState = generalDraft, categoryLocked = true, agriculturalCycles = agriculturalCycles,
                     scrollable = !scrollWithKeyboard)
             } else if (campaign != null && ready && selectedCampaignId == campaign.campaignId.toString()) {
                 holder.SaveableStateProvider(campaign.campaignId.toString()) {

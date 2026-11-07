@@ -159,7 +159,8 @@ internal fun DeliveryProblem.toFormErrors(): DeliveryFormErrors = when (field) {
     else -> DeliveryFormErrors(parcels = deliveryProblemMessage(this))
 }
 
-internal fun deliveryProblemMessage(problem: DeliveryProblem): String = when (problem.code) {
+internal fun deliveryProblemMessage(problem: DeliveryProblem): String = if (problem.field == "agriculturalCycleId")
+    com.isivoltpro.maginaolivo.feature.campaignhub.cycleCodeMessage(problem.code) else when (problem.code) {
     "required" -> when (problem.field) {
         "destination" -> "Elige la cooperativa o almazara, o escribe su nombre"
         "yield" -> "Escribe al menos un rendimiento"

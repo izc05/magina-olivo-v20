@@ -98,6 +98,7 @@ class OfflineFirstActivityRepository(
     private val workspaceRepository: WorkspaceRepository? = null,
 ) : ActivityRepository {
     private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
+    private val cycles = AgriculturalCycleWriter(database, workspaceRepository, clock)
 
     override fun observeSelectableParcels(farmId: UUID): Flow<List<ActivityParcelOption>> =
         flow {
@@ -323,6 +324,8 @@ class OfflineFirstActivityRepository(
                 if (status != ActivityStatus.COMPLETED && command.costMinor.counts()) {
                     return@safely AppResult.Failure(AppError.Validation("costMinor", ActivityCostRules.NOT_DONE_WORK))
                 }
+                val cycleId = cycles.validateNew(farm.workspaceId, farm.id, command.agriculturalCycleId,
+                    command.activityDate, command.activityEndDate ?: command.activityDate, command.campaignId)
                 val id = idGenerator.newId()
                 val now = clock.nowInstant()
                 database.activityDao().upsert(
@@ -340,6 +343,9 @@ class OfflineFirstActivityRepository(
                         activityEndDate = command.activityEndDate,
                     ),
                 )
+                cycles.bindNew(farm.workspaceId, farm.id, cycleId,
+                    com.isivoltpro.maginaolivo.domain.cycle.CycleRecordKind.ACTIVITY, id,
+                    inherited = command.campaignId != null)
                 replaceDetail(id, farm.workspaceId, command.detail, now)
                 replaceTargets(id, command.parcelIds, command.parcelAreasM2, now)
                 replaceMachines(id, farm.workspaceId, command.machines)
@@ -426,6 +432,7 @@ class OfflineFirstActivityRepository(
         now: Instant,
         preserveScheduling: Boolean,
     ): AppResult<Unit> {
+        cycles.validateActivityDate(current, changes.activityDate, changes.activityEndDate ?: changes.activityDate)
         validatePhytosanitaryReferences(current.workspaceId, changes.detail)?.let { return it }
         if (changes.type == ActivityType.HARVEST_DAY) {
             val farmId = current.farmId
@@ -835,6 +842,10 @@ class OfflineFirstActivityRepository(
                     return@safely AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
                 }
                 if (!allowArchived && current.metadata.deletedAt != null) return@safely conflict("archived_activity")
+                if (operation in setOf("plan_activity", "complete_activity", "reopen_activity")) {
+                    cycles.validateActivityDate(current, current.activityDate,
+                        current.activityEndDate ?: current.activityDate, requireOpen = true)
+                }
                 block(current, clock.nowInstant())
             }
         }
@@ -842,6 +853,8 @@ class OfflineFirstActivityRepository(
     private suspend fun <T> safely(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
         try {
             database.withTransaction { block() }
+        } catch (error: InvalidAgriculturalCycle) {
+            AppResult.Failure(error.error)
         } catch (error: InvalidSelection) {
             AppResult.Failure(AppError.Validation("parcelIds", error.message ?: "invalid"))
         } catch (error: InvalidParcelArea) {

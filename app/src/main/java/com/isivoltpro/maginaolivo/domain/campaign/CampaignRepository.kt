@@ -36,6 +36,7 @@ data class NewCampaign(
     val startDate: LocalDate,
     val parcelIds: Set<UUID> = emptySet(),
     val notes: String? = null,
+    val agriculturalCycleId: UUID? = null,
 )
 
 data class CampaignPreparationChanges(

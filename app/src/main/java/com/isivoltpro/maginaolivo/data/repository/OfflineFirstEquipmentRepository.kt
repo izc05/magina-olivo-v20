@@ -66,7 +66,8 @@ class OfflineFirstEquipmentRepository(
             } catch (error: ArithmeticException) {
                 AppResult.Failure(AppError.Validation("appliedPrice", "overflow"))
             } catch (error: Throwable) {
-                AppResult.Failure(AppError.Storage("replace_equipment", error))
+                if (error is InvalidAgriculturalCycle) AppResult.Failure(error.error)
+                else AppResult.Failure(AppError.Storage("replace_equipment", error))
             }
         }
     }
@@ -76,6 +77,7 @@ class OfflineFirstEquipmentRepository(
             ?: throw EquipmentInvalid("harvestId", "not_found")
         val campaign = harvest.campaignId?.let { database.campaignDao().findById(it) }
         if (campaign == null || campaign.status !in RUNNING) throw EquipmentConflict("closed_campaign")
+        requireOperationalAgriculturalCycle(database, campaign, harvest.harvestDate)
         val now = clock.nowInstant()
         val current = database.equipmentDao().listForHarvest(harvestId).associateBy { keyOf(it) }
         val wanted = lines.associateBy { EquipmentRules.key(it) }

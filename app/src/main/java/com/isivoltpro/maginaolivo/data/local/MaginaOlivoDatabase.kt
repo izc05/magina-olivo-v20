@@ -81,10 +81,16 @@ import com.isivoltpro.maginaolivo.data.local.entity.IrrigationCommunityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CommunityWaterNoticeEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PersonalIrrigationPlanEntity
 
-private const val DATABASE_VERSION = 34
+private const val DATABASE_VERSION = 35
 
 @Database(
     entities = [
+        com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleFarmStateEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleActivityEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleExpenseEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleRecollectionEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleOperationEntity::class,
         WorkspaceEntity::class,
         WorkspaceSelectionEntity::class,
         WorkspaceAuthorizationCacheEntity::class,
@@ -149,6 +155,7 @@ private const val DATABASE_VERSION = 34
 )
 @TypeConverters(RoomConverters::class)
 abstract class MaginaOlivoDatabase : RoomDatabase() {
+    abstract fun agriculturalCycleDao(): com.isivoltpro.maginaolivo.data.local.dao.AgriculturalCycleDao
     abstract fun workspaceDao(): WorkspaceDao
     abstract fun workspaceSelectionDao(): WorkspaceSelectionDao
     abstract fun workspaceAuthorizationCacheDao(): WorkspaceAuthorizationCacheDao

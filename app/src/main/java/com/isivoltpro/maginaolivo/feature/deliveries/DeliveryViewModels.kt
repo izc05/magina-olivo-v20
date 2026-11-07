@@ -435,7 +435,7 @@ private fun AppError.asProblem(): DeliveryProblem? =
     (this as? AppError.Validation)?.let { DeliveryProblem(it.field ?: "parcels", it.code) }
 
 internal fun deliveryErrorMessage(error: AppError): String = when (error) {
-    is AppError.Validation -> deliveryProblemMessage(DeliveryProblem(error.field ?: "parcels", error.code))
+    is AppError.Validation -> if (error.field == "agriculturalCycleId") com.isivoltpro.maginaolivo.feature.campaignhub.cycleMessage(error) else deliveryProblemMessage(DeliveryProblem(error.field ?: "parcels", error.code))
     is AppError.NotFound -> "La pesada o el vale ya no está en este dispositivo"
     is AppError.Conflict -> when (error.resource) {
         "no_running_campaign" -> "Esta finca no tiene una campaña activa o en recolección"

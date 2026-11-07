@@ -47,6 +47,8 @@ import com.isivoltpro.maginaolivo.feature.notebook.NotebookActions
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookUiState
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookViewModel
 import com.isivoltpro.maginaolivo.feature.notebook.resolveNotebookFarmId
+import com.isivoltpro.maginaolivo.domain.cycle.AgriculturalCycle
+import com.isivoltpro.maginaolivo.domain.cycle.CycleSnapshot
 import com.isivoltpro.maginaolivo.ui.components.*
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
@@ -98,7 +100,7 @@ fun AgriculturalCampaignRoute(
     Column(Modifier.fillMaxSize().testTag("agricultural-campaign-root")
         .verticalScroll(scroll).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
         Text("Campaña", style = MaterialTheme.typography.headlineLarge)
-        Text("Agrupación provisional: septiembre–agosto", style = MaterialTheme.typography.bodySmall,
+        if(persistence.agriculturalCycles==null || allFarms) Text("Agrupación provisional: septiembre–agosto", style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.testTag("campaign-provisional-period"))
         when {
             farms.isLoading -> CircularProgressIndicator()
@@ -135,14 +137,36 @@ fun AgriculturalCampaignRoute(
                         })
                         val state by model.state.collectAsStateWithLifecycle()
                         var selected by rememberSaveable { mutableStateOf<String?>(null) }
-                        LaunchedEffect(state.campaigns, selected) {
-                            state.campaigns.firstOrNull { it.id.toString() == selected }?.let { model.selectCampaign(it.id) }
-                        }
                         var labour by rememberSaveable { mutableStateOf<String?>(null) }
                         val actions = actionsFor(farm.id).copy(onLabour = { id -> labour = id.toString() })
-                        AgriculturalCampaignContent(state, actions, { selected = it.toString(); model.selectCampaign(it) },
-                            { onNotebook(farm.id) }, { retry++ }, onRecollection,
-                            onSectionChanged = { scroll.scrollTo(0) })
+                        var cycleSnapshot by remember {mutableStateOf<CycleSnapshot?>(null)}
+                        var viewedCycle by remember {mutableStateOf<UUID?>(null)}
+                        val agriculturalCycle=cycleSnapshot?.cycles?.firstOrNull {it.id==viewedCycle}
+                        persistence.agriculturalCycles?.let {cycles->
+                            AgriculturalCyclePanel(cycles,farm.id,LocalDate.now(),onSelection={snapshot,id->
+                                cycleSnapshot=snapshot;viewedCycle=id
+                            },onRecord={record->when(record.kind) {
+                                "ACTIVITY"->actions.onActivity(record.id)
+                                "EXPENSE"->actions.onExpense(record.id)
+                                "RECOLLECTION"->onRecollection(record.id)
+                            }})
+                        }
+                        LaunchedEffect(state.campaigns,selected,viewedCycle,cycleSnapshot?.scope?.revision) {
+                            val allowed=if(agriculturalCycle==null) state.campaigns else {
+                                val ids=cycleSnapshot!!.records.filter {it.cycleId==viewedCycle && it.kind=="RECOLLECTION"}.map {it.id}.toSet()
+                                state.campaigns.filter {it.id in ids}
+                            }
+                            val desired=allowed.firstOrNull {it.id.toString()==selected} ?: if(agriculturalCycle!=null)
+                                allowed.firstOrNull {it.id==state.selectedCampaignId} ?: allowed.firstOrNull() else null
+                            if(desired!=null && desired.id!=state.selectedCampaignId) model.selectCampaign(desired.id)
+                        }
+                        if(persistence.agriculturalCycles==null || cycleSnapshot!=null) {
+                            val scoped=if(agriculturalCycle==null) state else state.forAgriculturalCycle(cycleSnapshot!!,agriculturalCycle.id)
+                            AgriculturalCampaignContent(scoped, actions, { selected = it.toString(); model.selectCampaign(it) },
+                                { onNotebook(farm.id) }, { retry++ }, onRecollection,
+                                onSectionChanged = { scroll.scrollTo(0) },agriculturalCycle=agriculturalCycle,
+                                cyclesTracked=persistence.agriculturalCycles!=null)
+                        }
                         labour?.let { id ->
                             @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
                             androidx.compose.material3.ModalBottomSheet(onDismissRequest = { labour = null }, containerColor = MoSurfaceTokens.cardSurface) {
@@ -159,7 +183,8 @@ fun AgriculturalCampaignRoute(
 @Composable
 internal fun AgriculturalCampaignContent(state: NotebookUiState, actions: NotebookActions, onSelectCampaign: (UUID) -> Unit,
     onNotebook: () -> Unit, onRetry: () -> Unit, onRecollection: (UUID) -> Unit,
-    onSectionChanged: suspend () -> Unit = {}) {
+    onSectionChanged: suspend () -> Unit = {}, agriculturalCycle: AgriculturalCycle? = null,
+    cyclesTracked: Boolean = false) {
     var section by rememberSaveable { mutableStateOf<String?>(null) }
     BackHandler(enabled = section != null) { section = null }
     LaunchedEffect(section) { onSectionChanged() }
@@ -170,7 +195,10 @@ internal fun AgriculturalCampaignContent(state: NotebookUiState, actions: Notebo
             var menu by remember { mutableStateOf(false) }
             val notebook = state.notebook
             if (section == null) {
-                Text("Periodo ${OliveSeason.of(notebook?.campaign?.startDate ?: LocalDate.now())}", style = MaterialTheme.typography.titleMedium)
+                if(agriculturalCycle==null && cyclesTracked) Text("Histórico sin ciclo asignado · agrupación provisional septiembre–agosto",
+                    style=MaterialTheme.typography.bodySmall,modifier=Modifier.testTag("campaign-provisional-period"))
+                Text(agriculturalCycle?.let {"${it.label} · desde ${it.startDate.cycleDate()}"}
+                    ?: "Periodo ${OliveSeason.of(notebook?.campaign?.startDate ?: LocalDate.now())}", style = MaterialTheme.typography.titleMedium)
                 Box {
                     MoTertiaryButton(notebook?.campaign?.let { "${it.name} · Recolección ${when {
                         it.status.isRunning -> "abierta"
@@ -190,27 +218,35 @@ internal fun AgriculturalCampaignContent(state: NotebookUiState, actions: Notebo
                         MoCompactListItem(title = option.title, subtitle = option.description,
                             icon = when (option) { CampaignSection.WORKS -> MoIcons.Activity; CampaignSection.RECOLLECTION -> MoIcons.Harvest
                                 CampaignSection.ECONOMY -> MoIcons.Euro; CampaignSection.CHARTS -> MoIcons.Campaign },
-                            onClick = { if (option == CampaignSection.WORKS) onNotebook() else section = option.name },
+                            onClick = { if (option == CampaignSection.WORKS && agriculturalCycle==null) onNotebook() else section = option.name },
                             modifier = Modifier.testTag("campaign-section-${option.name}"))
                     }
                 }
-                Text("Trabajos abre el historial completo de la finca; no se asigna automáticamente a este periodo.", style = MaterialTheme.typography.bodySmall)
+                Text(if(agriculturalCycle==null) "Trabajos abre el historial completo de la finca; no se asigna automáticamente a este periodo."
+                    else "Solo se muestran los registros vinculados a esta campaña. El resto del histórico sigue en Cuaderno.", style = MaterialTheme.typography.bodySmall)
             } else {
                 MoTertiaryButton("← Volver a Campaña", { section = null },
                     Modifier.testTag("campaign-sections-back"))
                 Text(CampaignSection.entries.first { it.name == section }.title,
                     style = MaterialTheme.typography.titleLarge)
-                notebook?.campaign?.let { Text("${it.name} · ${OliveSeason.of(it.startDate)}",
+                notebook?.campaign?.let { Text(if(agriculturalCycle==null) "${it.name} · ${OliveSeason.of(it.startDate)}" else "${agriculturalCycle.label} · ${it.name}",
                     style = MaterialTheme.typography.bodySmall) }
             }
             when (section) {
+                CampaignSection.WORKS.name -> {
+                    val works=state.farmNotebook?.activities.orEmpty()
+                    if(works.isEmpty()) Text("Aún no hay trabajos vinculados a esta campaña.")
+                    works.forEach {work->com.isivoltpro.maginaolivo.feature.notebook.WorkRow(work) {actions.onActivity(work.id)}}
+                    MoTertiaryButton("Ver el histórico completo en Cuaderno",onNotebook)
+                }
                 CampaignSection.RECOLLECTION.name -> if (notebook == null) NoRecollection(actions) else {
                     MoSecondaryButton("Ver días y pesadas de esta recolección", { onRecollection(notebook.campaign.id) }, Modifier.fillMaxWidth())
                     CampaignView(notebook, state, actions, onSelectCampaign)
                 }
                 CampaignSection.ECONOMY.name -> {
                     Text("Ingresos pendientes de registrar · balance incompleto", modifier = Modifier.testTag("campaign-balance-incomplete"))
-                    Text("Gastos de esta finca: historial completo, sin gastos compartidos sin asignar. El informe por periodo está en Todas mis fincas.", style = MaterialTheme.typography.bodySmall)
+                    Text(if(agriculturalCycle==null) "Gastos de esta finca: historial completo, sin gastos compartidos sin asignar. El informe por periodo está en Todas mis fincas."
+                        else "Gastos vinculados a esta campaña, sin duplicar los costes de trabajos y jornadas. Los gastos sin asignar siguen en Cuaderno.", style = MaterialTheme.typography.bodySmall)
                     state.farmNotebook?.let { FarmCostsView(it, state.campaigns.filter { c -> c.status.isRunning }.maxByOrNull { c -> c.startDate }, actions) }
                 }
                 CampaignSection.CHARTS.name -> if (notebook == null) NoRecollection(actions) else {

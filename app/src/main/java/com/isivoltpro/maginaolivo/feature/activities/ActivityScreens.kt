@@ -133,6 +133,9 @@ fun FarmActivitiesRoute(
         editorTitle = editorTitle,
         lockInitialType = lockInitialType,
         editorAsScreen = editorAsScreen,
+        cycleChoice = { value, parent, changed ->
+            com.isivoltpro.maginaolivo.feature.campaignhub.AgriculturalCycleWriteChoice(persistence.agriculturalCycles, farmId, value, changed, parent, !state.isSaving)
+        },
         quickEntry = completeOnSave,
         today = today,
     )
@@ -153,6 +156,7 @@ fun FarmActivitiesSection(
     quickEntry: Boolean = false,
     /** #435: canonical Workspace day for visual validation. */
     today: LocalDate? = null,
+    cycleChoice: @Composable (UUID?, UUID?, (UUID?) -> Unit) -> Unit = { _, _, _ -> },
 ) {
     var editor by rememberSaveable { mutableStateOf(startWithEditor) }
     OnEachSave(state.saveCount) { editor = false }
@@ -165,6 +169,7 @@ fun FarmActivitiesSection(
             descriptionError = state.descriptionError,
             dateError = state.dateError,
             parcelsError = state.parcelsError,
+            saveError = state.error,
             isSaving = state.isSaving,
             onSave = { draft -> onCreate(draft, false) },
             // #414: saving is already local-first; a quick entry needs no second «borrador» choice.
@@ -174,6 +179,7 @@ fun FarmActivitiesSection(
             title = editorTitle,
             lockInitialType = lockInitialType,
             doneWork = quickEntry,
+            cycleChoice = cycleChoice,
             autoSelectSingleParcel = true,
             today = today,
         )
@@ -215,6 +221,7 @@ fun FarmActivitiesSection(
                     descriptionError = state.descriptionError,
                     dateError = state.dateError,
                     parcelsError = state.parcelsError,
+                    saveError = state.error,
                     isSaving = state.isSaving,
                     onSave = { draft -> onCreate(draft, false) },
                     onSaveDraft = { draft -> onCreate(draft, true) },
@@ -222,6 +229,7 @@ fun FarmActivitiesSection(
                     initial = initialDraft,
                     title = editorTitle,
                     lockInitialType = lockInitialType,
+                    cycleChoice = cycleChoice,
                     autoSelectSingleParcel = true,
                     today = today,
                 )
@@ -508,7 +516,10 @@ internal fun ActivityEditor(
     campaignError: String? = null,
     /** #435: canonical Workspace day. Null keeps non-writing previews source-compatible. */
     today: LocalDate? = null,
+    cycleChoice: @Composable (UUID?, UUID?, (UUID?) -> Unit) -> Unit = { _, _, _ -> },
+    saveError: String? = null,
 ) {
+    var agriculturalCycleId by rememberSaveable(initial.agriculturalCycleId) { mutableStateOf(initial.agriculturalCycleId?.toString()) }
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
     var endDate by rememberSaveable(initial.activityEndDate) { mutableStateOf(initial.activityEndDate?.toString().orEmpty()) }
@@ -659,6 +670,8 @@ internal fun ActivityEditor(
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall)
+        saveError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("activity-save-error")) }
+        cycleChoice(agriculturalCycleId?.let(UUID::fromString), selectedCampaign?.id) { agriculturalCycleId = it?.toString() }
         if (!lockInitialType) {
             // One kind of work per record: compact chips with their icon, one choice only.
             FormLabel("¿Qué trabajo?")
@@ -970,6 +983,7 @@ internal fun ActivityEditor(
                         parcelAreasM2 = parcelAreas,
                         campaignId = selectedCampaign?.id,
                         activityEndDate = parsedEnd,
+                        agriculturalCycleId = agriculturalCycleId?.let(UUID::fromString),
                     ),
                 )
             },
@@ -1003,6 +1017,7 @@ internal fun ActivityEditor(
                             parcelAreasM2 = parcelAreas,
                             campaignId = selectedCampaign?.id,
                             activityEndDate = parsedEnd,
+                        agriculturalCycleId = agriculturalCycleId?.let(UUID::fromString),
                         ),
                     )
                 },

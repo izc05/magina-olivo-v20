@@ -488,7 +488,7 @@ internal fun machineryPriceErrorMessage(error: AppError): String? =
     else null
 
 internal fun labourErrorMessage(error: AppError): String = when (error) {
-    is AppError.Validation -> when (error.code) {
+    is AppError.Validation -> if (error.field == "agriculturalCycleId") com.isivoltpro.maginaolivo.feature.campaignhub.cycleMessage(error) else when (error.code) {
         "empty" -> "Elige una persona"
         "campaign_closed" -> "La campaña está cerrada: el coste histórico no se modifica. Puedes registrar pagos pendientes."
         "below_paid" -> "Debes corregir los pagos antes de reducir el coste por debajo de lo pagado."
@@ -523,7 +523,7 @@ internal fun harvestDeleteErrorMessage(error: AppError): String =
     }
 
 internal fun harvestErrorMessage(error: AppError): String = when (error) {
-    is AppError.Validation -> harvestProblemMessage(HarvestProblem(error.field ?: "parcels", error.code))
+    is AppError.Validation -> if (error.field == "agriculturalCycleId") com.isivoltpro.maginaolivo.feature.campaignhub.cycleMessage(error) else harvestProblemMessage(HarvestProblem(error.field ?: "parcels", error.code))
     is AppError.NotFound -> "El día de recolección o la finca ya no está en este dispositivo"
     is AppError.Conflict -> when (error.resource) {
         "no_running_campaign" -> "Esta finca no tiene una campaña activa o en recolección"

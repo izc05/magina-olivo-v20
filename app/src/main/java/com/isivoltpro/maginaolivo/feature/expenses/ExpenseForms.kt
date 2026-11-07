@@ -126,6 +126,7 @@ internal fun ExpenseEditor(
     dayCostQuestion: suspend (UUID, ExpenseCategory) -> com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? = { _, _ -> null },
     draftState: androidx.compose.runtime.MutableState<ExpenseForm>? = null,
     categoryLocked: Boolean = false,
+    agriculturalCycles: com.isivoltpro.maginaolivo.domain.cycle.AgriculturalCycleRepository? = null,
 ) {
     val formHolder: androidx.compose.runtime.MutableState<ExpenseForm> = draftState ?: remember(initial) { mutableStateOf(initial) }
     var form by formHolder
@@ -159,6 +160,8 @@ internal fun ExpenseEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.secondaryText)
+        com.isivoltpro.maginaolivo.feature.campaignhub.AgriculturalCycleWriteChoice(agriculturalCycles, form.farmId, form.agriculturalCycleId,
+            { form = form.copy(agriculturalCycleId = it) }, form.activityId ?: form.campaignId, !isSaving)
         // Codex #480 / #433: once the expense is tied to a work (locked or chosen), its Campaign — or
         // none, for general work — is context, not a choice.
         val workBound = activityLocked || form.activityId != null

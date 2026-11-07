@@ -33,7 +33,32 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(34, MaginaOlivoDatabase.VERSION)
+        assertEquals(35, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration34To35AddsEmptyCycleSidecarsWithoutRewritingAnyHistoricalFactOrOutbox() {
+        val before = migrationHelper.createDatabase(TEST_DATABASE,34).use { database ->
+            listOf(
+                "INSERT INTO workspaces(id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','QA','owner','ES','Europe/Madrid','es-ES','EUR',1,2,3,'PENDING')",
+                "INSERT INTO farms(id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('f','w','Histórica','ACTIVE',1,2,4,'SYNCED')",
+                "INSERT INTO campaigns(id,workspace_id,farm_id,name,start_date,end_date,status,created_at,updated_at,version,sync_status) VALUES ('c','w','f','2020/21','2020-02-01','2021-01-20','CLOSED',1,2,5,'PENDING')",
+                "INSERT INTO activities(id,workspace_id,farm_id,activity_date,type,status,description,created_at,updated_at,version,sync_status) VALUES ('a','w','f','2020-02-15','PRUNING','COMPLETED','Poda histórica',1,2,6,'PENDING')",
+                "INSERT INTO expenses(id,workspace_id,farm_id,expense_date,concept,category,amount_minor,currency,status,origin,created_at,updated_at,version,sync_status) VALUES ('e','w','f','2021-05-01','Factura tardía','OTHER',12345,'EUR','POSTED','MANUAL',1,2,7,'PENDING')",
+                "INSERT INTO sync_outbox(id,entity_type,entity_id,operation,payload_version,payload_json,status,attempt_count,created_at,updated_at) VALUES ('o','ACTIVITY','a','CREATE',1,'{\"unchanged\":true}','PENDING',0,1,2)",
+                "INSERT INTO sync_receive_receipts(issuer,account_id,entity_type,entity_id,remote_version,deleted,contract_version,received_at) VALUES ('iss','actor','CAMPAIGN','c',5,0,1,2)",
+            ).forEach(database::execSQL)
+            dumpTables(database)
+        }
+        val sidecars=setOf("agricultural_cycles","agricultural_cycle_farm_state","agricultural_cycle_activities",
+            "agricultural_cycle_expenses","agricultural_cycle_recollections","agricultural_cycle_operations")
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE,35,true,AGRICULTURAL_CYCLE_MIGRATION_34_35).use { database ->
+            assertEquals(before,dumpTables(database,exclude=sidecars))
+            sidecars.forEach { table -> database.query("SELECT COUNT(*) FROM $table").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals(table,0,c.getInt(0))
+            } }
+            database.query("PRAGMA foreign_key_check").use { c -> assertTrue(!c.moveToFirst()) }
+        }
     }
 
     /**

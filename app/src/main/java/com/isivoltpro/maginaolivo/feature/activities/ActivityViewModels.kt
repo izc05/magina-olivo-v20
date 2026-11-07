@@ -51,6 +51,7 @@ data class ActivityDraft(
     val campaignId: UUID? = null,
     /** Inclusive end of a multi-day agronomic operation; null means one day. */
     val activityEndDate: LocalDate? = null,
+    val agriculturalCycleId: UUID? = null,
 )
 
 data class FarmActivitiesUiState(
@@ -143,6 +144,7 @@ class FarmActivitiesViewModel(
                         reminders = draft.reminders,
                         parcelAreasM2 = draft.parcelAreasM2,
                         activityEndDate = draft.activityEndDate,
+                        agriculturalCycleId = draft.agriculturalCycleId,
                     ),
                 )
         }
@@ -208,6 +210,7 @@ class FarmActivitiesViewModel(
 }
 
 internal fun activitySaveErrorMessage(error: AppError): String = when {
+    error is AppError.Validation && error.field == "agriculturalCycleId" -> com.isivoltpro.maginaolivo.feature.campaignhub.cycleMessage(error)
     error is AppError.Validation &&
         error.field == "campaignId" && error.code == "required_for_harvest_day" ->
         "Crea o prepara una campaña antes de planificar una jornada de recolección."

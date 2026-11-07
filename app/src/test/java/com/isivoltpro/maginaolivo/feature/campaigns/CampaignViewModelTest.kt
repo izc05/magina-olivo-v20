@@ -33,6 +33,15 @@ class CampaignViewModelTest {
     @Before fun before() = Dispatchers.setMain(dispatcher)
     @After fun after() = Dispatchers.resetMain()
 
+    @Test fun newRecollectionUsesTheExplicitAgriculturalCycle() = runTest(dispatcher) {
+        val fake = FakeRepository()
+        val cycle = UUID.randomUUID()
+        FarmCampaignsViewModel(farmId, fake).create(CampaignDraft("Recolección", LocalDate.parse("2026-11-06"),
+            agriculturalCycleId = cycle))
+        advanceUntilIdle()
+        assertEquals(cycle, fake.created?.agriculturalCycleId)
+    }
+
     @Test fun partitionsCurrentAndHistoryAndValidatesCreate() = runTest(dispatcher) {
         val fake = FakeRepository()
         val viewModel = FarmCampaignsViewModel(farmId, fake)

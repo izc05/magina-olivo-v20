@@ -138,6 +138,7 @@ class OfflineFirstHarvestRepository(
             }
             val campaign = database.campaignDao().findCurrent(farm.id)
                 ?: return@inTransaction conflict("no_running_campaign")
+            requireOperationalAgriculturalCycle(database, campaign, draft.harvestDate)
             if (draft.harvestDate.isBefore(campaign.startDate)) {
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
             }
@@ -189,6 +190,7 @@ class OfflineFirstHarvestRepository(
             }
             val campaign = database.campaignDao().findCurrent(farm.id)
                 ?: return@inTransaction conflict("no_running_campaign")
+            requireOperationalAgriculturalCycle(database, campaign, date)
             if (date.isBefore(campaign.startDate)) {
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
             }
@@ -212,6 +214,7 @@ class OfflineFirstHarvestRepository(
             }
             val campaign = current.campaignId?.let { database.campaignDao().findById(it) }
             if (campaign == null || campaign.status !in RUNNING) return@inTransaction conflict("closed_campaign")
+            requireOperationalAgriculturalCycle(database, campaign, draft.harvestDate)
             if (draft.harvestDate.isBefore(campaign.startDate)) {
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
             }
@@ -377,6 +380,8 @@ class OfflineFirstHarvestRepository(
         withContext(dispatchers.io) {
             try {
                 database.withTransaction { block() }
+            } catch (error: InvalidAgriculturalCycle) {
+                AppResult.Failure(error.error)
             } catch (error: InvalidShare) {
                 AppResult.Failure(AppError.Validation("parcels", error.message ?: "invalid"))
             } catch (error: LabourFinanceInvalid) {

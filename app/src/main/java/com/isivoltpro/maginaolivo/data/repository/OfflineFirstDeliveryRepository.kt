@@ -291,6 +291,8 @@ class OfflineFirstDeliveryRepository(
         withContext(dispatchers.io) {
             try {
                 database.withTransaction { block() }
+            } catch (error: InvalidAgriculturalCycle) {
+                AppResult.Failure(error.error)
             } catch (error: InvalidDelivery) {
                 AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: DeliveryConflict) {

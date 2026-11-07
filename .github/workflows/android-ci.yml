@@ -19,7 +19,9 @@ jobs:
   foundation:
     if: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/g26-integration-temp') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 30 cancelled CR-015 P3 (#859) with the dev/staging/production Kotlin compilations still
+    # running after 26 minutes and no error; P1 compiled the same three in ~5 minutes.
+    timeout-minutes: 45
     permissions:
       contents: write
 
@@ -63,7 +65,20 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           set -o pipefail
-          gradle --no-daemon lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest 2>&1 | tee build-output.log
+          # Diagnostics: every two minutes, GC utilisation of the Gradle and Kotlin daemons, so a
+          # slow build shows whether it is thrashing near its heap limit or really stuck.
+          ( while sleep 120; do
+              jps -l 2>/dev/null | while read -r pid name; do
+                case "$name" in
+                  *Kotlin*|*Gradle*) echo "[gc-sample $(date -u +%H:%M:%S)] $name $(jstat -gcutil "$pid" 2>/dev/null | tail -1)" ;;
+                esac
+              done
+            done ) &
+          sampler=$!
+          trap 'kill "$sampler" 2>/dev/null || true' EXIT
+          # At most two concurrent tasks: the three variants no longer compile Kotlin at the same
+          # time in one Kotlin daemon heap. Every task and variant still runs.
+          gradle --no-daemon --max-workers=2 lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest 2>&1 | tee build-output.log
 
       - name: Publish build diagnostics
         if: failure()

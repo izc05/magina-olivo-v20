@@ -21,17 +21,26 @@ class ActivitySavedCallbackTest {
     private val id = UUID.randomUUID()
     private var result: AppResult<UUID> = AppResult.Success(id)
     private var creates = 0
+    private var created: com.isivoltpro.maginaolivo.domain.activity.NewActivity? = null
     private val repository = Proxy.newProxyInstance(ActivityRepository::class.java.classLoader,
-        arrayOf(ActivityRepository::class.java)) { _, method, _ ->
+        arrayOf(ActivityRepository::class.java)) { _, method, args ->
         when {
             method.name.startsWith("observe") -> MutableStateFlow(emptyList<Any>())
-            method.name == "create" -> { creates++; result }
+            method.name == "create" -> { creates++; created = args!![0] as com.isivoltpro.maginaolivo.domain.activity.NewActivity; result }
             else -> error("Unexpected repository call: ${method.name}")
         }
     } as ActivityRepository
     private val draft = ActivityDraft(activityDate = LocalDate.of(2026, 11, 20), description = "Trabajo sintético", parcelIds = setOf(UUID.randomUUID()))
     @Before fun setup() { Dispatchers.setMain(dispatcher) }
     @After fun teardown() { Dispatchers.resetMain() }
+
+    @Test fun newWorkUsesTheExplicitAgriculturalCycle() = runTest(dispatcher) {
+        val cycle = UUID.randomUUID()
+        FarmActivitiesViewModel(UUID.randomUUID(), repository).create(draft.copy(agriculturalCycleId = cycle))
+        advanceUntilIdle()
+        assertEquals(cycle, created?.agriculturalCycleId)
+        assertEquals(1, creates)
+    }
 
     @Test fun reportsCommittedIdAfterSuccessfulSaveState() = runTest(dispatcher) {
         val vm = FarmActivitiesViewModel(UUID.randomUUID(), repository)

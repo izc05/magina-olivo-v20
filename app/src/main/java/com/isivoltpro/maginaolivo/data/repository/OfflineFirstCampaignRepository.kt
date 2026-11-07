@@ -45,6 +45,7 @@ class OfflineFirstCampaignRepository(
     private val workspaceRepository: WorkspaceRepository? = null,
 ) : CampaignRepository {
     private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
+    private val cycles = AgriculturalCycleWriter(database, workspaceRepository, clock)
     override fun observeSelectableParcels(farmId: UUID): Flow<List<CampaignParcelOption>> =
         flow {
             val active = when (val result = workspaceScope.resolve()) {
@@ -114,10 +115,13 @@ class OfflineFirstCampaignRepository(
                 if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                     return@safely AppResult.Failure(AppError.Conflict("archived_farm"))
                 }
+                val cycleId = cycles.validateNew(farm.workspaceId, farm.id, command.agriculturalCycleId, command.startDate)
                 val id = idGenerator.newId()
                 val now = clock.nowInstant()
                 database.campaignDao().upsert(CampaignEntity(id, farm.workspaceId, farm.id, name, command.startDate,
                     status = CampaignStatus.PREPARATION, notes = command.notes.normalized(), metadata = pending(now)))
+                cycles.bindNew(farm.workspaceId, farm.id, cycleId,
+                    com.isivoltpro.maginaolivo.domain.cycle.CycleRecordKind.RECOLLECTION, id)
                 replaceSnapshots(id, command.parcelIds, now)
                 enqueue(id, OutboxOperation.CREATE, now)
                 AppResult.Success(id)
@@ -130,6 +134,9 @@ class OfflineFirstCampaignRepository(
         if (name.isEmpty()) return AppResult.Failure(AppError.Validation("name", "blank"))
         return mutate(id, "update_campaign") { current, now ->
             if (current.status != CampaignStatus.PREPARATION) return@mutate conflict("campaign_not_in_preparation")
+            if (database.agriculturalCycleDao().recollectionCycle(id) != null) {
+                requireOperationalAgriculturalCycle(database, current, changes.startDate)
+            }
             database.campaignDao().upsert(current.copy(name = name, startDate = changes.startDate,
                 notes = changes.notes.normalized(), metadata = current.metadata.next(now)))
             replaceSnapshots(id, changes.parcelIds, now)
@@ -314,12 +321,16 @@ class OfflineFirstCampaignRepository(
                     return@safely AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
                 }
                 if (!allowArchived && current.metadata.deletedAt != null) return@safely conflict("archived_campaign")
+                if (operation in setOf("activate_campaign", "mark_harvest", "reopen_campaign")) {
+                    requireOperationalAgriculturalCycle(database, current, current.startDate)
+                }
                 block(current, clock.nowInstant())
             }
         }
 
     private suspend fun <T> safely(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
         try { database.withTransaction { block() } }
+        catch (error: InvalidAgriculturalCycle) { AppResult.Failure(error.error) }
         catch (error: InvalidSelection) { AppResult.Failure(AppError.Validation("parcelIds", error.message ?: "invalid")) }
         catch (error: Throwable) { AppResult.Failure(AppError.Storage(operation, error)) }
 

@@ -275,6 +275,7 @@ class OfflineFirstLabourRepository(
             ?: throw LabourInvalid("harvestId", "not_found")
         val campaign = harvest.campaignId?.let { database.campaignDao().findById(it) }
         if (campaign == null || campaign.metadata.deletedAt != null || campaign.status !in RUNNING) throw LabourConflict("closed_campaign")
+        requireOperationalAgriculturalCycle(database, campaign, harvest.harvestDate)
         val workspaceId = workspaceId()
         if (harvest.workspaceId != workspaceId || campaign.workspaceId != workspaceId || campaign.farmId != harvest.farmId) {
             throw LabourInvalid("harvestId", "context_mismatch")
@@ -289,6 +290,8 @@ class OfflineFirstLabourRepository(
         withContext(dispatchers.io) {
             try {
                 database.withTransaction { block() }
+            } catch (error: InvalidAgriculturalCycle) {
+                AppResult.Failure(error.error)
             } catch (error: LabourFinanceInvalid) {
                 AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: IllegalArgumentException) {

@@ -87,6 +87,8 @@ data class ExpenseDraft(
     val harvestId: UUID? = null,
     /** #475: the farmer's explicit decision when the day already has a calculated cost. */
     val dayCostRole: DayCostRole = DayCostRole.ADDITIVE,
+    /** Local sidecar association; not a second economic record or a network field. */
+    val agriculturalCycleId: UUID? = null,
 )
 
 /**

@@ -43,6 +43,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.isivoltpro.maginaolivo.feature.deliveries.PESADA_NO_RUNNING_CAMPAIGN
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.repository.todayForWorkspace
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.flow.first
@@ -65,6 +66,100 @@ class AppNavigationTest {
         RuleChain
             .outerRule(IsolatedAppStateRule())
             .around(composeRule)
+
+    /** Actual MainActivity + real isolated Room, solely fictional data; captures for P3 review. */
+    @Test
+    fun agriculturalCycleCreationReviewAndEffectiveClosureSurviveRecreationWithoutChangingFacts() {
+        enterMainShell()
+        navigateToOlivar()
+        openSheet("add-farm","farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca QA ciclos")
+        saveEditor("save-farm","farm-name")
+        waitForSaved("farm-name","Finca QA ciclos")
+        clickByText("Finca QA ciclos")
+        openFarmSection("parcels")
+        createParcel("Parcela QA ciclos")
+        val db=MaginaOlivoDatabase.getInstance(ApplicationProvider.getApplicationContext<Context>())
+        val farm=db.openHelper.readableDatabase.query("SELECT id FROM farms WHERE name='Finca QA ciclos' AND deleted_at IS NULL").use {c->
+            check(c.moveToFirst());java.util.UUID.fromString(c.getString(0))
+        }
+        val today=runBlocking {db.todayForWorkspace(db.farmDao().findById(farm)!!.workspaceId,
+            com.isivoltpro.maginaolivo.core.time.SystemAppClock())}
+        val facts=agriculturalCounts()
+        fun outbox()=db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM sync_outbox").use {c->c.moveToFirst();c.getLong(0)}
+        val beforeOutbox=outbox()
+        composeRule.onNodeWithTag("bottom-Campaña").performClick()
+        waitForTag("cycle-new")
+        composeRule.onNodeWithTag("cycle-new").performScrollTo().performClick()
+        composeRule.onNodeWithTag("cycle-label").performTextClearance()
+        composeRule.onNodeWithTag("cycle-label").performTextInput("QA agrícola flexible")
+        pickDate("cycle-start-date",today.minusDays(7).toString(),java.time.YearMonth.from(today))
+        safeCloseSoftKeyboard()
+        composeRule.onNodeWithTag("cycle-create-confirm").performScrollTo().assertIsDisplayed()
+        captureCycleReview("01-crear-campana")
+        composeRule.onNodeWithTag("cycle-create-confirm").performClick()
+        waitForTag("cycle-selector")
+        composeRule.onNodeWithTag("campaign-farm-selector").performScrollTo()
+        captureCycleReview("02-consultar-campana")
+        composeRule.onNodeWithTag("cycle-close-open").performScrollTo().performClick()
+        waitForTag("cycle-effective-end")
+        pickDate("cycle-effective-end",today.minusDays(1).toString(),java.time.YearMonth.from(today))
+        composeRule.onNodeWithTag("cycle-no-recollection").performScrollTo().performClick()
+        composeRule.onNodeWithTag("cycle-review-close").performScrollTo().performClick()
+        waitForTag("cycle-close-confirm")
+        composeRule.onNodeWithTag("cycle-close-confirm").performScrollTo().assertIsDisplayed()
+        captureCycleReview("03-revisar-cierre")
+        composeRule.onNodeWithTag("cycle-close-confirm").performClick()
+        waitForTag("cycle-history-does-not-write")
+        composeRule.onNodeWithTag("campaign-farm-selector").performScrollTo()
+        captureCycleReview("04-campana-cerrada")
+        val cycle=runBlocking {db.agriculturalCycleDao().list(farm).single()}
+        assertEquals(today.minusDays(1),cycle.effectiveEndDate)
+        assertTrue(cycle.closedAt!=null)
+        assertEquals(facts,agriculturalCounts())
+        assertEquals(beforeOutbox,outbox())
+        composeRule.activityRule.scenario.recreate()
+        waitForTag("cycle-history-does-not-write")
+        assertEquals(cycle,runBlocking {db.agriculturalCycleDao().list(farm).single()})
+        // Viewing a CLOSED historical cycle must never retarget a new + form to it.
+        composeRule.onNodeWithTag("cycle-new").performScrollTo().performClick()
+        composeRule.onNodeWithTag("cycle-label").performTextClearance()
+        composeRule.onNodeWithTag("cycle-label").performTextInput("QA siguiente abierta")
+        pickDate("cycle-start-date",today.toString(),java.time.YearMonth.from(today))
+        safeCloseSoftKeyboard()
+        composeRule.onNodeWithTag("cycle-create-confirm").performScrollTo().performClick()
+        waitForTag("cycle-selector")
+        composeRule.onNodeWithTag("cycle-selector").performScrollTo().performClick()
+        clickByText("QA agrícola flexible · Cerrada")
+        waitForTag("cycle-history-does-not-write")
+        openGlobalQuickAction("work")
+        waitForTag("register-activity-type-pruning")
+        composeRule.onNodeWithTag("register-activity-type-pruning").performClick()
+        waitForTag("activity-description")
+        composeRule.onNodeWithTag("cycle-write-selector").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("QA siguiente abierta").assertExists()
+        composeRule.onNodeWithTag("activity-description").performScrollTo().performTextClearance()
+        composeRule.onNodeWithTag("activity-description").performTextInput("Poda QA ciclo nuevo")
+        safeCloseSoftKeyboard()
+        ensureFirstParcelSelected()
+        clickByTag("save-activity")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM activities WHERE description='Poda QA ciclo nuevo'").use {c->c.moveToFirst();c.getInt(0)==1}
+        }
+        val target=runBlocking {db.agriculturalCycleDao().list(farm).single {it.effectiveEndDate==null}}
+        val saved=runBlocking {db.agriculturalCycleDao().records(farm,cycle.workspaceId).single {it.title=="Poda QA ciclo nuevo"}}
+        assertEquals(target.id,saved.cycleId)
+        assertEquals(facts[2]+1,agriculturalCounts()[2])
+        assertEquals(facts[5],agriculturalCounts()[5])
+    }
+
+    private fun captureCycleReview(name: String) {
+        composeRule.waitForIdle()
+        val directory=File(ApplicationProvider.getApplicationContext<Context>().getExternalFilesDir(null),"cycle-review")
+        check(directory.mkdirs() || directory.isDirectory)
+        val bitmap=composeRule.onRoot().captureToImage().asAndroidBitmap()
+        FileOutputStream(File(directory,"$name.png")).use {check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))}
+    }
 
     @Test
     fun assistantIsReservedAndAvatarOpensProfileFromEachMainSection() {
@@ -1762,7 +1857,7 @@ class AppNavigationTest {
         composeRule.waitForIdle()
     }
 
-    private fun pickDate(fieldTag: String, iso: String) {
+    private fun pickDate(fieldTag: String, iso: String, initialMonth: java.time.YearMonth = java.time.YearMonth.now()) {
         val target = java.time.LocalDate.parse(iso)
         // The field usually follows a text input: close the keyboard first so the resize it
         // causes cannot swallow the tap, and tap once more if the picker still did not open.
@@ -1778,7 +1873,7 @@ class AppNavigationTest {
             }
         }
         val months = java.time.temporal.ChronoUnit.MONTHS.between(
-            java.time.YearMonth.now(),
+            initialMonth,
             java.time.YearMonth.from(target),
         )
         val step = if (months < 0) "date-picker-previous" else "date-picker-next"

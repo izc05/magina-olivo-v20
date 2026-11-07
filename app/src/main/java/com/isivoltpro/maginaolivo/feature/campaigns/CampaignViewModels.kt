@@ -23,6 +23,7 @@ data class CampaignDraft(
     val startDate: LocalDate? = null,
     val parcelIds: Set<UUID> = emptySet(),
     val notes: String = "",
+    val agriculturalCycleId: UUID? = null,
 )
 
 data class FarmCampaignsUiState(
@@ -58,7 +59,7 @@ class FarmCampaignsViewModel(private val farmId: UUID, private val repository: C
     fun create(draft: CampaignDraft) {
         if (!validate(draft)) return
         mutate("Campaña guardada en este dispositivo") {
-            when (val result = repository.create(NewCampaign(farmId, draft.name.trim(), draft.startDate!!, draft.parcelIds, draft.notes.nullIfBlank()))) {
+            when (val result = repository.create(NewCampaign(farmId, draft.name.trim(), draft.startDate!!, draft.parcelIds, draft.notes.nullIfBlank(), agriculturalCycleId = draft.agriculturalCycleId))) {
                 is AppResult.Success -> AppResult.Success(Unit)
                 is AppResult.Failure -> result
             }
@@ -74,9 +75,9 @@ class FarmCampaignsViewModel(private val farmId: UUID, private val repository: C
 
     private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
-        mutableState.value = when (operation()) {
+        mutableState.value = when (val result = operation()) {
             is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
-            is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = "No se pudo guardar en este dispositivo")
+            is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = if (result.error is AppError.Validation && result.error.field == "agriculturalCycleId") com.isivoltpro.maginaolivo.feature.campaignhub.cycleMessage(result.error) else "No se pudo guardar en este dispositivo")
         }
     }
 }

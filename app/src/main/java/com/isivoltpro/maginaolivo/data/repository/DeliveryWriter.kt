@@ -174,7 +174,8 @@ internal class DeliveryWriter(
         return campaign
     }
 
-    private fun checkDate(draft: DeliveryDraft, campaign: CampaignEntity) {
+    private suspend fun checkDate(draft: DeliveryDraft, campaign: CampaignEntity) {
+        requireOperationalAgriculturalCycle(database, campaign, draft.deliveryDate)
         if (draft.deliveryDate.isBefore(campaign.startDate)) throw InvalidDelivery("deliveryDate", "before_campaign")
         if (campaign.endDate != null && draft.deliveryDate.isAfter(campaign.endDate)) {
             throw InvalidDelivery("deliveryDate", "after_campaign")

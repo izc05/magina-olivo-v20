@@ -15,6 +15,12 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ExpenseFormTest {
+    @Test fun newExpenseKeepsExplicitAgriculturalCycleThroughFormEdits() {
+        val cycle = UUID.randomUUID()
+        val form = ExpenseForm(date = "2026-11-06", amount = "25", concept = "Abono",
+            agriculturalCycleId = cycle)
+        assertEquals(cycle, form.copy(notes = "Prueba local").toDraft().first!!.agriculturalCycleId)
+    }
     @Test fun historicalCurrencyAndCampaignSurviveAmountAndLineEditing() {
         listOf("JPY" to 1000L, "EUR" to 12345L, "KWD" to 123456L).forEach { (currency, amount) ->
             val campaign = UUID.randomUUID()
