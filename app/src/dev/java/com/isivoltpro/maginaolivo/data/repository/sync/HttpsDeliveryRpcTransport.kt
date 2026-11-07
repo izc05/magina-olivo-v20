@@ -52,6 +52,8 @@ internal class HttpsDeliveryRpcTransport(
         HARVEST_RECEIVE(HarvestReceiveContract.NAMES, HarvestReceiveContract.MAX_BYTES),
         /** Manual sync: the read-only campaign list of one workspace (ids and versions only). */
         CAMPAIGN_LIST(setOf(ManualSyncCoordinator.LIST_RPC)),
+        /** CR-015 P4: per-farm agricultural cycle head and CAS write (owner-only). */
+        CYCLE_SYNC(AgriculturalCycleRpcAdapter.NAMES),
     }
 
     override suspend fun rpc(name: String, bodyJson: String, accessToken: String): DeliveryRpcResponse =

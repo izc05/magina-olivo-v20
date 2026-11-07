@@ -19,8 +19,10 @@ data class CycleRecord(
     val id: UUID, val kind: String, val title: String, val date: LocalDate,
     val lastDate: LocalDate, val cycleId: UUID?, val status: String, val version: Long,
 )
+/** P4 transport state of the farm's cycles; null when this phone never staged or received them. */
+data class CycleSyncView(val status: String, val reason: String?)
 data class CycleSnapshot(val scope: CycleScope, val cycles: List<AgriculturalCycle>, val records: List<CycleRecord>,
-    val today: LocalDate? = null)
+    val today: LocalDate? = null, val sync: CycleSyncView? = null)
 data class CycleClosePreview(
     val cycle: AgriculturalCycle, val scope: CycleScope, val effectiveEndDate: LocalDate,
     val noRecollection: Boolean, val lastDeliveryDate: LocalDate?,

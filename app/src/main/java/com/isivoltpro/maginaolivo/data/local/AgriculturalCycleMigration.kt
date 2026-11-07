@@ -22,3 +22,10 @@ val AGRICULTURAL_CYCLE_MIGRATION_34_35 = object : Migration(34,35) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_agricultural_cycle_operations_cycle_id ON agricultural_cycle_operations(cycle_id)")
     }
 }
+
+/** CR-015 P4: one empty transport-state table. Existing cycles, links and operations are not touched. */
+val AGRICULTURAL_CYCLE_MIGRATION_35_36 = object : Migration(35,36) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS agricultural_cycle_sync_state (farm_id TEXT NOT NULL, account_id TEXT NOT NULL, remote_revision INTEGER NOT NULL, synced_local_revision INTEGER NOT NULL, pending_operation_id TEXT, pending_local_revision INTEGER, pending_body TEXT, status TEXT NOT NULL, reason TEXT, updated_at INTEGER NOT NULL, PRIMARY KEY(farm_id), FOREIGN KEY(farm_id) REFERENCES farms(id) ON UPDATE NO ACTION ON DELETE NO ACTION)""")
+    }
+}

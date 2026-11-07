@@ -81,7 +81,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.IrrigationCommunityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CommunityWaterNoticeEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PersonalIrrigationPlanEntity
 
-private const val DATABASE_VERSION = 35
+private const val DATABASE_VERSION = 36
 
 @Database(
     entities = [
@@ -91,6 +91,7 @@ private const val DATABASE_VERSION = 35
         com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleExpenseEntity::class,
         com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleRecollectionEntity::class,
         com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleOperationEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.AgriculturalCycleSyncStateEntity::class,
         WorkspaceEntity::class,
         WorkspaceSelectionEntity::class,
         WorkspaceAuthorizationCacheEntity::class,

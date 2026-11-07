@@ -33,7 +33,7 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(35, MaginaOlivoDatabase.VERSION)
+        assertEquals(36, MaginaOlivoDatabase.VERSION)
     }
 
     @Test
@@ -57,6 +57,30 @@ class RoomMigrationTest {
             sidecars.forEach { table -> database.query("SELECT COUNT(*) FROM $table").use { c ->
                 assertTrue(c.moveToFirst()); assertEquals(table,0,c.getInt(0))
             } }
+            database.query("PRAGMA foreign_key_check").use { c -> assertTrue(!c.moveToFirst()) }
+        }
+    }
+
+    /** CR-015 P4: 35 -> 36 adds one empty transport-state table; P3 cycles, links and operations stay identical. */
+    @Test
+    fun migration35To36AddsEmptyCycleSyncStateWithoutRewritingP3Cycles() {
+        val before = migrationHelper.createDatabase(TEST_DATABASE,35).use { database ->
+            listOf(
+                "INSERT INTO workspaces(id,name,owner_user_id,country_code,timezone,locale,currency,created_at,updated_at,version,sync_status) VALUES ('w','QA','owner','ES','Europe/Madrid','es-ES','EUR',1,2,3,'PENDING')",
+                "INSERT INTO farms(id,workspace_id,name,status,created_at,updated_at,version,sync_status) VALUES ('f','w','Histórica','ACTIVE',1,2,4,'SYNCED')",
+                "INSERT INTO campaigns(id,workspace_id,farm_id,name,start_date,end_date,status,created_at,updated_at,version,sync_status) VALUES ('c','w','f','2025/26','2025-11-01','2026-01-20','CLOSED',1,2,5,'PENDING')",
+                "INSERT INTO agricultural_cycles(id,workspace_id,farm_id,label,start_date,effective_end_date,closed_at,no_recollection,version) VALUES ('y','w','f','2025/26','2025-02-01','2026-01-25',1800000000000,0,2)",
+                "INSERT INTO agricultural_cycle_recollections(campaign_id,cycle_id) VALUES ('c','y')",
+                "INSERT INTO agricultural_cycle_farm_state(farm_id,revision) VALUES ('f',3)",
+                "INSERT INTO agricultural_cycle_operations(id,cycle_id,owner_id,fingerprint,recorded_at,reason) VALUES ('op','y',NULL,'hash',1800000000000,'Cerrar: 2026-01-25')",
+            ).forEach(database::execSQL)
+            dumpTables(database)
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE,36,true,AGRICULTURAL_CYCLE_MIGRATION_35_36).use { database ->
+            assertEquals(before,dumpTables(database,exclude=setOf("agricultural_cycle_sync_state")))
+            database.query("SELECT COUNT(*) FROM agricultural_cycle_sync_state").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals(0,c.getInt(0))
+            }
             database.query("PRAGMA foreign_key_check").use { c -> assertTrue(!c.moveToFirst()) }
         }
     }

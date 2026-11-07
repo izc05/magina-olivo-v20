@@ -31,6 +31,17 @@ interface AgriculturalCycleDao {
     @Upsert suspend fun link(row: AgriculturalCycleExpenseEntity)
     @Upsert suspend fun link(row: AgriculturalCycleRecollectionEntity)
 
+    @Query("SELECT * FROM agricultural_cycle_sync_state WHERE farm_id=:farmId")
+    suspend fun syncState(farmId: UUID): AgriculturalCycleSyncStateEntity?
+    @Query("SELECT * FROM agricultural_cycle_sync_state WHERE farm_id=:farmId")
+    fun observeSyncState(farmId: UUID): Flow<AgriculturalCycleSyncStateEntity?>
+    @Upsert suspend fun setSyncState(state: AgriculturalCycleSyncStateEntity)
+    @Query("""SELECT r.* FROM agricultural_cycle_recollections r JOIN agricultural_cycles c ON c.id=r.cycle_id
+        WHERE c.farm_id=:farmId ORDER BY r.campaign_id""")
+    suspend fun recollectionLinks(farmId: UUID): List<AgriculturalCycleRecollectionEntity>
+    @Query("SELECT DISTINCT farm_id FROM agricultural_cycle_farm_state WHERE revision>0")
+    suspend fun farmsWithCycles(): List<UUID>
+
     @Query(RECORDS) suspend fun records(farmId: UUID, workspaceId: UUID): List<CycleRecord>
     @Query(RECORDS) fun observeRecords(farmId: UUID, workspaceId: UUID): Flow<List<CycleRecord>>
     @Query("""SELECT MAX(d.delivery_date) FROM deliveries d

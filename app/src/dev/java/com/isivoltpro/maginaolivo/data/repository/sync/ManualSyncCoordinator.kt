@@ -184,6 +184,16 @@ internal class ManualSyncCoordinator(
             }
         }
 
+        // CR-015 P4: after campaigns, so a closed recollection reaches the server before its closed cycle.
+        step("enviando campañas agrícolas")
+        val cycles = cycleSync()
+        for (farmId in database.agriculturalCycleDao().farmsWithCycles()) {
+            if (!links.isFarmConsented(farmId)) continue
+            val staged = cycles.stage(farmId)
+            val outcome = if (staged == CycleSyncOutcome.STAGED) cycles.dispatch(farmId, lease) else staged
+            cycleNote(out, outcome)
+        }
+
         step("enviando jornadas")
         val harvests = HarvestSendCoordinator(database, account, issuer, transport(RpcScope.HARVEST_SEND), ledger, ownerVerifier, ids)
         for (op in open(SyncEntityType.HARVEST, OutboxOperation.CREATE, OutboxOperation.UPDATE, OutboxOperation.DELETE)) {
@@ -210,6 +220,23 @@ internal class ManualSyncCoordinator(
         for (op in open(SyncEntityType.DELIVERY, OutboxOperation.DELETE)) {
             val staged = if (op.payloadJson == null) deletes.stage(op.id) else DeliveryDeleteOutcome.STAGED
             note(out, "El borrado de una pesada", (if (staged == DeliveryDeleteOutcome.STAGED) deletes.send(op.id, lease) else staged).name)
+        }
+    }
+
+    private fun cycleSync() = AgriculturalCycleSyncCoordinator(database, account, issuer,
+        AgriculturalCycleRpcAdapter(transport(RpcScope.CYCLE_SYNC)))
+
+    private fun cycleNote(out: Run, outcome: CycleSyncOutcome, farm: String? = null) {
+        val where = farm?.let { " de «$it»" } ?: ""
+        when (outcome) {
+            CycleSyncOutcome.SYNCED -> out.sent++
+            CycleSyncOutcome.NOTHING_TO_SEND, CycleSyncOutcome.ALREADY_CURRENT, CycleSyncOutcome.IMPORTED -> Unit
+            CycleSyncOutcome.CONFIRMED_LOCAL_PENDING -> { out.sent++; out.reasons += "La campaña agrícola$where cambió mientras se enviaba; el cambio nuevo saldrá en la próxima sincronización." }
+            CycleSyncOutcome.WAITING_PARENTS -> out.reasons += "La campaña agrícola$where espera a que su finca y sus recolecciones se confirmen en el servidor. Vuelve a sincronizar."
+            CycleSyncOutcome.OUTCOME_UNKNOWN -> out.reasons += "La campaña agrícola$where se envió pero no llegó la respuesta. Se reintentará con el mismo envío, sin duplicarlo."
+            CycleSyncOutcome.CONFLICT -> out.reasons += "La campaña agrícola$where tiene cambios en este teléfono y en otro dispositivo. No se ha sobrescrito ninguno: queda pendiente de revisión."
+            CycleSyncOutcome.NOT_AUTHORIZED -> out.reasons += "La campaña agrícola$where no se pudo sincronizar: solo el propietario del espacio puede hacerlo, o la sesión caducó."
+            else -> out.reasons += "La campaña agrícola$where necesita revisión ($outcome). Se conserva en este teléfono."
         }
     }
 
@@ -297,6 +324,17 @@ internal class ManualSyncCoordinator(
                     HarvestReceiveOutcome.CONSENT_REQUIRED -> { waitingConsent += farm.name; break }
                     else -> { out.reasons += "No se pudieron recibir las jornadas de «${farm.name}» (${report.outcome})."; break }
                 }
+            }
+        }
+        step("recibiendo campañas agrícolas")
+        val cycles = cycleSync()
+        for (farm in database.farmDao().listIncludingDeleted(active)) {
+            if (farm.metadata.deletedAt != null || farm.metadata.remoteVersion == null) continue
+            if (!links.isFarmConsented(farm.id, userId)) continue
+            when (val outcome = cycles.receive(farm.id)) {
+                CycleSyncOutcome.IMPORTED -> out.received++
+                CycleSyncOutcome.ALREADY_CURRENT -> Unit
+                else -> cycleNote(out, outcome, farm.name)
             }
         }
         waitingConsent.forEach { out.reasons += "La finca «$it» ha llegado de otro dispositivo: confírmala en «Fincas y cuenta» y vuelve a sincronizar para recibir sus jornadas y pesadas." }

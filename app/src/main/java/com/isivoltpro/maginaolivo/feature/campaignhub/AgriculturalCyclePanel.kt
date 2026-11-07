@@ -181,11 +181,24 @@ private fun CyclePanelContent(repository: AgriculturalCycleRepository, snapshot:
                         date=start.toString();label="${start.year}/${(start.year+1).toString().takeLast(2)}"
                         operation=UUID.randomUUID().toString();view="create";message=null;error=null
                     },Modifier.fillMaxWidth().testTag("cycle-new"),enabled=!busy)
-                    Text("Guardada solo en este teléfono. La sincronización de campañas agrícolas todavía no está disponible.",style=MaterialTheme.typography.bodySmall)
+                    val sync=cycleSyncText(snapshot.sync)
+                    Text(sync,style=MaterialTheme.typography.bodySmall,modifier=Modifier.testTag("cycle-sync-state"),
+                        color=if(snapshot.sync?.status in setOf("CONFLICT","NEEDS_REVIEW","NOT_AUTHORIZED")) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
     }
+}
+
+internal fun cycleSyncText(sync: com.isivoltpro.maginaolivo.domain.cycle.CycleSyncView?): String = when(sync?.status) {
+    null -> "Guardada en este teléfono."
+    "SYNCED" -> "Guardada en este teléfono y sincronizada con tu cuenta."
+    "WAITING_PARENTS" -> "Guardada en este teléfono. Se enviará cuando la finca y sus recolecciones estén sincronizadas."
+    "CONFLICT" -> "Otro dispositivo ha cambiado esta campaña agrícola. No se ha sobrescrito nada: queda pendiente de revisión."
+    "NOT_AUTHORIZED" -> "Guardada en este teléfono. Solo el propietario del espacio puede sincronizarla."
+    "NEEDS_REVIEW" -> "Guardada en este teléfono. El servidor no la aceptó tal cual: queda pendiente de revisión."
+    else -> "Guardada en este teléfono. Pendiente de enviar en la próxima sincronización."
 }
 
 internal fun LocalDate.cycleDate(): String = format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
