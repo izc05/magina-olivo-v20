@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.maps
 
 import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmChanges
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
@@ -78,6 +79,31 @@ class FarmMapViewModelTest {
         assertEquals(FarmMapMode.VIEW, viewModel.state.value.mode)
         assertEquals("2 parcelas incorporadas a la finca.", viewModel.state.value.message)
         assertTrue(viewModel.state.value.importCompleted)
+    }
+
+    @Test
+    fun partialImportRetainsOnlyFailedReferenceForRetryWithoutDuplicatingSuccess() = runTest(dispatcher) {
+        val first = "23044A00400021"
+        val second = "23044A00400022"
+        val parcels = FakeParcels(failOnceReference = second)
+        val model = FarmMapViewModel(farmId, FakeFarms(), parcels,
+            FakeClient(listOf(candidate(first), candidate(second))), initialMode = FarmMapMode.ADD)
+        advanceUntilIdle()
+        model.tapMap(37.636, -3.48)
+        advanceUntilIdle()
+        model.tapParcel(first)
+        model.tapParcel(second)
+        model.importSelected(emptyMap())
+        advanceUntilIdle()
+        assertEquals(setOf(second), model.state.value.selected)
+        assertEquals(setOf(first), model.state.value.taken)
+        assertFalse(model.state.value.importCompleted)
+        assertEquals(listOf(first), parcels.created.mapNotNull { it.cadastralReference })
+        model.importSelected(emptyMap())
+        advanceUntilIdle()
+        assertTrue(model.state.value.importCompleted)
+        assertEquals(listOf(first, second), parcels.created.mapNotNull { it.cadastralReference })
+        assertEquals(listOf(first, second, second), parcels.attempts)
     }
 
     @Test
@@ -506,8 +532,10 @@ class FarmMapViewModelTest {
         }
     }
 
-    private class FakeParcels(private val existing: Parcel? = null, private val takenReference: String? = null) : ParcelRepository {
+    private class FakeParcels(private val existing: Parcel? = null, private val takenReference: String? = null,
+        private val failOnceReference: String? = null) : ParcelRepository {
         val created = mutableListOf<NewParcel>()
+        val attempts = mutableListOf<String>()
         var linked: Pair<UUID, RegistryLink>? = null
         override fun observeActive(farmId: UUID): Flow<List<Parcel>> = MutableStateFlow(listOfNotNull(existing))
         override fun observeArchived(farmId: UUID): Flow<List<Parcel>> = MutableStateFlow(emptyList())
@@ -515,6 +543,10 @@ class FarmMapViewModelTest {
         override suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID? =
             if (reference == takenReference) UUID.randomUUID() else null
         override suspend fun create(command: NewParcel): AppResult<UUID> {
+            val reference = command.cadastralReference.orEmpty()
+            attempts += reference
+            if (reference == failOnceReference && attempts.count { it == reference } == 1)
+                return AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference"))
             created += command
             return AppResult.Success(UUID.randomUUID())
         }

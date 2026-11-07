@@ -54,6 +54,8 @@ fun CadastreImportRoute(
     persistence: LocalPersistence,
     preselectedFarmId: UUID?,
     onParcelImported: (UUID) -> Unit,
+    onExistingParcel: (UUID) -> Unit = onParcelImported,
+    lockFarm: Boolean = false,
 ) {
     val model: CadastreImportViewModel = viewModel(key = "catastro-$preselectedFarmId", factory = viewModelFactory {
         initializer { CadastreImportViewModel(persistence, OfficialCadastreClient()) }
@@ -64,10 +66,11 @@ fun CadastreImportRoute(
     val file = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let { model.importFile(resolver, it) } }
-    CadastreImportScreen(state, preselectedFarmId, model::search, model::import,
+    CadastreImportScreen(state, preselectedFarmId, model::search,
+        { selected, alias -> model.import(if (lockFarm) preselectedFarmId else selected, alias) },
         onNear = model::searchNear, onSelect = model::selectCandidate,
-        onFile = { file.launch(arrayOf("*/*")) }, onOpenExisting = onParcelImported,
-        onPlaceChanged = model::editPlace)
+        onFile = { file.launch(arrayOf("*/*")) }, onOpenExisting = onExistingParcel,
+        onPlaceChanged = model::editPlace, lockFarm = lockFarm)
 
 }
 
@@ -83,6 +86,7 @@ fun CadastreImportScreen(
     onOpenExisting: (UUID) -> Unit = {},
     /** Municipality/province typed by the farmer (Catastro's answer fills them when it can). */
     onPlaceChanged: (String, String) -> Unit = { _, _ -> },
+    lockFarm: Boolean = false,
 ) {
     var showMap by rememberSaveable { mutableStateOf(false) }
     var base by rememberSaveable { mutableStateOf(com.isivoltpro.maginaolivo.feature.maps.MapBase.MAP) }
@@ -204,6 +208,10 @@ fun CadastreImportScreen(
                 Text("Incorporar a una finca", style = MaterialTheme.typography.titleMedium, color = MoColors.current.primaryText)
                 if (state.farms.isEmpty()) {
                     Text("Crea primero una finca en Mi Campo.", color = MoColors.current.secondaryText)
+                } else if (lockFarm) {
+                    val farm = state.farms.firstOrNull { it.id == preselectedFarmId }
+                    Text(farm?.name ?: "La finca seleccionada ya no está disponible.",
+                        color = if (farm == null) MaterialTheme.colorScheme.error else MoColors.current.primaryText)
                 } else {
                     state.farms.forEach { farm ->
                         Card(
@@ -242,7 +250,8 @@ fun CadastreImportScreen(
                     onClick = { onImport(selectedFarm?.let(UUID::fromString), alias) },
                     modifier = Modifier.fillMaxWidth().testTag("catastro-import"),
                     // Wait for Catastro's place (bounded) so it is saved with the parcel.
-                    enabled = !state.saving && !state.searching && !state.locating && state.farms.any { it.id.toString() == selectedFarm } && alias.isNotBlank(),
+                    enabled = !state.saving && !state.searching && !state.locating &&
+                        state.farms.any { it.id.toString() == (if (lockFarm) preselectedFarmId?.toString() else selectedFarm) } && alias.isNotBlank(),
                 )
             }
             Spacer(Modifier.height(MoSpacing.lg))

@@ -125,6 +125,17 @@ class ParcelScreensTest {
         composeRule.onNodeWithText("Parcela Norte").assertIsDisplayed()
     }
 
+    @Test fun guidedCompletionOpensTheExistingParcelEditor() {
+        composeRule.setContent { MaginaOlivoTheme {
+            ParcelDetailScreen(
+                state = ParcelDetailUiState(isLoading = false, parcel = parcel()),
+                onUpdate = {}, onArchive = {}, onArchived = {}, openEditorInitially = true,
+            )
+        } }
+        composeRule.onNodeWithTag("parcel-name").assertIsDisplayed()
+        composeRule.onNodeWithText("Más datos del olivar").assertIsDisplayed()
+    }
+
     @Test
     fun registerOnAParcelHandsItsFarmAndNameToCuaderno() {
         val parcel = parcel()

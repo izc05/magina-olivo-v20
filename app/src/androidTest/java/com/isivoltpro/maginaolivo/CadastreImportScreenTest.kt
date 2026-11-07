@@ -21,6 +21,23 @@ import org.junit.Test
 class CadastreImportScreenTest {
     @get:Rule val composeRule = createComposeRule()
 
+    @Test fun guidedImportKeepsTheDestinationFarmFixed() {
+        val selected = farm("Finca del asistente")
+        val other = farm("Otra finca")
+        var importedFarm: UUID? = null
+        composeRule.setContent { MaginaOlivoTheme {
+            CadastreImportScreen(
+                state = CadastreImportState(farms = listOf(selected, other), candidate = candidate()),
+                preselectedFarmId = selected.id, onSearch = {}, onImport = { id, _ -> importedFarm = id },
+                lockFarm = true,
+            )
+        } }
+        composeRule.onNodeWithText("Finca del asistente").assertExists()
+        composeRule.onNodeWithTag("catastro-farm-${other.id}").assertDoesNotExist()
+        composeRule.onNodeWithTag("catastro-import").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(selected.id, importedFarm) }
+    }
+
     @Test fun waitsForConfirmationAndUsesPreselectedFarm() {
         val first = farm("Primera finca")
         val selected = farm("Finca elegida")

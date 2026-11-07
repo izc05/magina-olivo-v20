@@ -83,12 +83,18 @@ class OfflineFirstFarmRepository(
 
         return withContext(dispatchers.io) {
             workspaceScope.mismatch(command.workspaceId)?.let { return@withContext it }
-            val farmId = idGenerator.newId()
-            val operationId = idGenerator.newId()
+            val farmId = command.requestedId ?: idGenerator.newId()
             val now = clock.nowInstant()
 
             runCatching {
                 database.withTransaction {
+                    database.farmDao().findById(farmId)?.let { existing ->
+                        return@withTransaction if (command.requestedId != null &&
+                            existing.workspaceId == command.workspaceId && existing.name == normalizedName &&
+                            existing.metadata.deletedAt == null
+                        ) AppResult.Success(farmId)
+                        else AppResult.Failure(AppError.Conflict("farm_setup_identity"))
+                    }
                     database.farmDao().upsert(
                         FarmEntity(
                             id = farmId,
@@ -106,6 +112,7 @@ class OfflineFirstFarmRepository(
                             ),
                         ),
                     )
+                    val operationId = idGenerator.newId()
                     database.syncOutboxDao().insert(
                         SyncOutboxEntity(
                             id = operationId,
@@ -117,8 +124,8 @@ class OfflineFirstFarmRepository(
                             updatedAt = now,
                         ),
                     )
+                    AppResult.Success(farmId)
                 }
-                AppResult.Success(farmId)
             }.getOrElse { error ->
                 AppResult.Failure(AppError.Storage(operation = "create_farm", cause = error))
             }

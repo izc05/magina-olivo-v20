@@ -33,6 +33,8 @@ data class NewFarm(
     val province: String? = null,
     val notes: String? = null,
     val coverDocumentId: UUID? = null,
+    /** Reserved by a durable local setup checkpoint; null for the existing editor. */
+    val requestedId: UUID? = null,
 )
 
 data class FarmChanges(

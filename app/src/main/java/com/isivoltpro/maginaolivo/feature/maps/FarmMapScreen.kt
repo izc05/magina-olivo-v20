@@ -88,13 +88,17 @@ fun FarmMapRoute(
     locateParcelId: UUID? = null,
     onLocated: (UUID) -> Unit = onOpenParcel,
     onImported: () -> Unit = {},
+    initialMode: FarmMapMode = FarmMapMode.VIEW,
+    requestLocationInitially: Boolean = false,
+    openPolygonInitially: Boolean = false,
 ) {
     val ownerScope = persistence.workspaceRepository.currentOwnerId()?.toString() ?: "default"
     val viewModel: FarmMapViewModel = viewModel(
-        key = "farm-map-$farmId-$locateParcelId-$ownerScope",
+        key = "farm-map-$farmId-$locateParcelId-$ownerScope-$initialMode",
         factory = viewModelFactory {
             initializer {
-                FarmMapViewModel(farmId, persistence.farmRepository, persistence.parcelRepository, OfficialCadastreClient(), locateParcelId)
+                FarmMapViewModel(farmId, persistence.farmRepository, persistence.parcelRepository, OfficialCadastreClient(), locateParcelId,
+                    initialMode = initialMode)
             }
         },
     )
@@ -114,6 +118,11 @@ fun FarmMapRoute(
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
         if (granted.values.any { it }) locate() else viewModel.locationUnavailable(LocationProblem.PERMISSION)
+    }
+    LaunchedEffect(requestLocationInitially) {
+        if (requestLocationInitially) {
+            if (hasLocationPermission(context)) locate() else permission.launch(LOCATION_PERMISSIONS)
+        }
     }
     FarmMapScreen(
         state = state,
@@ -157,6 +166,7 @@ fun FarmMapRoute(
         onSearchPlace = viewModel::searchPlace,
         onSelectPlace = viewModel::selectPlace,
         onPlaceQueryChanged = viewModel::cancelPlaceSearch,
+        openPolygonInitially = openPolygonInitially,
     )
 }
 
@@ -182,6 +192,7 @@ fun FarmMapScreen(
     onSearchPlace: (String) -> Unit = {},
     onSelectPlace: (MapPlace) -> Unit = {},
     onPlaceQueryChanged: () -> Unit = {},
+    openPolygonInitially: Boolean = false,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var placeQuery by rememberSaveable { mutableStateOf("") }
@@ -208,7 +219,7 @@ fun FarmMapScreen(
         }
     }
     var layerMenu by remember { mutableStateOf(false) }
-    var polygonSheet by rememberSaveable { mutableStateOf(false) }
+    var polygonSheet by rememberSaveable { mutableStateOf(openPolygonInitially) }
     var reviewSheet by rememberSaveable { mutableStateOf(false) }
     var guideExpanded by rememberSaveable { mutableStateOf(false) }
     var topOverlayHeightPx by remember { mutableStateOf(0) }

@@ -162,6 +162,11 @@ class FarmScreensTest {
         composeRule.onNodeWithTag("farm-name").performTextInput("El Olivar")
         composeRule.onNodeWithTag("farm-next").performClick()
         composeRule.onNodeWithTag("farm-previous").performClick()
+        composeRule.waitUntil(10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("farm-name").assertTextContains("El Olivar")
+            }.isSuccess
+        }
         composeRule.onNodeWithTag("farm-name").assertTextContains("El Olivar")
         composeRule.onNodeWithTag("save-farm").performClick()
         assertEquals("El Olivar", captured?.name)
