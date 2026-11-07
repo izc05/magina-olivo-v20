@@ -77,6 +77,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 fun FarmListRoute(
     persistence: LocalPersistence,
     onFarmSelected: (UUID) -> Unit,
+    onAssistant: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val viewModel: FarmListViewModel = viewModel(
@@ -100,6 +101,7 @@ fun FarmListRoute(
     FarmListScreen(
         state = state,
         onFarmSelected = onFarmSelected,
+        onAssistant = onAssistant,
         onCreate = viewModel::create,
         onRestore = viewModel::restore,
         onRetry = viewModel::retry,
@@ -128,6 +130,7 @@ fun FarmListScreen(
     onCreate: (FarmDraft) -> Unit,
     onRestore: (UUID) -> Unit,
     onRetry: () -> Unit,
+    onAssistant: () -> Unit = {},
     modifier: Modifier = Modifier,
     /** The Farm's cover photo, when one was chosen (UI polish v2). */
     cover: @Composable (UUID) -> String? = { null },
@@ -182,6 +185,8 @@ fun FarmListScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoSurfaceTokens.secondaryText,
                 )
+                MoSecondaryButton("Crear finca con ayuda", onAssistant,
+                    Modifier.fillMaxWidth().testTag("open-farm-assistant"))
             }
 
             if (!state.isLoading && state.error == null && state.farms.isNotEmpty()) {
@@ -307,6 +312,7 @@ fun FarmDetailRoute(
     /** UX-F (Issue #246 §5), CR-011 §18: opens the Cuaderno with this Farm chosen. */
     onRegister: (() -> Unit)? = null,
     onCampaign: (() -> Unit)? = null,
+    onAssistant: (() -> Unit)? = null,
 ) {
     val viewModel: FarmDetailViewModel = viewModel(
         key = "farm-$farmId",
@@ -331,6 +337,7 @@ fun FarmDetailRoute(
         modifier = modifier,
         onRegister = onRegister,
         onCampaign = onCampaign,
+        onAssistant = onAssistant,
     )
 }
 
@@ -346,6 +353,7 @@ fun FarmDetailScreen(
     modifier: Modifier = Modifier,
     onRegister: (() -> Unit)? = null,
     onCampaign: (() -> Unit)? = null,
+    onAssistant: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -399,6 +407,7 @@ fun FarmDetailScreen(
                 modifier = Modifier.padding(innerPadding),
                 onRegister = onRegister,
                 onCampaign = onCampaign,
+                onAssistant = onAssistant,
             )
         }
     }
@@ -467,6 +476,7 @@ private fun FarmDetailContent(
     modifier: Modifier = Modifier,
     onRegister: (() -> Unit)? = null,
     onCampaign: (() -> Unit)? = null,
+    onAssistant: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -504,6 +514,8 @@ private fun FarmDetailContent(
                 MoPrimaryButton("Registrar en esta finca", register, Modifier.fillMaxWidth().testTag("farm-register"))
             }
             onCampaign?.let { open -> MoSecondaryButton("Ver campaña de esta finca", open, Modifier.fillMaxWidth().testTag("farm-open-campaign")) }
+            onAssistant?.let { open -> MoTertiaryButton("Añadir parcelas con ayuda", open,
+                Modifier.fillMaxWidth().testTag("farm-open-assistant")) }
             SectionEntry(FarmSection.PARCELS, MoIcons.Parcels, if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas", onOpenSection)
             SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Diario, fitosanitario y gastos", onOpenSection)
             SectionEntry(FarmSection.CAMPAIGNS, MoIcons.Campaign, farm.activeCampaignName ?: "Sin campaña activa", onOpenSection)

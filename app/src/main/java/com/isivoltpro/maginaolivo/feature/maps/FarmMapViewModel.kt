@@ -80,9 +80,10 @@ class FarmMapViewModel(
     private val client: CadastreClient,
     locateParcelId: UUID? = null,
     private val placeClient: PlaceSearchClient = OfficialPlaceSearchClient(),
+    initialMode: FarmMapMode = FarmMapMode.VIEW,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(
-        FarmMapState(mode = if (locateParcelId != null) FarmMapMode.LOCATE else FarmMapMode.VIEW),
+        FarmMapState(mode = if (locateParcelId != null) FarmMapMode.LOCATE else initialMode),
     )
     val state: StateFlow<FarmMapState> = mutableState.asStateFlow()
     private var searchJob: Job? = null

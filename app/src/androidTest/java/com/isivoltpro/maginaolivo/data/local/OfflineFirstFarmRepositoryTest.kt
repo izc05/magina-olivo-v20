@@ -67,6 +67,32 @@ class OfflineFirstFarmRepositoryTest {
     }
 
     @Test
+    fun reservedSetupIdIsIdempotentAcrossRestartAndCannotOverwriteAnotherFarm() = runBlocking {
+        val workspace = UUID.randomUUID()
+        val reserved = UUID.randomUUID()
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            seedSelectedWorkspace(database, workspace, TEST_INSTANT)
+            val first = repository(database, TEST_INSTANT, listOf(UUID.randomUUID(), UUID.randomUUID()))
+            val command = NewFarm(workspace, "Finca asistida", requestedId = reserved)
+            assertEquals(AppResult.Success(reserved), first.create(command))
+            assertEquals(AppResult.Success(reserved), first.create(command))
+            assertTrue(first.create(command.copy(name = "Otra finca")) is AppResult.Failure)
+            assertEquals("Finca asistida", database.farmDao().findById(reserved)?.name)
+            assertEquals(1, database.syncOutboxDao().listForEntity(SyncEntityType.FARM, reserved).size)
+        } finally {
+            database.close()
+        }
+        val reopened = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            seedSelectedWorkspace(reopened, workspace, TEST_INSTANT)
+            val retry = repository(reopened, TEST_INSTANT, listOf(UUID.randomUUID()))
+            assertEquals(AppResult.Success(reserved), retry.create(NewFarm(workspace, "Finca asistida", requestedId = reserved)))
+            assertEquals(1, reopened.syncOutboxDao().listForEntity(SyncEntityType.FARM, reserved).size)
+        } finally { reopened.close() }
+    }
+
+    @Test
     fun offlineCreateArchiveAndOutboxSurviveDatabaseRestart() = runBlocking {
         val workspaceId = uuid("10000000-0000-0000-0000-000000000001")
         val farmId = uuid("20000000-0000-0000-0000-000000000001")

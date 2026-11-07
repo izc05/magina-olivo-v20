@@ -102,8 +102,9 @@ class MainMapNavigationTest {
 
     private fun openMap(farm: UUID, name: String) {
         waitTag("farms-root")
-        // During return navigation the list root can exist before its cards are
-        // available in the merged semantics tree. Await the exact interaction target.
+        waitTag("farm-search")
+        // LazyColumn does not compose an offscreen farm card until it is scrolled into view.
+        compose.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-" + farm))
         waitTag("farm-" + farm)
         compose.onNodeWithTag("farm-" + farm).performScrollTo().assertIsDisplayed().performClick()
         waitTag("farm-section-parcels")
@@ -159,8 +160,14 @@ class MainMapNavigationTest {
         }
     }
 
-    private fun waitTag(tag: String) = compose.waitUntil(15_000) {
-        runCatching { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false)
+    private fun waitTag(tag: String) {
+        try {
+            compose.waitUntil(15_000) {
+                runCatching { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false)
+            }
+        } catch (error: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("Missing $tag; UI: ${compose.onRoot().printToString()}", error)
+        }
     }
 
     private fun capture(stage: String) {

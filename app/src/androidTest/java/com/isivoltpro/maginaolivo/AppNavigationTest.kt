@@ -67,6 +67,30 @@ class AppNavigationTest {
             .outerRule(IsolatedAppStateRule())
             .around(composeRule)
 
+    @Test
+    fun optionalFarmAssistantKeepsOneFarmAfterRecreationAndCanBeResumed() {
+        enterMainShell()
+        navigateToOlivar()
+        clickByTag("open-farm-assistant")
+        waitForTag("farm-setup-name")
+        composeRule.onNodeWithTag("farm-setup-name").performTextInput("Finca asistente QA")
+        clickByTag("farm-setup-create")
+        waitForTag("farm-setup-summary")
+        val db = MaginaOlivoDatabase.getInstance(ApplicationProvider.getApplicationContext<Context>())
+        fun count() = db.openHelper.readableDatabase.query(
+            "SELECT COUNT(*) FROM farms WHERE name='Finca asistente QA' AND deleted_at IS NULL"
+        ).use { cursor -> cursor.moveToFirst(); cursor.getLong(0) }
+        assertEquals(1L, count())
+        composeRule.activityRule.scenario.recreate()
+        waitForTag("farm-setup-summary")
+        assertEquals(1L, count())
+        clickByTag("farm-setup-later")
+        waitForTag("farm-detail-root")
+        clickByTag("farm-open-assistant")
+        waitForTag("farm-setup-summary")
+        assertEquals(1L, count())
+    }
+
     /** Actual MainActivity + real isolated Room, solely fictional data; captures for P3 review. */
     @Test
     fun agriculturalCycleCreationReviewAndEffectiveClosureSurviveRecreationWithoutChangingFacts() {

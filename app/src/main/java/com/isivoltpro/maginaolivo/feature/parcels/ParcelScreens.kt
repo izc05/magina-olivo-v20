@@ -256,6 +256,7 @@ fun ParcelDetailRoute(
     onLocate: ((UUID) -> Unit)? = null,
     /** UX-F (Issue #246 §5): opens Mi Cuaderno → Registrar hoy with this Parcel's Farm and the Parcel. */
     onRegister: ((farmId: UUID, parcelName: String) -> Unit)? = null,
+    openEditorInitially: Boolean = false,
 ) {
     val ownerScope = persistence.workspaceRepository.currentOwnerId()?.toString() ?: "default"
     val viewModel: ParcelDetailViewModel = viewModel(
@@ -274,6 +275,7 @@ fun ParcelDetailRoute(
         onArchived = onArchived,
         onLocate = onLocate,
         onRegister = onRegister,
+        openEditorInitially = openEditorInitially,
         locatePlace = CATASTRO_PLACE,
         onRecoverLocation = { viewModel.recoverCadastralLocation(CATASTRO_PLACE) },
         attachmentContent = {
@@ -298,8 +300,9 @@ fun ParcelDetailScreen(
     onRegister: ((farmId: UUID, parcelName: String) -> Unit)? = null,
     locatePlace: PlaceLookup? = null,
     onRecoverLocation: (() -> Unit)? = null,
+    openEditorInitially: Boolean = false,
 ) {
-    var editorVisible by rememberSaveable { mutableStateOf(false) }
+    var editorVisible by rememberSaveable { mutableStateOf(openEditorInitially) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message == "Parcela archivada") onArchived() }
     OnEachSave(state.saveCount) { editorVisible = false }
