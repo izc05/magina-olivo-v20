@@ -1749,7 +1749,15 @@ class AppNavigationTest {
                 runCatching { composeRule.onNodeWithTag(tag).assertIsEnabled() }.isSuccess
             }
         }
-        scrollIntoViewIfPossible { composeRule.onNodeWithTag(tag) }
+        // A layout can still switch after the IME hides (scrolling form → fixed sheet): scroll again
+        // until the node is really on screen. Bounded; the click itself is never retried.
+        runCatching {
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                scrollIntoViewIfPossible { composeRule.onNodeWithTag(tag) }
+                composeRule.waitForIdle()
+                runCatching { composeRule.onNodeWithTag(tag).assertIsDisplayed() }.isSuccess
+            }
+        }
         composeRule.onNodeWithTag(tag)
             .assertIsDisplayed()
             .assertIsEnabled()

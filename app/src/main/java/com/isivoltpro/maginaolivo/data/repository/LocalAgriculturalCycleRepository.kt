@@ -30,7 +30,8 @@ class LocalAgriculturalCycleRepository(
     override fun observe(farmId: UUID): Flow<AppResult<CycleSnapshot>> =
         workspaces.observeLocalWorkspace().flatMapLatest { workspace ->
             if (workspace == null) flowOf(AppResult.Failure(AppError.Permission("cycle_read")))
-            else combine(dao.observe(farmId), dao.observeRevision(farmId), dao.observeRecords(farmId, workspace)) { _, _, _ ->
+            else combine(dao.observe(farmId), dao.observeRevision(farmId), dao.observeRecords(farmId, workspace),
+                dao.observeSyncState(farmId)) { _, _, _, _ ->
                 safe { db.withTransaction { snapshot(farmId) } }
             }
         }.flowOn(Dispatchers.IO)
@@ -125,8 +126,13 @@ class LocalAgriculturalCycleRepository(
 
     private suspend fun snapshot(farmId: UUID): CycleSnapshot {
         val scope=authorize(farmId)
+        // A row of another account is never shown; a later local change makes a synced farm pending again.
+        val sync=dao.syncState(farmId)?.takeIf { it.accountId==scope.ownerId }?.let {
+            val status=if(it.status=="SYNCED" && it.syncedLocalRevision!=scope.revision) "PENDING" else it.status
+            CycleSyncView(status,it.reason)
+        }
         return CycleSnapshot(scope,dao.list(farmId).map { it.domain() },dao.records(farmId,scope.workspaceId),
-            today=db.todayForWorkspace(scope.workspaceId,clock))
+            today=db.todayForWorkspace(scope.workspaceId,clock),sync=sync)
     }
 
     private suspend fun authorize(farmId: UUID,write: Boolean=false): CycleScope {

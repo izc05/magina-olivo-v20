@@ -59,3 +59,24 @@ data class AgriculturalCycleOperationEntity(
     @ColumnInfo(name="recorded_at") val recordedAt: Instant,
     val reason: String,
 )
+
+/**
+ * CR-015 P4 per-farm transport state. One row per farm that has been staged or received.
+ * `syncedLocalRevision` is the local farm revision equal to the server head `remoteRevision`.
+ * A pending body is persisted before sending and resent unchanged until the server answers.
+ */
+@Entity(tableName="agricultural_cycle_sync_state",foreignKeys=[
+    ForeignKey(entity=FarmEntity::class,parentColumns=["id"],childColumns=["farm_id"]),
+])
+data class AgriculturalCycleSyncStateEntity(
+    @PrimaryKey @ColumnInfo(name="farm_id") val farmId: UUID,
+    @ColumnInfo(name="account_id") val accountId: UUID,
+    @ColumnInfo(name="remote_revision") val remoteRevision: Long,
+    @ColumnInfo(name="synced_local_revision") val syncedLocalRevision: Long,
+    @ColumnInfo(name="pending_operation_id") val pendingOperationId: UUID? = null,
+    @ColumnInfo(name="pending_local_revision") val pendingLocalRevision: Long? = null,
+    @ColumnInfo(name="pending_body") val pendingBody: String? = null,
+    val status: String,
+    val reason: String? = null,
+    @ColumnInfo(name="updated_at") val updatedAt: Instant,
+)
