@@ -67,4 +67,6 @@ data class LocalPersistence(
     val weatherIdentity: Flow<WeatherPreferenceIdentity> = flowOf(WeatherPreferenceIdentity.Local),
     /** CR-015 P3: local only, no transport wiring. Null in older read-only/test composition roots. */
     val agriculturalCycles: com.isivoltpro.maginaolivo.domain.cycle.AgriculturalCycleRepository? = null,
+    /** CR-015 P5 local economy; null keeps the previous «balance incompleto» view. */
+    val economy: com.isivoltpro.maginaolivo.domain.economy.EconomyRepository? = null,
 )

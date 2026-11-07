@@ -97,14 +97,14 @@ object EconomyRules {
         return doc.netMinor - applied - paid
     }
 
-    private fun inScope(s: Settlement, scope: EconomyScope) = s.workspaceId == scope.workspaceId && when {
+    fun inScope(s: Settlement, scope: EconomyScope) = s.workspaceId == scope.workspaceId && when {
         scope.cycleId != null -> s.farmId == scope.farmId && s.cycleId == scope.cycleId
         scope.farmId != null -> s.farmId == scope.farmId
         else -> true
     }
     private fun sameScope(a: Settlement, b: Settlement) =
         a.workspaceId == b.workspaceId && a.farmId == b.farmId && a.cycleId == b.cycleId && a.currency == b.currency
-    private fun isHead(s: Settlement, ledger: EconomyLedger) = ledger.settlements.none { it.active && it.replacesId == s.id }
+    fun isHead(s: Settlement, ledger: EconomyLedger) = ledger.settlements.none { it.active && it.replacesId == s.id }
     /** The current active document of a replacement chain. */
     fun head(id: UUID, ledger: EconomyLedger): Settlement {
         var current = ledger.settlements.first { it.id == id }

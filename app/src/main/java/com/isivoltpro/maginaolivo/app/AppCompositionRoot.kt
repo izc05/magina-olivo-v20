@@ -229,6 +229,8 @@ data class AppCompositionRoot(
                 localPersistence = LocalPersistence(
                     agriculturalCycles = com.isivoltpro.maginaolivo.data.repository.LocalAgriculturalCycleRepository(
                         database, workspaceRepository, defaults.clock, account),
+                    economy = com.isivoltpro.maginaolivo.data.repository.LocalEconomyRepository(
+                        database, workspaceRepository, defaults.clock, account),
                     database = database,
                     farmRepository = farmRepository,
                     farmCoverRepository = farmCoverRepository,

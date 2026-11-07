@@ -165,7 +165,7 @@ fun AgriculturalCampaignRoute(
                             AgriculturalCampaignContent(scoped, actions, { selected = it.toString(); model.selectCampaign(it) },
                                 { onNotebook(farm.id) }, { retry++ }, onRecollection,
                                 onSectionChanged = { scroll.scrollTo(0) },agriculturalCycle=agriculturalCycle,
-                                cyclesTracked=persistence.agriculturalCycles!=null)
+                                cyclesTracked=persistence.agriculturalCycles!=null,economy=persistence.economy,farmId=farm.id)
                         }
                         labour?.let { id ->
                             @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -184,7 +184,8 @@ fun AgriculturalCampaignRoute(
 internal fun AgriculturalCampaignContent(state: NotebookUiState, actions: NotebookActions, onSelectCampaign: (UUID) -> Unit,
     onNotebook: () -> Unit, onRetry: () -> Unit, onRecollection: (UUID) -> Unit,
     onSectionChanged: suspend () -> Unit = {}, agriculturalCycle: AgriculturalCycle? = null,
-    cyclesTracked: Boolean = false) {
+    cyclesTracked: Boolean = false, economy: com.isivoltpro.maginaolivo.domain.economy.EconomyRepository? = null,
+    farmId: UUID? = null) {
     var section by rememberSaveable { mutableStateOf<String?>(null) }
     BackHandler(enabled = section != null) { section = null }
     LaunchedEffect(section) { onSectionChanged() }
@@ -244,7 +245,9 @@ internal fun AgriculturalCampaignContent(state: NotebookUiState, actions: Notebo
                     CampaignView(notebook, state, actions, onSelectCampaign)
                 }
                 CampaignSection.ECONOMY.name -> {
-                    Text("Ingresos pendientes de registrar · balance incompleto", modifier = Modifier.testTag("campaign-balance-incomplete"))
+                    if (economy != null && farmId != null)
+                        com.isivoltpro.maginaolivo.feature.economy.EconomyPanel(economy, farmId, agriculturalCycle?.id)
+                    else Text("Ingresos pendientes de registrar · balance incompleto", modifier = Modifier.testTag("campaign-balance-incomplete"))
                     Text(if(agriculturalCycle==null) "Gastos de esta finca: historial completo, sin gastos compartidos sin asignar. El informe por periodo está en Todas mis fincas."
                         else "Gastos vinculados a esta campaña, sin duplicar los costes de trabajos y jornadas. Los gastos sin asignar siguen en Cuaderno.", style = MaterialTheme.typography.bodySmall)
                     state.farmNotebook?.let { FarmCostsView(it, state.campaigns.filter { c -> c.status.isRunning }.maxByOrNull { c -> c.startDate }, actions) }
