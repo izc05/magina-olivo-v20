@@ -136,6 +136,8 @@ class AppNavigationTest {
         waitForTag("register-activity-type-pruning")
         composeRule.onNodeWithTag("register-activity-type-pruning").performClick()
         waitForTag("activity-description")
+        // The selector replaces «Comprobando la campaña agrícola…» once the cycle snapshot loads.
+        waitForTag("cycle-write-selector")
         composeRule.onNodeWithTag("cycle-write-selector").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("QA siguiente abierta").assertExists()
         composeRule.onNodeWithTag("activity-description").performScrollTo().performTextClearance()
@@ -208,11 +210,15 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("campaign-section-WORKS").performScrollTo().performClick()
         waitForTag("notebook-root")
         assertEquals(before, agriculturalCounts())
+        // The Cuaderno root is composed before its Farm context loads; the campaign link comes with it.
+        waitForTag("notebook-open-campaign")
         composeRule.onNodeWithTag("notebook-open-campaign").performScrollTo().performClick()
         waitForTag("agricultural-campaign-root")
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         clickByText("Finca P1 sin recogida")
         waitForTag("farm-detail-root")
+        // The detail root is composed before the Farm loads; its campaign action comes with the data.
+        waitForTag("farm-open-campaign")
         composeRule.onNodeWithTag("farm-open-campaign").performScrollTo().performClick()
         waitForTag("agricultural-campaign-root")
         pressBack()

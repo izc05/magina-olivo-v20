@@ -8,7 +8,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.filter
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.assertTextContains
@@ -31,7 +35,7 @@ import org.junit.Test
 
 /** The work form is short: one type chip, the essentials, and the rest folded under "Más opciones". */
 class ActivityEditorCompactTest {
-    @get:Rule val composeRule = createComposeRule()
+    @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private val parcels = listOf(
         ActivityParcelOption(UUID.randomUUID(), "Pol. 14 · Parc. 104", null),
@@ -147,7 +151,7 @@ class ActivityEditorCompactTest {
         show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), description = "Trabajo"), options = listOf(option)) { saved = it }
         typeChip("Abonado").performScrollTo().performClick()
         composeRule.onNodeWithTag("activity-parcel-option").performScrollTo().performClick()
-        composeRule.onNodeWithTag("activity-parcel-area").performScrollTo().performTextInput("0,5")
+        composeRule.onNodeWithTag("activity-parcel-area").performScrollTo().performTextInput("0,5"); awaitKeyboardSettled()
         typeChip("Poda").performScrollTo().performClick()
         composeRule.onNodeWithTag("activity-parcel-area").assertDoesNotExist()
         composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
@@ -237,7 +241,7 @@ class ActivityEditorCompactTest {
             ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.INCIDENT),
             options = parcels.take(1), doneWork = true, onSave = { saved = it },
         )
-        composeRule.onNodeWithTag("detail-${ActivityDetailFields.CATEGORY}").performScrollTo().performTextInput("Granizo")
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.CATEGORY}").performScrollTo().performTextInput("Granizo"); awaitKeyboardSettled()
         composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
         composeRule.runOnIdle { assertEquals("Incidencia", saved?.description) }
     }
@@ -280,14 +284,14 @@ class ActivityEditorCompactTest {
             ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.IRRIGATION),
             options = parcels.take(1), doneWork = true, onSave = { saved = it },
         )
-        composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").performScrollTo().performTextInput("doce")
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").performScrollTo().performTextInput("doce"); awaitKeyboardSettled()
         composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
         composeRule.onNodeWithText("Escribe el volumen como 12,5").assertExists()
         composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").assertTextContains("doce")
         composeRule.runOnIdle { assertEquals(null, saved) }
         // Once corrected, it saves the number written.
         composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").performTextClearance()
-        composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").performTextInput("12,5")
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").performTextInput("12,5"); awaitKeyboardSettled()
         composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
         composeRule.runOnIdle {
             assertEquals(12.5, (saved?.detail as com.isivoltpro.maginaolivo.domain.activity.ActivityDetail.Irrigation).volumeM3!!, 0.0)
@@ -312,6 +316,40 @@ class ActivityEditorCompactTest {
         composeRule.onNodeWithTag("activity-parcel-option").performScrollTo().assertIsSelected().performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("activity-parcel-option").assertIsNotSelected()
+    }
+
+    /**
+     * Typing focuses a field and asks the system for the keyboard asynchronously (another process). The
+     * editor measures its scroll viewport above it (imePadding), so the next tap could be computed before
+     * the keyboard arrives and land after the layout moved: the flake seen in CI on the tap after typing.
+     * Wait, bounded, for the keyboard to appear (a device without one skips this) and for its inset to stay
+     * unchanged, then continue with the keyboard open, as a farmer would. No action or assertion is retried.
+     */
+    private fun awaitKeyboardSettled() {
+        composeRule.waitForIdle()
+        fun imeBottom(): Int {
+            var bottom = 0
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                bottom = ViewCompat.getRootWindowInsets(composeRule.activity.window.decorView)
+                    ?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
+            }
+            return bottom
+        }
+        runCatching { composeRule.waitUntil(KEYBOARD_ARRIVAL_MS) { imeBottom() > 0 } }
+        var last = -1
+        var since = System.nanoTime()
+        composeRule.waitUntil(KEYBOARD_SETTLE_TIMEOUT_MS) {
+            val now = imeBottom()
+            if (now != last) { last = now; since = System.nanoTime() }
+            System.nanoTime() - since >= KEYBOARD_STABLE_NS
+        }
+        composeRule.waitForIdle()
+    }
+
+    private companion object {
+        const val KEYBOARD_ARRIVAL_MS = 3_000L
+        const val KEYBOARD_SETTLE_TIMEOUT_MS = 10_000L
+        const val KEYBOARD_STABLE_NS = 400_000_000L
     }
 
     private fun typeChip(label: String) =
