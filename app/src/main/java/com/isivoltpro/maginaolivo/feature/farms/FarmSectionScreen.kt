@@ -37,12 +37,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.produceState
 import com.isivoltpro.maginaolivo.domain.farm.Farm
+import androidx.compose.foundation.layout.fillMaxWidth
+import com.isivoltpro.maginaolivo.domain.farm.FarmAreaCoverage
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoLabeledValue
+import com.isivoltpro.maginaolivo.ui.components.MoSectionCard
+import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 
 private sealed interface FarmRouteState {
     data object Loading : FarmRouteState
     data class Success(val farm: Farm) : FarmRouteState
     data object NotFound : FarmRouteState
+}
+
+/** Worked and cadastral areas, each with its coverage and source. */
+@Composable
+private fun FarmAreaBlock(farm: Farm) {
+    val coverage = FarmAreaCoverage.of(listOf(farm))
+    MoSectionCard(title = "Superficies", icon = MoIcons.Area, modifier = Modifier.testTag("farm-areas")) {
+        MoLabeledValue("Superficie trabajada", coverage.managedLabel)
+        FarmAreaNotes(coverage)
+    }
 }
 
 /**
@@ -59,6 +75,7 @@ fun FarmSectionRoute(
     onActivitySelected: (UUID) -> Unit,
     onImportFromCatastro: (() -> Unit)? = null,
     onMap: (() -> Unit)? = null,
+    onAssistant: (() -> Unit)? = null,
 ) {
     val farmState by produceState<FarmRouteState>(initialValue = FarmRouteState.Loading, key1 = farmId) {
         persistence.farmRepository.observeById(farmId).collect { farm ->
@@ -121,13 +138,19 @@ fun FarmSectionRoute(
                     )
                     Text(farm.name, style = MaterialTheme.typography.bodyLarge, color = MoSurfaceTokens.secondaryText)
                     when (section) {
-                        FarmSection.PARCELS -> FarmParcelsRoute(
+                        FarmSection.PARCELS -> {
+                            FarmAreaBlock(farm)
+                            onAssistant?.let { open ->
+                                MoTertiaryButton("Añadir parcelas con ayuda", open, Modifier.fillMaxWidth().testTag("farm-open-assistant"))
+                            }
+                            FarmParcelsRoute(
                             farmId = farmId,
                             persistence = persistence,
                             onParcelSelected = onParcelSelected,
                             onImportFromCatastro = onImportFromCatastro,
                             onMap = onMap,
-                        )
+                            )
+                        }
                         FarmSection.CAMPAIGNS -> FarmCampaignsRoute(farmId, persistence, onCampaignSelected)
                         // CR-011 §3: never shown here; the hub entry opens the one Cuaderno on this Farm.
                         FarmSection.NOTEBOOK -> Unit

@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
@@ -615,7 +618,7 @@ internal fun ActivityEditor(
     // #473: typed text the form could not read, keyed by field; shown next to it until corrected.
     val detailErrors = remember { mutableStateMapOf<String, String>() }
     var agronomicDetailsOpen by rememberSaveable(initial.type) {
-        mutableStateOf(initial.detail.toFields().isNotEmpty() || doneWork)
+        mutableStateOf(initial.detail.toFields().isNotEmpty() || doneWork || initial.type == ActivityType.PHYTOSANITARY)
     }
     // Selected machine id → the hours typed for it ("" when not given).
     val machineHours = remember(initial.machines) {
@@ -671,7 +674,8 @@ internal fun ActivityEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall)
         saveError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("activity-save-error")) }
-        cycleChoice(agriculturalCycleId?.let(UUID::fromString), selectedCampaign?.id) { agriculturalCycleId = it?.toString() }
+        val isTreatment = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER) == ActivityType.PHYTOSANITARY
+        if (!isTreatment) cycleChoice(agriculturalCycleId?.let(UUID::fromString), selectedCampaign?.id) { agriculturalCycleId = it?.toString() }
         if (!lockInitialType) {
             // One kind of work per record: compact chips with their icon, one choice only.
             FormLabel("¿Qué trabajo?")
@@ -730,6 +734,7 @@ internal fun ActivityEditor(
             }
             campaignError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
+        if (isTreatment) MoSectionHeader("Dónde y cuándo")
         MoTextField(
             description, { description = it },
             // #414: only Observación and Otro need words; any other type already says what was done.
@@ -795,7 +800,7 @@ internal fun ActivityEditor(
                 ) { Text("Fue un solo día") }
             }
         }
-        if (activityType.hasTypedDetail()) {
+        val typedDetailBlock: @Composable () -> Unit = { if (activityType.hasTypedDetail()) {
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .clickable(role = Role.Button) { agronomicDetailsOpen = !agronomicDetailsOpen }
@@ -818,7 +823,9 @@ internal fun ActivityEditor(
             if (agronomicDetailsOpen) {
                 ActivityTypedDetailFields(type = activityType, fields = detailFields, errors = detailErrors)
             }
-        }
+        } }
+        val treatment = activityType == ActivityType.PHYTOSANITARY
+        if (!treatment) typedDetailBlock()
         FormLabel("Parcelas")
         // One canonical Activity may target many Parcels; selecting several never
         // creates several Activities.
@@ -880,6 +887,7 @@ internal fun ActivityEditor(
                     } else {
                         "Indica la superficie realmente trabajada"
                     },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth().testTag("activity-parcel-area"),
                 )
                 parcel.managedAreaM2?.let { fullArea ->
@@ -896,6 +904,10 @@ internal fun ActivityEditor(
                     }
                 }
             }
+        }
+        if (treatment) {
+            cycleChoice(agriculturalCycleId?.let(UUID::fromString), selectedCampaign?.id) { agriculturalCycleId = it?.toString() }
+            typedDetailBlock()
         }
         Row(
             Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { moreOpen = !showMore }
@@ -972,11 +984,7 @@ internal fun ActivityEditor(
                         description.ifBlank { chosenType.defaultDescription(detailFields) },
                         selected.map(UUID::fromString).toSet(),
                         notes,
-                        buildActivityDetail(
-                            runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
-                            detailFields,
-                            runCatching { LocalDate.parse(date) }.getOrNull(),
-                        ),
+                        keepUnshownTreatmentData(buildActivityDetail(runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER), detailFields, runCatching { LocalDate.parse(date) }.getOrNull()), initial.detail),
                         machines = machineUses,
                         planning = planned.planning,
                         reminders = planned.reminders,
@@ -1006,11 +1014,7 @@ internal fun ActivityEditor(
                             description.ifBlank { chosenType.defaultDescription(detailFields) },
                             selected.map(UUID::fromString).toSet(),
                             notes,
-                            buildActivityDetail(
-                                runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
-                                detailFields,
-                                runCatching { LocalDate.parse(date) }.getOrNull(),
-                            ),
+                            keepUnshownTreatmentData(buildActivityDetail(runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER), detailFields, runCatching { LocalDate.parse(date) }.getOrNull()), initial.detail),
                             machines = machineUses,
                             planning = planned.planning,
                             reminders = planned.reminders,
@@ -1413,6 +1417,10 @@ private fun ActivityTypedDetailFields(
     errors: SnapshotStateMap<String, String> = remember { mutableStateMapOf() },
 ) {
     if (!type.hasTypedDetail()) return
+    if (type == ActivityType.PHYTOSANITARY) {
+        TreatmentDetailFields(fields, errors)
+        return
+    }
     // #414: what the record held when the editor opened. A retired field stays editable only there.
     val stored = remember { fields.filterValues { it.isNotBlank() }.keys.toSet() }
     val layout = detailLayout(type)
@@ -1444,6 +1452,48 @@ private fun ActivityTypedDetailFields(
             retired.forEach { key -> DetailInput(fields, key, errors) }
         }
     }
+}
+
+/** The product, how it was applied and what to keep, in that order. Every value is the farmer's own. */
+@Composable
+private fun TreatmentDetailFields(fields: SnapshotStateMap<String, String>, errors: SnapshotStateMap<String, String>) {
+    Column(Modifier.fillMaxWidth().testTag("activity-detail-block"), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+        MoSectionHeader("Producto")
+        DetailInput(fields, ActivityDetailFields.PRODUCT_NAME, errors)
+        DetailInput(fields, ActivityDetailFields.PRODUCT_REGISTRATION, errors)
+        DetailInput(fields, ActivityDetailFields.ACTIVE_SUBSTANCE, errors)
+        DetailInput(fields, ActivityDetailFields.REASON, errors)
+        MoSectionHeader("Dosis y aplicación")
+        Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            Box(Modifier.weight(1f)) { DetailInput(fields, ActivityDetailFields.DOSE_VALUE, errors) }
+            Box(Modifier.weight(1f)) { DetailInput(fields, ActivityDetailFields.DOSE_UNIT, errors) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            Box(Modifier.weight(1f)) { DetailInput(fields, ActivityDetailFields.TOTAL_QUANTITY, errors) }
+            Box(Modifier.weight(1f)) { DetailInput(fields, ActivityDetailFields.UNIT, errors) }
+        }
+        DetailInput(fields, ActivityDetailFields.EQUIPMENT_TEXT, errors)
+        MoSectionHeader("Documentación")
+        DetailInput(fields, ActivityDetailFields.TREATMENT_OBSERVATIONS, errors)
+        Text("Las fotos y justificantes se añaden al abrir el tratamiento guardado.", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
+    }
+}
+
+/** A treatment keeps what its form does not show (operator, machine, official snapshot...). */
+internal fun keepUnshownTreatmentData(built: ActivityDetail?, initial: ActivityDetail?): ActivityDetail? {
+    val previous = initial as? ActivityDetail.Phytosanitary ?: return built
+    val current = built as? ActivityDetail.Phytosanitary ?: return built
+    return current.copy(
+        operatorPersonId = previous.operatorPersonId,
+        applicationMachineId = previous.applicationMachineId,
+        serviceProviderOrganizationId = previous.serviceProviderOrganizationId,
+        productSource = previous.productSource,
+        productSourceVersion = previous.productSourceVersion,
+        productFetchedAt = previous.productFetchedAt,
+        authorizationContextSnapshot = previous.authorizationContextSnapshot,
+        pestProblemCode = previous.pestProblemCode,
+        efficacyCode = previous.efficacyCode,
+    )
 }
 
 /**
@@ -1512,6 +1562,8 @@ private fun DetailInput(fields: SnapshotStateMap<String, String>, key: String, e
     }
 }
 
+private val DECIMAL_DETAIL_FIELDS = setOf(ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.TOTAL_QUANTITY)
+
 private fun detailInputLabel(key: String): String = when (key) {
     ActivityDetailFields.DURATION_MINUTES -> "Duración (minutos)"
     ActivityDetailFields.UNIT_PRICE -> "Precio unitario (€)"
@@ -1539,6 +1591,7 @@ private fun DetailField(
         label,
         isError = error != null,
         supportingText = error,
+        keyboardOptions = if (key in DECIMAL_DETAIL_FIELDS) KeyboardOptions(keyboardType = KeyboardType.Decimal) else KeyboardOptions.Default,
         modifier = Modifier.fillMaxWidth().testTag("detail-$key"),
     )
 }

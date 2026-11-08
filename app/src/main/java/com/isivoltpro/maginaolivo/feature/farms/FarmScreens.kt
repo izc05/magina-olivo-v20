@@ -1,5 +1,12 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Surface
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.shape.CircleShape
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
@@ -507,6 +514,23 @@ private fun FarmDetailContent(
                     tone = if (farm.activeCampaignName == null) MoStatusTone.Neutral else MoStatusTone.Success,
                 )
             },
+            top = {
+                Row(Modifier.align(Alignment.TopEnd).padding(MoSpacing.xs), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                    FarmHeaderButton(MoIcons.Pencil, "Cambiar foto de la finca", "farm-cover-button", !isSaving, onChooseCover)
+                    var menu by remember { mutableStateOf(false) }
+                    Box {
+                        FarmHeaderButton(MoIcons.More, "Más acciones", "farm-actions", true) { menu = true }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Archivar finca") },
+                                onClick = { menu = false; onArchive() },
+                                enabled = !isSaving,
+                                modifier = Modifier.testTag("farm-archive"),
+                            )
+                        }
+                    }
+                }
+            },
         )
         Column(
             Modifier.padding(horizontal = MoSpacing.screen),
@@ -520,41 +544,37 @@ private fun FarmDetailContent(
                 ),
                 Modifier.testTag("farm-stats"),
             )
-            FarmAreaNotes(FarmAreaCoverage.of(listOf(farm)))
-            dashboard?.let { FarmDashboardPanel(it, onOpenSection, onRegister, onCampaign) }
             // UX-F: Mi Campo is for looking; writing down goes through Mi Cuaderno, this Farm chosen.
             onRegister?.let { register ->
-                MoPrimaryButton("Registrar en esta finca", register, Modifier.fillMaxWidth().testTag("farm-register"))
+                MoPrimaryButton("Registrar actividad", register, Modifier.fillMaxWidth().testTag("farm-register"))
             }
-            onCampaign?.let { open -> MoSecondaryButton("Ver campaña de esta finca", open, Modifier.fillMaxWidth().testTag("farm-open-campaign")) }
-            onAssistant?.let { open -> MoTertiaryButton("Añadir parcelas con ayuda", open,
-                Modifier.fillMaxWidth().testTag("farm-open-assistant")) }
+            dashboard?.let { FarmDashboardPanel(it, onOpenSection, onRegister) }
             SectionEntry(FarmSection.PARCELS, MoIcons.Parcels, if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas", onOpenSection)
             SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Diario, fitosanitario y gastos", onOpenSection)
             SectionEntry(FarmSection.CAMPAIGNS, MoIcons.Campaign, farm.activeCampaignName ?: "Sin campaña activa", onOpenSection)
             SectionEntry(FarmSection.DOCUMENTS, MoIcons.Document, "Escrituras, facturas y fotos", onOpenSection)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                MoSecondaryButton(
-                    text = "Editar finca",
-                    onClick = onEdit,
-                    enabled = !isSaving,
-                    modifier = Modifier.weight(1f),
-                )
-                MoSecondaryButton(
-                    text = if (coverUri == null) "Poner foto" else "Cambiar foto",
-                    onClick = onChooseCover,
-                    enabled = !isSaving,
-                    modifier = Modifier.weight(1f).testTag("farm-cover-button"),
-                )
-            }
-            MoTertiaryButton(
-                text = "Archivar finca",
-                onClick = onArchive,
+            MoSecondaryButton(
+                text = "Editar finca",
+                onClick = onEdit,
                 enabled = !isSaving,
-                modifier = Modifier.fillMaxWidth().testTag("farm-archive"),
+                modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(MoSpacing.lg))
         }
+    }
+}
+
+@Composable
+private fun FarmHeaderButton(icon: ImageVector, description: String, tag: String, enabled: Boolean, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(48.dp).testTag(tag).semantics { contentDescription = description },
+        shape = CircleShape,
+        color = MoSurfaceTokens.cardSurface.copy(alpha = 0.94f),
+        contentColor = MoColors.current.primaryText,
+    ) {
+        Box(contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(22.dp)) }
     }
 }
 

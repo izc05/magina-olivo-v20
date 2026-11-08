@@ -41,7 +41,6 @@ internal fun FarmDashboardPanel(
     dashboard: FarmDashboard,
     onOpenSection: (FarmSection) -> Unit,
     onRegister: (() -> Unit)?,
-    onCampaign: (() -> Unit)?,
 ) {
     Column(Modifier.fillMaxWidth().testTag("farm-dashboard"), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
         MoSectionCard(title = "Tratamientos fitosanitarios", icon = MoIcons.Checklist, modifier = Modifier.testTag("farm-dash-treatments")) {
@@ -73,7 +72,6 @@ internal fun FarmDashboardPanel(
                 if (dashboard.destinations.isNotEmpty()) Note("Entregas en: ${dashboard.destinations.joinToString(", ")}")
                 dashboard.latestFatYieldHundredths?.let { Note("Último rendimiento registrado: ${number(it / 100.0)} %") }
             }
-            onCampaign?.let { MoTertiaryButton("Ver campaña", it, Modifier.fillMaxWidth().testTag("farm-dash-open-campaign")) }
         }
         MoSectionCard(title = "Gastos e ingresos", icon = MoIcons.Document, modifier = Modifier.testTag("farm-dash-money")) {
             if (dashboard.money.isEmpty()) Line("Sin gastos confirmados.")
