@@ -134,3 +134,45 @@ test('only the workspace owner reads or writes; expired or foreign tokens are de
     assert.equal((await get(f)).revision,0);
   } finally {await f.db.close();}
 });
+
+// PGlite does not ship DEV's DELETE-without-WHERE guard. This PostgreSQL check models that
+// guard against the installed function body, then the patched RPC itself runs in PGlite.
+async function putWithDevDeleteGuard(f,op,expected,payload) {
+  await f.db.exec(`DO $guard$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc
+      WHERE oid='public.put_own_farm_cycles_v1(uuid,uuid,bigint,jsonb)'::regprocedure
+        AND (position('DELETE FROM pg_temp.p4_cycles;' in prosrc)>0
+          OR position('DELETE FROM pg_temp.p4_links;' in prosrc)>0)) THEN
+      RAISE EXCEPTION 'DELETE requires a WHERE clause' USING ERRCODE='21000';
+    END IF;
+  END $guard$;`);
+  return put(f,op,expected,payload);
+}
+
+test('DEV DELETE guard rejects the original RPC; the isolated migration restores safe cycle sync',async()=>{
+  const f=await fixture();
+  try {
+    const c=randomUUID(),payload=state(f,[cycle(c,'2026-11-08')]);
+    await assert.rejects(putWithDevDeleteGuard(f,randomUUID(),0,payload),
+      e=>e.code==='21000' && e.message==='DELETE requires a WHERE clause');
+    assert.equal((await f.db.query('SELECT count(*)::int n FROM public.agricultural_cycles')).rows[0].n,0);
+
+    await f.db.exec(file('migrations','20261108000001_cr015_p4_cycle_rpc_safeupdate.sql'));
+    const signature=await f.db.query(`SELECT p.prosecdef, p.proconfig,
+      pg_get_function_identity_arguments(p.oid) AS args
+      FROM pg_proc p WHERE p.oid='public.put_own_farm_cycles_v1(uuid,uuid,bigint,jsonb)'::regprocedure`);
+    assert.equal(signature.rows[0].prosecdef,true);
+    assert.deepEqual(signature.rows[0].proconfig,['search_path=""']);
+    assert.equal(signature.rows[0].args,'p_operation_id uuid, p_farm_id uuid, p_expected_revision bigint, p_state jsonb');
+    const privileges=await f.db.query(`SELECT
+      has_function_privilege('authenticated','public.put_own_farm_cycles_v1(uuid,uuid,bigint,jsonb)','EXECUTE') AS owner_can_call,
+      has_function_privilege('anon','public.put_own_farm_cycles_v1(uuid,uuid,bigint,jsonb)','EXECUTE') AS anon_can_call`);
+    assert.deepEqual(privileges.rows[0],{owner_can_call:true,anon_can_call:false});
+
+    assert.equal((await putWithDevDeleteGuard(f,randomUUID(),0,payload)).remote_version,1);
+    assert.deepEqual((await get(f)).cycles.map(x=>x.id),[c]);
+    await assert.rejects(put(f,randomUUID(),1,payload,f.other),e=>e.code==='42501');
+    await assert.rejects(get(f,f.other),e=>e.code==='42501');
+    assert.equal((await f.db.query('SELECT count(*)::int n FROM public.agricultural_cycles')).rows[0].n,1);
+  } finally {await f.db.close();}
+});
