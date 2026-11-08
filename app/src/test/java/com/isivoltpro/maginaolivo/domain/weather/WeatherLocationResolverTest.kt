@@ -26,7 +26,7 @@ class WeatherLocationResolverTest {
         notes = null,
         coverDocumentId = null,
         parcelCount = 0L,
-        totalAreaM2 = null,
+        managedAreaM2 = null,
         activeCampaignName = null,
         archivedAt = null,
         version = 1L,

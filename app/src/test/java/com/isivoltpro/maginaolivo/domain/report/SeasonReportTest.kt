@@ -120,7 +120,7 @@ class SeasonReportTest {
 
     private fun farm(id: UUID, name: String) = Farm(
         id = id, workspaceId = workspace, name = name, description = null, municipality = "Bedmar",
-        province = "Jaén", notes = null, coverDocumentId = null, parcelCount = 1, totalAreaM2 = 10_000.0,
+        province = "Jaén", notes = null, coverDocumentId = null, parcelCount = 1, managedAreaM2 = 10_000.0,
         activeCampaignName = null, archivedAt = null, version = 1,
     )
 

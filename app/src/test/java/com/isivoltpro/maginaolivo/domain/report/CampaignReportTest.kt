@@ -131,7 +131,7 @@ class CampaignReportTest {
     private fun farm() = Farm(
         id = farmId, workspaceId = workspace, name = "Finca Gate 25", description = null,
         municipality = "Huelma", province = "Jaén", notes = null, coverDocumentId = null,
-        parcelCount = 3, totalAreaM2 = 32_000.0, activeCampaignName = null, archivedAt = null, version = 1,
+        parcelCount = 3, managedAreaM2 = 32_000.0, activeCampaignName = null, archivedAt = null, version = 1,
     )
 
     private fun harvest(campaign: UUID, date: LocalDate, grams: Long) = Harvest(

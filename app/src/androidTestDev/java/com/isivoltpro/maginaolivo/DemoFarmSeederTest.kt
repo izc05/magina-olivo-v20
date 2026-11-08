@@ -43,7 +43,7 @@ class DemoFarmSeederTest {
         val workspace = workspace()
         val demo = demoFarms(workspace).single()
         assertEquals(3L, demo.parcelCount)
-        assertEquals(32_000.0, demo.totalAreaM2!!, 0.5)
+        assertEquals(32_000.0, demo.managedAreaM2!!, 0.5)
         assertEquals(320L, demo.oliveTreeCount)
 
         // #696: grove data, watering and an unmistakably fictitious reference on every Parcel.

@@ -344,7 +344,18 @@ class OfflineFirstFarmRepositoryTest {
                 .single()
 
             assertEquals(1L, summary.parcelCount)
-            assertEquals(15_000.0, summary.totalAreaM2 ?: 0.0, 0.0)
+            assertEquals(15_000.0, summary.managedAreaM2 ?: 0.0, 0.0)
+            assertEquals(1L, summary.managedParcelCount)
+            assertEquals(16_000.0, summary.cadastralAreaM2 ?: 0.0, 0.0)
+            assertEquals(1L, summary.cadastralParcelCount)
+
+            // Without a worked area the cadastral figure must not take its place.
+            database.openHelper.writableDatabase.execSQL("UPDATE parcels SET managed_area_m2 = NULL WHERE id = '$parcelId'")
+            val cadastralOnly = repository(database, TEST_INSTANT, emptyList()).observeActive(workspaceId).first().single()
+            assertEquals(null, cadastralOnly.managedAreaM2)
+            assertEquals(0L, cadastralOnly.managedParcelCount)
+            assertEquals(16_000.0, cadastralOnly.cadastralAreaM2 ?: 0.0, 0.0)
+            database.openHelper.writableDatabase.execSQL("UPDATE parcels SET managed_area_m2 = 15000.0 WHERE id = '$parcelId'")
             assertEquals("2026/27", summary.activeCampaignName)
 
             // Gate 20 (emulator, build 575): a campaign in «Recolección» is still the running one.

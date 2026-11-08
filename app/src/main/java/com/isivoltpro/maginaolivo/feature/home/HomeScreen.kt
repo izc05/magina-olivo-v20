@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.isivoltpro.maginaolivo.domain.farm.FarmAreaCoverage
 import com.isivoltpro.maginaolivo.domain.feed.IneMunicipality
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -187,12 +188,13 @@ fun HomeScreen(
             } else if (state.farms.isNotEmpty()) {
                 MoStatStrip(
                     listOf(
-                        MoStat("Superficie", state.knownAreaM2?.let(::hectares) ?: "—", MoIcons.Area),
+                        MoStat("Sup. trabajada", FarmAreaCoverage.of(state.farms).managedLabel, MoIcons.Area),
                         MoStat("Parcelas", state.parcelCount.toString(), MoIcons.Parcels),
                         MoStat("Olivos", state.oliveTreesLabel(), MoIcons.Olive),
                     ),
                     Modifier.testTag("home-stats"),
                 )
+                com.isivoltpro.maginaolivo.feature.farms.FarmAreaNotes(FarmAreaCoverage.of(state.farms))
 
                 MoSectionHeader("Campaña en marcha")
                 if (state.campaigns.isEmpty()) {
