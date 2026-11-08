@@ -7,6 +7,8 @@ import androidx.compose.ui.unit.dp
 import java.time.ZoneId
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import com.isivoltpro.maginaolivo.feature.sigpac.SigpacCard
+import com.isivoltpro.maginaolivo.feature.sigpac.SigpacUiState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
@@ -287,6 +289,7 @@ fun ParcelDetailRoute(
         onOpenMap = onOpenMap,
         locatePlace = CATASTRO_PLACE,
         onRecoverLocation = { viewModel.recoverCadastralLocation(CATASTRO_PLACE) },
+        onLoadSigpac = viewModel::loadSigpac,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.PARCEL, parcelId),
@@ -311,6 +314,7 @@ fun ParcelDetailScreen(
     onRecoverLocation: (() -> Unit)? = null,
     openEditorInitially: Boolean = false,
     onOpenMap: ((farmId: UUID) -> Unit)? = null,
+    onLoadSigpac: (force: Boolean) -> Unit = {},
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(openEditorInitially) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -340,6 +344,8 @@ fun ParcelDetailScreen(
                 parcel = state.parcel,
                 farmName = state.farmName,
                 activities = state.activities,
+                sigpac = state.sigpac,
+                onLoadSigpac = onLoadSigpac,
                 onEdit = { editorVisible = true },
                 onRecoverLocation = onRecoverLocation,
                 onArchive = { archiveConfirmation = true },
@@ -391,6 +397,8 @@ private fun ParcelDetailContent(
     parcel: Parcel,
     farmName: String?,
     activities: List<Activity>,
+    sigpac: SigpacUiState,
+    onLoadSigpac: (force: Boolean) -> Unit,
     onEdit: () -> Unit,
     onRecoverLocation: (() -> Unit)?,
     onArchive: () -> Unit,
@@ -429,7 +437,11 @@ private fun ParcelDetailContent(
             ParcelTabs(tab) { tab = it }
             when (tab) {
                 ParcelTab.ACTIVITY -> ParcelActivities(activities, onRegister)
-                ParcelTab.DATA -> ParcelDataBlocks(parcel, onEdit, onRecoverLocation)
+                ParcelTab.DATA -> {
+                    // One query per visit, only when the farmer opens Datos.
+                    LaunchedEffect(parcel.id) { onLoadSigpac(false) }
+                    ParcelDataBlocks(parcel, sigpac, onLoadSigpac, onEdit, onRecoverLocation)
+                }
                 ParcelTab.DOCUMENTS -> attachmentContent()
             }
             Spacer(Modifier.height(MoSpacing.xl))
@@ -517,7 +529,13 @@ private fun ParcelIndicators(parcel: Parcel, onEdit: () -> Unit) {
  * identity folded away. Only stored values; each surface keeps its own source.
  */
 @Composable
-private fun ParcelDataBlocks(parcel: Parcel, onEdit: () -> Unit, onRecoverLocation: (() -> Unit)?) {
+private fun ParcelDataBlocks(
+    parcel: Parcel,
+    sigpac: SigpacUiState,
+    onLoadSigpac: (force: Boolean) -> Unit,
+    onEdit: () -> Unit,
+    onRecoverLocation: (() -> Unit)?,
+) {
     val locationPending = parcel.source == ParcelSource.CATASTRO &&
         (parcel.municipality.isNullOrBlank() || parcel.province.isNullOrBlank())
     var technical by rememberSaveable(parcel.id) { mutableStateOf(locationPending) }
@@ -540,6 +558,7 @@ private fun ParcelDataBlocks(parcel: Parcel, onEdit: () -> Unit, onRecoverLocati
                 }
             }
         }
+        SigpacCard(sigpac, parcel.cadastralReference != null, { onLoadSigpac(true) })
         IrrigationCard(parcel.agronomy, onEdit)
         MoTertiaryButton(if (technical) "Ocultar datos catastrales" else "Ver datos catastrales", { technical = !technical },
             Modifier.fillMaxWidth().testTag("parcel-technical-toggle"))
