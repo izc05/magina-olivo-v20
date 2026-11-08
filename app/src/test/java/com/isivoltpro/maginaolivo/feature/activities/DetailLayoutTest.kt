@@ -51,6 +51,7 @@ class DetailLayoutTest {
                 ActivityDetailFields.PRODUCT_NAME, ActivityDetailFields.ACTIVE_SUBSTANCE, ActivityDetailFields.TOTAL_QUANTITY,
                 ActivityDetailFields.UNIT, ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.DOSE_UNIT,
                 ActivityDetailFields.REASON, ActivityDetailFields.EQUIPMENT_TEXT,
+                ActivityDetailFields.PRODUCT_REGISTRATION, ActivityDetailFields.TREATMENT_OBSERVATIONS,
             ),
             ActivityType.SOIL_WORK to setOf(ActivityDetailFields.WORK_TYPE, ActivityDetailFields.METHOD),
             ActivityType.IRRIGATION to setOf(

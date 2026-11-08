@@ -32,6 +32,8 @@ object ActivityDetailFields {
     const val APPLICATION_METHOD = "applicationMethod"
     const val REASON = "reason"
     const val EQUIPMENT_TEXT = "equipmentText"
+    const val PRODUCT_REGISTRATION = "productRegistrationNumber"
+    const val TREATMENT_OBSERVATIONS = "treatmentObservations"
     const val WORK_TYPE = "workType"
     const val METHOD = "method"
     const val DURATION_MINUTES = "durationMinutes"
@@ -92,6 +94,8 @@ fun buildActivityDetail(
             doseUnit = fields.text(ActivityDetailFields.DOSE_UNIT),
             reason = fields.text(ActivityDetailFields.REASON),
             equipmentText = fields.text(ActivityDetailFields.EQUIPMENT_TEXT),
+            productRegistrationNumber = fields.text(ActivityDetailFields.PRODUCT_REGISTRATION),
+            treatmentObservations = fields.text(ActivityDetailFields.TREATMENT_OBSERVATIONS),
         )
         ActivityType.SOIL_WORK -> ActivityDetail.SoilWork(
             workType = fields.text(ActivityDetailFields.WORK_TYPE),
@@ -148,6 +152,8 @@ fun ActivityDetail?.toFields(): Map<String, String> {
             fields.put(ActivityDetailFields.DOSE_UNIT, doseUnit)
             fields.put(ActivityDetailFields.REASON, reason)
             fields.put(ActivityDetailFields.EQUIPMENT_TEXT, equipmentText)
+            fields.put(ActivityDetailFields.PRODUCT_REGISTRATION, productRegistrationNumber)
+            fields.put(ActivityDetailFields.TREATMENT_OBSERVATIONS, treatmentObservations)
         }
         is ActivityDetail.SoilWork -> {
             fields.put(ActivityDetailFields.WORK_TYPE, workType)
@@ -265,7 +271,7 @@ private fun typedKeys(type: ActivityType): List<String> = when (type) {
     ActivityType.PHYTOSANITARY -> listOf(
         ActivityDetailFields.PRODUCT_NAME, ActivityDetailFields.ACTIVE_SUBSTANCE, ActivityDetailFields.TOTAL_QUANTITY,
         ActivityDetailFields.UNIT, ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.DOSE_UNIT,
-        ActivityDetailFields.REASON, ActivityDetailFields.EQUIPMENT_TEXT,
+        ActivityDetailFields.REASON, ActivityDetailFields.EQUIPMENT_TEXT, ActivityDetailFields.PRODUCT_REGISTRATION, ActivityDetailFields.TREATMENT_OBSERVATIONS,
     )
     ActivityType.SOIL_WORK -> listOf(ActivityDetailFields.WORK_TYPE, ActivityDetailFields.METHOD)
     ActivityType.IRRIGATION -> listOf(
@@ -291,7 +297,8 @@ private fun ActivityDetail.isEmpty(): Boolean = when (this) {
             doseValue == null && doseUnit == null && applicationMethod == null
     is ActivityDetail.Phytosanitary ->
         productName == null && activeSubstance == null && totalQuantity == null && unit == null &&
-            doseValue == null && doseUnit == null && reason == null && equipmentText == null
+            doseValue == null && doseUnit == null && reason == null && equipmentText == null &&
+            productRegistrationNumber == null && treatmentObservations == null
     is ActivityDetail.SoilWork -> workType == null && method == null
     is ActivityDetail.Irrigation ->
         durationMinutes == null && volumeM3 == null && sectorText == null &&
