@@ -178,6 +178,7 @@ class ParcelScreensTest {
             composeRule.onNodeWithTag(tag).performScrollTo()
             texts.forEach { text -> composeRule.onNode(hasTestTag(tag) and hasAnyDescendant(hasText(text, substring = true))).assertExists() }
         }
+        composeRule.onNodeWithTag("parcel-technical-toggle").performScrollTo().performClick()
         block("parcel-cadastral", "23014A00400021", "Bedmar y Garciez", "Jaén")
         block("parcel-geometry", "Sin contorno", "Catastro")
         block("parcel-extra", "Sin notas")

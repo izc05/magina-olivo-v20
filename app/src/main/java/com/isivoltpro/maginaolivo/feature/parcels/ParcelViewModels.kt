@@ -24,6 +24,14 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.isivoltpro.maginaolivo.feature.sigpac.OfficialSigpacClient
+import com.isivoltpro.maginaolivo.feature.sigpac.SigpacClient
+import com.isivoltpro.maginaolivo.feature.sigpac.SigpacException
+import com.isivoltpro.maginaolivo.feature.sigpac.SigpacUiState
+import com.isivoltpro.maginaolivo.feature.sigpac.assessSigpacRecintos
+import com.isivoltpro.maginaolivo.feature.sigpac.sigpacCodeFromCadastralReference
+import java.time.Instant
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class ParcelDraft(
@@ -140,6 +148,8 @@ data class ParcelDetailUiState(
     val message: String? = null,
     /** #380: finished saves; the editor closes when this rises. */
     val saveCount: Int = 0,
+    /** Read-only official data for this screen only; nothing here is saved. */
+    val sigpac: SigpacUiState = SigpacUiState.NotRequested,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -148,9 +158,36 @@ class ParcelDetailViewModel(
     private val repository: ParcelRepository,
     activities: ActivityRepository? = null,
     farms: FarmRepository? = null,
+    private val sigpac: SigpacClient = OfficialSigpacClient(),
+    private val now: () -> Instant = Instant::now,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(ParcelDetailUiState())
     val state: StateFlow<ParcelDetailUiState> = mutableState.asStateFlow()
+    private var sigpacJob: Job? = null
+
+    /** Never writes to the parcel: a failure or a different figure leaves the saved data as it was. */
+    fun loadSigpac(force: Boolean = false) {
+        val current = mutableState.value
+        val parcel = current.parcel ?: return
+        if (sigpacJob?.isActive == true || (!force && current.sigpac != SigpacUiState.NotRequested)) return
+        val previous = current.sigpac as? SigpacUiState.Available ?: (current.sigpac as? SigpacUiState.Unavailable)?.previous
+        val code = sigpacCodeFromCadastralReference(parcel.cadastralReference)
+        if (code == null) {
+            mutableState.value = current.copy(sigpac = if (parcel.cadastralReference == null) SigpacUiState.NotRequested else SigpacUiState.Unsupported)
+            return
+        }
+        mutableState.value = current.copy(sigpac = SigpacUiState.Loading)
+        sigpacJob = viewModelScope.launch {
+            val result = try {
+                val recintos = sigpac.recintos(code)
+                if (recintos.isEmpty()) SigpacUiState.NoRecintos
+                else SigpacUiState.Available(assessSigpacRecintos(recintos, parcel.geometryGeoJson), now())
+            } catch (failure: SigpacException) {
+                SigpacUiState.Unavailable(failure.kind, previous)
+            }
+            mutableState.value = mutableState.value.copy(sigpac = result)
+        }
+    }
 
     init {
         activities?.let { activityRepo ->
