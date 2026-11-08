@@ -93,6 +93,17 @@ class FarmMapViewModel(
     val state: StateFlow<FarmMapState> = mutableState.asStateFlow()
     private var searchJob: Job? = null
     private var placeSearchJob: Job? = null
+    private var ownFarmsJob: Job? = null
+
+    /** The workspace's farms are read only once the farmer actually searches by name. */
+    fun loadOwnFarms() {
+        if (ownFarmsJob != null) return
+        ownFarmsJob = viewModelScope.launch {
+            farms.observeById(farmId).flatMapLatest { farm ->
+                if (farm == null) flowOf(emptyList()) else farms.observeActive(farm.workspaceId)
+            }.collect { list -> mutableState.update { it.copy(ownFarms = list) } }
+        }
+    }
 
     fun cancelPlaceSearch() {
         placeSearchJob?.cancel()
@@ -149,11 +160,6 @@ class FarmMapViewModel(
 
     init {
         viewModelScope.launch { farms.observeById(farmId).collect { farm -> mutableState.update { it.copy(farm = farm) } } }
-        viewModelScope.launch {
-            farms.observeById(farmId).flatMapLatest { farm ->
-                if (farm == null) flowOf(emptyList()) else farms.observeActive(farm.workspaceId)
-            }.collect { list -> mutableState.update { it.copy(ownFarms = list) } }
-        }
         viewModelScope.launch {
             farms.observeById(farmId).flatMapLatest { farm ->
                 if (farm == null) flowOf(emptyList()) else parcels.observeActive(farmId)

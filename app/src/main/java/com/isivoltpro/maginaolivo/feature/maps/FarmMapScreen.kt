@@ -176,6 +176,7 @@ fun FarmMapRoute(
         onSearchReference = viewModel::searchReference,
         onSelectOwnFarm = viewModel::selectOwnFarm,
         onSelectOwnParcel = viewModel::selectOwnParcel,
+        onNeedOwnFarms = viewModel::loadOwnFarms,
         onSelectPlace = viewModel::selectPlace,
         onPlaceQueryChanged = viewModel::cancelPlaceSearch,
         openPolygonInitially = openPolygonInitially,
@@ -208,9 +209,12 @@ fun FarmMapScreen(
     onSearchReference: (String) -> Unit = {},
     onSelectOwnFarm: (UUID) -> Unit = {},
     onSelectOwnParcel: (UUID) -> Unit = {},
+    onNeedOwnFarms: () -> Unit = {},
 ) {
     var placeQuery by rememberSaveable { mutableStateOf("") }
     var clarification by rememberSaveable { mutableStateOf<String?>(null) }
+    val searchingByName = placeQuery.trim().length >= 2
+    LaunchedEffect(searchingByName) { if (searchingByName) onNeedOwnFarms() }
     var polygonPrefill by remember { mutableStateOf<MapSearchIntent.PolygonParcel?>(null) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current

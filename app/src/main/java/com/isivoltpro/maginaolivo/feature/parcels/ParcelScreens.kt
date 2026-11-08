@@ -466,6 +466,9 @@ private fun ParcelHeader(parcel: Parcel, farmName: String?, onOpenMap: (() -> Un
                 listOfNotNull(parcel.municipality, parcel.province).joinToString(", ").takeIf { it.isNotEmpty() }?.let {
                     Text(it, style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
                 }
+                Text(if (parcel.source == ParcelSource.CATASTRO) "Importada de Catastro" else "Entrada manual",
+                    style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText,
+                    modifier = Modifier.testTag("parcel-header-source"))
                 Spacer(Modifier.height(MoSpacing.xs))
                 MoStatusChip(
                     text = if (parcel.archivedAt == null) "Activa" else "Archivada",
