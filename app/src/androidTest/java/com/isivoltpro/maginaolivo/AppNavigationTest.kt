@@ -195,6 +195,8 @@ class AppNavigationTest {
         for (tab in listOf("Inicio", "Mi Campo", "Cuaderno", "Campaña")) {
             composeRule.onNodeWithTag("bottom-$tab").performClick()
             if (tab == "Campaña") waitForTag("agricultural-campaign-root")
+            // Inicio carries the same official logo over its photo instead of the bar.
+            if (tab != "Inicio") composeRule.onNodeWithTag("top-brand").assertIsDisplayed()
             composeRule.onNodeWithTag("top-profile-avatar").performClick()
             waitForTag("profile-root")
             composeRule.onNodeWithTag("bottom-Perfil").assertDoesNotExist()

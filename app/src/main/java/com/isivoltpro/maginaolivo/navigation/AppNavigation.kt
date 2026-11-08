@@ -63,6 +63,7 @@ import com.isivoltpro.maginaolivo.feature.home.WeatherWeekRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
+import com.isivoltpro.maginaolivo.ui.components.MoBrandTopBar
 import com.isivoltpro.maginaolivo.ui.components.MoTopAppBar
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
@@ -176,8 +177,7 @@ fun AppNavigation(
                     RootDestination.Olivar.route, RootDestination.Notebook.route,
                     RootDestination.Alerts.route, AppDestination.Calendar, RootDestination.Assistant.route, RootDestination.CampaignHub.route,
                 )) {
-                MoTopAppBar(
-                    title = "Mágina Olivo",
+                MoBrandTopBar(
                     modifier = Modifier.statusBarsPadding(),
                     action = {
                         HeaderActions(compositionRoot, onAssistant = { navController.navigate(RootDestination.Assistant.route) { launchSingleTop = true } },
