@@ -71,7 +71,7 @@ class AppNavigationTest {
     fun optionalFarmAssistantKeepsOneFarmAfterRecreationAndCanBeResumed() {
         enterMainShell()
         navigateToOlivar()
-        clickByTag("open-farm-assistant")
+        clickByTag("add-farm")
         waitForTag("farm-setup-name")
         composeRule.onNodeWithTag("farm-setup-name").performTextInput("Finca asistente QA")
         clickByTag("farm-setup-create")
@@ -1712,6 +1712,14 @@ class AppNavigationTest {
      * still fails loudly, with the diagnostic, so a real regression is never hidden.
      */
     private fun openSheet(triggerTag: String, expectedTag: String) {
+        if (triggerTag == "add-farm") {
+            // «Añadir finca» opens the assistant; the full form these journeys fill stays one tap away.
+            clickByTag(triggerTag)
+            waitForTag("farm-setup-manual")
+            clickByTag("farm-setup-manual")
+            waitForNodeOrDump("<$expectedTag> after the full-form link") { composeRule.onAllNodesWithTag(expectedTag) }
+            return
+        }
         clickByTag(triggerTag)
         if (awaitTag(expectedTag, SHEET_TIMEOUT_MS)) return
         clickByTag(triggerTag)

@@ -136,6 +136,7 @@ fun FarmSetupRoute(
     onGps: (UUID) -> Unit,
     onEditParcel: (UUID) -> Unit,
     onLater: (UUID) -> Unit,
+    onFullForm: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val model: FarmSetupViewModel = viewModel(key = "farm-setup-${farmId ?: "new"}", factory = viewModelFactory {
@@ -143,7 +144,7 @@ fun FarmSetupRoute(
     })
     val state by model.state.collectAsStateWithLifecycle()
     FarmSetupScreen(state, model::create, onMap, onSearch, onPolygonSearch, onGps, onEditParcel,
-        onLater = { state.farm?.id?.let(onLater) }, onFinish = { model.finish(onLater) })
+        onLater = { state.farm?.id?.let(onLater) }, onFinish = { model.finish(onLater) }, onFullForm = onFullForm)
 }
 
 @Composable
@@ -157,12 +158,13 @@ internal fun FarmSetupScreen(
     onEditParcel: (UUID) -> Unit,
     onLater: () -> Unit,
     onFinish: () -> Unit,
+    onFullForm: (() -> Unit)? = null,
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var searchOptions by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(MoSpacing.screen)
         .testTag("farm-setup-root"), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-        Text("Crear finca con ayuda", style = MaterialTheme.typography.headlineSmall)
+        Text("Añadir finca", style = MaterialTheme.typography.headlineSmall)
         when {
             state.loading -> CircularProgressIndicator()
             state.farm == null -> {
@@ -170,6 +172,7 @@ internal fun FarmSetupScreen(
                 MoTextField(name, { name = it }, "Nombre de la finca", Modifier.fillMaxWidth().testTag("farm-setup-name"))
                 MoPrimaryButton(if (state.saving) "Guardando…" else "Crear finca", { onCreate(name) },
                     Modifier.fillMaxWidth().testTag("farm-setup-create"), enabled = !state.saving && name.isNotBlank() && state.error?.contains("no está disponible") != true)
+                onFullForm?.let { MoTertiaryButton("Rellenar todos los datos ahora", it, Modifier.fillMaxWidth().testTag("farm-setup-manual"), !state.saving) }
             }
             else -> {
                 val farm = state.farm
