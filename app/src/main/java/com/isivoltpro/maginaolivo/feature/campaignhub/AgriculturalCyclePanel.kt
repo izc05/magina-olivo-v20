@@ -157,7 +157,7 @@ private fun CyclePanelContent(repository: AgriculturalCycleRepository, snapshot:
                         Box {
                             MoSecondaryButton(selected.label,{menu=true},Modifier.fillMaxWidth().testTag("cycle-selector"))
                             DropdownMenu(menu,{menu=false}) {snapshot.cycles.forEach {cycle->DropdownMenuItem(
-                                text={Text("${cycle.label} · ${if(cycle.effectiveEndDate==null) "Abierta" else "Cerrada"}")},
+                                text={Text(cycleOptionLabel(cycle.label,cycle.startDate,cycle.effectiveEndDate))},
                                 onClick={picked=cycle.id.toString();menu=false;message=null;error=null})}}
                         }
                         Text(if(selected.effectiveEndDate==null) "Abierta" else "Cerrada agrícolamente",style=MaterialTheme.typography.titleMedium)
@@ -202,6 +202,10 @@ internal fun cycleSyncText(sync: com.isivoltpro.maginaolivo.domain.cycle.CycleSy
 }
 
 internal fun LocalDate.cycleDate(): String = format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+
+/** Names may repeat: state and dates are what tell two cycles apart. */
+internal fun cycleOptionLabel(label: String, start: LocalDate, end: LocalDate?): String =
+    if (end == null) "$label · Abierta · desde ${start.cycleDate()}" else "$label · Cerrada · ${start.cycleDate()}–${end.cycleDate()}"
 private fun String.cycleKind()=when(this) {"RECOLLECTION"->"Recolección";"EXPENSE"->"Gasto";else->"Trabajo"}
 internal fun cycleMessage(error: AppError): String = when(error) {
     is AppError.Validation -> cycleCodeMessage(error.code)

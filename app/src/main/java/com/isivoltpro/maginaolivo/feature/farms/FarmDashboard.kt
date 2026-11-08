@@ -19,6 +19,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import com.isivoltpro.maginaolivo.feature.campaignhub.cycleOptionLabel
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import com.isivoltpro.maginaolivo.core.common.AppResult
@@ -26,11 +27,12 @@ import com.isivoltpro.maginaolivo.domain.cycle.CycleRecordKind
 import com.isivoltpro.maginaolivo.domain.cycle.CycleSnapshot
 
 /** An agricultural cycle and the works explicitly linked to it. A date never makes a work belong. */
-data class FarmCycleView(val id: UUID, val label: String, val closed: Boolean, val activityIds: Set<UUID>)
+data class FarmCycleView(val id: UUID, val label: String, val closed: Boolean, val activityIds: Set<UUID>, val optionLabel: String = label)
 
 internal fun CycleSnapshot.farmCycles(): List<FarmCycleView> = cycles.map { cycle ->
     FarmCycleView(cycle.id, cycle.label, cycle.effectiveEndDate != null,
-        records.filter { it.kind == CycleRecordKind.ACTIVITY.name && it.cycleId == cycle.id }.map { it.id }.toSet())
+        records.filter { it.kind == CycleRecordKind.ACTIVITY.name && it.cycleId == cycle.id }.map { it.id }.toSet(),
+        cycleOptionLabel(cycle.label, cycle.startDate, cycle.effectiveEndDate))
 }
 
 /** The last treatment as it was recorded. A value not recorded stays null. */

@@ -140,7 +140,7 @@ internal fun FarmActivityHistory(
         if (cycles.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             cycles.forEach { option ->
                 val key = option.id.toString()
-                FilterChip(cycle == key, { cycle = key.takeIf { it != cycle } }, { Text("${option.label} · ${if (option.closed) "Cerrada" else "Abierta"}") }, Modifier.testTag("farm-history-cycle-$key"))
+                FilterChip(cycle == key, { cycle = key.takeIf { it != cycle } }, { Text(option.optionLabel) }, Modifier.testTag("farm-history-cycle-$key"))
             }
         }
         val parcels = ofType.flatMap { it.targets }.distinctBy { it.parcelId }
