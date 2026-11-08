@@ -68,6 +68,22 @@ class AppNavigationTest {
             .around(composeRule)
 
     @Test
+    fun farmTreatmentShortcutsOpenTheHistoryAndTheFormDirectly() {
+        enterMainShell()
+        navigateToOlivar()
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca tratamientos")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca tratamientos")
+        clickByText("Finca tratamientos")
+        waitForTag("farm-dash-see-treatments")
+        clickByTag("farm-dash-see-treatments")
+        waitForTag("farm-history-empty")
+        clickByTag("farm-history-register")
+        waitForTag("detail-productName")
+    }
+
+    @Test
     fun optionalFarmAssistantKeepsOneFarmAfterRecreationAndCanBeResumed() {
         enterMainShell()
         navigateToOlivar()

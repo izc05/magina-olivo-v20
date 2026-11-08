@@ -113,6 +113,7 @@ fun FarmActivitiesRoute(
     completeOnSave: Boolean = false,
     /** #435: canonical day of the Workspace; required by done-work entry points. */
     today: LocalDate? = null,
+    onCreated: ((UUID) -> Unit)? = null,
 ) {
     val vm: FarmActivitiesViewModel = viewModel(key = "farm-activities-$farmId", factory = viewModelFactory {
         initializer {
@@ -130,7 +131,7 @@ fun FarmActivitiesRoute(
         state = state,
         onActivitySelected = onActivitySelected,
         onCreate = { draft, asDraft -> vm.create(draft, asDraft, completeImmediately = completeOnSave && !asDraft,
-            onSaved = { id -> notificationAccess?.savedActivity?.invoke(id) }) },
+            onSaved = { id -> notificationAccess?.savedActivity?.invoke(id); onCreated?.invoke(id) }) },
         startWithEditor = startWithEditor,
         initialDraft = initialDraft,
         editorTitle = editorTitle,
@@ -263,6 +264,7 @@ fun RegisterActivityRoute(
     planning: Boolean = false,
     /** #435/#619: resolves today using the Workspace timezone, not the phone timezone. */
     clock: AppClock,
+    onCreated: ((UUID) -> Unit)? = null,
 ) {
     var selectedTypeName by rememberSaveable { mutableStateOf(presetType?.name) }
     LaunchedEffect(presetType) { if (presetType != null) selectedTypeName = presetType.name }
@@ -376,6 +378,7 @@ fun RegisterActivityRoute(
                             editorTitle = if (planning) "Planificar · ${activityType.label()}" else activityType.label(),
                             lockInitialType = true,
                             editorAsScreen = true,
+                            onCreated = onCreated,
                             completeOnSave = !planning,
                             today = workspaceToday,
                         )

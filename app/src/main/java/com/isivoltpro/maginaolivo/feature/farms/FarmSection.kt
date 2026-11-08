@@ -14,4 +14,6 @@ enum class FarmSection(val route: String, val title: String) {
     CAMPAIGNS("farm-campaigns", "Campañas"),
     ACTIVITIES("farm-activities", "Trabajos"),
     DOCUMENTS("farm-documents", "Documentos"),
+    TREATMENTS("farm-treatments", "Tratamientos"),
+    IRRIGATIONS("farm-irrigations", "Riegos"),
 }

@@ -76,6 +76,25 @@ class FarmDashboardTest {
         assertEquals(1, summary.draftExpenses)
     }
 
+    @Test fun otherCategoriesCompleteTheBreakdown() {
+        val money = dashboard(expenses = listOf(expense(6_000, ExpenseCategory.LABOR), expense(10_000, ExpenseCategory.MACHINERY), expense(2_000, ExpenseCategory.FUEL))).money.single()
+        assertEquals(18_000L, money.totalMinor)
+        assertEquals(2_000L, money.otherMinor)
+        assertEquals(money.totalMinor, money.labourMinor!! + money.machineryMinor!! + money.productsMinor!! + money.otherMinor!!)
+    }
+
+    @Test fun historyKeepsOneRowPerTreatmentAndFiltersItsFarmRecords() {
+        val first = activity(date = LocalDate.of(2026, 9, 1))
+        val second = activity(date = LocalDate.of(2026, 10, 1), detail = complete.copy(productName = "Azufre"), targets = listOf(other), campaignId = UUID.randomUUID())
+        val pruning = activity(type = ActivityType.PRUNING, detail = null)
+        val all = listOf(first, second, pruning)
+        assertEquals(listOf(second, first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, null, "", true))
+        assertEquals(listOf(first, second), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, null, "", false))
+        assertEquals(listOf(first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, campaign, null, "", true))
+        assertEquals(listOf(first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, target.parcelId, "", true))
+        assertEquals(listOf(second), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, null, "azu", true))
+    }
+
     @Test fun anOverflowingTotalIsUnavailableNotWrapped() {
         assertNull(dashboard(expenses = listOf(expense(Long.MAX_VALUE, ExpenseCategory.LABOR), expense(1, ExpenseCategory.LABOR))).money.single().totalMinor)
     }

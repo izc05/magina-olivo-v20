@@ -132,6 +132,16 @@ fun AppNavigation(
     var campaignFarmRequest by rememberSaveable { mutableStateOf<String?>(null) }
     // The Parcel of the Cuaderno a work action was tapped on, handed to the work form.
     var registerParcelId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Set when a Farm history asked for the form: saving goes back to that history.
+    var registerReturnSection by rememberSaveable { mutableStateOf<String?>(null) }
+    var registerReturnFarm by rememberSaveable { mutableStateOf<String?>(null) }
+    val registerFromFarm: (UUID, ActivityType, FarmSection) -> Unit = { farmId, type, section ->
+        registerFarmId = farmId.toString()
+        registerParcelId = null
+        registerReturnFarm = farmId.toString()
+        registerReturnSection = section.route
+        navController.navigate(AppDestination.register(type.name)) { launchSingleTop = true }
+    }
     var quickActionOpen by rememberSaveable { mutableStateOf(false) }
     var quickFarmRequest by rememberSaveable { mutableStateOf<String?>(null) }
     var quickParcelRequest by rememberSaveable { mutableStateOf<String?>(null) }
@@ -395,6 +405,18 @@ fun AppNavigation(
                             navController.navigate(AppDestination.activity(activityId.toString()))
                         },
                         clock = compositionRoot.clock,
+                        onCreated = {
+                            val farm = registerReturnFarm
+                            val section = registerReturnSection
+                            registerReturnFarm = null
+                            registerReturnSection = null
+                            if (farm != null && section != null) {
+                                val target = AppDestination.farmSection(section, farm)
+                                val cameFromHistory = navController.previousBackStackEntry?.destination?.route == AppDestination.farmSectionPattern(section)
+                                if (cameFromHistory) navController.popBackStack()
+                                else navController.navigate(target) { popUpTo(AppDestination.RegisterPattern) { inclusive = true } }
+                            }
+                        },
                     )
                 }
             }
@@ -528,6 +550,9 @@ fun AppNavigation(
                         onArchived = { navController.popBackStack() },
                         onRegister = { openNotebookOn(farmId, null, null, NotebookOrigin.FARM_CONTEXT) },
                         onCampaign = { campaignFarmRequest = farmId.toString(); navController.navigate(RootDestination.CampaignHub.route) },
+                        onRegisterTreatment = { registerFromFarm(farmId, ActivityType.PHYTOSANITARY, FarmSection.TREATMENTS) },
+                        onRegisterIrrigation = { registerFromFarm(farmId, ActivityType.IRRIGATION, FarmSection.IRRIGATIONS) },
+                        onExpenses = { navController.navigate(AppDestination.farmExpenses(farmId.toString())) },
                         onAssistant = { navController.navigate(AppDestination.farmSetup(farmId.toString())) },
                     )
                 }
@@ -551,6 +576,8 @@ fun AppNavigation(
                             onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
                             onMap = { navController.navigate(AppDestination.farmMap(farmId.toString())) },
                             onAssistant = { navController.navigate(AppDestination.farmSetup(farmId.toString())) },
+                            onRegisterTreatment = { registerFromFarm(farmId, ActivityType.PHYTOSANITARY, FarmSection.TREATMENTS) },
+                            onRegisterIrrigation = { registerFromFarm(farmId, ActivityType.IRRIGATION, FarmSection.IRRIGATIONS) },
                         )
                     }
                 }

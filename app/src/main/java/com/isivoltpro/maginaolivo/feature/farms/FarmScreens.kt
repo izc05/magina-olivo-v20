@@ -328,6 +328,9 @@ fun FarmDetailRoute(
     onRegister: (() -> Unit)? = null,
     onCampaign: (() -> Unit)? = null,
     onAssistant: (() -> Unit)? = null,
+    onRegisterTreatment: (() -> Unit)? = null,
+    onRegisterIrrigation: (() -> Unit)? = null,
+    onExpenses: (() -> Unit)? = null,
 ) {
     val viewModel: FarmDetailViewModel = viewModel(
         key = "farm-$farmId",
@@ -354,6 +357,9 @@ fun FarmDetailRoute(
         onRegister = onRegister,
         onCampaign = onCampaign,
         onAssistant = onAssistant,
+        onRegisterTreatment = onRegisterTreatment,
+        onRegisterIrrigation = onRegisterIrrigation,
+        onExpenses = onExpenses,
     )
 }
 
@@ -370,6 +376,9 @@ fun FarmDetailScreen(
     onRegister: (() -> Unit)? = null,
     onCampaign: (() -> Unit)? = null,
     onAssistant: (() -> Unit)? = null,
+    onRegisterTreatment: (() -> Unit)? = null,
+    onRegisterIrrigation: (() -> Unit)? = null,
+    onExpenses: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -425,6 +434,9 @@ fun FarmDetailScreen(
                 onRegister = onRegister,
                 onCampaign = onCampaign,
                 onAssistant = onAssistant,
+                onRegisterTreatment = onRegisterTreatment,
+                onRegisterIrrigation = onRegisterIrrigation,
+                onExpenses = onExpenses,
             )
         }
     }
@@ -495,6 +507,9 @@ private fun FarmDetailContent(
     onRegister: (() -> Unit)? = null,
     onCampaign: (() -> Unit)? = null,
     onAssistant: (() -> Unit)? = null,
+    onRegisterTreatment: (() -> Unit)? = null,
+    onRegisterIrrigation: (() -> Unit)? = null,
+    onExpenses: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -548,11 +563,8 @@ private fun FarmDetailContent(
             onRegister?.let { register ->
                 MoPrimaryButton("Registrar actividad", register, Modifier.fillMaxWidth().testTag("farm-register"))
             }
-            dashboard?.let { FarmDashboardPanel(it, onOpenSection, onRegister) }
-            SectionEntry(FarmSection.PARCELS, MoIcons.Parcels, if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas", onOpenSection)
-            SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Diario, fitosanitario y gastos", onOpenSection)
-            SectionEntry(FarmSection.CAMPAIGNS, MoIcons.Campaign, farm.activeCampaignName ?: "Sin campaña activa", onOpenSection)
-            SectionEntry(FarmSection.DOCUMENTS, MoIcons.Document, "Escrituras, facturas y fotos", onOpenSection)
+            FarmDashboardPanel(farm, dashboard, onOpenSection, onRegisterTreatment, onRegisterIrrigation,
+                onNotebook = { onOpenSection(FarmSection.NOTEBOOK) }, onExpenses)
             MoSecondaryButton(
                 text = "Editar finca",
                 onClick = onEdit,
@@ -577,19 +589,6 @@ private fun FarmHeaderButton(icon: ImageVector, description: String, tag: String
         Box(contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(22.dp)) }
     }
 }
-
-@Composable
-private fun SectionEntry(section: FarmSection, icon: ImageVector, subtitle: String, onOpen: (FarmSection) -> Unit) {
-    MoCompactListItem(
-        title = section.title,
-        subtitle = subtitle,
-        icon = icon,
-        onClick = { onOpen(section) },
-        modifier = Modifier.testTag("farm-section-${section.name.lowercase()}"),
-        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText) },
-    )
-}
-
 
 @Composable
 private fun FarmTotals(farms: List<Farm>) {

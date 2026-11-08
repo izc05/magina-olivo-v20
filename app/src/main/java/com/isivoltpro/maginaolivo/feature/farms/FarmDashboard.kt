@@ -40,6 +40,8 @@ data class FarmMoney(
     val labourMinor: Long?,
     val machineryMinor: Long?,
     val productsMinor: Long?,
+    /** Fuel, irrigation, services...: so the parts always add up to the total. */
+    val otherMinor: Long?,
 )
 
 /** Read-only summary of records that already exist; nothing here is stored or estimated. */
@@ -60,6 +62,9 @@ data class FarmDashboard(
     val money: List<FarmMoney>,
     val draftExpenses: Int,
     val documentCount: Int,
+    val latestDocuments: List<String> = emptyList(),
+    val lastIrrigation: LocalDate? = null,
+    val irrigationCount: Int = 0,
 ) {
     companion object {
         private const val RECENT = 3
@@ -83,6 +88,7 @@ data class FarmDashboard(
             deliveries: List<Delivery>,
             expenses: List<Expense>,
             documentCount: Int,
+            latestDocuments: List<String> = emptyList(),
         ): FarmDashboard {
             val done = activities.filter { it.status == ActivityStatus.COMPLETED }
             val treatments = done.filter { it.type == ActivityType.PHYTOSANITARY }.sortedByDescending { it.activityDate }
@@ -122,10 +128,15 @@ data class FarmDashboard(
                     .maxByOrNull { it.deliveryDate }?.analysis?.fatYieldHundredths,
                 money = posted.groupBy { it.currency }.toSortedMap().map { (currency, rows) ->
                     fun sum(category: ExpenseCategory) = checkedSum(rows.filter { it.category == category }.map { it.amountMinor })
-                    FarmMoney(currency, checkedSum(rows.map { it.amountMinor }), sum(ExpenseCategory.LABOR), sum(ExpenseCategory.MACHINERY), sum(ExpenseCategory.PRODUCTS))
+                    val listed = setOf(ExpenseCategory.LABOR, ExpenseCategory.MACHINERY, ExpenseCategory.PRODUCTS)
+                    FarmMoney(currency, checkedSum(rows.map { it.amountMinor }), sum(ExpenseCategory.LABOR), sum(ExpenseCategory.MACHINERY), sum(ExpenseCategory.PRODUCTS),
+                        checkedSum(rows.filter { it.category !in listed }.map { it.amountMinor }))
                 },
                 draftExpenses = scopedExpenses.count { it.status == ExpenseStatus.DRAFT },
                 documentCount = documentCount,
+                latestDocuments = latestDocuments,
+                lastIrrigation = done.filter { it.type == ActivityType.IRRIGATION }.maxOfOrNull { it.activityDate },
+                irrigationCount = done.count { it.type == ActivityType.IRRIGATION },
             )
         }
     }
@@ -150,6 +161,7 @@ internal fun farmDashboardFlow(persistence: LocalPersistence, farmId: UUID): Flo
                 campaign?.id, campaign?.name, activities,
                 harvestRows.filter { it.farmId == farmId }, deliveryRows.filter { it.farmId == farmId },
                 expenses.filter { it.farmId == farmId }, documents.size,
+                documents.sortedByDescending { it.createdAt }.take(2).map { it.displayName },
             )
         }
     }
