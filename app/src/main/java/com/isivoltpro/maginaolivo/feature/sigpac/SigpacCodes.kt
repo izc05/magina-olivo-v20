@@ -189,6 +189,21 @@ private fun readable(text: String): String =
 /** «PR · Pasto arbustivo»; the code alone when FEGA's list does not include it. */
 fun sigpacUseLabel(code: String?): String? = code?.let { USE_CODES[it.uppercase()]?.let { name -> "$code · ${readable(name)}" } ?: it }
 
+private val OLIVE_USES = setOf("OV", "OF", "OC", "VO", "FL", "CO")
+const val SIGPAC_INACTIVE_RECINTO = "199"
+
+/** Recintos with incidents, one line each, so none is hidden behind a clean total. */
+fun sigpacIncidentLines(recintos: List<SigpacRecinto>): List<String> = recintos.mapNotNull { recinto ->
+    sigpacIncidentsLabel(recinto.incidents)?.let { "Recinto ${recinto.recinto}: $it" }
+}
+
+fun sigpacHasInactiveRecinto(recintos: List<SigpacRecinto>): Boolean =
+    recintos.any { r -> r.incidents?.split(",")?.any { it.trim() == SIGPAC_INACTIVE_RECINTO } == true }
+
+/** Olive trees recorded while no recinto has an olive use: both stay as they are. */
+fun sigpacUseDiffersFromOlives(oliveTrees: Int?, useCodes: List<String>): Boolean =
+    oliveTrees != null && useCodes.isNotEmpty() && useCodes.none { it.uppercase() in OLIVE_USES }
+
 /** FEGA sends incident codes separated by commas. */
 fun sigpacIncidentsLabel(codes: String?): String? = codes?.split(",")?.map(String::trim)?.filter(String::isNotEmpty)
     ?.joinToString("; ") { code -> INCIDENT_CODES[code]?.let { "$code · ${readable(it)}" } ?: code }?.takeIf { it.isNotEmpty() }

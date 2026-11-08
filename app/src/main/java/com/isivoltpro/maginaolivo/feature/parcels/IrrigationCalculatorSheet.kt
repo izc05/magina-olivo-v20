@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,6 +25,7 @@ import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationPlanInput
 import com.isivoltpro.maginaolivo.domain.irrigation.IrrigationPlanner
 import com.isivoltpro.maginaolivo.domain.irrigation.WaterTariff
 import com.isivoltpro.maginaolivo.domain.irrigation.WaterTariffType
+import com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem
 import com.isivoltpro.maginaolivo.ui.components.MoLabeledValue
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
@@ -52,7 +54,7 @@ private fun euros(minor: Long): String = NumberFormat.getCurrencyInstance(SPANIS
 
 /** Everything typed here stays on this screen: the calculator neither reads nor writes records. */
 @Composable
-internal fun IrrigationCalculatorSheet(initialTrees: Int?) {
+internal fun IrrigationCalculatorSheet(initialTrees: Int?, system: IrrigationSystem? = null) {
     var trees by rememberSaveable { mutableStateOf(initialTrees?.toString().orEmpty()) }
     var emitters by rememberSaveable { mutableStateOf("") }
     var flow by rememberSaveable { mutableStateOf("") }
@@ -63,7 +65,8 @@ internal fun IrrigationCalculatorSheet(initialTrees: Int?) {
     var tariffName by rememberSaveable { mutableStateOf<String?>(null) }
     var price by rememberSaveable { mutableStateOf("") }
     val tariffType = tariffName?.let(WaterTariffType::valueOf)
-    val duration = (hours.ifBlank { "0" }.toIntOrNull() ?: -1).let { h ->
+    // Both blank means no duration yet: nothing is calculated from an empty field.
+    val duration: Int? = if (hours.isBlank() && minutes.isBlank()) null else (hours.ifBlank { "0" }.toIntOrNull() ?: -1).let { h ->
         (minutes.ifBlank { "0" }.toIntOrNull() ?: -1).let { m -> if (h < 0 || m !in 0..59 || h > 200) -1 else h * 60 + m }
     }
     val priceMinor = eurosToMinor(price)
@@ -85,25 +88,29 @@ internal fun IrrigationCalculatorSheet(initialTrees: Int?) {
     val numeric = KeyboardOptions(keyboardType = KeyboardType.Number)
     val decimal = KeyboardOptions(keyboardType = KeyboardType.Decimal)
     Column(
-        Modifier.padding(horizontal = MoSpacing.screen).padding(bottom = MoSpacing.lg).verticalScroll(rememberScrollState())
+        Modifier.imePadding().padding(horizontal = MoSpacing.screen).padding(bottom = MoSpacing.lg).verticalScroll(rememberScrollState())
             .testTag("irrigation-calculator"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
         Text("Calculadora de riego", style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
         Text("Cálculo teórico. No se guarda ni registra un riego.", style = MaterialTheme.typography.bodyMedium,
             color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("irrigation-calculator-theoretical"))
-        MoTextField(trees, { trees = it.filter(Char::isDigit).take(7) }, "Olivos regados", Modifier.fillMaxWidth().testTag("calc-trees"), keyboardOptions = numeric)
+        if (system == IrrigationSystem.SPRINKLER || system == IrrigationSystem.DRYLAND) {
+            Text("Esta calculadora se basa en goteros por olivo.", style = MaterialTheme.typography.bodySmall,
+                color = MoColors.current.warningText, modifier = Modifier.testTag("calc-drip-only"))
+        }
+        MoTextField(trees, { trees = it.filter(Char::isDigit).take(7) }, "Olivos regados", Modifier.fillMaxWidth().imeOnFocus().testTag("calc-trees"), keyboardOptions = numeric)
         Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoTextField(emitters, { emitters = it.filter(Char::isDigit).take(3) }, "Goteros por olivo", Modifier.weight(1f).testTag("calc-emitters"), keyboardOptions = numeric)
-            MoTextField(flow, { flow = it.take(8) }, "Caudal gotero (L/h)", Modifier.weight(1f).testTag("calc-flow"), keyboardOptions = decimal)
+            MoTextField(emitters, { emitters = it.filter(Char::isDigit).take(3) }, "Goteros por olivo", Modifier.weight(1f).imeOnFocus().testTag("calc-emitters"), keyboardOptions = numeric)
+            MoTextField(flow, { flow = it.take(8) }, "Caudal gotero (L/h)", Modifier.weight(1f).imeOnFocus().testTag("calc-flow"), keyboardOptions = decimal)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoTextField(hours, { hours = it.filter(Char::isDigit).take(3) }, "Horas", Modifier.weight(1f).testTag("calc-hours"), keyboardOptions = numeric)
-            MoTextField(minutes, { minutes = it.filter(Char::isDigit).take(2) }, "Minutos", Modifier.weight(1f).testTag("calc-minutes"), keyboardOptions = numeric)
+            MoTextField(hours, { hours = it.filter(Char::isDigit).take(3) }, "Horas", Modifier.weight(1f).imeOnFocus().testTag("calc-hours"), keyboardOptions = numeric)
+            MoTextField(minutes, { minutes = it.filter(Char::isDigit).take(2) }, "Minutos", Modifier.weight(1f).imeOnFocus().testTag("calc-minutes"), keyboardOptions = numeric)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoTextField(target, { target = it.take(8) }, "Dosis objetivo (L/olivo)", Modifier.weight(1f).testTag("calc-target"), keyboardOptions = decimal)
-            MoTextField(weekly, { weekly = it.filter(Char::isDigit).take(2) }, "Riegos por semana", Modifier.weight(1f).testTag("calc-weekly"), keyboardOptions = numeric)
+            MoTextField(target, { target = it.take(8) }, "Dosis objetivo (L/olivo)", Modifier.weight(1f).imeOnFocus().testTag("calc-target"), keyboardOptions = decimal)
+            MoTextField(weekly, { weekly = it.filter(Char::isDigit).take(2) }, "Riegos por semana", Modifier.weight(1f).imeOnFocus().testTag("calc-weekly"), keyboardOptions = numeric)
         }
         Text("Tarifa", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
         Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -113,24 +120,26 @@ internal fun IrrigationCalculatorSheet(initialTrees: Int?) {
             }
         }
         if (tariffType != null && tariffType != WaterTariffType.FREE) {
-            MoTextField(price, { price = it.take(8) }, "Precio (€)", Modifier.fillMaxWidth().testTag("calc-price"), keyboardOptions = decimal)
+            MoTextField(price, { price = it.take(8) }, "Precio (€)", Modifier.fillMaxWidth().imeOnFocus().testTag("calc-price"), keyboardOptions = decimal)
         }
         if (plan == null) Text("Indica olivos, goteros y caudal para ver el cálculo.", style = MaterialTheme.typography.bodyMedium,
             color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("calc-incomplete"))
-        else PlanResults(plan, duration)
+        else PlanResults(plan)
     }
 }
 
 @Composable
-private fun PlanResults(plan: IrrigationPlan, durationMinutes: Int) {
+private fun PlanResults(plan: IrrigationPlan) {
     Column(Modifier.testTag("calc-results"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         Text("Calculado por Mágina Olivo", style = MaterialTheme.typography.titleSmall, color = MoColors.current.primaryText)
-        MoLabeledValue("Caudal total", "${number(plan.totalFlowLph, 0)} L/h · ${number(plan.totalFlowM3PerHour)} m³/h")
-        MoLabeledValue("Duración del riego", durationLabel(durationMinutes))
-        MoLabeledValue("Litros por olivo", "${number(plan.dose.litersPerTree)} L")
-        MoLabeledValue("Volumen por riego", "${number(plan.dose.theoreticalVolumeM3)} m³")
+        MoLabeledValue("Caudal total", "${number(plan.totalFlowLph, 0)} L/h · ${number(plan.totalFlowM3PerHour, 3)} m³/h")
+        plan.dose?.let { dose ->
+            MoLabeledValue("Duración del riego", durationLabel(dose.durationMinutes))
+            MoLabeledValue("Litros por olivo", "${number(dose.litersPerTree)} L")
+            MoLabeledValue("Volumen por riego", "${number(plan.volumeM3 ?: 0.0, 3)} m³")
+        }
         plan.minutesForTarget?.let { MoLabeledValue("Duración para la dosis objetivo", durationLabel(it)) }
-        plan.weeklyVolumeM3?.let { MoLabeledValue("Consumo previsto semanal", "${number(it)} m³") }
+        plan.weeklyVolumeM3?.let { MoLabeledValue("Consumo previsto semanal", "${number(it, 3)} m³") }
         plan.costPerIrrigationMinor?.let { MoLabeledValue("Coste estimado por riego", euros(it)) }
         plan.weeklyCostMinor?.let { MoLabeledValue("Coste estimado semanal", euros(it)) }
     }

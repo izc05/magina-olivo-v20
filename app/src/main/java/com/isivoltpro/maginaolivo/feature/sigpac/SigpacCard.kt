@@ -46,7 +46,7 @@ internal fun sigpacNumber(value: Double, decimals: Int = 4): String =
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SigpacCard(state: SigpacUiState, hasReference: Boolean, onLoad: () -> Unit, modifier: Modifier = Modifier) {
+fun SigpacCard(state: SigpacUiState, hasReference: Boolean, onLoad: () -> Unit, modifier: Modifier = Modifier, oliveTrees: Int? = null) {
     var sheet by rememberSaveable { mutableStateOf(false) }
     MoSectionCard(title = "SIGPAC — Datos oficiales", icon = MoIcons.Map, modifier = modifier.testTag("parcel-sigpac")) {
         @Composable
@@ -66,6 +66,17 @@ fun SigpacCard(state: SigpacUiState, hasReference: Boolean, onLoad: () -> Unit, 
             line("Campaña no indicada por el servicio.")
             if (assessment.unverified) line("Sin contorno guardado con el que comprobar que estos recintos son de la parcela.", "parcel-sigpac-unverified")
             if (assessment.outside.isNotEmpty()) line("${assessment.outside.size} recintos no coinciden con el contorno guardado y no se cuentan.", "parcel-sigpac-outside")
+            val incidents = sigpacIncidentLines(assessment.matched)
+            if (incidents.isNotEmpty()) Column(Modifier.testTag("parcel-sigpac-incidents"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
+                Text("Incidencias SIGPAC", style = MaterialTheme.typography.titleSmall, color = MoColors.current.warningText)
+                incidents.forEach { Text(it, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.warningText) }
+                if (sigpacHasInactiveRecinto(assessment.matched)) {
+                    line("«Recinto inactivo» es un estado administrativo. No demuestra que el terreno esté abandonado.", "parcel-sigpac-inactive-note")
+                }
+            }
+            if (sigpacUseDiffersFromOlives(oliveTrees, assessment.useCodes)) {
+                line("Has registrado olivos y SIGPAC indica otro uso. Revísalo; no se cambia ningún dato.", "parcel-sigpac-use-differs")
+            }
             line("El uso SIGPAC no acredita el cultivo real ni la titularidad.")
             Text("Fuente: SIGPAC · FEGA · CC BY 4.0", style = MaterialTheme.typography.labelSmall, color = MoSurfaceTokens.secondaryText)
             MoSecondaryButton("Ver recintos", { sheet = true }, Modifier.fillMaxWidth().testTag("parcel-sigpac-open"), assessment.matched.isNotEmpty())
@@ -111,9 +122,10 @@ private fun SigpacRecintosSheet(recintos: List<SigpacRecinto>) {
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
         Text("Recintos SIGPAC", style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
+        Text("Marcar un recinto solo suma su superficie. No indica que lo trabajes.", style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText)
         if (selected.isNotEmpty()) {
             val sum = sigpacAreaSum(recintos.filter { it.recinto in selected })
-            Text("Seleccionados: ${selected.size} · ${sum?.let { "${sigpacNumber(it)} ha" } ?: "superficie no disponible"}",
+            Text("Marcados para sumar: ${selected.size} · ${sum?.let { "${sigpacNumber(it)} ha" } ?: "superficie no disponible"}",
                 style = MaterialTheme.typography.titleSmall, color = MoColors.current.bodyText, modifier = Modifier.testTag("parcel-sigpac-selected"))
         }
         recintos.forEach { recinto ->

@@ -82,6 +82,46 @@ class ParcelViewModelTest {
     }
 
     @Test
+    fun eachSectionKeepsEveryFieldItDoesNotShow() = runTest(dispatcher) {
+        val original = parcel().copy(cadastralReference = "23001A00300004", cadastralAreaM2 = 1_790_965.0, managedAreaM2 = 12_345.678, notes = "Nota",
+            geometryGeoJson = "{}", agronomy = com.isivoltpro.maginaolivo.domain.parcel.ParcelAgronomy(oliveTreeCount = 5, variety = "Picual",
+                irrigationSystem = com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem.DRIP, irrigationNetwork = "Red", irrigationSector = "S1", irrigationDays = setOf(java.time.DayOfWeek.MONDAY)))
+        val repository = FakeParcelRepository(original)
+        val viewModel = ParcelDetailViewModel(parcelId, repository)
+        advanceUntilIdle()
+
+        viewModel.saveCrop("123", "Hojiblanca")
+        advanceUntilIdle()
+        var saved = repository.updated!!
+        assertEquals(123, saved.agronomy.oliveTreeCount)
+        assertEquals("Hojiblanca", saved.agronomy.variety)
+        assertEquals(12_345.678, saved.managedAreaM2!!, 0.0)
+        assertEquals(1_790_965.0, saved.cadastralAreaM2!!, 0.0)
+        assertEquals("Red", saved.agronomy.irrigationNetwork)
+        assertEquals("23001A00300004", saved.cadastralReference)
+        assertEquals("{}", saved.geometryGeoJson)
+        assertEquals("Nota", saved.notes)
+
+        viewModel.saveIrrigation(null, "", "", emptySet())
+        advanceUntilIdle()
+        saved = repository.updated!!
+        assertNull(saved.agronomy.irrigationSystem)
+        assertEquals(12_345.678, saved.managedAreaM2!!, 0.0)
+        assertEquals("Parcela Norte", saved.displayName)
+    }
+
+    @Test
+    fun anInvalidTreeCountIsRefusedWithoutSaving() = runTest(dispatcher) {
+        val repository = FakeParcelRepository(parcel())
+        val viewModel = ParcelDetailViewModel(parcelId, repository)
+        advanceUntilIdle()
+        viewModel.saveCrop("0", "")
+        advanceUntilIdle()
+        assertNull(repository.updated)
+        assertEquals("Escribe un número de olivos entero mayor que cero", viewModel.state.value.oliveError)
+    }
+
+    @Test
     fun detailEditsArchivesAndRestoresLocally() = runTest(dispatcher) {
         val repository = FakeParcelRepository(parcel())
         val viewModel = ParcelDetailViewModel(parcelId, repository)

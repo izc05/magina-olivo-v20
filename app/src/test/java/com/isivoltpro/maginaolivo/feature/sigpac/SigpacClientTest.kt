@@ -97,6 +97,20 @@ class SigpacClientTest {
         assertNull(sigpacIncidentsLabel(null))
     }
 
+    @Test fun anInactiveRecintoIsExplainedAndNotHidden() {
+        val recinto = parseSigpacRecintos("[${item(incidencias = "\"199\"")}]", albanchez)
+        assertEquals(listOf("Recinto 1: 199 · Recinto inactivo"), sigpacIncidentLines(recinto))
+        assertTrue(sigpacHasInactiveRecinto(recinto))
+        assertTrue(sigpacIncidentLines(parseSigpacRecintos("[${item()}]", albanchez)).isEmpty())
+    }
+
+    @Test fun warnsOnlyWhenOlivesMeetANonOliveUse() {
+        assertTrue(sigpacUseDiffersFromOlives(123, listOf("FY")))
+        assertFalse(sigpacUseDiffersFromOlives(123, listOf("OV")))
+        assertFalse(sigpacUseDiffersFromOlives(null, listOf("FY")))
+        assertFalse(sigpacUseDiffersFromOlives(123, emptyList()))
+    }
+
     @Test fun decodesTheGzipTheServiceAlwaysSends() = runBlocking {
         val gzipped = ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write("[${item()}]".toByteArray()) } }.toByteArray()
         var requested = ""
