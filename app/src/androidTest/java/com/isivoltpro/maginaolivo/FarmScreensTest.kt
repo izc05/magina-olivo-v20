@@ -49,9 +49,9 @@ class FarmScreensTest {
             }
         }
 
-        composeRule.onNodeWithText("Aún no tienes fincas").assertIsDisplayed()
+        composeRule.onNodeWithText("Aún no tienes fincas.").assertIsDisplayed()
         assertEquals(1, composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().size)
-        composeRule.onNodeWithText("Crear mi primera finca").assertIsDisplayed()
+        composeRule.onNodeWithText("Añadir finca").assertIsDisplayed()
         assertEquals(0, composeRule.onAllNodesWithText("Maquinaria").fetchSemanticsNodes().size)
     }
 
@@ -128,7 +128,7 @@ class FarmScreensTest {
             }
         }
 
-        composeRule.onNodeWithText("Crear mi primera finca").performClick()
+        composeRule.onNodeWithText("Añadir finca").performClick()
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
         composeRule.waitForIdle(); captureReviewScreenshot("nueva-finca-identificacion")
         composeRule.onNodeWithTag("farm-next").performClick()
@@ -158,7 +158,7 @@ class FarmScreensTest {
                     onCreate = { captured = it }, onRestore = {}, onRetry = {})
             }
         }
-        composeRule.onNodeWithText("Crear mi primera finca").performClick()
+        composeRule.onNodeWithText("Añadir finca").performClick()
         composeRule.onNodeWithTag("farm-name").performTextInput("El Olivar")
         composeRule.onNodeWithTag("farm-next").performClick()
         composeRule.onNodeWithTag("farm-previous").performClick()

@@ -63,6 +63,7 @@ import com.isivoltpro.maginaolivo.feature.home.WeatherWeekRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
+import com.isivoltpro.maginaolivo.ui.components.MoBrandTopBar
 import com.isivoltpro.maginaolivo.ui.components.MoTopAppBar
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
@@ -176,8 +177,7 @@ fun AppNavigation(
                     RootDestination.Olivar.route, RootDestination.Notebook.route,
                     RootDestination.Alerts.route, AppDestination.Calendar, RootDestination.Assistant.route, RootDestination.CampaignHub.route,
                 )) {
-                MoTopAppBar(
-                    title = "Mágina Olivo",
+                MoBrandTopBar(
                     modifier = Modifier.statusBarsPadding(),
                     action = {
                         HeaderActions(compositionRoot, onAssistant = { navController.navigate(RootDestination.Assistant.route) { launchSingleTop = true } },
@@ -264,7 +264,7 @@ fun AppNavigation(
                     RadarRoute(persistence = persistence, farmId = compositionRoot.activeFarmStore.get())
                 }
             }
-            composable(RootDestination.Olivar.route) {
+            composable(RootDestination.Olivar.route) { entry ->
                 val persistence = compositionRoot.localPersistence
                 if (persistence == null) {
                     PersistenceUnavailableScreen()
@@ -272,6 +272,8 @@ fun AppNavigation(
                     FarmListRoute(
                         persistence = persistence,
                         onAssistant = { navController.navigate(AppDestination.FarmSetup) },
+                        openEditorRequest = entry.savedStateHandle.getStateFlow(OPEN_FARM_FORM_KEY, false).collectAsStateWithLifecycle().value,
+                        onEditorRequestHandled = { entry.savedStateHandle[OPEN_FARM_FORM_KEY] = false },
                         onFarmSelected = { farmId ->
                             navController.navigate(AppDestination.farm(farmId.toString()))
                         },
@@ -290,6 +292,10 @@ fun AppNavigation(
                     onLater = { navController.navigate(AppDestination.farm(it.toString())) {
                         popUpTo(AppDestination.FarmSetup) { inclusive = true }
                     } },
+                    onFullForm = {
+                        navController.previousBackStackEntry?.savedStateHandle?.set(OPEN_FARM_FORM_KEY, true)
+                        navController.popBackStack()
+                    },
                 )
             }
             composable(AppDestination.FarmSetupPattern) { entry ->
@@ -1125,6 +1131,7 @@ private fun NavHostController.navigateToRoot(destination: RootDestination) {
 
 /** #369: where a Cuaderno opened from a Farm or a Parcel records that origin (and the Parcel). */
 private const val NOTEBOOK_ORIGIN_KEY = "notebook-origin"
+private const val OPEN_FARM_FORM_KEY = "open-farm-form"
 private const val NOTEBOOK_FARM_ID_KEY = "notebook-farm-id"
 private const val NOTEBOOK_PARCEL_ID_KEY = "notebook-parcel-id"
 private const val NOTEBOOK_PARCEL_NAME_KEY = "notebook-parcel-name"

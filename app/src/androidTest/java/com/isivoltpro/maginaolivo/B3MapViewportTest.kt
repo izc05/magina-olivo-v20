@@ -41,14 +41,14 @@ class B3MapViewportTest {
     @Test fun searchKeepsTheMapMenuAsHighAsTheOtherActions() {
         show(FarmMapState())
         compose.onNodeWithTag("farm-map-search-toggle").performClick()
-        compose.onNodeWithTag("farm-map-coordinates").assertIsDisplayed()
+        compose.onNodeWithTag("farm-map-place-query").assertIsDisplayed()
         compose.waitForIdle()
         capture("search-controls")
         val location = compose.onNodeWithTag("farm-map-my-location").fetchSemanticsNode().boundsInRoot
         val menu = compose.onNodeWithTag("farm-map-layer").fetchSemanticsNode().boundsInRoot
         assertTrue("Map menu $menu must not wrap taller than the location action $location", menu.height <= location.height + 1f)
         compose.onNodeWithTag("farm-map-search-toggle").performClick()
-        compose.onNodeWithTag("farm-map-coordinates").assertDoesNotExist()
+        compose.onNodeWithTag("farm-map-place-query").assertDoesNotExist()
     }
 
     /**

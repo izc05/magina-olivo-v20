@@ -95,9 +95,9 @@ class B3FocusedPointViewportTest {
             compose.onNodeWithTag("farm-map-layer").performClick()
             compose.onNodeWithTag("farm-map-base-NONE").performClick()
             compose.onNodeWithTag("farm-map-search-toggle").performClick()
-            compose.onNodeWithTag("farm-map-coordinates").performScrollTo().performClick().performTextInput("37.636,-3.480")
+            compose.onNodeWithTag("farm-map-place-query").performScrollTo().performClick().performTextInput("37.636,-3.480")
             compose.waitUntil(15_000) { shell("dumpsys input_method").contains("mInputShown=true") }
-            compose.onNodeWithTag("farm-map-go").performScrollTo().performClick()
+            compose.onNodeWithTag("farm-map-place-go").performScrollTo().performClick()
             compose.waitUntil(10_000) {
                 var focused = false
                 compose.runOnIdle {
@@ -109,7 +109,7 @@ class B3FocusedPointViewportTest {
                 focused
             }
             compose.waitForIdle()
-            compose.onNodeWithTag("farm-map-coordinates").assertDoesNotExist()
+            compose.onNodeWithTag("farm-map-place-query").assertDoesNotExist()
             compose.onNodeWithTag("farm-map-polygon").assertDoesNotExist()
             compose.waitUntil(15_000) { !shell("dumpsys input_method").contains("mInputShown=true") }
             val headerBottom = compose.onNodeWithTag("farm-map-header").fetchSemanticsNode().boundsInRoot.bottom
@@ -147,7 +147,7 @@ class B3FocusedPointViewportTest {
             val laterPan = LatLng(37.648, -3.490)
             compose.runOnIdle { native.get().moveCamera(CameraUpdateFactory.newLatLngZoom(laterPan, 15.25)) }
             compose.onNodeWithTag("farm-map-search-toggle").performClick()
-            compose.onNodeWithTag("farm-map-coordinates").performScrollTo().performClick()
+            compose.onNodeWithTag("farm-map-place-query").performScrollTo().performClick()
             compose.waitUntil(15_000) { shell("dumpsys input_method").contains("mInputShown=true") }
             compose.onNodeWithTag("farm-map-search-toggle").performScrollTo().performClick()
             compose.waitUntil(15_000) { !shell("dumpsys input_method").contains("mInputShown=true") }
@@ -160,7 +160,7 @@ class B3FocusedPointViewportTest {
             }
             compose.runOnIdle { state.value = state.value.copy(parcels = listOf(parcel)) }
             compose.onNodeWithTag("farm-map-search-toggle").performClick()
-            compose.onNodeWithTag("farm-map-go").performScrollTo().performClick()
+            compose.onNodeWithTag("farm-map-place-go").performScrollTo().performClick()
             compose.waitUntil(10_000) {
                 var focused = false
                 compose.runOnIdle { focused = abs(native.get().cameraPosition.zoom - 16.5) < 0.05 }

@@ -175,7 +175,7 @@ class NativeFarmMapLifecycleTest {
         compose.onNodeWithText(a.displayName).assertIsDisplayed()
         compose.runOnIdle { currentFarm.value = farmB.id }
         compose.waitUntil(10_000) {
-            runCatching { compose.onNodeWithText(farmB.name).fetchSemanticsNode() }.isSuccess
+            runCatching { compose.onNodeWithContentDescription(farmB.name, substring = true).fetchSemanticsNode() }.isSuccess
         }
         compose.onNodeWithTag("farm-map-parcel-card").assertDoesNotExist()
         waitForCurrentContour(first, b, a)
@@ -189,11 +189,10 @@ class NativeFarmMapLifecycleTest {
                 matches
             }
             attachScene(mode)
-            compose.onNodeWithText(farmB.name).assertIsDisplayed()
+            compose.onNodeWithContentDescription(farmB.name, substring = true).assertIsDisplayed()
             compose.onNodeWithTag("farm-map-parcel-card").assertDoesNotExist()
             waitForCurrentContour(nativeMap(), b, a)
             if (configuration == Configuration.ORIENTATION_LANDSCAPE) {
-                compose.onNodeWithTag("farm-map-layer").performClick()
                 compose.onNodeWithTag("farm-map-mode-add").performClick()
                 compose.waitUntil(10_000) { compose.onAllNodesWithTag("farm-map-mode-view").fetchSemanticsNodes().isNotEmpty() }
                 val batchMap = nativeMap()
@@ -206,7 +205,7 @@ class NativeFarmMapLifecycleTest {
                 waitForCurrentContour(nativeMap(), b, a)
                 compose.runOnIdle { currentLocate.value = null }
                 compose.waitUntil(10_000) {
-                    runCatching { compose.onNodeWithText(farmB.name).fetchSemanticsNode() }.isSuccess
+                    runCatching { compose.onNodeWithContentDescription(farmB.name, substring = true).fetchSemanticsNode() }.isSuccess
                 }
             }
         }

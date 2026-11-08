@@ -4,6 +4,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,40 @@ fun MoIconButton(
                 text = symbol,
                 style = MaterialTheme.typography.titleLarge,
             )
+        }
+    }
+}
+
+/** Compact brand bar of the four main sections: official mark, name and one action on the right. */
+@Composable
+fun MoBrandTopBar(
+    modifier: Modifier = Modifier,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MoSurfaceTokens.cardSurface,
+        contentColor = MoColors.current.primaryText,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .padding(start = MoSpacing.md, end = MoSpacing.xs)
+                .testTag("top-brand"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+        ) {
+            com.isivoltpro.maginaolivo.ui.brand.OliveMark(Modifier.size(36.dp))
+            Text(
+                text = "Mágina Olivo",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                color = MoColors.current.primaryText,
+                maxLines = 1,
+            )
+            action?.invoke()
         }
     }
 }

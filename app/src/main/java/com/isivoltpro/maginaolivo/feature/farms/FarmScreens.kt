@@ -77,7 +77,9 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 fun FarmListRoute(
     persistence: LocalPersistence,
     onFarmSelected: (UUID) -> Unit,
-    onAssistant: () -> Unit = {},
+    onAssistant: (() -> Unit)? = null,
+    openEditorRequest: Boolean = false,
+    onEditorRequestHandled: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val viewModel: FarmListViewModel = viewModel(
@@ -102,6 +104,8 @@ fun FarmListRoute(
         state = state,
         onFarmSelected = onFarmSelected,
         onAssistant = onAssistant,
+        openEditorRequest = openEditorRequest,
+        onEditorRequestHandled = onEditorRequestHandled,
         onCreate = viewModel::create,
         onRestore = viewModel::restore,
         onRetry = viewModel::retry,
@@ -130,7 +134,10 @@ fun FarmListScreen(
     onCreate: (FarmDraft) -> Unit,
     onRestore: (UUID) -> Unit,
     onRetry: () -> Unit,
-    onAssistant: () -> Unit = {},
+    /** Opens the guided creation; without it (previews, tests) «Añadir finca» opens the full form. */
+    onAssistant: (() -> Unit)? = null,
+    openEditorRequest: Boolean = false,
+    onEditorRequestHandled: () -> Unit = {},
     modifier: Modifier = Modifier,
     /** The Farm's cover photo, when one was chosen (UI polish v2). */
     cover: @Composable (UUID) -> String? = { null },
@@ -138,6 +145,13 @@ fun FarmListScreen(
     nextWork: (UUID) -> String? = { null },
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(openEditorRequest) {
+        if (openEditorRequest) {
+            editorVisible = true
+            onEditorRequestHandled()
+        }
+    }
+    val addFarm: () -> Unit = onAssistant ?: { editorVisible = true }
     // #359 follow-up: a local filter of the Farms already listed; nothing is queried or stored.
     var query by rememberSaveable { mutableStateOf("") }
     val visibleFarms = state.farms.filter { matchesFarmSearch(query, it.name, it.municipality) }
@@ -180,13 +194,6 @@ fun FarmListScreen(
                         color = MoColors.current.primaryText,
                     )
                 }
-                Text(
-                    text = "Organiza tu explotación por fincas y parcelas.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MoSurfaceTokens.secondaryText,
-                )
-                MoSecondaryButton("Crear finca con ayuda", onAssistant,
-                    Modifier.fillMaxWidth().testTag("open-farm-assistant"))
             }
 
             if (!state.isLoading && state.error == null && state.farms.isNotEmpty()) {
@@ -204,8 +211,8 @@ fun FarmListScreen(
                         modifier = Modifier.fillMaxWidth().testTag("farm-search"),
                     )
                     MoPrimaryButton(
-                        text = "+ Añadir finca",
-                        onClick = { editorVisible = true },
+                        text = "Añadir finca",
+                        onClick = addFarm,
                         enabled = !state.isLoading && !state.isSaving,
                         modifier = Modifier.fillMaxWidth().testTag("add-farm"),
                     )
@@ -223,10 +230,10 @@ fun FarmListScreen(
                 }
                 state.farms.isEmpty() -> item {
                     MoEmptyState(
-                        title = "Aún no tienes fincas",
-                        body = "Crea tu primera finca. Se guardará en este dispositivo aunque no tengas cobertura.",
-                        actionText = "Crear mi primera finca",
-                        onAction = { editorVisible = true },
+                        title = "Aún no tienes fincas.",
+                        body = "Añade tu primera finca para comenzar",
+                        actionText = "Añadir finca",
+                        onAction = addFarm,
                         actionModifier = Modifier.testTag("add-farm"),
                         icon = MoIcons.Tree,
                     )

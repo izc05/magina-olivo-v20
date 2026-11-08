@@ -71,7 +71,7 @@ class AppNavigationTest {
     fun optionalFarmAssistantKeepsOneFarmAfterRecreationAndCanBeResumed() {
         enterMainShell()
         navigateToOlivar()
-        clickByTag("open-farm-assistant")
+        clickByTag("add-farm")
         waitForTag("farm-setup-name")
         composeRule.onNodeWithTag("farm-setup-name").performTextInput("Finca asistente QA")
         clickByTag("farm-setup-create")
@@ -195,6 +195,8 @@ class AppNavigationTest {
         for (tab in listOf("Inicio", "Mi Campo", "Cuaderno", "Campaña")) {
             composeRule.onNodeWithTag("bottom-$tab").performClick()
             if (tab == "Campaña") waitForTag("agricultural-campaign-root")
+            // Inicio carries the same official logo over its photo instead of the bar.
+            if (tab != "Inicio") composeRule.onNodeWithTag("top-brand").assertIsDisplayed()
             composeRule.onNodeWithTag("top-profile-avatar").performClick()
             waitForTag("profile-root")
             composeRule.onNodeWithTag("bottom-Perfil").assertDoesNotExist()
@@ -1710,6 +1712,14 @@ class AppNavigationTest {
      * still fails loudly, with the diagnostic, so a real regression is never hidden.
      */
     private fun openSheet(triggerTag: String, expectedTag: String) {
+        if (triggerTag == "add-farm") {
+            // «Añadir finca» opens the assistant; the full form these journeys fill stays one tap away.
+            clickByTag(triggerTag)
+            waitForTag("farm-setup-manual")
+            clickByTag("farm-setup-manual")
+            waitForNodeOrDump("<$expectedTag> after the full-form link") { composeRule.onAllNodesWithTag(expectedTag) }
+            return
+        }
         clickByTag(triggerTag)
         if (awaitTag(expectedTag, SHEET_TIMEOUT_MS)) return
         clickByTag(triggerTag)

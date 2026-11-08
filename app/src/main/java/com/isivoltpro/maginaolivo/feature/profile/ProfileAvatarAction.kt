@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.isivoltpro.maginaolivo.feature.account.AccountRepository
+import androidx.compose.foundation.BorderStroke
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
@@ -45,6 +46,7 @@ fun ProfileAvatarAction(repository: AccountRepository, onClick: () -> Unit, modi
         shape = CircleShape,
         color = MoSurfaceTokens.cardSurface,
         contentColor = MoColors.current.primaryText,
+        border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (profile?.avatarFile?.exists() == true) {

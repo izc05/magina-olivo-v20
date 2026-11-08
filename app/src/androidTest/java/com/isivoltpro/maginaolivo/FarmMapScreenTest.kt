@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -79,8 +80,6 @@ class FarmMapScreenTest {
         composeRule.onNodeWithTag("farm-map-guide").assertDoesNotExist()
         composeRule.onNodeWithTag("farm-map-help").performClick()
         hasTextUnder("farm-map-guide", "Cómo añadir tus parcelas")
-        composeRule.onNodeWithTag("farm-map-mode-add").assertDoesNotExist()
-        composeRule.onNodeWithTag("farm-map-layer").performClick()
         composeRule.onNodeWithTag("farm-map-mode-add").performClick()
         composeRule.runOnIdle { assertEquals(listOf(FarmMapMode.ADD), modes) }
     }
@@ -97,7 +96,7 @@ class FarmMapScreenTest {
         // No fix: the coordinates search opens so the farmer is never left wondering.
         state.value = FarmMapState(locationProblem = LocationProblem.NO_FIX)
         composeRule.onNodeWithTag("farm-map-location-action").assertTextContains("Escribir coordenadas").performClick()
-        composeRule.onNodeWithTag("farm-map-coordinates").assertExists()
+        composeRule.onNodeWithTag("farm-map-place-query").assertExists()
     }
 
     /** #361: once found, the screen says the blue dot is the farmer's position. */
@@ -112,7 +111,7 @@ class FarmMapScreenTest {
      */
     @Test fun theMapOpensOnThePhotoWithTheOfficialBoundariesAlreadyDrawn() {
         composeRule.setContent { MaginaOlivoTheme { screen(FarmMapState(mode = FarmMapMode.VIEW)) } }
-        composeRule.onNodeWithTag("farm-map-layer").assertTextContains("Foto a\u00e9rea")
+        composeRule.onNodeWithTag("farm-map-layer").assertContentDescriptionContains("Foto a\u00e9rea", substring = true)
         composeRule.onNodeWithTag("farm-map-layer").performClick()
         composeRule.onNodeWithText("Ocultar linderos de Catastro").assertExists()
         composeRule.onNodeWithText("Ocultar recintos SIGPAC (referencia)").assertExists()
@@ -170,7 +169,7 @@ class FarmMapScreenTest {
                 FarmMapScreen(state, {}, {}, {}, { _, _, _, _ -> }, {}, { _, _ -> }, {}, {}, {}, {}, showMap = true)
             }
         }
-        composeRule.onNodeWithText("Salinillas").assertExists()
+        composeRule.onNodeWithTag("farm-map-search-toggle").assertContentDescriptionContains("Salinillas", substring = true)
         composeRule.onNodeWithTag("farm-map-official-add").assertTextContains("Añadir a Salinillas")
         composeRule.onNodeWithTag("farm-map-layer").performClick()
         composeRule.onNodeWithTag("farm-map-base-NONE").performClick()
