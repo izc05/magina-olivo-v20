@@ -228,6 +228,39 @@ class ParcelDetailViewModel(
         }
     }
 
+    /** Each section edits its own fields over the parcel as it is now; the rest stays untouched. */
+    private fun saveSection(change: (ParcelChanges) -> ParcelChanges) {
+        val parcel = mutableState.value.parcel ?: return
+        mutate("Cambios guardados en este dispositivo") { repository.update(parcelId, change(parcel.asChanges())) }
+    }
+
+    fun saveCrop(oliveTrees: String, variety: String) {
+        val olives = parseOliveTrees(oliveTrees)
+        val invalid = oliveTrees.isNotBlank() && olives == null
+        mutableState.value = mutableState.value.copy(oliveError = if (invalid) "Escribe un número de olivos entero mayor que cero" else null)
+        if (invalid) return
+        saveSection { it.copy(agronomy = it.agronomy.copy(oliveTreeCount = olives, variety = variety.nullIfBlank())) }
+    }
+
+    fun saveIrrigation(system: IrrigationSystem?, network: String, sector: String, days: Set<DayOfWeek>) = saveSection {
+        it.copy(agronomy = it.agronomy.copy(irrigationSystem = system, irrigationNetwork = network.nullIfBlank(),
+            irrigationSector = sector.nullIfBlank(), irrigationDays = days))
+    }
+
+    fun saveGeneral(name: String, areaHectares: String, municipality: String, province: String, notes: String) {
+        val area = parseArea(areaHectares)
+        val nameError = if (name.isBlank()) "Escribe un alias para la parcela" else null
+        val areaError = if (areaHectares.isNotBlank() && area == null) "Introduce una superficie válida mayor que cero" else null
+        mutableState.value = mutableState.value.copy(nameError = nameError, areaError = areaError)
+        if (nameError != null || areaError != null) return
+        val manual = mutableState.value.parcel?.source == ParcelSource.MANUAL
+        saveSection {
+            it.copy(displayName = name.trim(), managedAreaM2 = area, notes = notes.nullIfBlank(),
+                municipality = if (manual) municipality.nullIfBlank() else it.municipality,
+                province = if (manual) province.nullIfBlank() else it.province)
+        }
+    }
+
     fun recoverCadastralLocation(locate: suspend (String) -> com.isivoltpro.maginaolivo.domain.registry.RegistryLocation?) {
         val parcel = mutableState.value.parcel ?: return
         if (parcel.source != ParcelSource.CATASTRO ||
@@ -301,6 +334,20 @@ private fun ParcelDraft.toNewParcel(farmId: UUID, areaM2: Double) = NewParcel(
     managedAreaM2 = areaM2.takeIf { it > 0 },
     notes = notes.nullIfBlank(),
     agronomy = toAgronomy(),
+)
+
+private fun Parcel.asChanges() = ParcelChanges(
+    displayName = displayName,
+    cadastralReference = cadastralReference,
+    cadastralPolygon = cadastralPolygon,
+    cadastralParcel = cadastralParcel,
+    municipality = municipality,
+    province = province,
+    geometryGeoJson = geometryGeoJson,
+    cadastralAreaM2 = cadastralAreaM2,
+    managedAreaM2 = managedAreaM2,
+    notes = notes,
+    agronomy = agronomy,
 )
 
 private fun ParcelDraft.toChanges(areaM2: Double) = ParcelChanges(

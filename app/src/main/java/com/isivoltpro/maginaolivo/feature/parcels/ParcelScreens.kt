@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.dp
 import java.time.ZoneId
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.semantics.stateDescription
 import com.isivoltpro.maginaolivo.feature.sigpac.SigpacCard
@@ -292,6 +293,9 @@ fun ParcelDetailRoute(
         locatePlace = CATASTRO_PLACE,
         onRecoverLocation = { viewModel.recoverCadastralLocation(CATASTRO_PLACE) },
         onLoadSigpac = viewModel::loadSigpac,
+        onSaveCrop = viewModel::saveCrop,
+        onSaveIrrigation = viewModel::saveIrrigation,
+        onSaveGeneral = viewModel::saveGeneral,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.PARCEL, parcelId),
@@ -317,7 +321,12 @@ fun ParcelDetailScreen(
     openEditorInitially: Boolean = false,
     onOpenMap: ((farmId: UUID) -> Unit)? = null,
     onLoadSigpac: (force: Boolean) -> Unit = {},
+    onSaveCrop: (olives: String, variety: String) -> Unit = { _, _ -> },
+    onSaveIrrigation: (IrrigationSystem?, String, String, Set<DayOfWeek>) -> Unit = { _, _, _, _ -> },
+    onSaveGeneral: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> },
 ) {
+    var sectionForm by rememberSaveable { mutableStateOf<ParcelForm?>(null) }
+    OnEachSave(state.saveCount) { sectionForm = null }
     var editorVisible by rememberSaveable { mutableStateOf(openEditorInitially) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message == "Parcela archivada") onArchived() }
@@ -349,6 +358,7 @@ fun ParcelDetailScreen(
                 sigpac = state.sigpac,
                 onLoadSigpac = onLoadSigpac,
                 onEdit = { editorVisible = true },
+                onForm = { sectionForm = it },
                 onRecoverLocation = onRecoverLocation,
                 onArchive = { archiveConfirmation = true },
                 attachmentContent = attachmentContent,
@@ -368,6 +378,16 @@ fun ParcelDetailScreen(
         }
     }
     state.parcel?.let { parcel ->
+        sectionForm?.let { form ->
+            ParcelFormSheet(onDismiss = { sectionForm = null }) {
+                val close = { sectionForm = null }
+                when (form) {
+                    ParcelForm.CROP -> ParcelCropForm(parcel, state.isSaving, state.oliveError, onSaveCrop, close)
+                    ParcelForm.IRRIGATION -> ParcelIrrigationForm(parcel, state.isSaving, onSaveIrrigation, close)
+                    ParcelForm.GENERAL -> ParcelGeneralForm(parcel, state.isSaving, state.nameError, state.areaError, onSaveGeneral, close)
+                }
+            }
+        }
         if (editorVisible) ModalBottomSheet(onDismissRequest = { editorVisible = false }) {
             ParcelEditor(
                 title = "Editar parcela",
@@ -402,6 +422,7 @@ private fun ParcelDetailContent(
     sigpac: SigpacUiState,
     onLoadSigpac: (force: Boolean) -> Unit,
     onEdit: () -> Unit,
+    onForm: (ParcelForm) -> Unit,
     onRecoverLocation: (() -> Unit)?,
     onArchive: () -> Unit,
     attachmentContent: @Composable () -> Unit,
@@ -420,7 +441,7 @@ private fun ParcelDetailContent(
             Modifier.padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            ParcelIndicators(parcel, onEdit)
+            ParcelIndicators(parcel, onForm)
             val agronomy = parcel.agronomy
             val incomplete = parcel.managedAreaM2 == null || agronomy.oliveTreeCount == null ||
                 agronomy.variety == null || agronomy.irrigationSystem == null
@@ -439,7 +460,7 @@ private fun ParcelDetailContent(
             ParcelTabs(tab) { tab = it }
             when (tab) {
                 ParcelTab.ACTIVITY -> ParcelActivities(activities, onRegister)
-                ParcelTab.DATA -> ParcelDataBlocks(parcel, sigpac, onLoadSigpac, onEdit, onRecoverLocation)
+                ParcelTab.DATA -> ParcelDataBlocks(parcel, sigpac, onLoadSigpac, onEdit, onForm, onRecoverLocation)
                 ParcelTab.DOCUMENTS -> attachmentContent()
             }
             Spacer(Modifier.height(MoSpacing.xl))
@@ -503,24 +524,24 @@ private fun ParcelActionsMenu(parcel: Parcel, onOpenMap: (() -> Unit)?, onArchiv
 
 /** Four labelled figures. A value the farmer has not given reads «Sin indicar», never another source. */
 @Composable
-private fun ParcelIndicators(parcel: Parcel, onEdit: () -> Unit) {
+private fun ParcelIndicators(parcel: Parcel, onForm: (ParcelForm) -> Unit) {
     val agronomy = parcel.agronomy
     @Composable
-    fun RowScope.tile(label: String, value: String?, icon: androidx.compose.ui.graphics.vector.ImageVector, tag: String) {
+    fun RowScope.tile(label: String, value: String?, icon: androidx.compose.ui.graphics.vector.ImageVector, tag: String, form: ParcelForm) {
         MoStatTile(
             MoStat(label, value ?: "Sin indicar", icon),
             Modifier.weight(1f).clip(MoShape.card)
-                .clickable(role = Role.Button, onClickLabel = "Editar", onClick = onEdit).testTag(tag),
+                .clickable(role = Role.Button, onClickLabel = "Editar") { onForm(form) }.testTag(tag),
         )
     }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            tile("Superficie trabajada", parcel.managedAreaM2?.let(::hectares), MoIcons.Area, "parcel-stat-area")
-            tile("Olivos", agronomy.oliveTreeCount?.let(::grouped), MoIcons.Olive, "parcel-stat-trees")
+            tile("Superficie trabajada", parcel.managedAreaM2?.let(::hectares), MoIcons.Area, "parcel-stat-area", ParcelForm.GENERAL)
+            tile("Olivos", agronomy.oliveTreeCount?.let(::grouped), MoIcons.Olive, "parcel-stat-trees", ParcelForm.CROP)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            tile("Variedad", agronomy.variety, MoIcons.Leaf, "parcel-stat-variety")
-            tile("Riego", agronomy.irrigationSystem?.shortLabel(), MoIcons.Drop, "parcel-stat-irrigation")
+            tile("Variedad", agronomy.variety, MoIcons.Leaf, "parcel-stat-variety", ParcelForm.CROP)
+            tile("Riego", agronomy.irrigationSystem?.shortLabel(), MoIcons.Drop, "parcel-stat-irrigation", ParcelForm.IRRIGATION)
         }
     }
 }
@@ -536,6 +557,7 @@ private fun ParcelDataBlocks(
     sigpac: SigpacUiState,
     onLoadSigpac: (force: Boolean) -> Unit,
     onEdit: () -> Unit,
+    onForm: (ParcelForm) -> Unit,
     onRecoverLocation: (() -> Unit)?,
 ) {
     val locationPending = parcel.source == ParcelSource.CATASTRO &&
@@ -546,8 +568,8 @@ private fun ParcelDataBlocks(
     var irrigation by rememberSaveable(parcel.id) { mutableStateOf(false) }
     var extra by rememberSaveable(parcel.id) { mutableStateOf(false) }
     var calculator by rememberSaveable(parcel.id) { mutableStateOf(false) }
-    if (calculator) ModalBottomSheet(onDismissRequest = { calculator = false }) {
-        IrrigationCalculatorSheet(parcel.agronomy.oliveTreeCount)
+    if (calculator) ModalBottomSheet(onDismissRequest = { calculator = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        IrrigationCalculatorSheet(parcel.agronomy.oliveTreeCount, parcel.agronomy.irrigationSystem)
     }
     LaunchedEffect(parcel.id, official) { if (official) onLoadSigpac(false) }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -569,10 +591,10 @@ private fun ParcelDataBlocks(
         }
         ParcelSection("Cultivo y plantación", "crop", crop, { crop = !crop }) {
             ValuePair("Olivos", parcel.agronomy.oliveTreeCount?.let(::grouped), "Variedad", parcel.agronomy.variety)
-            MoTertiaryButton("Editar cultivo", onEdit, Modifier.fillMaxWidth().testTag("parcel-crop-edit"))
+            MoTertiaryButton("Editar cultivo", { onForm(ParcelForm.CROP) }, Modifier.fillMaxWidth().testTag("parcel-crop-edit"))
         }
         ParcelSection("Catastro y SIGPAC", "official", official, { official = !official }) {
-            SigpacCard(sigpac, parcel.cadastralReference != null, { onLoadSigpac(true) })
+            SigpacCard(sigpac, parcel.cadastralReference != null, { onLoadSigpac(true) }, oliveTrees = parcel.agronomy.oliveTreeCount)
             MoSectionCard(title = "Datos catastrales", icon = MoIcons.Document, modifier = Modifier.testTag("parcel-cadastral")) {
                 MoLabeledValue("Referencia catastral", parcel.cadastralReference ?: "Sin registrar")
                 ValuePair("Polígono", parcel.cadastralPolygon, "Parcela", parcel.cadastralParcel)
@@ -594,12 +616,16 @@ private fun ParcelDataBlocks(
                 )
                 MoLabeledValue("Importada el", parcel.sourceImportedAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.format(IMPORT_DATE) ?: "Sin registrar")
             }
+            MoTertiaryButton("Corregir datos catastrales", onEdit, Modifier.fillMaxWidth().testTag("parcel-correct-cadastral"))
         }
         ParcelSection("Riego e instalaciones", "irrigation", irrigation, { irrigation = !irrigation }) {
-            IrrigationCard(parcel.agronomy, onEdit)
+            IrrigationCard(parcel.agronomy) { onForm(ParcelForm.IRRIGATION) }
+            MoTertiaryButton("Editar riego", { onForm(ParcelForm.IRRIGATION) }, Modifier.fillMaxWidth().testTag("parcel-irrigation-edit"))
             MoSecondaryButton("Calculadora de riego", { calculator = true }, Modifier.fillMaxWidth().testTag("parcel-irrigation-calculator"))
         }
-        ParcelSection("Información adicional", "extra", extra, { extra = !extra }) {
+        ParcelSection("Datos generales", "extra", extra, { extra = !extra }) {
+            ValuePair("Nombre", parcel.displayName, "Municipio", parcel.municipality)
+            MoTertiaryButton("Editar datos generales", { onForm(ParcelForm.GENERAL) }, Modifier.fillMaxWidth().testTag("parcel-general-edit"))
             MoSectionCard(title = "Observaciones", icon = MoIcons.Notebook, modifier = Modifier.testTag("parcel-extra")) {
                 Text(
                     parcel.notes?.takeIf { it.isNotBlank() } ?: "Sin notas. Puedes añadirlas al editar la parcela.",

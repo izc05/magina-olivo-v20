@@ -1465,7 +1465,7 @@ internal fun detailLayout(type: ActivityType): DetailLayout = when (type) {
     )
     ActivityType.PHYTOSANITARY -> DetailLayout(
         visible = listOf(ActivityDetailFields.PRODUCT_NAME, ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.DOSE_UNIT, ActivityDetailFields.REASON),
-        advanced = listOf(ActivityDetailFields.ACTIVE_SUBSTANCE, ActivityDetailFields.TOTAL_QUANTITY, ActivityDetailFields.UNIT),
+        advanced = listOf(ActivityDetailFields.PRODUCT_REGISTRATION, ActivityDetailFields.ACTIVE_SUBSTANCE, ActivityDetailFields.TOTAL_QUANTITY, ActivityDetailFields.UNIT, ActivityDetailFields.TREATMENT_OBSERVATIONS),
         retired = listOf(ActivityDetailFields.EQUIPMENT_TEXT),
     )
     ActivityType.SOIL_WORK -> DetailLayout(visible = listOf(ActivityDetailFields.WORK_TYPE, ActivityDetailFields.METHOD))
@@ -1608,6 +1608,8 @@ private fun String.detailFieldLabel() = when (this) {
     ActivityDetailFields.DOSE_UNIT -> "Unidad de dosis"
     ActivityDetailFields.APPLICATION_METHOD -> "Método de aplicación"
     ActivityDetailFields.REASON -> "Motivo"
+    ActivityDetailFields.PRODUCT_REGISTRATION -> "Nº de registro del producto"
+    ActivityDetailFields.TREATMENT_OBSERVATIONS -> "Observaciones del tratamiento"
     ActivityDetailFields.EQUIPMENT_TEXT -> "Equipo"
     ActivityDetailFields.WORK_TYPE -> "Tipo de labor"
     ActivityDetailFields.METHOD -> "Método"

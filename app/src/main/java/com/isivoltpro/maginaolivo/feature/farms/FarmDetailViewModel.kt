@@ -23,17 +23,26 @@ data class FarmDetailUiState(
     val message: String? = null,
     /** #380: finished saves; the editor closes when this rises. */
     val saveCount: Int = 0,
+    /** Null while loading or if the records cannot be read: the panel is then simply absent. */
+    val dashboard: FarmDashboard? = null,
 )
 
 class FarmDetailViewModel(
     private val farmId: UUID,
     private val farmRepository: FarmRepository,
     private val farmCoverRepository: FarmCoverRepository,
+    dashboard: kotlinx.coroutines.flow.Flow<FarmDashboard>? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(FarmDetailUiState())
     val state: StateFlow<FarmDetailUiState> = mutableState.asStateFlow()
 
     init {
+        dashboard?.let { source ->
+            viewModelScope.launch {
+                runCatching { source.collect { mutableState.value = mutableState.value.copy(dashboard = it) } }
+                    .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+            }
+        }
         viewModelScope.launch {
             farmRepository.observeById(farmId).collect { farm ->
                 mutableState.value = mutableState.value.copy(

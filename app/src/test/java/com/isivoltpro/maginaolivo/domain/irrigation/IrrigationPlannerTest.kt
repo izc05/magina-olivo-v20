@@ -10,9 +10,9 @@ class IrrigationPlannerTest {
     @Test fun calculatesFlowVolumeAndLitersPerTree() {
         val plan = IrrigationPlanner.calculate(base)!!
         assertEquals(1_968.0, plan.totalFlowLph, 0.001)
-        assertEquals(1.97, plan.totalFlowM3PerHour, 0.001)
-        assertEquals(24.0, plan.dose.litersPerTree, 0.001)
-        assertEquals(2.95, plan.dose.theoreticalVolumeM3, 0.001)
+        assertEquals(1.968, plan.totalFlowM3PerHour, 0.0001)
+        assertEquals(24.0, plan.dose!!.litersPerTree, 0.001)
+        assertEquals(2.952, plan.volumeM3!!, 0.0001)
     }
 
     @Test fun findsTheDurationForATargetDose() {
@@ -21,7 +21,7 @@ class IrrigationPlannerTest {
 
     @Test fun weeklyFiguresNeedTheNumberOfIrrigations() {
         assertNull(IrrigationPlanner.calculate(base)!!.weeklyVolumeM3)
-        assertEquals(8.85, IrrigationPlanner.calculate(base.copy(irrigationsPerWeek = 3))!!.weeklyVolumeM3!!, 0.001)
+        assertEquals(8.856, IrrigationPlanner.calculate(base.copy(irrigationsPerWeek = 3))!!.weeklyVolumeM3!!, 0.0001)
     }
 
     @Test fun estimatesCostByVolumeOrTime() {
@@ -31,6 +31,20 @@ class IrrigationPlannerTest {
         val plan = IrrigationPlanner.calculate(base.copy(tariff = perHour, irrigationsPerWeek = 2))!!
         assertEquals(450L, plan.costPerIrrigationMinor)
         assertEquals(900L, plan.weeklyCostMinor)
+    }
+
+    @Test fun anEmptyDurationProducesNoVolumeNorCost() {
+        val plan = IrrigationPlanner.calculate(base.copy(durationMinutes = null, irrigationsPerWeek = 3, tariff = WaterTariff(WaterTariffType.PER_M3, variablePricePerUnitMinor = 20)))!!
+        assertNull(plan.dose)
+        assertNull(plan.volumeM3)
+        assertNull(plan.weeklyVolumeM3)
+        assertNull(plan.costPerIrrigationMinor)
+        assertEquals(1_968.0, plan.totalFlowLph, 0.001)
+    }
+
+    @Test fun smallInstallationsKeepTheirRealVolume() {
+        val plan = IrrigationPlanner.calculate(IrrigationPlanInput(3, 2, 2.0, 30))!!
+        assertEquals(0.006, plan.volumeM3!!, 0.0001)
     }
 
     @Test fun withoutATariffThereIsNoCost() = assertNull(IrrigationPlanner.calculate(base)!!.costPerIrrigationMinor)

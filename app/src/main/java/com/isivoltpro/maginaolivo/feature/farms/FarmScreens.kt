@@ -330,6 +330,7 @@ fun FarmDetailRoute(
                     farmId = farmId,
                     farmRepository = persistence.farmRepository,
                     farmCoverRepository = persistence.farmCoverRepository,
+                    dashboard = farmDashboardFlow(persistence, farmId),
                 )
             }
         },
@@ -407,6 +408,7 @@ fun FarmDetailScreen(
             else -> FarmDetailContent(
                 farm = state.farm,
                 coverUri = state.coverUri,
+                dashboard = state.dashboard,
                 isSaving = state.isSaving,
                 onChooseCover = { coverPicker.launch(arrayOf("image/*")) },
                 onEdit = { editorVisible = true },
@@ -476,6 +478,7 @@ fun FarmDetailScreen(
 private fun FarmDetailContent(
     farm: Farm,
     coverUri: String?,
+    dashboard: FarmDashboard?,
     isSaving: Boolean,
     onChooseCover: () -> Unit,
     onEdit: () -> Unit,
@@ -518,6 +521,7 @@ private fun FarmDetailContent(
                 Modifier.testTag("farm-stats"),
             )
             FarmAreaNotes(FarmAreaCoverage.of(listOf(farm)))
+            dashboard?.let { FarmDashboardPanel(it, onOpenSection, onRegister, onCampaign) }
             // UX-F: Mi Campo is for looking; writing down goes through Mi Cuaderno, this Farm chosen.
             onRegister?.let { register ->
                 MoPrimaryButton("Registrar en esta finca", register, Modifier.fillMaxWidth().testTag("farm-register"))
