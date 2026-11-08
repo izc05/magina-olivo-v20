@@ -594,6 +594,7 @@ fun AppNavigation(
                         onArchived = { navController.popBackStack() },
                         onLocate = { farmId -> navController.navigate(AppDestination.farmMapLocate(farmId.toString(), parcelId.toString())) },
                         onRegister = { farmId, parcelName -> openNotebookOn(farmId, parcelId, parcelName, NotebookOrigin.PARCEL_CONTEXT) },
+                        onOpenMap = { farmId -> navController.navigate(AppDestination.farmMap(farmId.toString())) },
                     )
                 }
             }

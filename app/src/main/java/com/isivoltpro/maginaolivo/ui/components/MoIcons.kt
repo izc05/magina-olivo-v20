@@ -32,6 +32,7 @@ object MoIcons {
     val Location: ImageVector by lazy { line("location", "M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z M12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z") }
     val Search: ImageVector by lazy { line("search", "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z M20.5 20.5l-4.6-4.6") }
     val Layers: ImageVector by lazy { line("layers", "M12 3.5l9 5-9 5-9-5z M3 13l9 5 9-5") }
+    val More: ImageVector by lazy { line("more", "M12 5.5h.01 M12 12h.01 M12 18.5h.01") }
     val Clock: ImageVector by lazy { line("clock", "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3 2") }
     val Bell: ImageVector by lazy { line("bell", "M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z M10 20.5a2 2 0 0 0 4 0") }
     val People: ImageVector by lazy { line("people", "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M3 20a6 6 0 0 1 12 0 M16 4.3a3.5 3.5 0 0 1 0 6.4 M18 14a6 6 0 0 1 3 6") }

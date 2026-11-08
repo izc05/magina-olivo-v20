@@ -7,6 +7,13 @@ import androidx.compose.ui.unit.dp
 import java.time.ZoneId
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -257,6 +264,7 @@ fun ParcelDetailRoute(
     /** UX-F (Issue #246 §5): opens Mi Cuaderno → Registrar hoy with this Parcel's Farm and the Parcel. */
     onRegister: ((farmId: UUID, parcelName: String) -> Unit)? = null,
     openEditorInitially: Boolean = false,
+    onOpenMap: ((farmId: UUID) -> Unit)? = null,
 ) {
     val ownerScope = persistence.workspaceRepository.currentOwnerId()?.toString() ?: "default"
     val viewModel: ParcelDetailViewModel = viewModel(
@@ -276,6 +284,7 @@ fun ParcelDetailRoute(
         onLocate = onLocate,
         onRegister = onRegister,
         openEditorInitially = openEditorInitially,
+        onOpenMap = onOpenMap,
         locatePlace = CATASTRO_PLACE,
         onRecoverLocation = { viewModel.recoverCadastralLocation(CATASTRO_PLACE) },
         attachmentContent = {
@@ -301,6 +310,7 @@ fun ParcelDetailScreen(
     locatePlace: PlaceLookup? = null,
     onRecoverLocation: (() -> Unit)? = null,
     openEditorInitially: Boolean = false,
+    onOpenMap: ((farmId: UUID) -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(openEditorInitially) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -343,6 +353,9 @@ fun ParcelDetailScreen(
                 onRegister = state.parcel.farmId
                     ?.takeIf { state.parcel.archivedAt == null }
                     ?.let { farmId -> onRegister?.let { register -> { register(farmId, state.parcel.displayName) } } },
+                onOpenMap = state.parcel.farmId
+                    ?.takeIf { state.parcel.geometryGeoJson != null }
+                    ?.let { farmId -> onOpenMap?.let { open -> { open(farmId) } } },
             )
         }
     }
@@ -385,43 +398,24 @@ private fun ParcelDetailContent(
     modifier: Modifier,
     onLocate: (() -> Unit)? = null,
     onRegister: (() -> Unit)? = null,
+    onOpenMap: (() -> Unit)? = null,
 ) {
     var tab by rememberSaveable { mutableStateOf(ParcelTab.ACTIVITY) }
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        // Design v3 (CR-004): photo header; the bundled photo is decorative, not this parcel.
-        MoPhotoHeader(
-            title = parcel.displayName,
-            heightFraction = 0.36f,
-            location = listOfNotNull(farmName, parcel.municipality).joinToString(" · ").ifEmpty { null },
-            trailing = {
-                MoStatusChip(
-                    text = if (parcel.archivedAt == null) "Activa" else "Archivada",
-                    tone = if (parcel.archivedAt == null) MoStatusTone.Success else MoStatusTone.Neutral,
-                )
-            },
-        )
+        ParcelHeader(parcel, farmName, onOpenMap, onArchive)
         Column(
             Modifier.padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            MoStatusChip(
-                text = if (parcel.source == ParcelSource.CATASTRO) "Importada de Catastro" else "Entrada manual",
-                tone = if (parcel.source == ParcelSource.CATASTRO) MoStatusTone.Success else MoStatusTone.Neutral,
-            )
+            ParcelIndicators(parcel, onEdit)
             val agronomy = parcel.agronomy
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                MoStatTile(MoStat("Superficie", parcel.areaLabel(), MoIcons.Area), Modifier.weight(1f).testTag("parcel-stat-area"))
-                MoStatTile(MoStat("Olivos", agronomy.oliveTreeCount?.let(::grouped) ?: "—", MoIcons.Olive), Modifier.weight(1f).testTag("parcel-stat-trees"))
-                MoStatTile(MoStat("Variedad", agronomy.variety ?: "—", MoIcons.Leaf), Modifier.weight(1f).testTag("parcel-stat-variety"))
-                MoStatTile(MoStat("Riego", agronomy.irrigationSystem?.shortLabel() ?: "—", MoIcons.Drop), Modifier.weight(1f).testTag("parcel-stat-irrigation"))
-            }
-            // UX-F: writing down goes through Mi Cuaderno, with this Parcel already chosen.
-            onRegister?.let { register ->
-                MoPrimaryButton("Registrar en esta parcela", register, Modifier.fillMaxWidth().testTag("parcel-register"))
-            }
+            val incomplete = parcel.managedAreaM2 == null || agronomy.oliveTreeCount == null ||
+                agronomy.variety == null || agronomy.irrigationSystem == null
+            MoPrimaryButton(if (incomplete) "Completar datos" else "Editar datos de parcela", onEdit,
+                Modifier.fillMaxWidth().testTag("parcel-edit"))
             onLocate?.let {
                 MoCompactListItem(
                     title = "Ubicar en el mapa",
@@ -432,33 +426,113 @@ private fun ParcelDetailContent(
                     trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoSurfaceTokens.secondaryText) },
                 )
             }
-            IrrigationCard(agronomy, onEdit)
             ParcelTabs(tab) { tab = it }
             when (tab) {
-                ParcelTab.ACTIVITY -> ParcelActivities(activities)
+                ParcelTab.ACTIVITY -> ParcelActivities(activities, onRegister)
                 ParcelTab.DATA -> ParcelDataBlocks(parcel, onEdit, onRecoverLocation)
                 ParcelTab.DOCUMENTS -> attachmentContent()
             }
-            MoPrimaryButton("Editar parcela", onEdit, Modifier.fillMaxWidth().testTag("parcel-edit"))
-            MoDestructiveButton("Archivar parcela", onArchive, Modifier.fillMaxWidth())
             Spacer(Modifier.height(MoSpacing.xl))
         }
     }
 }
 
+/** Neutral on purpose: no stock photograph may pass for this parcel. */
+@Composable
+private fun ParcelHeader(parcel: Parcel, farmName: String?, onOpenMap: (() -> Unit)?, onArchive: () -> Unit) {
+    Surface(color = MoSurfaceTokens.cardSurface, modifier = Modifier.fillMaxWidth().testTag("parcel-header")) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = MoSpacing.screen, end = MoSpacing.xs, top = MoSpacing.sm, bottom = MoSpacing.sm),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(parcel.displayName, style = MaterialTheme.typography.headlineSmall, color = MoColors.current.primaryText,
+                    modifier = Modifier.semantics { heading() })
+                val identity = listOfNotNull(parcel.cadastralPolygon?.let { "Pol. ${it.trimStart('0').ifEmpty { "0" }}" },
+                    parcel.cadastralParcel?.let { "Parc. ${it.trimStart('0').ifEmpty { "0" }}" }).joinToString(" · ")
+                if (identity.isNotEmpty()) Text(identity, style = MaterialTheme.typography.bodyMedium, color = MoColors.current.bodyText,
+                    modifier = Modifier.testTag("parcel-header-identity"))
+                farmName?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText) }
+                listOfNotNull(parcel.municipality, parcel.province).joinToString(", ").takeIf { it.isNotEmpty() }?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MoSurfaceTokens.secondaryText)
+                }
+                Spacer(Modifier.height(MoSpacing.xs))
+                MoStatusChip(
+                    text = if (parcel.archivedAt == null) "Activa" else "Archivada",
+                    tone = if (parcel.archivedAt == null) MoStatusTone.Success else MoStatusTone.Neutral,
+                )
+            }
+            ParcelActionsMenu(parcel, onOpenMap, onArchive)
+        }
+    }
+}
+
+@Composable
+private fun ParcelActionsMenu(parcel: Parcel, onOpenMap: (() -> Unit)?, onArchive: () -> Unit) {
+    if (onOpenMap == null && parcel.archivedAt != null) return
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp).testTag("parcel-actions")) {
+            Icon(MoIcons.More, contentDescription = "Más acciones")
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            onOpenMap?.let { openMap ->
+                DropdownMenuItem(text = { Text("Ver mapa") }, onClick = { open = false; openMap() },
+                    modifier = Modifier.testTag("parcel-open-map"))
+            }
+            if (parcel.archivedAt == null) DropdownMenuItem(
+                text = { Text("Archivar parcela") }, onClick = { open = false; onArchive() },
+                modifier = Modifier.testTag("parcel-archive"),
+            )
+        }
+    }
+}
+
+/** Four labelled figures. A value the farmer has not given reads «Sin indicar», never another source. */
+@Composable
+private fun ParcelIndicators(parcel: Parcel, onEdit: () -> Unit) {
+    val agronomy = parcel.agronomy
+    @Composable
+    fun RowScope.tile(label: String, value: String?, icon: androidx.compose.ui.graphics.vector.ImageVector, tag: String) {
+        MoStatTile(
+            MoStat(label, value ?: "Sin indicar", icon),
+            Modifier.weight(1f).clip(MoShape.card)
+                .clickable(role = Role.Button, onClickLabel = "Editar", onClick = onEdit).testTag(tag),
+        )
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            tile("Superficie trabajada", parcel.managedAreaM2?.let(::hectares), MoIcons.Area, "parcel-stat-area")
+            tile("Olivos", agronomy.oliveTreeCount?.let(::grouped), MoIcons.Olive, "parcel-stat-trees")
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            tile("Variedad", agronomy.variety, MoIcons.Leaf, "parcel-stat-variety")
+            tile("Riego", agronomy.irrigationSystem?.shortLabel(), MoIcons.Drop, "parcel-stat-irrigation")
+        }
+    }
+}
+
 /**
- * #351 (2): the Parcel's data in blocks instead of a flat list — surface (main datum) with its
- * map, Catastro identity, geometry and additional information. Only stored values; nothing new.
+ * The Parcel's data: what the farmer works first, then irrigation and the map, and the official
+ * identity folded away. Only stored values; each surface keeps its own source.
  */
 @Composable
 private fun ParcelDataBlocks(parcel: Parcel, onEdit: () -> Unit, onRecoverLocation: (() -> Unit)?) {
+    val locationPending = parcel.source == ParcelSource.CATASTRO &&
+        (parcel.municipality.isNullOrBlank() || parcel.province.isNullOrBlank())
+    var technical by rememberSaveable(parcel.id) { mutableStateOf(locationPending) }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
         Surface(shape = MoShape.card, color = MoSurfaceTokens.cardSurface, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                Column(Modifier.semantics(mergeDescendants = true) {}.testTag("parcel-area-hero")) {
-                    Text("Superficie", style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
-                    Text(parcel.areaLabel(), style = MaterialTheme.typography.headlineMedium, color = MoColors.current.primaryText)
-                    parcel.areaNote()?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText) }
+                Column(Modifier.semantics(mergeDescendants = true) {}.testTag("parcel-area-hero"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                    SurfaceLine("Superficie trabajada", parcel.managedAreaM2?.let(::hectares) ?: "Sin indicar",
+                        if (parcel.managedAreaM2 != null) "Introducido por el agricultor" else null)
+                    SurfaceLine("Superficie catastral", parcel.cadastralAreaM2?.let(::hectares) ?: "Sin registrar",
+                        if (parcel.cadastralAreaM2 != null) "Según Catastro" else null)
+                    if (parcel.managedAreaM2 != null && parcel.cadastralAreaM2 != null && parcel.managedAreaM2 > parcel.cadastralAreaM2 * 1.02) {
+                        Text("La superficie trabajada supera la catastral. Revísala.", style = MaterialTheme.typography.bodySmall,
+                            color = MoColors.current.warningText, modifier = Modifier.testTag("parcel-area-warning"))
+                    }
                 }
                 // Phase 18: the saved boundary, drawn from this phone's copy (works offline).
                 parcel.geometryGeoJson?.let { geometry ->
@@ -466,38 +540,48 @@ private fun ParcelDataBlocks(parcel: Parcel, onEdit: () -> Unit, onRecoverLocati
                 }
             }
         }
-        MoSectionCard(title = "Datos catastrales", icon = MoIcons.Document, modifier = Modifier.testTag("parcel-cadastral")) {
-            MoLabeledValue("Referencia catastral", parcel.cadastralReference ?: "Sin registrar")
-            ValuePair("Polígono", parcel.cadastralPolygon, "Parcela", parcel.cadastralParcel)
-            if (parcel.source == ParcelSource.CATASTRO &&
-                (parcel.municipality.isNullOrBlank() || parcel.province.isNullOrBlank())) {
-                Text("Ubicación pendiente de verificar", color = MoSurfaceTokens.secondaryText)
-                ValuePair("Municipio", parcel.municipality, "Provincia", parcel.province)
-                MoTertiaryButton("Elegir provincia y municipio", onEdit, Modifier.fillMaxWidth())
-                onRecoverLocation?.let { retry ->
-                    MoTertiaryButton("Reintentar consulta de Catastro", retry, Modifier.fillMaxWidth())
+        IrrigationCard(parcel.agronomy, onEdit)
+        MoTertiaryButton(if (technical) "Ocultar datos catastrales" else "Ver datos catastrales", { technical = !technical },
+            Modifier.fillMaxWidth().testTag("parcel-technical-toggle"))
+        if (technical) {
+            MoSectionCard(title = "Datos catastrales", icon = MoIcons.Document, modifier = Modifier.testTag("parcel-cadastral")) {
+                MoLabeledValue("Referencia catastral", parcel.cadastralReference ?: "Sin registrar")
+                ValuePair("Polígono", parcel.cadastralPolygon, "Parcela", parcel.cadastralParcel)
+                if (locationPending) {
+                    Text("Ubicación pendiente de verificar", color = MoSurfaceTokens.secondaryText)
+                    ValuePair("Municipio", parcel.municipality, "Provincia", parcel.province)
+                    MoTertiaryButton("Elegir provincia y municipio", onEdit, Modifier.fillMaxWidth())
+                    onRecoverLocation?.let { retry ->
+                        MoTertiaryButton("Reintentar consulta de Catastro", retry, Modifier.fillMaxWidth())
+                    }
+                } else {
+                    ValuePair("Municipio", parcel.municipality, "Provincia", parcel.province)
                 }
-            } else {
-                ValuePair("Municipio", parcel.municipality, "Provincia", parcel.province)
+            }
+            MoSectionCard(title = "Geometría", icon = MoIcons.Map, modifier = Modifier.testTag("parcel-geometry")) {
+                ValuePair(
+                    "Contorno", if (parcel.geometryGeoJson == null) "Sin contorno" else "Guardado en el teléfono",
+                    "Origen", if (parcel.source == ParcelSource.CATASTRO) "Catastro" else "Entrada manual",
+                )
+                MoLabeledValue("Importada el", parcel.sourceImportedAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.format(IMPORT_DATE) ?: "Sin registrar")
             }
         }
-        MoSectionCard(title = "Geometría", icon = MoIcons.Map, modifier = Modifier.testTag("parcel-geometry")) {
-            ValuePair(
-                "Contorno", if (parcel.geometryGeoJson == null) "Sin contorno" else "Guardado en el teléfono",
-                "Origen", if (parcel.source == ParcelSource.CATASTRO) "Catastro" else "Entrada manual",
-            )
-            ValuePair(
-                "Superficie catastral", parcel.cadastralAreaM2?.let(::hectares),
-                "Importada el", parcel.sourceImportedAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.format(IMPORT_DATE),
-            )
-        }
-        MoSectionCard(title = "Información adicional", icon = MoIcons.Notebook, modifier = Modifier.testTag("parcel-extra")) {
+        MoSectionCard(title = "Observaciones", icon = MoIcons.Notebook, modifier = Modifier.testTag("parcel-extra")) {
             Text(
                 parcel.notes?.takeIf { it.isNotBlank() } ?: "Sin notas. Puedes añadirlas al editar la parcela.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (parcel.notes.isNullOrBlank()) MoSurfaceTokens.secondaryText else MoColors.current.bodyText,
             )
         }
+    }
+}
+
+@Composable
+private fun SurfaceLine(label: String, value: String, source: String?) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MoSurfaceTokens.secondaryText)
+        Text(value, style = MaterialTheme.typography.titleLarge, color = MoColors.current.primaryText)
+        source?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText) }
     }
 }
 
@@ -508,15 +592,6 @@ private fun ValuePair(firstLabel: String, first: String?, secondLabel: String, s
         MoLabeledValue(firstLabel, first ?: "Sin registrar", Modifier.weight(1f))
         MoLabeledValue(secondLabel, second ?: "Sin registrar", Modifier.weight(1f))
     }
-}
-
-/** Which surface the main figure is, and Catastro's when it differs. */
-private fun Parcel.areaNote(): String? = when {
-    managedAreaM2 != null && cadastralAreaM2 != null && managedAreaM2 != cadastralAreaM2 ->
-        "Superficie gestionada · Catastro: ${hectares(cadastralAreaM2)}"
-    managedAreaM2 != null -> "Superficie gestionada"
-    cadastralAreaM2 != null -> "Según Catastro"
-    else -> "Sin superficie registrada"
 }
 
 private fun hectares(m2: Double): String =
@@ -585,16 +660,20 @@ private fun IrrigationCard(agronomy: ParcelAgronomy, onEdit: () -> Unit) {
 }
 
 @Composable
-private fun ParcelActivities(activities: List<Activity>) {
+private fun ParcelActivities(activities: List<Activity>, onRegister: (() -> Unit)?) {
     if (activities.isEmpty()) {
         MoEmptyState(
-            "Sin trabajos en esta parcela",
-            "Registra una poda, un riego o un tratamiento y aparecerá aquí.",
+            "Todavía no has registrado trabajos en esta parcela",
+            "Una poda, un riego o un tratamiento aparecerán aquí.",
             icon = MoIcons.History,
+            actionText = onRegister?.let { "Registrar actividad" },
+            onAction = onRegister,
+            actionModifier = Modifier.testTag("parcel-register"),
         )
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        onRegister?.let { MoPrimaryButton("Registrar actividad", it, Modifier.fillMaxWidth().testTag("parcel-register")) }
         activities.take(10).forEach { activity ->
             MoCompactListItem(
                 title = activity.description,
@@ -803,10 +882,8 @@ private fun Parcel.toDraft() = ParcelDraft(
 private val SPANISH = Locale.forLanguageTag("es-ES")
 private val SHORT_DATE = DateTimeFormatter.ofPattern("d MMM yyyy", SPANISH)
 
-/** Managed area, else the cadastral one; "—" when neither is known. */
-private fun Parcel.areaLabel(): String = (managedAreaM2 ?: cadastralAreaM2)?.let {
-    "${NumberFormat.getNumberInstance(SPANISH).apply { maximumFractionDigits = 2 }.format(it / 10_000)} ha"
-} ?: "—"
+/** Parcel list row: managed area, else the cadastral one; "—" when neither is known. */
+private fun Parcel.areaLabel(): String = (managedAreaM2 ?: cadastralAreaM2)?.let(::hectares) ?: "—"
 
 private fun grouped(value: Int): String = NumberFormat.getIntegerInstance(SPANISH).format(value)
 
