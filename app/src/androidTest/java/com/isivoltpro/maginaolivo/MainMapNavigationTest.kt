@@ -121,7 +121,7 @@ class MainMapNavigationTest {
 
     private fun assertHeader(name: String) {
         compose.waitUntil(15_000) {
-            compose.onAllNodes(hasText(name, substring = true) and hasAnyAncestor(hasTestTag("farm-map-header")), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(hasContentDescription(name, substring = true) and hasAnyAncestor(hasTestTag("farm-map-header")), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 

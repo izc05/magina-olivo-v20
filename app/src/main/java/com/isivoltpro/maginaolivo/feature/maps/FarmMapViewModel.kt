@@ -22,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -33,6 +34,8 @@ import kotlinx.coroutines.launch
  * them in one go. LOCATE: attach Catastro identity + boundary to one parcel made by hand.
  */
 enum class FarmMapMode { VIEW, ADD, LOCATE }
+
+private const val NO_OWN_LOCATION = "Aún no hay parcelas ubicadas en el mapa para ese resultado."
 
 data class FarmMapState(
     val farm: Farm? = null,
@@ -68,6 +71,8 @@ data class FarmMapState(
     val placeCandidates: List<MapPlace> = emptyList(),
     val placeSearching: Boolean = false,
     val placeError: String? = null,
+    /** The other farms of this workspace, offered by the map search. */
+    val ownFarms: List<Farm> = emptyList(),
 ) {
     val selectedCandidates: List<CadastralCandidate> get() = candidates.filter { it.reference in selected }
 }
@@ -98,7 +103,7 @@ class FarmMapViewModel(
         cancelPlaceSearch()
         val query = text.trim()
         if (query.length < 2 || parseCoordinates(query) != null) {
-            mutableState.update { it.copy(placeError = "Escribe un pueblo o paraje; las coordenadas tienen su propio campo.") }
+            mutableState.update { it.copy(placeError = "Escribe al menos dos letras.") }
             return
         }
         val local = localMapPlaces(query).firstOrNull {
@@ -144,6 +149,11 @@ class FarmMapViewModel(
 
     init {
         viewModelScope.launch { farms.observeById(farmId).collect { farm -> mutableState.update { it.copy(farm = farm) } } }
+        viewModelScope.launch {
+            farms.observeById(farmId).flatMapLatest { farm ->
+                if (farm == null) flowOf(emptyList()) else farms.observeActive(farm.workspaceId)
+            }.collect { list -> mutableState.update { it.copy(ownFarms = list) } }
+        }
         viewModelScope.launch {
             farms.observeById(farmId).flatMapLatest { farm ->
                 if (farm == null) flowOf(emptyList()) else parcels.observeActive(farmId)
@@ -306,6 +316,29 @@ class FarmMapViewModel(
             )
         }
     }
+
+    /** The search box recognised a cadastral reference: same outcome as the polygon search. */
+    fun searchReference(reference: String) {
+        cancelPlaceSearch()
+        if (mutableState.value.mode == FarmMapMode.VIEW) mutableState.update { it.copy(mode = FarmMapMode.ADD) }
+        load(replace = true) { listOf(client.findByReference(reference)) }
+    }
+
+    fun selectOwnParcel(id: UUID) {
+        val point = mutableState.value.parcels.firstOrNull { it.id == id }?.labelGeoPoint()
+        if (point != null) goTo(point) else mutableState.update { it.copy(placeError = NO_OWN_LOCATION) }
+    }
+
+    fun selectOwnFarm(id: UUID) {
+        cancelPlaceSearch()
+        placeSearchJob = viewModelScope.launch {
+            val point = parcels.observeActive(id).first().firstNotNullOfOrNull { it.labelGeoPoint() }
+            if (point != null) focusOn(point) else mutableState.update { it.copy(placeError = NO_OWN_LOCATION) }
+        }
+    }
+
+    private fun Parcel.labelGeoPoint(): GeoPoint? =
+        geometryGeoJson?.let(::parcelLabelPoint)?.let { GeoPoint(it.latitude, it.longitude) }
 
     fun searchPolygonParcel(province: String, municipality: String, polygon: String, parcel: String) {
         cancelPlaceSearch()

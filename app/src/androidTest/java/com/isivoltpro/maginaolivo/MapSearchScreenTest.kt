@@ -72,10 +72,10 @@ class MapSearchScreenTest {
         compose.onNodeWithTag("farm-map-search-toggle").assertIsDisplayed()
         capture(mode, "place-resolved-collapsed")
         compose.onNodeWithTag("farm-map-search-toggle").performClick()
-        compose.onNodeWithTag("farm-map-coordinates").performScrollTo().performTextReplacement("37.636, -3.480")
-        compose.onNodeWithTag("farm-map-go").performScrollTo().performClick()
-        compose.waitUntil(10_000) { compose.onAllNodesWithTag("farm-map-coordinates").fetchSemanticsNodes().isEmpty() }
-        compose.onNodeWithTag("farm-map-coordinates").assertDoesNotExist()
+        compose.onNodeWithTag("farm-map-place-query").performScrollTo().performTextReplacement("37.636, -3.480")
+        compose.onNodeWithTag("farm-map-place-go").performScrollTo().performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("farm-map-place-query").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithTag("farm-map-place-query").assertDoesNotExist()
         assertEquals(1, coordinateCalls)
         capture(mode, "coordinates-resolved-collapsed")
     }
