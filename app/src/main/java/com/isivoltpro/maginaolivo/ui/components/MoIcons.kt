@@ -24,6 +24,7 @@ object MoIcons {
     val Calendar: ImageVector by lazy { line("calendar", "M5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12A1.5 1.5 0 0 1 5.5 5z M4 10h16 M8 3v4 M16 3v4") }
     val ChevronLeft: ImageVector by lazy { line("chevron-left", "M15 5l-7 7 7 7") }
     val ChevronDown: ImageVector by lazy { line("chevron-down", "M5 9l7 7 7-7") }
+    val ChevronUp: ImageVector by lazy { line("chevron-up", "M5 15l7-7 7 7") }
     val ChevronRight: ImageVector by lazy { line("chevron-right", "M9 5l7 7-7 7") }
     val Map: ImageVector by lazy { line("map", "M9 4L3 6.5V20l6-2.5 6 2.5 6-2.5V4l-6 2.5z M9 4v13.5 M15 6.5V20") }
     val Parcels: ImageVector by lazy { line("parcels", "M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z") }
