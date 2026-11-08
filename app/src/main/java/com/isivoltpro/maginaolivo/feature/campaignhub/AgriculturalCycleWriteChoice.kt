@@ -83,14 +83,14 @@ fun AgriculturalCycleWriteChoice(repository: AgriculturalCycleRepository?, farmI
             }
         }
         Column(Modifier.fillMaxWidth().testTag("cycle-write-choice"),verticalArrangement=Arrangement.spacedBy(MoSpacing.xxs)) {
-            Text("Campaña agrícola del registro",style=MaterialTheme.typography.labelMedium)
+            Text("Campaña",style=MaterialTheme.typography.labelMedium)
             val inherited=snapshot.cycles.firstOrNull {it.id==parent}
             when {
                 parentRecordId!=null && inherited!=null -> {
                     Text("${inherited.label} · ${if(inherited.effectiveEndDate==null) "Abierta" else "Cerrada"}")
                     if(inherited.effectiveEndDate!=null) Text("Esta campaña está cerrada. Los trabajos nuevos necesitan una campaña abierta.",style=MaterialTheme.typography.bodySmall)
                 }
-                snapshot.cycles.isEmpty() -> Text("Sin campaña agrícola. El registro se conservará sin asignar.",style=MaterialTheme.typography.bodySmall)
+                snapshot.cycles.isEmpty() -> Text("Sin campaña asignada",style=MaterialTheme.typography.bodySmall)
                 parentRecordId!=null -> Text("Vincula primero la recolección o el trabajo a una campaña agrícola.",style=MaterialTheme.typography.bodySmall)
                 open.isEmpty() -> Text("No hay una campaña abierta. Puedes crearla sin perder este formulario.",style=MaterialTheme.typography.bodySmall)
                 else -> Box {

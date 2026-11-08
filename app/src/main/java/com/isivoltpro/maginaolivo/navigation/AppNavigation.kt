@@ -550,6 +550,7 @@ fun AppNavigation(
                             onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
                             onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
                             onMap = { navController.navigate(AppDestination.farmMap(farmId.toString())) },
+                            onAssistant = { navController.navigate(AppDestination.farmSetup(farmId.toString())) },
                         )
                     }
                 }
