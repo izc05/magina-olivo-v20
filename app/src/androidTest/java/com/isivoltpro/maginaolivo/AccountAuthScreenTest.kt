@@ -192,7 +192,9 @@ class AccountAuthScreenTest {
     }
     @Test fun simulationEntryNeedsTheQaLaunchExtra() {
         compose.activity.intent=android.content.Intent().putExtra(ACCOUNT_SIMULATION_QA_EXTRA,true)
-        val repo=AccountRepository(Api(),MemoryAccountSessionStore())
+        // The entry is offered only from a real provider: an already simulated session hides it.
+        val realProvider=object:AccountAuthApi by Api() { override val simulated=false }
+        val repo=AccountRepository(realProvider,MemoryAccountSessionStore())
         compose.setContent { MaginaOlivoTheme(AppearanceMode.LIGHT) { AccountRoute(repo,{},simulationAllowed=true,connectivity=MutableStateFlow(true)) } }
         waitFor("account-email")
         compose.onNodeWithTag("account-start-simulation").performScrollTo().assertIsDisplayed()
