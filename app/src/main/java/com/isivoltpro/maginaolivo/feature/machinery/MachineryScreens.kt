@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.machinery
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
@@ -130,7 +131,7 @@ fun MachineryScreen(
     }
 
     if (editorVisible) {
-        ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
+        MoFormSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             MachineEditor(
                 title = "Nueva máquina",
                 initial = MachineForm(),
@@ -421,7 +422,7 @@ fun MachineDetailScreen(
 
     val machine = state.machine ?: return
     when (sheet) {
-        "edit" -> ModalBottomSheet(onDismissRequest = { sheet = null; onEditorClosed() }) {
+        "edit" -> MoFormSheet(onDismissRequest = { sheet = null; onEditorClosed() }) {
             MachineEditor(
                 title = "Editar máquina",
                 initial = machine.toForm(),
@@ -432,7 +433,7 @@ fun MachineDetailScreen(
                 onCancel = { sheet = null; onEditorClosed() },
             )
         }
-        "phyto-profile" -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
+        "phyto-profile" -> MoFormSheet(onDismissRequest = { sheet = null }) {
             PhytosanitaryEquipmentEditor(
                 initial = state.phytosanitaryProfile,
                 isSaving = state.isSaving,
@@ -440,7 +441,7 @@ fun MachineDetailScreen(
                 onCancel = { sheet = null },
             )
         }
-        "phyto-inspection" -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
+        "phyto-inspection" -> MoFormSheet(onDismissRequest = { sheet = null }) {
             PhytosanitaryInspectionEditor(
                 isSaving = state.isSaving,
                 onSave = onAddPhytosanitaryInspection,

@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
@@ -828,7 +829,7 @@ fun HarvestDetailScreen(
         }
     }
     if (editorVisible && harvest != null && context != null) {
-        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { editorVisible = false; onEditorClosed() }) {
+        MoFormSheet(containerColor = MoSurfaceTokens.cardSurface, skipPartiallyExpanded = true, onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             HarvestEditor(
                 title = "Editar día de recolección",
                 initial = harvest.toForm(),
@@ -845,7 +846,7 @@ fun HarvestDetailScreen(
     }
     val rates = state.rates
     if (ratesVisible && harvest != null && rates != null) {
-        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { ratesVisible = false }) {
+        MoFormSheet(containerColor = MoSurfaceTokens.cardSurface, skipPartiallyExpanded = true, onDismissRequest = { ratesVisible = false }) {
             RatesSheet(
                 rates = rates,
                 isSaving = state.isSaving,
@@ -857,7 +858,7 @@ fun HarvestDetailScreen(
     }
     if (costVisible && harvest != null) {
         val currencyContext = state.newCostCurrencyContext()
-        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { costVisible = false }) {
+        MoFormSheet(containerColor = MoSurfaceTokens.cardSurface, skipPartiallyExpanded = true, onDismissRequest = { costVisible = false }) {
             CostSheet(
                 currency = currencyContext.currency,
                 currencyError = currencyContext.error,
@@ -873,7 +874,7 @@ fun HarvestDetailScreen(
     }
     if (equipmentVisible && harvest != null) {
         val equipmentCurrency = equipmentCurrencyContext(harvest.id, harvest.campaignId, state.equipment, state.costs, state.rates?.currency)
-        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { equipmentVisible = false }) {
+        MoFormSheet(containerColor = MoSurfaceTokens.cardSurface, skipPartiallyExpanded = true, onDismissRequest = { equipmentVisible = false }) {
             EquipmentSheet(
                 current = state.equipment,
                 machines = state.machines,
@@ -891,12 +892,12 @@ fun HarvestDetailScreen(
     val editingLabour = state.labour.firstOrNull { it.id.toString() == editLabour }
     val labourCurrency = state.resolvedLabourCurrency()
     if (editingLabour != null && harvest != null && harvest.editable) {
-        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { if (!state.isSaving) { editLabour = null; labourActions.onClear() } }) {
+        MoFormSheet(containerColor = MoSurfaceTokens.cardSurface, skipPartiallyExpanded = true, onDismissRequest = { if (!state.isSaving) { editLabour = null; labourActions.onClear() } }) {
             LabourPriceSheet(editingLabour, harvest.harvestDate, labourCurrency?.currency, state.isSaving, state.labourError, { labourActions.onUpdate(editingLabour.id, it) }, { editLabour = null; labourActions.onClear() }, labourCurrency?.error)
         }
     }
     if (labourVisible && harvest?.campaignId != null) {
-        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { if (!state.isSaving) { labourVisible = false; labourActions.onClear() } }) {
+        MoFormSheet(containerColor = MoSurfaceTokens.cardSurface, skipPartiallyExpanded = true, onDismissRequest = { if (!state.isSaving) { labourVisible = false; labourActions.onClear() } }) {
             if (labourCurrency?.currency == null) {
                 Column(Modifier.padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                     Text(labourCurrency?.error ?: "La moneda de los jornales no está disponible.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-currency-error"))

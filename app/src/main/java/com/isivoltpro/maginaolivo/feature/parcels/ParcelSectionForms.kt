@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.parcels
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,9 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,7 +64,7 @@ internal fun Modifier.imeOnFocus(): Modifier {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ParcelFormSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    MoFormSheet(onDismissRequest = onDismiss, skipPartiallyExpanded = true) {
         Column(
             Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),

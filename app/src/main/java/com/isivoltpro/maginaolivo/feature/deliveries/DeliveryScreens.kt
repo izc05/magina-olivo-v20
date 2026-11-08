@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.deliveries
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
@@ -367,7 +368,7 @@ fun DeliveriesScreen(
                 )
             }
         }
-        ModalBottomSheet(onDismissRequest = { editorVisible = false; ticketSeed = null; onEditorClosed() }) {
+        MoFormSheet(onDismissRequest = { editorVisible = false; ticketSeed = null; onEditorClosed() }) {
             val next = state.nextForm
             key(state.nextFormGeneration) {
                 if (next != null) {
@@ -970,7 +971,7 @@ fun DeliveryDetailScreen(
     val delivery = state.delivery ?: return
     when (sheet) {
         "edit" -> state.context?.let { context ->
-            ModalBottomSheet(onDismissRequest = { sheet = null; onEditorClosed() }) {
+            MoFormSheet(onDismissRequest = { sheet = null; onEditorClosed() }) {
                 DeliveryEditor(
                     title = "Editar pesada",
                     initial = delivery.toForm(),
@@ -985,7 +986,7 @@ fun DeliveryDetailScreen(
                 )
             }
         }
-        "yield" -> ModalBottomSheet(onDismissRequest = { sheet = null; onEditorClosed() }) {
+        "yield" -> MoFormSheet(onDismissRequest = { sheet = null; onEditorClosed() }) {
             YieldEditor(delivery.analysis.toForm(), state.yieldErrors, state.isSaving, onRecordYield) {
                 sheet = null
                 onEditorClosed()

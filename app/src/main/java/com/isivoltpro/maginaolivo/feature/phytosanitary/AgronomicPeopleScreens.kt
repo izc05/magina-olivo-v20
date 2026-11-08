@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.phytosanitary
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
@@ -138,7 +139,7 @@ fun AgronomicPeopleScreen(
     }
 
     if (editor) {
-        ModalBottomSheet(onDismissRequest = { editor = false; onEditorClosed() }) {
+        MoFormSheet(onDismissRequest = { editor = false; onEditorClosed() }) {
             PersonEditor(
                 title = "Añadir aplicador o asesor",
                 initial = AgronomicPersonForm(),
@@ -332,7 +333,7 @@ fun AgronomicPersonDetailScreen(
 
     val person = state.person ?: return
     when (sheet) {
-        "edit" -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
+        "edit" -> MoFormSheet(onDismissRequest = { sheet = null }) {
             PersonEditor(
                 title = "Editar persona",
                 initial = AgronomicPersonForm(person.displayName, person.taxId.orEmpty(), person.isAdvisor),
@@ -342,7 +343,7 @@ fun AgronomicPersonDetailScreen(
                 onCancel = { sheet = null },
             )
         }
-        "credential" -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
+        "credential" -> MoFormSheet(onDismissRequest = { sheet = null }) {
             CredentialEditor(
                 isAdvisor = person.isAdvisor,
                 isSaving = state.isSaving,

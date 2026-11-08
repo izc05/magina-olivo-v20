@@ -323,13 +323,14 @@ private fun Map<String, String>.decimal(key: String): Double? =
 private fun <T> Map<String, String>.enumOrNull(key: String, parse: (String) -> T): T? =
     text(key)?.let { runCatching { parse(it) }.getOrNull() }
 
+/** Shown and edited the Spanish way; [decimal] reads it back, so the stored number is unchanged. */
 private fun Double?.plain(): String? = this?.let {
-    BigDecimal(it.toString()).stripTrailingZeros().toPlainString()
+    BigDecimal(it.toString()).stripTrailingZeros().toPlainString().replace('.', ',')
 }
 
 private fun Double.toMinorUnits(): Long =
     BigDecimal(this.toString()).movePointRight(2).setScale(0, RoundingMode.HALF_UP).toLong()
 
 private fun Long?.majorUnits(): String? = this?.let {
-    BigDecimal(it).movePointLeft(2).stripTrailingZeros().toPlainString()
+    BigDecimal(it).movePointLeft(2).stripTrailingZeros().toPlainString().replace('.', ',')
 }

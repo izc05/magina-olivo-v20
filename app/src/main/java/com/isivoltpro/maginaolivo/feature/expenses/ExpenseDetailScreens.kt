@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
@@ -172,7 +173,7 @@ fun ExpenseDetailScreen(
 
     val expense = state.expense
     if (editorVisible && expense != null) {
-        ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
+        MoFormSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             ExpenseEditor(
                 title = "Editar gasto",
                 initial = expense.toForm(),

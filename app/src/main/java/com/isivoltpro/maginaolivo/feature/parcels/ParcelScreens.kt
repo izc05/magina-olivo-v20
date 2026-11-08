@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.parcels
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
@@ -244,7 +245,7 @@ fun FarmParcelsSection(
     }
     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     if (editorVisible) {
-        ModalBottomSheet(onDismissRequest = { editorVisible = false }) {
+        MoFormSheet(onDismissRequest = { editorVisible = false }) {
             ParcelEditor(
                 title = "Nueva parcela",
                 initial = ParcelDraft(),
@@ -388,7 +389,7 @@ fun ParcelDetailScreen(
                 }
             }
         }
-        if (editorVisible) ModalBottomSheet(onDismissRequest = { editorVisible = false }) {
+        if (editorVisible) MoFormSheet(onDismissRequest = { editorVisible = false }) {
             ParcelEditor(
                 title = "Editar parcela",
                 initial = parcel.toDraft(),

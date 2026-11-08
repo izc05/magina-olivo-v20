@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.campaigns
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
@@ -143,7 +144,7 @@ fun FarmCampaignsSection(
             }
         }
     }
-    if (editor) ModalBottomSheet(onDismissRequest = { editor = false }) {
+    if (editor) MoFormSheet(onDismissRequest = { editor = false }) {
         CampaignEditor(state.parcels, state.nameError, state.dateError, state.isSaving, onCreate, { editor = false }, cycleChoice = cycleChoice, saveError = state.error)
     }
 }
@@ -535,7 +536,7 @@ fun CampaignDetailScreen(
         }
     }
     val campaign = state.campaign
-    if (editor && campaign != null) ModalBottomSheet(onDismissRequest = { editor = false }) {
+    if (editor && campaign != null) MoFormSheet(onDismissRequest = { editor = false }) {
         CampaignEditor(state.parcels, null, null, state.isSaving, onUpdate, { editor = false },
             CampaignDraft(campaign.name, campaign.startDate, campaign.snapshots.map { it.parcelId }.toSet(), campaign.notes.orEmpty()),
             isEditing = true)

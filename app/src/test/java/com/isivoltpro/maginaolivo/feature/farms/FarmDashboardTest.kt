@@ -79,6 +79,25 @@ class FarmDashboardTest {
         assertEquals(listOf(after), filterFarmHistory(listOf(after), ActivityType.PHYTOSANITARY, campaign, null, "", true, CampaignPeriod(LocalDate.of(2026, 10, 1), null)))
     }
 
+    @Test fun campaignLimitsIncludeBothDaysAndAnExplicitCampaignWins() {
+        val period = CampaignPeriod(LocalDate.of(2026, 10, 1), LocalDate.of(2027, 3, 31))
+        fun inPeriod(activity: Activity) = activity.belongsToCampaign(campaign, period)
+        assertEquals(true, inPeriod(activity(date = period.start, campaignId = null)))
+        assertEquals(true, inPeriod(activity(date = period.end!!, campaignId = null)))
+        assertEquals(false, inPeriod(activity(date = period.start.minusDays(1), campaignId = null)))
+        assertEquals(false, inPeriod(activity(date = period.end!!.plusDays(1), campaignId = null)))
+        assertEquals(false, activity(campaignId = null).belongsToCampaign(campaign, null))
+        // Explicit assignment decides, whatever the date says.
+        assertEquals(true, inPeriod(activity(date = LocalDate.of(2020, 1, 1), campaignId = campaign)))
+        assertEquals(false, inPeriod(activity(date = LocalDate.of(2026, 11, 8), campaignId = UUID.randomUUID())))
+    }
+
+    @Test fun aTreatmentMatchingByIdAndDateCountsOnce() {
+        val period = CampaignPeriod(LocalDate.of(2026, 10, 1), null)
+        val explicit = activity(date = LocalDate.of(2026, 11, 8), campaignId = campaign)
+        assertEquals(1, FarmDashboard.of(campaign, "26/27", listOf(explicit), emptyList(), emptyList(), emptyList(), 0, campaignPeriod = period).treatmentsInCampaign)
+    }
+
     @Test fun onlyPostedExpensesOfTheCampaignAreAdded() {
         val summary = dashboard(expenses = listOf(expense(1_000, ExpenseCategory.LABOR), expense(500, ExpenseCategory.PRODUCTS),
             expense(9_999, ExpenseCategory.LABOR, ExpenseStatus.DRAFT), expense(7_777, ExpenseCategory.LABOR, campaignId = UUID.randomUUID())))

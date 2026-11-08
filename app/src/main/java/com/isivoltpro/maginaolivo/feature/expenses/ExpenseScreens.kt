@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 
@@ -310,7 +311,7 @@ fun ExpensesScreen(
             onEditorClosed()
             if (contextual) onContextDone?.invoke(false)
         }
-        ModalBottomSheet(containerColor = MoSurfaceTokens.cardSurface, onDismissRequest = { closeEditor() }) {
+        MoFormSheet(containerColor = MoSurfaceTokens.cardSurface, onDismissRequest = { closeEditor() }) {
             ExpenseEditor(
                 agriculturalCycles = agriculturalCycles,
                 // #378: outside a campaign, Jornal is the Farm's labour — said so, with Mano de obra chosen.

@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.Box
@@ -301,7 +302,7 @@ fun FarmListScreen(
     }
 
     if (editorVisible) {
-        ModalBottomSheet(onDismissRequest = { editorVisible = false }) {
+        MoFormSheet(onDismissRequest = { editorVisible = false }) {
             FarmEditor(
                 title = "Nueva finca",
                 initial = FarmDraft(),
@@ -443,7 +444,7 @@ fun FarmDetailScreen(
 
     val farm = state.farm
     if (editorVisible && farm != null) {
-        ModalBottomSheet(onDismissRequest = { editorVisible = false }) {
+        MoFormSheet(onDismissRequest = { editorVisible = false }) {
             FarmEditor(
                 title = "Editar finca",
                 initial = farm.toDraft(),

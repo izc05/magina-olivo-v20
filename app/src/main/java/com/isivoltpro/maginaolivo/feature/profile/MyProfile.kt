@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.profile
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
@@ -19,7 +20,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -201,10 +201,10 @@ fun MyProfileSection(
         borderColor = MoSurfaceTokens.cardStroke.copy(alpha = 0.38f),
     )
     when (sheet) {
-        SHEET_LOCATION -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
+        SHEET_LOCATION -> MoFormSheet(onDismissRequest = { sheet = null }) {
             LocationSheet(settings, state.isSaving, state.error, onSave = onSaveLocation, onCancel = { sheet = null })
         }
-        SHEET_COOPERATIVE -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
+        SHEET_COOPERATIVE -> MoFormSheet(onDismissRequest = { sheet = null }) {
             CooperativeSheet(
                 current = settings.preferredCooperative?.id,
                 cooperatives = state.cooperatives,
