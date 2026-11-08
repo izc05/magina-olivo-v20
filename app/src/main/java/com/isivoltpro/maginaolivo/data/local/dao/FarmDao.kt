@@ -24,11 +24,26 @@ interface FarmDao {
              JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
                AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS parcel_count,
-            (SELECT SUM(COALESCE(p.managed_area_m2, p.cadastral_area_m2))
+            (SELECT SUM(p.managed_area_m2)
              FROM farm_parcel_memberships m
              JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
-               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS total_area_m2,
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS managed_area_m2,
+            (SELECT COUNT(p.managed_area_m2)
+             FROM farm_parcel_memberships m
+             JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS managed_parcels,
+            (SELECT SUM(p.cadastral_area_m2)
+             FROM farm_parcel_memberships m
+             JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS cadastral_area_m2,
+            (SELECT COUNT(p.cadastral_area_m2)
+             FROM farm_parcel_memberships m
+             JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS cadastral_parcels,
             (SELECT SUM(p.olive_tree_count)
              FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
@@ -53,10 +68,22 @@ interface FarmDao {
             (SELECT COUNT(*) FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
                AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS parcel_count,
-            (SELECT SUM(COALESCE(p.managed_area_m2, p.cadastral_area_m2))
+            (SELECT SUM(p.managed_area_m2)
              FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
-               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS total_area_m2,
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS managed_area_m2,
+            (SELECT COUNT(p.managed_area_m2)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS managed_parcels,
+            (SELECT SUM(p.cadastral_area_m2)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS cadastral_area_m2,
+            (SELECT COUNT(p.cadastral_area_m2)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS cadastral_parcels,
             (SELECT SUM(p.olive_tree_count)
              FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
@@ -81,10 +108,22 @@ interface FarmDao {
             (SELECT COUNT(*) FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
                AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS parcel_count,
-            (SELECT SUM(COALESCE(p.managed_area_m2, p.cadastral_area_m2))
+            (SELECT SUM(p.managed_area_m2)
              FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
-               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS total_area_m2,
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS managed_area_m2,
+            (SELECT COUNT(p.managed_area_m2)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS managed_parcels,
+            (SELECT SUM(p.cadastral_area_m2)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS cadastral_area_m2,
+            (SELECT COUNT(p.cadastral_area_m2)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS cadastral_parcels,
             (SELECT SUM(p.olive_tree_count)
              FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL

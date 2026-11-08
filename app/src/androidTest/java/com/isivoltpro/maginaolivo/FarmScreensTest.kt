@@ -306,7 +306,7 @@ class FarmScreensTest {
         notes = null,
         coverDocumentId = null,
         parcelCount = index.toLong(),
-        totalAreaM2 = index * 10_000.0,
+        managedAreaM2 = index * 10_000.0,
         activeCampaignName = null,
         archivedAt = null,
         version = 1,

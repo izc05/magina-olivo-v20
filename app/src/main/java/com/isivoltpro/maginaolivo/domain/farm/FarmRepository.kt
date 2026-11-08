@@ -15,7 +15,8 @@ data class Farm(
     val notes: String?,
     val coverDocumentId: UUID?,
     val parcelCount: Long,
-    val totalAreaM2: Double?,
+    /** Sum of the worked area the farmer gave; null when no parcel has one. */
+    val managedAreaM2: Double?,
     val activeCampaignName: String?,
     val archivedAt: Instant?,
     val version: Long,
@@ -23,6 +24,10 @@ data class Farm(
     val oliveTreeCount: Long? = null,
     /** True only when every active parcel has a count, so the sum is the whole farm. */
     val oliveTreeCountComplete: Boolean = false,
+    val managedParcelCount: Long = 0,
+    /** Official figure, added up apart from the worked area. */
+    val cadastralAreaM2: Double? = null,
+    val cadastralParcelCount: Long = 0,
 )
 
 data class NewFarm(

@@ -174,7 +174,7 @@ class CadastreImportScreenTest {
     private fun farm(name: String) = Farm(
         id = UUID.randomUUID(), workspaceId = UUID.randomUUID(), name = name,
         description = null, municipality = null, province = null, notes = null,
-        coverDocumentId = null, parcelCount = 0, totalAreaM2 = null,
+        coverDocumentId = null, parcelCount = 0, managedAreaM2 = null,
         activeCampaignName = null, archivedAt = null, version = 1,
     )
 

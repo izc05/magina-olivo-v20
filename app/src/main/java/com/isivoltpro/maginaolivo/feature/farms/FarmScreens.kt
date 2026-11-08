@@ -51,6 +51,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
 import com.isivoltpro.maginaolivo.ui.components.MoListSkeleton
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
+import com.isivoltpro.maginaolivo.domain.farm.FarmAreaCoverage
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
@@ -510,12 +511,13 @@ private fun FarmDetailContent(
         ) {
             MoStatStrip(
                 listOf(
-                    MoStat("Superficie", farm.areaLabel(), MoIcons.Area),
+                    MoStat("Sup. trabajada", farm.areaLabel(), MoIcons.Area),
                     MoStat("Parcelas", farm.parcelCount.toString(), MoIcons.Parcels),
                     MoStat("Olivos", farm.oliveTreeLabel(), MoIcons.Olive),
                 ),
                 Modifier.testTag("farm-stats"),
             )
+            FarmAreaNotes(FarmAreaCoverage.of(listOf(farm)))
             // UX-F: Mi Campo is for looking; writing down goes through Mi Cuaderno, this Farm chosen.
             onRegister?.let { register ->
                 MoPrimaryButton("Registrar en esta finca", register, Modifier.fillMaxWidth().testTag("farm-register"))
@@ -567,11 +569,12 @@ private fun SectionEntry(section: FarmSection, icon: ImageVector, subtitle: Stri
 
 @Composable
 private fun FarmTotals(farms: List<Farm>) {
-    val knownArea = farms.mapNotNull { it.totalAreaM2 }.sum().takeIf { farms.any { farm -> farm.totalAreaM2 != null } }
+    val coverage = FarmAreaCoverage.of(farms)
+    val knownArea = coverage.managedAreaM2
     val stats = listOf(
         MoStat("Fincas", farms.size.toString(), MoIcons.Tree),
         MoStat("Parcelas", farms.sumOf { it.parcelCount }.toString(), MoIcons.Parcels),
-        MoStat("Superficie", knownArea?.let(::formatArea) ?: "—", MoIcons.Area),
+        MoStat("Sup. trabajada", coverage.managedLabel, MoIcons.Area),
         // #359: the same olive semantics as Inicio — known sum, «≥ N» if partial, «—» if none.
         MoStat("Olivos", oliveTreesLabel(farms), MoIcons.Olive),
     )
@@ -587,6 +590,7 @@ private fun FarmTotals(farms: List<Farm>) {
                 }
             }
         }
+        FarmAreaNotes(coverage)
         if (knownArea == null && farms.isNotEmpty()) {
             Text(
                 "Añade superficie a tus parcelas para calcular rendimientos.",
@@ -607,7 +611,7 @@ private fun FarmCard(
     MoFarmCard(
         name = farm.name,
         municipality = farm.locationLabel(),
-        area = farm.totalAreaM2?.let(::formatArea) ?: "—",
+        area = farm.areaLabel(),
         parcels = farm.parcelCount.toString(),
         campaignStatus = farm.activeCampaignName ?: "Sin campaña activa",
         modifier = Modifier
@@ -744,7 +748,17 @@ private fun Farm.locationLabel(): String = listOfNotNull(municipality, province)
     .joinToString(", ")
     .ifBlank { "Completa la ubicación para ver la finca en el mapa" }
 
-private fun Farm.areaLabel(): String = totalAreaM2?.let(::formatArea) ?: "—"
+private fun Farm.areaLabel(): String = managedAreaM2?.let(::formatArea) ?: "Sin indicar"
+
+/** How much of the worked area is known, and the official figure apart from it. */
+@Composable
+internal fun FarmAreaNotes(coverage: FarmAreaCoverage, modifier: Modifier = Modifier) {
+    val lines = listOfNotNull(coverage.managedCoverageText, coverage.cadastralText)
+    if (lines.isEmpty()) return
+    Column(modifier.testTag("farm-area-notes")) {
+        lines.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = MoSurfaceTokens.secondaryText) }
+    }
+}
 
 /** "—" when no parcel has a count; "≥ N" when only some do, so a partial sum never looks whole. */
 private fun Farm.oliveTreeLabel(): String {

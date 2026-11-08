@@ -155,7 +155,7 @@ class FarmListViewModelTest {
         notes = null,
         coverDocumentId = null,
         parcelCount = 0,
-        totalAreaM2 = null,
+        managedAreaM2 = null,
         activeCampaignName = null,
         archivedAt = if (archived) java.time.Instant.EPOCH else null,
         version = 1,

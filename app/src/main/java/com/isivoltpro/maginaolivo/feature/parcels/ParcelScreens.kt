@@ -526,6 +526,7 @@ private fun ParcelIndicators(parcel: Parcel, onEdit: () -> Unit) {
  * Datos in folded sections, so nothing has to be read or filled at once. Only stored values, and
  * each surface and figure keeps its source. SIGPAC is asked only when its section is opened.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ParcelDataBlocks(
     parcel: Parcel,
@@ -541,6 +542,10 @@ private fun ParcelDataBlocks(
     var official by rememberSaveable(parcel.id) { mutableStateOf(locationPending) }
     var irrigation by rememberSaveable(parcel.id) { mutableStateOf(false) }
     var extra by rememberSaveable(parcel.id) { mutableStateOf(false) }
+    var calculator by rememberSaveable(parcel.id) { mutableStateOf(false) }
+    if (calculator) ModalBottomSheet(onDismissRequest = { calculator = false }) {
+        IrrigationCalculatorSheet(parcel.agronomy.oliveTreeCount)
+    }
     LaunchedEffect(parcel.id, official) { if (official) onLoadSigpac(false) }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         ParcelSection("Resumen agrícola", "summary", summary, { summary = !summary }) {
@@ -589,6 +594,7 @@ private fun ParcelDataBlocks(
         }
         ParcelSection("Riego e instalaciones", "irrigation", irrigation, { irrigation = !irrigation }) {
             IrrigationCard(parcel.agronomy, onEdit)
+            MoSecondaryButton("Calculadora de riego", { calculator = true }, Modifier.fillMaxWidth().testTag("parcel-irrigation-calculator"))
         }
         ParcelSection("Información adicional", "extra", extra, { extra = !extra }) {
             MoSectionCard(title = "Observaciones", icon = MoIcons.Notebook, modifier = Modifier.testTag("parcel-extra")) {

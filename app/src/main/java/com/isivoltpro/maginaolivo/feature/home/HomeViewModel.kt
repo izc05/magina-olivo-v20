@@ -94,7 +94,7 @@ data class HomeUiState(
     val hasExplicitWeatherLocation: Boolean = false,
 ) {
     val parcelCount: Long get() = farms.sumOf { it.parcelCount }
-    val knownAreaM2: Double? get() = farms.mapNotNull { it.totalAreaM2 }.takeIf { it.isNotEmpty() }?.sum()
+    val knownAreaM2: Double? get() = farms.mapNotNull { it.managedAreaM2 }.takeIf { it.isNotEmpty() }?.sum()
     /** Olive trees the farmer counted (CR-004); null when no parcel has a count. */
     val oliveTrees: Long? get() = farms.mapNotNull { it.oliveTreeCount }.takeIf { it.isNotEmpty() }?.sum()
     /** False when some farm or parcel has no count yet, so the total is only a lower bound. */
