@@ -828,8 +828,8 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("parcel-detail-root").assertIsDisplayed()
         assertTextVisible("Entrada manual")
         composeRule.waitUntil(UI_TIMEOUT_MS) {
-            // No area, trees or variety were given: the tiles say "—", never a number.
-            composeRule.onAllNodesWithText("—", useUnmergedTree = true)
+            // No area, trees or variety were given: the tiles say «Sin indicar», never a number.
+            composeRule.onAllNodesWithText("Sin indicar", useUnmergedTree = true)
                 .fetchSemanticsNodes().size >= 3
         }
         composeRule.onNodeWithTag("bottom-Mi Campo").assertIsSelected()
