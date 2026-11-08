@@ -2,12 +2,21 @@
 // Not evidence of JWT verification or of the deployed DEV schema.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 
 const ISSUER='https://zubpicdibqbmewxeurhm.supabase.co/auth/v1';
 const file=(dir,name)=>readFileSync(new URL(`../${dir}/${name}`,import.meta.url),'utf8');
+const safeUpdateMigration='20261108080954_cr015_p4_cycle_rpc_safeupdate.sql';
+
+test('safe-update migration filename matches DEV history exactly and has no duplicate version',()=>{
+  const all=readdirSync(new URL('../migrations/',import.meta.url)).filter(name=>name.endsWith('.sql')).sort();
+  const names=all.filter(name=>name.includes('cr015_p4_cycle_rpc_safeupdate'));
+  assert.deepEqual(names,[safeUpdateMigration]);
+  assert.equal(names[0].slice(0,14),'20261108080954');
+  assert.equal(all.at(-1),safeUpdateMigration);
+});
 
 async function fixture() {
   const db=new PGlite();
@@ -157,7 +166,7 @@ test('DEV DELETE guard rejects the original RPC; the isolated migration restores
       e=>e.code==='21000' && e.message==='DELETE requires a WHERE clause');
     assert.equal((await f.db.query('SELECT count(*)::int n FROM public.agricultural_cycles')).rows[0].n,0);
 
-    await f.db.exec(file('migrations','20261108000001_cr015_p4_cycle_rpc_safeupdate.sql'));
+    await f.db.exec(file('migrations',safeUpdateMigration));
     const signature=await f.db.query(`SELECT p.prosecdef, p.proconfig,
       pg_get_function_identity_arguments(p.oid) AS args
       FROM pg_proc p WHERE p.oid='public.put_own_farm_cycles_v1(uuid,uuid,bigint,jsonb)'::regprocedure`);
