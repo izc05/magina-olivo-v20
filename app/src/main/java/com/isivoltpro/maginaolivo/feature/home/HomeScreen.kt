@@ -287,9 +287,9 @@ private fun HomeContext(
     Quiet(
         state.cooperativeName?.let { "Mi cooperativa · $it" } ?: "Mi cooperativa",
         if (state.cooperativeName != null) {
-            "Sus avisos llegarán con el panel de administración."
+            "Elegida en tu Perfil."
         } else {
-            "Elígela en Perfil. Sus avisos llegarán con el panel de administración."
+            "Elígela en Perfil."
         },
         MoIcons.Bell,
         "home-cooperative",

@@ -191,9 +191,7 @@ class AppNavigationTest {
     fun assistantIsReservedAndAvatarOpensProfileFromEachMainSection() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Asistente IA").assertDoesNotExist()
-        composeRule.onNodeWithTag("top-assistant").performClick()
-        waitForTag("assistant-placeholder")
-        pressBack()
+        composeRule.onNodeWithTag("top-assistant").assertDoesNotExist()
         for (tab in listOf("Inicio", "Mi Campo", "Cuaderno", "Campaña")) {
             composeRule.onNodeWithTag("bottom-$tab").performClick()
             if (tab == "Campaña") waitForTag("agricultural-campaign-root")

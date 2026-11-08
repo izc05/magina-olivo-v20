@@ -1167,13 +1167,18 @@ private fun NavHostController.openQuickAction(action: NotebookQuickAction, farmI
     }
 }
 
+private const val ASSISTANT_ENTRY_VISIBLE = false
+
 @Composable
 private fun HeaderActions(compositionRoot: AppCompositionRoot, onAssistant: () -> Unit, onClick: () -> Unit) {
     Row {
-        com.isivoltpro.maginaolivo.ui.components.MoIconButton(
-            symbol = "✦", contentDescription = "Asistente IA · En desarrollo",
-            onClick = onAssistant, modifier = Modifier.testTag("top-assistant"),
-        )
+        // 1.0: Mágina IA is not integrated, so it must not look available. The route stays reserved.
+        if (ASSISTANT_ENTRY_VISIBLE) {
+            com.isivoltpro.maginaolivo.ui.components.MoIconButton(
+                symbol = "✦", contentDescription = "Asistente IA",
+                onClick = onAssistant, modifier = Modifier.testTag("top-assistant"),
+            )
+        }
         ProfileAvatarAction(compositionRoot.accountRepository, onClick = onClick)
     }
 }
