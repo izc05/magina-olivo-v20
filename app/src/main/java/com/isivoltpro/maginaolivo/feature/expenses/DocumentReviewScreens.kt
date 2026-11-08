@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
@@ -307,7 +308,7 @@ fun OrganizationsScreen(
 
     editing?.let { key ->
         val current = state.organizations.firstOrNull { it.id.toString() == key }
-        ModalBottomSheet(onDismissRequest = { editing = null; onEditorClosed() }) {
+        MoFormSheet(onDismissRequest = { editing = null; onEditorClosed() }) {
             OrganizationEditor(
                 initial = current,
                 state = state,

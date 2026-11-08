@@ -38,6 +38,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.produceState
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import androidx.compose.foundation.layout.fillMaxWidth
+import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.farm.FarmAreaCoverage
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
@@ -76,6 +77,8 @@ fun FarmSectionRoute(
     onImportFromCatastro: (() -> Unit)? = null,
     onMap: (() -> Unit)? = null,
     onAssistant: (() -> Unit)? = null,
+    onRegisterTreatment: (() -> Unit)? = null,
+    onRegisterIrrigation: (() -> Unit)? = null,
 ) {
     val farmState by produceState<FarmRouteState>(initialValue = FarmRouteState.Loading, key1 = farmId) {
         persistence.farmRepository.observeById(farmId).collect { farm ->
@@ -151,6 +154,8 @@ fun FarmSectionRoute(
                             onMap = onMap,
                             )
                         }
+                        FarmSection.TREATMENTS -> FarmActivityHistoryRoute(farmId, ActivityType.PHYTOSANITARY, persistence, onActivitySelected, onRegisterTreatment)
+                        FarmSection.IRRIGATIONS -> FarmActivityHistoryRoute(farmId, ActivityType.IRRIGATION, persistence, onActivitySelected, onRegisterIrrigation)
                         FarmSection.CAMPAIGNS -> FarmCampaignsRoute(farmId, persistence, onCampaignSelected)
                         // CR-011 §3: never shown here; the hub entry opens the one Cuaderno on this Farm.
                         FarmSection.NOTEBOOK -> Unit

@@ -1,5 +1,11 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import com.isivoltpro.maginaolivo.ui.components.LocalMoFormGuard
+import com.isivoltpro.maginaolivo.ui.components.MoDiscardChangesDialog
+import com.isivoltpro.maginaolivo.ui.components.moFormChanges
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -113,6 +119,7 @@ fun FarmActivitiesRoute(
     completeOnSave: Boolean = false,
     /** #435: canonical day of the Workspace; required by done-work entry points. */
     today: LocalDate? = null,
+    onCreated: ((UUID) -> Unit)? = null,
 ) {
     val vm: FarmActivitiesViewModel = viewModel(key = "farm-activities-$farmId", factory = viewModelFactory {
         initializer {
@@ -130,7 +137,7 @@ fun FarmActivitiesRoute(
         state = state,
         onActivitySelected = onActivitySelected,
         onCreate = { draft, asDraft -> vm.create(draft, asDraft, completeImmediately = completeOnSave && !asDraft,
-            onSaved = { id -> notificationAccess?.savedActivity?.invoke(id) }) },
+            onSaved = { id -> notificationAccess?.savedActivity?.invoke(id); onCreated?.invoke(id) }) },
         startWithEditor = startWithEditor,
         initialDraft = initialDraft,
         editorTitle = editorTitle,
@@ -215,7 +222,7 @@ fun FarmActivitiesSection(
             }
         }
         if (editor) {
-            ModalBottomSheet(onDismissRequest = { editor = false }) {
+            MoFormSheet(onDismissRequest = { editor = false }) {
                 ActivityEditor(
                     parcels = state.parcels,
                     campaigns = state.campaigns,
@@ -263,6 +270,7 @@ fun RegisterActivityRoute(
     planning: Boolean = false,
     /** #435/#619: resolves today using the Workspace timezone, not the phone timezone. */
     clock: AppClock,
+    onCreated: ((UUID) -> Unit)? = null,
 ) {
     var selectedTypeName by rememberSaveable { mutableStateOf(presetType?.name) }
     LaunchedEffect(presetType) { if (presetType != null) selectedTypeName = presetType.name }
@@ -376,6 +384,7 @@ fun RegisterActivityRoute(
                             editorTitle = if (planning) "Planificar · ${activityType.label()}" else activityType.label(),
                             lockInitialType = true,
                             editorAsScreen = true,
+                            onCreated = onCreated,
                             completeOnSave = !planning,
                             today = workspaceToday,
                         )
@@ -663,6 +672,30 @@ internal fun ActivityEditor(
         initial.notes.isNotBlank()
     var moreOpen by rememberSaveable(hasExtras) { mutableStateOf(hasExtras) }
     val showMore = moreOpen || machinesError != null || planningError != null
+
+    // Only what the farmer changes counts: the Parcel and Campaign the form ticks by itself do not.
+    val autoParcel = singleParcelOffered && selected.size == 1 && selected.single() == selectableParcels.singleOrNull()?.id?.toString()
+    val formChanged = moFormChanges(
+        initial,
+        listOf(
+            description, date, endDate, notes, type,
+            if (autoParcel) emptySet() else selected.toSet(),
+            selectedCampaignId.takeUnless { campaigns.size == 1 },
+            parcelAreaHa.toMap().filterValues(String::isNotBlank),
+            detailFields.toMap().filterValues(String::isNotBlank),
+            machineHours.toMap(),
+            planning,
+        ),
+    )
+    if (LocalMoFormGuard.current == null) {
+        // The editor as a full screen: Atrás would leave it without any sheet to ask.
+        var asking by remember { mutableStateOf(false) }
+        var discarded by remember { mutableStateOf(false) }
+        val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+        BackHandler(enabled = formChanged && !isSaving && !discarded) { asking = true }
+        if (asking) MoDiscardChangesDialog({ asking = false }, { asking = false; discarded = true })
+        LaunchedEffect(discarded) { if (discarded) backDispatcher?.onBackPressed() }
+    }
 
     Column(
         // Measure the scroll viewport above the IME, including when this editor is a screen
@@ -1310,7 +1343,7 @@ fun ActivityDetailScreen(
     }
     val activity = state.activity
     if (editor && activity != null) {
-        ModalBottomSheet(onDismissRequest = { editor = false }) {
+        MoFormSheet(onDismissRequest = { editor = false }) {
             val correctionParcels = (
                 state.parcels + activity.targets
                     .filter { target -> state.parcels.none { it.id == target.parcelId } }
@@ -1562,7 +1595,10 @@ private fun DetailInput(fields: SnapshotStateMap<String, String>, key: String, e
     }
 }
 
-private val DECIMAL_DETAIL_FIELDS = setOf(ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.TOTAL_QUANTITY)
+private val DECIMAL_DETAIL_FIELDS = setOf(
+    ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.TOTAL_QUANTITY, ActivityDetailFields.HOURS,
+    ActivityDetailFields.VOLUME_M3, ActivityDetailFields.UNIT_PRICE, ActivityDetailFields.PRICED_QUANTITY,
+)
 
 private fun detailInputLabel(key: String): String = when (key) {
     ActivityDetailFields.DURATION_MINUTES -> "Duración (minutos)"

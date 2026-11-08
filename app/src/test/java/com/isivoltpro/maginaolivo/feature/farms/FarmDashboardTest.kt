@@ -67,6 +67,37 @@ class FarmDashboardTest {
     @Test fun treatmentsOfAnotherCampaignStayOutOfItsCount() =
         assertEquals(0, dashboard(listOf(activity(campaignId = UUID.randomUUID()))).treatmentsInCampaign)
 
+    @Test fun aTreatmentWithoutCampaignBelongsByItsDate() {
+        val period = CampaignPeriod(LocalDate.of(2026, 10, 1), LocalDate.of(2027, 3, 31))
+        val inside = activity(date = LocalDate.of(2026, 11, 8), campaignId = null)
+        val before = activity(date = LocalDate.of(2026, 9, 30), campaignId = null)
+        val after = activity(date = LocalDate.of(2027, 4, 1), campaignId = null)
+        val elsewhere = activity(date = LocalDate.of(2026, 11, 8), campaignId = UUID.randomUUID())
+        val all = listOf(inside, before, after, elsewhere)
+        assertEquals(1, FarmDashboard.of(campaign, "26/27", all, emptyList(), emptyList(), emptyList(), 0, campaignPeriod = period).treatmentsInCampaign)
+        assertEquals(listOf(inside), filterFarmHistory(all, ActivityType.PHYTOSANITARY, campaign, null, "", true, period))
+        assertEquals(listOf(after), filterFarmHistory(listOf(after), ActivityType.PHYTOSANITARY, campaign, null, "", true, CampaignPeriod(LocalDate.of(2026, 10, 1), null)))
+    }
+
+    @Test fun campaignLimitsIncludeBothDaysAndAnExplicitCampaignWins() {
+        val period = CampaignPeriod(LocalDate.of(2026, 10, 1), LocalDate.of(2027, 3, 31))
+        fun inPeriod(activity: Activity) = activity.belongsToCampaign(campaign, period)
+        assertEquals(true, inPeriod(activity(date = period.start, campaignId = null)))
+        assertEquals(true, inPeriod(activity(date = period.end!!, campaignId = null)))
+        assertEquals(false, inPeriod(activity(date = period.start.minusDays(1), campaignId = null)))
+        assertEquals(false, inPeriod(activity(date = period.end!!.plusDays(1), campaignId = null)))
+        assertEquals(false, activity(campaignId = null).belongsToCampaign(campaign, null))
+        // Explicit assignment decides, whatever the date says.
+        assertEquals(true, inPeriod(activity(date = LocalDate.of(2020, 1, 1), campaignId = campaign)))
+        assertEquals(false, inPeriod(activity(date = LocalDate.of(2026, 11, 8), campaignId = UUID.randomUUID())))
+    }
+
+    @Test fun aTreatmentMatchingByIdAndDateCountsOnce() {
+        val period = CampaignPeriod(LocalDate.of(2026, 10, 1), null)
+        val explicit = activity(date = LocalDate.of(2026, 11, 8), campaignId = campaign)
+        assertEquals(1, FarmDashboard.of(campaign, "26/27", listOf(explicit), emptyList(), emptyList(), emptyList(), 0, campaignPeriod = period).treatmentsInCampaign)
+    }
+
     @Test fun onlyPostedExpensesOfTheCampaignAreAdded() {
         val summary = dashboard(expenses = listOf(expense(1_000, ExpenseCategory.LABOR), expense(500, ExpenseCategory.PRODUCTS),
             expense(9_999, ExpenseCategory.LABOR, ExpenseStatus.DRAFT), expense(7_777, ExpenseCategory.LABOR, campaignId = UUID.randomUUID())))
@@ -74,6 +105,25 @@ class FarmDashboardTest {
         assertEquals(1_500L, money.totalMinor)
         assertEquals(1_000L, money.labourMinor)
         assertEquals(1, summary.draftExpenses)
+    }
+
+    @Test fun otherCategoriesCompleteTheBreakdown() {
+        val money = dashboard(expenses = listOf(expense(6_000, ExpenseCategory.LABOR), expense(10_000, ExpenseCategory.MACHINERY), expense(2_000, ExpenseCategory.FUEL))).money.single()
+        assertEquals(18_000L, money.totalMinor)
+        assertEquals(2_000L, money.otherMinor)
+        assertEquals(money.totalMinor, money.labourMinor!! + money.machineryMinor!! + money.productsMinor!! + money.otherMinor!!)
+    }
+
+    @Test fun historyKeepsOneRowPerTreatmentAndFiltersItsFarmRecords() {
+        val first = activity(date = LocalDate.of(2026, 9, 1))
+        val second = activity(date = LocalDate.of(2026, 10, 1), detail = complete.copy(productName = "Azufre"), targets = listOf(other), campaignId = UUID.randomUUID())
+        val pruning = activity(type = ActivityType.PRUNING, detail = null)
+        val all = listOf(first, second, pruning)
+        assertEquals(listOf(second, first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, null, "", true))
+        assertEquals(listOf(first, second), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, null, "", false))
+        assertEquals(listOf(first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, campaign, null, "", true))
+        assertEquals(listOf(first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, target.parcelId, "", true))
+        assertEquals(listOf(second), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, null, "azu", true))
     }
 
     @Test fun anOverflowingTotalIsUnavailableNotWrapped() {

@@ -31,9 +31,10 @@ fun MoTextField(
     containerColor: Color = MoSurfaceTokens.cardElevated,
     keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default,
 ) {
+    val formGuard = LocalMoFormGuard.current
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { if (it != value) formGuard?.noteEdit(); onValueChange(it) },
         modifier = modifier.heightIn(min = MoSize.fieldMinHeight),
         enabled = enabled,
         singleLine = singleLine,

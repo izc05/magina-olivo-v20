@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.maps
 
+import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
@@ -496,7 +497,7 @@ fun FarmMapScreen(
     }
 
     if (polygonSheet) {
-        ModalBottomSheet(onDismissRequest = { polygonSheet = false }) {
+        MoFormSheet(onDismissRequest = { polygonSheet = false }) {
             PolygonParcelForm(
                 province = state.farm?.province.orEmpty(),
                 municipality = polygonPrefill?.municipality ?: state.farm?.municipality.orEmpty(),
