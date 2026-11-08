@@ -61,7 +61,7 @@ fun SigpacCard(state: SigpacUiState, hasReference: Boolean, onLoad: () -> Unit, 
             MoLabeledValue("Recintos", assessment.matched.size.toString(), Modifier.testTag("parcel-sigpac-count"))
             MoLabeledValue("Superficie de los recintos · Según SIGPAC",
                 assessment.totalAreaHa?.let { "${sigpacNumber(it)} ha" } ?: "No disponible", Modifier.testTag("parcel-sigpac-area"))
-            MoLabeledValue("Usos SIGPAC", assessment.useCodes.joinToString(", ").ifEmpty { "Sin dato" })
+            MoLabeledValue("Usos SIGPAC", assessment.useCodes.mapNotNull(::sigpacUseLabel).joinToString(", ").ifEmpty { "Sin dato" })
             MoLabeledValue("Consultado", data.consultedAt.atZone(ZoneId.systemDefault()).format(CONSULTED))
             line("Campaña no indicada por el servicio.")
             if (assessment.unverified) line("Sin contorno guardado con el que comprobar que estos recintos son de la parcela.", "parcel-sigpac-unverified")
@@ -124,7 +124,7 @@ private fun SigpacRecintosSheet(recintos: List<SigpacRecinto>) {
                     modifier = Modifier.testTag("parcel-sigpac-check-${recinto.recinto}"),
                 )
                 Text(
-                    "Recinto ${recinto.recinto} — ${recinto.useCode ?: "Sin uso"} — ${recinto.areaHa?.let { "${sigpacNumber(it)} ha" } ?: "Sin superficie"}",
+                    "Recinto ${recinto.recinto} — ${sigpacUseLabel(recinto.useCode) ?: "Sin uso"} — ${recinto.areaHa?.let { "${sigpacNumber(it)} ha" } ?: "Sin superficie"}",
                     Modifier.weight(1f).clickable(role = Role.Button) { detail = recinto.recinto.takeIf { it != detail } }
                         .padding(vertical = MoSpacing.sm).testTag("parcel-sigpac-recinto-${recinto.recinto}"),
                     style = MaterialTheme.typography.bodyLarge, color = MoColors.current.bodyText,
@@ -141,9 +141,10 @@ private fun SigpacRecintosSheet(recintos: List<SigpacRecinto>) {
 private fun SigpacRecintoDetail(recinto: SigpacRecinto) {
     Column(Modifier.padding(start = MoSpacing.lg).testTag("parcel-sigpac-detail"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
         MoLabeledValue("Pendiente media (valor de FEGA, sin unidad indicada)", recinto.slope?.let { sigpacNumber(it, 2) } ?: "Sin dato")
+        MoLabeledValue("Altitud (valor de FEGA, sin unidad indicada)", recinto.altitude?.let { sigpacNumber(it, 0) } ?: "Sin dato")
         MoLabeledValue("Coeficiente de regadío (valor de FEGA)", recinto.irrigationCoefficient?.let { sigpacNumber(it, 2) } ?: "Sin dato")
         MoLabeledValue("Admisibilidad en pastos", recinto.admissibilityPercent?.let { "${sigpacNumber(it, 2)} %" } ?: "Sin dato")
-        MoLabeledValue("Incidencias", recinto.incidents ?: "Ninguna indicada")
+        MoLabeledValue("Incidencias", sigpacIncidentsLabel(recinto.incidents) ?: "Ninguna indicada")
         MoLabeledValue("Región", recinto.region ?: "Sin dato")
     }
 }

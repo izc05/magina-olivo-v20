@@ -37,6 +37,8 @@ data class SigpacRecinto(
     val region: String?,
     /** Longitude, latitude; null when the service sent none or in an unknown coordinate system. */
     val polygons: List<List<List<Pair<Double, Double>>>>?,
+    /** Raw FEGA value; its documentation states no unit. */
+    val altitude: Double? = null,
 )
 
 enum class SigpacError { NETWORK, SERVICE, RATE_LIMITED, RESPONSE }
@@ -87,6 +89,7 @@ fun parseSigpacRecintos(body: String, code: SigpacParcelCode): List<SigpacRecint
                 useCode = item.text("uso_sigpac"),
                 region = item.text("region"),
                 polygons = item.text("wkt")?.takeIf { item.number("srid")?.toInt() in setOf(4258, 4326) }?.let(::parseWktPolygons),
+                altitude = item.number("altitud"),
             )
         }
         if (recintos.map { it.recinto }.distinct().size != recintos.size) throw SigpacException(SigpacError.RESPONSE)

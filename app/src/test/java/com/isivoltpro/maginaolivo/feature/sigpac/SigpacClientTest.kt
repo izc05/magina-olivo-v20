@@ -90,6 +90,13 @@ class SigpacClientTest {
         assertEquals(2, polygons[1].size)
     }
 
+    @Test fun officialCodesBecomeReadableAndUnknownOnesStayAsTheyCame() {
+        assertEquals("PR · Pasto arbustivo", sigpacUseLabel("PR"))
+        assertEquals("XX", sigpacUseLabel("XX"))
+        assertNull(sigpacUseLabel(null))
+        assertNull(sigpacIncidentsLabel(null))
+    }
+
     @Test fun decodesTheGzipTheServiceAlwaysSends() = runBlocking {
         val gzipped = ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write("[${item()}]".toByteArray()) } }.toByteArray()
         var requested = ""
