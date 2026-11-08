@@ -171,7 +171,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("cycle-create-confirm").performScrollTo().performClick()
         waitForTag("cycle-selector")
         composeRule.onNodeWithTag("cycle-selector").performScrollTo().performClick()
-        clickByText("QA agrícola flexible · Cerrada")
+        clickByText(com.isivoltpro.maginaolivo.feature.campaignhub.cycleOptionLabel("QA agrícola flexible", cycle.startDate, cycle.effectiveEndDate))
         waitForTag("cycle-history-does-not-write")
         openGlobalQuickAction("work")
         waitForTag("register-activity-type-pruning")
