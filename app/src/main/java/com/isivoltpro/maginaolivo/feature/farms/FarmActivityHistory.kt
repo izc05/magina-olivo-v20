@@ -59,11 +59,12 @@ internal fun filterFarmHistory(
     parcelId: UUID?,
     query: String,
     newestFirst: Boolean,
+    campaignPeriod: CampaignPeriod? = null,
 ): List<Activity> {
     val text = plain(query)
     val rows = activities.filter { activity ->
         activity.type == type &&
-            (campaignId == null || activity.campaignId == campaignId) &&
+            (campaignId == null || activity.belongsToCampaign(campaignId, campaignPeriod)) &&
             (parcelId == null || activity.targets.any { it.parcelId == parcelId }) &&
             (text.isEmpty() || plain(activity.productName().orEmpty()).contains(text))
     }
@@ -152,7 +153,8 @@ internal fun FarmActivityHistory(
             }
         }
         MoTertiaryButton(if (newest) "Más recientes primero" else "Más antiguos primero", { newest = !newest }, Modifier.testTag("farm-history-sort"))
-        val rows = filterFarmHistory(activities, type, campaign?.let(UUID::fromString), parcel?.let(UUID::fromString), query, newest)
+        val period = campaigns.firstOrNull { it.id.toString() == campaign }?.let { CampaignPeriod(it.startDate, it.endDate) }
+        val rows = filterFarmHistory(activities, type, campaign?.let(UUID::fromString), parcel?.let(UUID::fromString), query, newest, period)
         if (rows.isEmpty()) Text("Ningún registro coincide con los filtros.", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("farm-history-no-match"))
         rows.forEach { activity ->
             Surface(shape = MoShape.card, color = MoSurfaceTokens.cardSurface, border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),

@@ -67,6 +67,18 @@ class FarmDashboardTest {
     @Test fun treatmentsOfAnotherCampaignStayOutOfItsCount() =
         assertEquals(0, dashboard(listOf(activity(campaignId = UUID.randomUUID()))).treatmentsInCampaign)
 
+    @Test fun aTreatmentWithoutCampaignBelongsByItsDate() {
+        val period = CampaignPeriod(LocalDate.of(2026, 10, 1), LocalDate.of(2027, 3, 31))
+        val inside = activity(date = LocalDate.of(2026, 11, 8), campaignId = null)
+        val before = activity(date = LocalDate.of(2026, 9, 30), campaignId = null)
+        val after = activity(date = LocalDate.of(2027, 4, 1), campaignId = null)
+        val elsewhere = activity(date = LocalDate.of(2026, 11, 8), campaignId = UUID.randomUUID())
+        val all = listOf(inside, before, after, elsewhere)
+        assertEquals(1, FarmDashboard.of(campaign, "26/27", all, emptyList(), emptyList(), emptyList(), 0, campaignPeriod = period).treatmentsInCampaign)
+        assertEquals(listOf(inside), filterFarmHistory(all, ActivityType.PHYTOSANITARY, campaign, null, "", true, period))
+        assertEquals(listOf(after), filterFarmHistory(listOf(after), ActivityType.PHYTOSANITARY, campaign, null, "", true, CampaignPeriod(LocalDate.of(2026, 10, 1), null)))
+    }
+
     @Test fun onlyPostedExpensesOfTheCampaignAreAdded() {
         val summary = dashboard(expenses = listOf(expense(1_000, ExpenseCategory.LABOR), expense(500, ExpenseCategory.PRODUCTS),
             expense(9_999, ExpenseCategory.LABOR, ExpenseStatus.DRAFT), expense(7_777, ExpenseCategory.LABOR, campaignId = UUID.randomUUID())))

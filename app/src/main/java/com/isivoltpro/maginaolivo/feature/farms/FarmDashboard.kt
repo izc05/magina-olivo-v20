@@ -21,6 +21,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 
+data class CampaignPeriod(val start: LocalDate, val end: LocalDate?)
+
+/** Only harvest days store a campaign, so other records without one belong by their date. */
+internal fun Activity.belongsToCampaign(id: UUID, period: CampaignPeriod?): Boolean =
+    campaignId == id || (campaignId == null && period != null && activityDate >= period.start && (period.end == null || activityDate <= period.end))
+
 /** The last treatment as it was recorded. A value not recorded stays null. */
 data class LastTreatment(
     val date: LocalDate,
@@ -89,10 +95,11 @@ data class FarmDashboard(
             expenses: List<Expense>,
             documentCount: Int,
             latestDocuments: List<String> = emptyList(),
+            campaignPeriod: CampaignPeriod? = null,
         ): FarmDashboard {
             val done = activities.filter { it.status == ActivityStatus.COMPLETED }
             val treatments = done.filter { it.type == ActivityType.PHYTOSANITARY }.sortedByDescending { it.activityDate }
-            val inCampaign = treatments.filter { campaignId != null && it.campaignId == campaignId }
+            val inCampaign = treatments.filter { campaignId != null && it.belongsToCampaign(campaignId, campaignPeriod) }
             val campaignHarvests = harvests.filter { campaignId != null && it.campaignId == campaignId }
             val campaignDeliveries = deliveries.filter { campaignId != null && it.campaignId == campaignId }
             val scopedExpenses = if (campaignId != null) expenses.filter { it.campaignId == campaignId } else expenses
@@ -162,6 +169,7 @@ internal fun farmDashboardFlow(persistence: LocalPersistence, farmId: UUID): Flo
                 harvestRows.filter { it.farmId == farmId }, deliveryRows.filter { it.farmId == farmId },
                 expenses.filter { it.farmId == farmId }, documents.size,
                 documents.sortedByDescending { it.createdAt }.take(2).map { it.displayName },
+                campaign?.let { CampaignPeriod(it.startDate, it.endDate) },
             )
         }
     }
