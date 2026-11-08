@@ -18,11 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.MaginaOlivoWordmark
@@ -46,6 +49,9 @@ import java.util.UUID
 
 private enum class AccountForm { LOGIN, REGISTER, RECOVER }
 
+/** QA only: the simulation entry needs this launch extra, and also a debug DEV build (simulationAllowed). */
+const val ACCOUNT_SIMULATION_QA_EXTRA = "com.isivoltpro.maginaolivo.qa.ACCOUNT_SIMULATION"
+
 @Composable
 fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:Boolean=false,connectivity:Flow<Boolean>? = null,
     farmLinks:com.isivoltpro.maginaolivo.data.repository.LocalFarmLinkRepository?=null,showBack:Boolean=true,
@@ -54,6 +60,7 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
     var simulation by rememberSaveable { mutableStateOf(false) }
     val simulated=remember { AccountRepository(SimulatedAccountAuthApi()) }
     val selected=if(simulation)simulated else repository
+    val simulationEntry=simulationAllowed && remember(context) { (context as? android.app.Activity)?.intent?.getBooleanExtra(ACCOUNT_SIMULATION_QA_EXTRA,false)==true }
     val model:AccountViewModel=viewModel(key=if(simulation)"account-simulation" else "account-live",factory=viewModelFactory { initializer { AccountViewModel(selected) } })
     val state by model.state.collectAsStateWithLifecycle()
     val network=remember(context,connectivity) { connectivity ?: accountConnectivity(context) }
@@ -93,11 +100,23 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
     Column(Modifier.fillMaxSize().background(MoCream).statusBarsPadding().imePadding()
         .verticalScroll(rememberScrollState()).padding(MoSpacing.screen).testTag("account-root"),verticalArrangement=Arrangement.spacedBy(MoSpacing.sm)) {
         if(showBack) MoBackButton("Volver a Perfil",onBack,Modifier.testTag("account-back"))
-        if(state.email==null || state.status==AccountStatus.EXPIRED) {
-            MaginaOlivoWordmark(Modifier.align(Alignment.CenterHorizontally).testTag("account-logo"))
+        val noSession=state.email==null || state.status==AccountStatus.EXPIRED
+        val hasSession=!noSession
+        val feedbackInForm=noSession || state.status==AccountStatus.RECOVERY
+        if(noSession) {
+            MaginaOlivoWordmark(Modifier.align(Alignment.CenterHorizontally).padding(top=MoSpacing.sm).testTag("account-logo"))
+            val (title,subtitle)=when {
+                state.status==AccountStatus.RECOVERY -> "Nueva contraseña" to "Elige una contraseña para tu cuenta."
+                form==AccountForm.REGISTER -> "Crea tu cuenta" to "Usa tu correo para empezar."
+                form==AccountForm.RECOVER -> "Recupera tu contraseña" to "Te enviaremos un enlace a tu correo."
+                else -> "Bienvenido a tu campo" to "Accede a tu cuenta para gestionar y sincronizar tus fincas"
+            }
+            Text(title,Modifier.fillMaxWidth().padding(top=MoSpacing.sm).semantics { heading() }.testTag("account-title"),style=MaterialTheme.typography.headlineMedium,color=MoInk,textAlign=TextAlign.Center)
+            Text(subtitle,Modifier.fillMaxWidth().padding(bottom=MoSpacing.sm),style=MaterialTheme.typography.bodyLarge,color=MoSurfaceTokens.secondaryText,textAlign=TextAlign.Center)
+        } else {
+            Text("Cuenta",style=MaterialTheme.typography.headlineLarge,color=MoInk)
+            Text("Mi cuenta",style=MaterialTheme.typography.titleLarge,color=MoColors.current.primaryText)
         }
-        Text("Cuenta",style=MaterialTheme.typography.headlineLarge,color=MoInk)
-        Text("Mi cuenta",style=MaterialTheme.typography.titleLarge,color=MoColors.current.primaryText)
         if(state.simulated) Text("Simulación de Auth: no crea cuentas ni envía correos. Usa datos ficticios.",Modifier.testTag("account-simulation"),color=MoColors.current.warningText)
         val status=when(state.status) {
             AccountStatus.UNCONFIGURED -> "Configuración de pruebas pendiente"
@@ -108,27 +127,41 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
             AccountStatus.EXPIRED -> "Sesión caducada · vuelve a iniciar sesión cuando tengas conexión"
             AccountStatus.RECOVERY -> "Enlace verificado · nueva contraseña"
         }
-        Surface(shape=MoShape.card,color=MoWarmWhite,border=androidx.compose.foundation.BorderStroke(1.dp,MoSurfaceTokens.cardStroke)) {
+        if(hasSession) Surface(shape=MoShape.card,color=MoWarmWhite,border=androidx.compose.foundation.BorderStroke(1.dp,MoSurfaceTokens.cardStroke)) {
             Column(Modifier.fillMaxWidth().padding(MoSpacing.sm)) {
                 Text(status,Modifier.testTag("account-status"),style=MaterialTheme.typography.titleMedium,color=MoColors.current.bodyText)
-                Text(state.email ?: "Inicia sesión para vincular tus fincas",color=MoSurfaceTokens.secondaryText)
+                Text(state.email ?: "",color=MoSurfaceTokens.secondaryText)
             }
+        } else if(state.status!=AccountStatus.SIGNED_OUT) {
+            Text(status,Modifier.fillMaxWidth().testTag("account-status"),style=MaterialTheme.typography.titleSmall,color=MoColors.current.bodyText,textAlign=TextAlign.Center)
+        }
+        val feedback:@Composable ()->Unit={
+            if(!online) Text("Sin conexión. Puedes seguir trabajando con tus datos locales; el acceso y la recuperación necesitan conexión.",color=MoSurfaceTokens.secondaryText)
+            if(state.busy) { CircularProgressIndicator(Modifier.testTag("account-loading"));Text("Procesando…",color=MoSurfaceTokens.secondaryText) }
+            state.error?.let { Text(it,Modifier.testTag("account-error").semantics { liveRegion=LiveRegionMode.Polite },color=MoColors.current.errorText) }
+            state.message?.let { Text(it,Modifier.testTag("account-message").semantics { liveRegion=LiveRegionMode.Polite },color=MoSurfaceTokens.secondaryText) }
         }
         if(state.status==AccountStatus.RECOVERY) {
             PasswordInput(password,{password=it},"Nueva contraseña (8–128 caracteres)","account-new-password",enabled)
+            if(feedbackInForm) feedback()
             MoPrimaryButton("Guardar nueva contraseña",{ val value=password;password="";model.updatePassword(value,online) },Modifier.fillMaxWidth().testTag("account-save-password"),enabled)
         } else if(state.email==null || state.status==AccountStatus.EXPIRED) {
             MoTextField(email,{email=it},"Correo electrónico",Modifier.fillMaxWidth().testTag("account-email"),enabled=!state.busy,
-                keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Email),containerColor=MoWarmWhite)
+                keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Email,imeAction=if(form==AccountForm.RECOVER) ImeAction.Done else ImeAction.Next),containerColor=MoWarmWhite)
             if(form!=AccountForm.RECOVER) PasswordInput(password,{password=it},if(form==AccountForm.REGISTER)"Contraseña (8–128 caracteres)" else "Contraseña","account-password",!state.busy)
+            val recoverLink:@Composable (Modifier)->Unit={ modifier ->
+                MoTertiaryButton("¿Has olvidado tu contraseña?",{choose(AccountForm.RECOVER)},modifier.testTag("account-mode-recover"),!state.busy)
+            }
+            if(form==AccountForm.LOGIN) recoverLink(Modifier.align(Alignment.End))
+            feedback()
             when(form) {
                 AccountForm.LOGIN -> MoPrimaryButton("Entrar",{val value=password;password="";model.login(email,value,online)},Modifier.fillMaxWidth().testTag("account-login"),enabled)
                 AccountForm.REGISTER -> MoPrimaryButton("Registrarme",{val value=password;password="";model.register(email,value,online)},Modifier.fillMaxWidth().testTag("account-register"),enabled)
                 AccountForm.RECOVER -> MoPrimaryButton("Enviar enlace de recuperación",{model.recover(email,online)},Modifier.fillMaxWidth().testTag("account-recover"),enabled)
             }
-            if(form!=AccountForm.LOGIN) MoSecondaryButton("Volver a entrar",{choose(AccountForm.LOGIN)},Modifier.fillMaxWidth().testTag("account-mode-login"),!state.busy)
-            if(form!=AccountForm.REGISTER) MoSecondaryButton("Crear cuenta",{choose(AccountForm.REGISTER)},Modifier.fillMaxWidth().testTag("account-mode-register"),!state.busy)
-            if(form!=AccountForm.RECOVER) MoTertiaryButton("Recuperar contraseña",{choose(AccountForm.RECOVER)},Modifier.testTag("account-mode-recover"),!state.busy)
+            if(form!=AccountForm.LOGIN) MoTertiaryButton("Volver a entrar",{choose(AccountForm.LOGIN)},Modifier.align(Alignment.CenterHorizontally).testTag("account-mode-login"),!state.busy)
+            if(form!=AccountForm.REGISTER) MoTertiaryButton("Crear cuenta",{choose(AccountForm.REGISTER)},Modifier.align(Alignment.CenterHorizontally).testTag("account-mode-register"),!state.busy)
+            if(form==AccountForm.REGISTER) recoverLink(Modifier.align(Alignment.CenterHorizontally))
         }
         if(state.email!=null) {
             Text("Acceso y seguridad",style=MaterialTheme.typography.titleMedium,color=MoColors.current.primaryText)
@@ -140,6 +173,8 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
                 confirmDeletionRequest = true
             },Modifier.fillMaxWidth().testTag("account-delete-request"))
         }
+        if(noSession) Text("Tus datos de este teléfono se conservan aunque cierres sesión.",Modifier.fillMaxWidth().padding(top=MoSpacing.sm).testTag("account-local-data"),style=MaterialTheme.typography.bodySmall,color=MoSurfaceTokens.secondaryText,textAlign=TextAlign.Center)
+        if(hasSession) {
         Text("Mis datos",style=MaterialTheme.typography.titleLarge,color=MoColors.current.primaryText)
         MoCompactListItem("Guardados en este teléfono",subtitle="Tus fincas y registros locales se conservan al cerrar sesión.",modifier=Modifier.testTag("account-local-data"))
         val canViewLinks=state.userId!=null && farmLinks?.accessAllowed(state.userId)==true
@@ -173,10 +208,8 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
             }
             workspaceNotice?.let { Text(it,color=MoSurfaceTokens.secondaryText) }
         }
-        if(!online) Text("Sin conexión. Puedes seguir trabajando con tus datos locales; el acceso y la recuperación necesitan conexión.",color=MoSurfaceTokens.secondaryText)
-        if(state.busy) { CircularProgressIndicator(Modifier.testTag("account-loading"));Text("Procesando…",color=MoSurfaceTokens.secondaryText) }
-        state.error?.let { Text(it,Modifier.testTag("account-error").semantics { liveRegion=LiveRegionMode.Polite },color=MoColors.current.errorText) }
-        state.message?.let { Text(it,Modifier.testTag("account-message").semantics { liveRegion=LiveRegionMode.Polite },color=MoSurfaceTokens.secondaryText) }
+        }
+        if(!feedbackInForm) feedback()
         if(!simulation && !state.simulated && state.userId!=null && state.status in setOf(AccountStatus.SIGNED_IN,AccountStatus.OFFLINE) && farmLinks!=null) {
             // A finished manual sync may bring farms (from another device) that now need explicit consent here.
             val syncRun=manualSync?.state?.collectAsStateWithLifecycle()?.value
@@ -191,15 +224,9 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
                     (repo.activeWorkspace() as? AppResult.Success)?.let { selectedWorkspace=it.value }
                 }
             }
-        } else if (!simulation && !state.simulated && farmLinks != null) {
-            Text("Mis fincas",style=MaterialTheme.typography.titleLarge,color=MoColors.current.primaryText)
-            Text("Inicia sesión para ver y preparar la vinculación de tus fincas. Los datos locales siguen protegidos.",color=MoSurfaceTokens.secondaryText)
-            Text("Sincronización",style=MaterialTheme.typography.titleLarge,color=MoColors.current.primaryText)
-            MoPrimaryButton("Sincronizar ahora",{},Modifier.fillMaxWidth().testTag("manual-sync-now"),enabled=false)
-            Text("Inicia sesión para sincronizar.",color=MoSurfaceTokens.secondaryText)
         }
         if(state.simulated && state.pendingPurpose!=null) MoSecondaryButton("Abrir enlace simulado",{model.simulateLink(online)},Modifier.fillMaxWidth().testTag("account-simulate-link"),!state.busy)
-        if(simulationAllowed && !state.simulated) MoTertiaryButton("Probar Cuenta (simulación)",{simulation=true;choose(AccountForm.LOGIN)},Modifier.testTag("account-start-simulation"),!state.busy)
+        if(simulationEntry && !state.simulated) MoTertiaryButton("Probar Cuenta (simulación)",{simulation=true;choose(AccountForm.LOGIN)},Modifier.testTag("account-start-simulation"),!state.busy)
         if(simulation) MoTertiaryButton("Salir de simulación",{model.logout(false);simulation=false;choose(AccountForm.LOGIN)},Modifier.testTag("account-end-simulation"),!state.busy)
     }
 }
@@ -208,7 +235,7 @@ fun AccountRoute(repository:AccountRepository,onBack:()->Unit,simulationAllowed:
     var visible by remember { mutableStateOf(false) }
     MoTextField(value,onChange,label,Modifier.fillMaxWidth().testTag(tag),enabled=enabled,
         visualTransformation=if(visible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions=KeyboardOptions(keyboardType=if(visible) KeyboardType.Text else KeyboardType.Password),
+        keyboardOptions=KeyboardOptions(keyboardType=if(visible) KeyboardType.Text else KeyboardType.Password,imeAction=ImeAction.Done),
         trailingIcon={ TextButton(onClick={visible=!visible},modifier=Modifier.testTag("account-password-visibility")) {
             Text(if(visible) "Ocultar" else "Mostrar")
         } },containerColor=MoWarmWhite)

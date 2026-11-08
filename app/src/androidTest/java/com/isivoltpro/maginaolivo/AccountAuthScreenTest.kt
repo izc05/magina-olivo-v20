@@ -162,6 +162,41 @@ class AccountAuthScreenTest {
         waitFor("account-login")
         compose.onNodeWithTag("account-mode-login").assertDoesNotExist()
     }
+    @Test fun signedOutScreenIsCleanAndItsActionsStayReachableWithTheKeyboard() {
+        val root=AppCompositionRoot.createAndroid(context,"DEV")
+        val repo=AccountRepository(Api(),MemoryAccountSessionStore())
+        compose.setContent { MaginaOlivoTheme(AppearanceMode.LIGHT) { Box(Modifier.fillMaxSize().systemBarsPadding()) {
+            AccountRoute(repo,{},simulationAllowed=true,connectivity=MutableStateFlow(true),farmLinks=root.farmLinks,showBack=false,
+                workspaces=root.localPersistence?.workspaceRepository)
+        } } }
+        waitFor("account-email")
+        compose.onNodeWithText("Bienvenido a tu campo").assertIsDisplayed()
+        compose.onNodeWithTag("account-mode-recover").assertTextContains("¿Has olvidado tu contraseña?")
+        compose.onNodeWithTag("account-local-data").performScrollTo().assertIsDisplayed()
+        capture("signed-out-redesign")
+        listOf("Mi cuenta","Sin sesión","Mis datos","Mis fincas","Sincronización").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
+        listOf("account-link-status","manual-sync-now","account-start-simulation").forEach { compose.onNodeWithTag(it).assertDoesNotExist() }
+        compose.onNodeWithTag("account-email").performScrollTo().performClick()
+        compose.onNodeWithTag("account-email").assertIsFocused().performTextInput("qa@example.invalid")
+        compose.onNodeWithTag("account-email").assertTextContains("qa@example.invalid")
+        runCatching { compose.waitUntil(3_000) {
+            var open=false
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                open=ViewCompat.getRootWindowInsets(compose.activity.window.decorView)?.isVisible(WindowInsetsCompat.Type.ime())==true
+            }
+            open
+        } }
+        compose.waitForIdle()
+        compose.onNodeWithTag("account-login").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("account-mode-register").performScrollTo().assertIsDisplayed()
+    }
+    @Test fun simulationEntryNeedsTheQaLaunchExtra() {
+        compose.activity.intent=android.content.Intent().putExtra(ACCOUNT_SIMULATION_QA_EXTRA,true)
+        val repo=AccountRepository(Api(),MemoryAccountSessionStore())
+        compose.setContent { MaginaOlivoTheme(AppearanceMode.LIGHT) { AccountRoute(repo,{},simulationAllowed=true,connectivity=MutableStateFlow(true)) } }
+        waitFor("account-email")
+        compose.onNodeWithTag("account-start-simulation").performScrollTo().assertIsDisplayed()
+    }
     private fun clickAccountAction(tag:String) {
         // IME resize and focused-field bring-into-view run outside the Compose test clock.
         // Settle the actual window before deriving coordinates and injecting a real click.
