@@ -36,12 +36,13 @@ class FarmDashboardTest {
         UUID.randomUUID(), workspace, LocalDate.of(2026, 10, 1), "c", category, amount, "EUR", status, ExpenseOrigin.values().first(), farmId = farm, campaignId = campaignId,
     )
 
-    private fun dashboard(activities: List<Activity> = emptyList(), expenses: List<Expense> = emptyList()) =
-        FarmDashboard.of(campaign, "26/27", activities, emptyList(), emptyList(), expenses, 2)
+    private fun dashboard(activities: List<Activity> = emptyList(), expenses: List<Expense> = emptyList(), linked: Set<UUID> = activities.map { it.id }.toSet()) =
+        FarmDashboard.of(campaign, "26/27", activities, emptyList(), emptyList(), expenses, 2,
+            openCycle = FarmCycleView(UUID.randomUUID(), "2026/27", closed = false, activityIds = linked))
 
     @Test fun aTreatmentOverSeveralParcelsCountsOnceWithItsWholeArea() {
         val summary = dashboard(listOf(activity()))
-        assertEquals(1, summary.treatmentsInCampaign)
+        assertEquals(1, summary.treatmentsInOpenCycle)
         assertEquals(15_000.0, summary.lastTreatment!!.areaM2!!, 0.0)
         assertEquals(listOf("Norte", "Sur"), summary.lastTreatment!!.parcels)
         assertEquals(3.0, summary.lastTreatment!!.quantity!!, 0.0)
@@ -61,41 +62,23 @@ class FarmDashboardTest {
         val summary = dashboard(listOf(activity(status = ActivityStatus.PLANNED), activity(type = ActivityType.PRUNING, detail = null)))
         assertEquals(1, summary.pendingWorks)
         assertEquals(1, summary.doneWorks)
-        assertEquals(0, summary.treatmentsInCampaign)
+        assertEquals(0, summary.treatmentsInOpenCycle)
     }
 
-    @Test fun treatmentsOfAnotherCampaignStayOutOfItsCount() =
-        assertEquals(0, dashboard(listOf(activity(campaignId = UUID.randomUUID()))).treatmentsInCampaign)
-
-    @Test fun aTreatmentWithoutCampaignBelongsByItsDate() {
-        val period = CampaignPeriod(LocalDate.of(2026, 10, 1), LocalDate.of(2027, 3, 31))
-        val inside = activity(date = LocalDate.of(2026, 11, 8), campaignId = null)
-        val before = activity(date = LocalDate.of(2026, 9, 30), campaignId = null)
-        val after = activity(date = LocalDate.of(2027, 4, 1), campaignId = null)
-        val elsewhere = activity(date = LocalDate.of(2026, 11, 8), campaignId = UUID.randomUUID())
-        val all = listOf(inside, before, after, elsewhere)
-        assertEquals(1, FarmDashboard.of(campaign, "26/27", all, emptyList(), emptyList(), emptyList(), 0, campaignPeriod = period).treatmentsInCampaign)
-        assertEquals(listOf(inside), filterFarmHistory(all, ActivityType.PHYTOSANITARY, campaign, null, "", true, period))
-        assertEquals(listOf(after), filterFarmHistory(listOf(after), ActivityType.PHYTOSANITARY, campaign, null, "", true, CampaignPeriod(LocalDate.of(2026, 10, 1), null)))
+    @Test fun aTreatmentIsCountedOnlyWhenLinkedToTheOpenCycle() {
+        val linked = activity(campaignId = null)
+        val unlinked = activity(campaignId = null)
+        val summary = dashboard(listOf(linked, unlinked), linked = setOf(linked.id))
+        assertEquals(1, summary.treatmentsInOpenCycle)
+        assertEquals("2026/27", summary.openCycleLabel)
     }
 
-    @Test fun campaignLimitsIncludeBothDaysAndAnExplicitCampaignWins() {
-        val period = CampaignPeriod(LocalDate.of(2026, 10, 1), LocalDate.of(2027, 3, 31))
-        fun inPeriod(activity: Activity) = activity.belongsToCampaign(campaign, period)
-        assertEquals(true, inPeriod(activity(date = period.start, campaignId = null)))
-        assertEquals(true, inPeriod(activity(date = period.end!!, campaignId = null)))
-        assertEquals(false, inPeriod(activity(date = period.start.minusDays(1), campaignId = null)))
-        assertEquals(false, inPeriod(activity(date = period.end!!.plusDays(1), campaignId = null)))
-        assertEquals(false, activity(campaignId = null).belongsToCampaign(campaign, null))
-        // Explicit assignment decides, whatever the date says.
-        assertEquals(true, inPeriod(activity(date = LocalDate.of(2020, 1, 1), campaignId = campaign)))
-        assertEquals(false, inPeriod(activity(date = LocalDate.of(2026, 11, 8), campaignId = UUID.randomUUID())))
-    }
-
-    @Test fun aTreatmentMatchingByIdAndDateCountsOnce() {
-        val period = CampaignPeriod(LocalDate.of(2026, 10, 1), null)
-        val explicit = activity(date = LocalDate.of(2026, 11, 8), campaignId = campaign)
-        assertEquals(1, FarmDashboard.of(campaign, "26/27", listOf(explicit), emptyList(), emptyList(), emptyList(), 0, campaignPeriod = period).treatmentsInCampaign)
+    @Test fun theHarvestCampaignNeverCountsAsTheAgriculturalCycle() {
+        val inHarvest = activity(campaignId = campaign)
+        val summary = FarmDashboard.of(campaign, "26/27", listOf(inHarvest), emptyList(), emptyList(), emptyList(), 0)
+        assertNull(summary.openCycleLabel)
+        assertEquals(0, summary.treatmentsInOpenCycle)
+        assertEquals("26/27", summary.campaignName)
     }
 
     @Test fun onlyPostedExpensesOfTheCampaignAreAdded() {
@@ -121,7 +104,7 @@ class FarmDashboardTest {
         val all = listOf(first, second, pruning)
         assertEquals(listOf(second, first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, null, "", true))
         assertEquals(listOf(first, second), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, null, "", false))
-        assertEquals(listOf(first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, campaign, null, "", true))
+        assertEquals(listOf(first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, setOf(first.id), null, "", true))
         assertEquals(listOf(first), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, target.parcelId, "", true))
         assertEquals(listOf(second), filterFarmHistory(all, ActivityType.PHYTOSANITARY, null, null, "azu", true))
     }

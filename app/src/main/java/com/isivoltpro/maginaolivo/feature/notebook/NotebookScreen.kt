@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import com.isivoltpro.maginaolivo.core.common.countOf
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceTokens
 
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
@@ -263,7 +264,7 @@ internal fun SummaryTab(
                 val range = dashboard.countedFrom?.let { from ->
                     dashboard.closedOn?.let { "del ${date(from)} al ${date(it)}" } ?: "desde el ${date(from)}"
                 }
-                listOfNotNull("$days días de campaña", range).joinToString(", ")
+                listOfNotNull("${countOf(days, "día", "días")} de campaña", range).joinToString(", ")
             } ?: dashboard.closedOn?.let { "Cerrada el ${date(it)}" },
             pesadaDates = dashboard.firstPesada?.let {
                 "primera pesada ${date(it)}, última ${date(dashboard.lastPesada)}"
@@ -281,13 +282,13 @@ internal fun SummaryTab(
         }
         MoKpiMetric("Jornales", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.LABOUR),
             Modifier.fillMaxWidth().testTag("notebook-summary-labour"), icon = MoIcons.People, kind = MoKpiKind.JORNALES,
-            supportingText = (listOf("${notebook.labourByWorker.size} personas · ${notebook.labourSummary.label()}") + settlements +
+            supportingText = (listOf("${countOf(notebook.labourByWorker.size, "persona", "personas")} · ${notebook.labourSummary.label()}") + settlements +
                 listOfNotNull(if (!notebook.unnamedLabour.isEmpty) "Sin identificar (histórico)" else null,
                     com.isivoltpro.maginaolivo.feature.harvests.labourCostNote(notebook.labour, notebook.expenses),
                     if (accounts == null || accounts.any { it.unconfirmed } || (balances.isEmpty() && ledger.any { (it.amount(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.LABOUR) ?: 0) > 0 })) "Hay precios o costes sin atribuir" else null)).joinToString("\n"), onClick = onLabour)
         MoKpiMetric("Maquinaria", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.EQUIPMENT),
             Modifier.fillMaxWidth().testTag("notebook-summary-equipment"), icon = MoIcons.Tractor, kind = MoKpiKind.MAQUINARIA,
-            supportingText = listOfNotNull("${notebook.equipment.sumOf { it.quantity }} equipos/usos · Ver detalle",
+            supportingText = listOfNotNull("${countOf(notebook.equipment.sumOf { it.quantity }, "equipo/uso", "equipos/usos")} · Ver detalle",
                 com.isivoltpro.maginaolivo.feature.harvests.equipmentCostNote(notebook.equipment, notebook.expenses)).joinToString("\n"), onClick = { machineryDetail = true })
         MoKpiMetric("Otros gastos", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.OTHER),
             Modifier.fillMaxWidth().testTag("notebook-summary-other"), icon = MoIcons.Euro, kind = MoKpiKind.COSTES,

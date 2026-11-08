@@ -20,12 +20,18 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.domain.cycle.CycleRecordKind
+import com.isivoltpro.maginaolivo.domain.cycle.CycleSnapshot
 
-data class CampaignPeriod(val start: LocalDate, val end: LocalDate?)
+/** An agricultural cycle and the works explicitly linked to it. A date never makes a work belong. */
+data class FarmCycleView(val id: UUID, val label: String, val closed: Boolean, val activityIds: Set<UUID>)
 
-/** Only harvest days store a campaign, so other records without one belong by their date. */
-internal fun Activity.belongsToCampaign(id: UUID, period: CampaignPeriod?): Boolean =
-    campaignId == id || (campaignId == null && period != null && activityDate >= period.start && (period.end == null || activityDate <= period.end))
+internal fun CycleSnapshot.farmCycles(): List<FarmCycleView> = cycles.map { cycle ->
+    FarmCycleView(cycle.id, cycle.label, cycle.effectiveEndDate != null,
+        records.filter { it.kind == CycleRecordKind.ACTIVITY.name && it.cycleId == cycle.id }.map { it.id }.toSet())
+}
 
 /** The last treatment as it was recorded. A value not recorded stays null. */
 data class LastTreatment(
@@ -53,7 +59,9 @@ data class FarmMoney(
 /** Read-only summary of records that already exist; nothing here is stored or estimated. */
 data class FarmDashboard(
     val campaignName: String?,
-    val treatmentsInCampaign: Int,
+    /** The open agricultural cycle, not the harvest; null when the farm has none. */
+    val openCycleLabel: String?,
+    val treatmentsInOpenCycle: Int,
     val lastTreatment: LastTreatment?,
     val incompleteTreatments: Int,
     val recentWorks: List<RecentWork>,
@@ -95,11 +103,10 @@ data class FarmDashboard(
             expenses: List<Expense>,
             documentCount: Int,
             latestDocuments: List<String> = emptyList(),
-            campaignPeriod: CampaignPeriod? = null,
+            openCycle: FarmCycleView? = null,
         ): FarmDashboard {
             val done = activities.filter { it.status == ActivityStatus.COMPLETED }
             val treatments = done.filter { it.type == ActivityType.PHYTOSANITARY }.sortedByDescending { it.activityDate }
-            val inCampaign = treatments.filter { campaignId != null && it.belongsToCampaign(campaignId, campaignPeriod) }
             val campaignHarvests = harvests.filter { campaignId != null && it.campaignId == campaignId }
             val campaignDeliveries = deliveries.filter { campaignId != null && it.campaignId == campaignId }
             val scopedExpenses = if (campaignId != null) expenses.filter { it.campaignId == campaignId } else expenses
@@ -108,7 +115,8 @@ data class FarmDashboard(
             val detail = last?.detail as? ActivityDetail.Phytosanitary
             return FarmDashboard(
                 campaignName = campaignName,
-                treatmentsInCampaign = inCampaign.size,
+                openCycleLabel = openCycle?.label,
+                treatmentsInOpenCycle = openCycle?.let { cycle -> treatments.count { it.id in cycle.activityIds } } ?: 0,
                 lastTreatment = last?.let { activity ->
                     LastTreatment(
                         date = activity.activityDate,
@@ -149,6 +157,11 @@ data class FarmDashboard(
     }
 }
 
+internal fun observeFarmCycles(persistence: LocalPersistence, farmId: UUID): Flow<List<FarmCycleView>> =
+    persistence.agriculturalCycles?.observe(farmId)?.map { result ->
+        (result as? AppResult.Success)?.value?.farmCycles().orEmpty()
+    } ?: flowOf(emptyList())
+
 /** Reuses the existing repositories; the farm filter is applied here, before anything is summed. */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal fun farmDashboardFlow(persistence: LocalPersistence, farmId: UUID): Flow<FarmDashboard> =
@@ -159,17 +172,17 @@ internal fun farmDashboardFlow(persistence: LocalPersistence, farmId: UUID): Flo
         val deliveries = campaign?.let { persistence.deliveryRepository.observeForCampaign(it.id) } ?: flowOf(emptyList())
         combine(
             persistence.activityRepository.observeForFarm(farmId),
-            harvests,
-            deliveries,
+            combine(harvests, deliveries, ::Pair),
             persistence.expenseRepository.observeAll(),
             persistence.attachmentRepository.observeForOwner(AttachmentOwner(AttachmentOwnerType.FARM, farmId)),
-        ) { activities, harvestRows, deliveryRows, expenses, documents ->
+            observeFarmCycles(persistence, farmId),
+        ) { activities, (harvestRows, deliveryRows), expenses, documents, cycles ->
             FarmDashboard.of(
                 campaign?.id, campaign?.name, activities,
                 harvestRows.filter { it.farmId == farmId }, deliveryRows.filter { it.farmId == farmId },
                 expenses.filter { it.farmId == farmId }, documents.size,
                 documents.sortedByDescending { it.createdAt }.take(2).map { it.displayName },
-                campaign?.let { CampaignPeriod(it.startDate, it.endDate) },
+                cycles.firstOrNull { !it.closed },
             )
         }
     }

@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.campaigns
 
+import com.isivoltpro.maginaolivo.core.common.countOf
 import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
@@ -465,7 +466,7 @@ fun CampaignDetailScreen(
                     )
                     MoCompactListItem(
                         title = "Pesadas",
-                        subtitle = if (summary.deliveryCount == 0) "Registrar kilos y vale de entrega" else "${summary.deliveryCount} pesadas",
+                        subtitle = if (summary.deliveryCount == 0) "Registrar kilos y vale de entrega" else countOf(summary.deliveryCount, "pesada", "pesadas"),
                         icon = MoIcons.Delivery,
                         onClick = onDeliveries,
                         modifier = Modifier.testTag("campaign-open-deliveries"),

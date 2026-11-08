@@ -100,7 +100,8 @@ class CampaignDetailViewModel(private val campaignId: UUID, private val reposito
     private var parcelsJob: Job? = null
     init { viewModelScope.launch { repository.observe(campaignId).collect { campaign ->
         mutableState.value = mutableState.value.copy(isLoading = false, campaign = campaign,
-            error = if (campaign == null) "La campaña no está disponible" else null)
+            // A re-emission must not wipe why the last action was refused.
+            error = if (campaign == null) CAMPAIGN_UNAVAILABLE else mutableState.value.error.takeUnless { it == CAMPAIGN_UNAVAILABLE })
         if (campaign != null && parcelsJob == null) {
             parcelsJob = viewModelScope.launch { repository.observeSelectableParcels(campaign.farmId).collect { parcels ->
                 mutableState.value = mutableState.value.copy(parcels = parcels)
@@ -119,7 +120,7 @@ class CampaignDetailViewModel(private val campaignId: UUID, private val reposito
     fun activate() = mutate("Campaña activada", ::campaignActivationErrorMessage) { repository.activate(campaignId) }
     fun markHarvest() = mutate("Recolección iniciada") { repository.markHarvest(campaignId) }
     fun closeToday() = mutate("Campaña cerrada") { repository.closeToday(campaignId) }
-    fun reopen() = mutate("Campaña reabierta") { repository.reopen(campaignId) }
+    fun reopen() = mutate("Campaña reabierta", ::campaignReopenErrorMessage) { repository.reopen(campaignId) }
     fun archivePreparation() = mutate("Borrador archivado") { repository.archivePreparation(campaignId) }
     fun consumeMessage() { mutableState.value = mutableState.value.copy(message = null) }
 
@@ -134,6 +135,16 @@ class CampaignDetailViewModel(private val campaignId: UUID, private val reposito
             is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = failureMessage(result.error))
         }
     }
+}
+
+private const val CAMPAIGN_UNAVAILABLE = "La campaña no está disponible"
+
+internal fun campaignReopenErrorMessage(error: AppError): String = when {
+    error == AppError.Validation("agriculturalCycleId", "cycle_closed") ->
+        "No se puede reabrir: esta recolección pertenece a una campaña agrícola cerrada. Su histórico se conserva."
+    error == AppError.Conflict("active_campaign_exists") ->
+        "Ya hay una campaña activa en esta finca. Cierra la campaña actual antes de reabrir esta."
+    else -> "La operación no se pudo completar"
 }
 
 internal fun campaignActivationErrorMessage(error: AppError): String = when {

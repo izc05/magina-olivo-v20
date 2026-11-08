@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.core.common.countOf
 import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
@@ -711,13 +712,13 @@ fun HarvestDetailScreen(
                     MoKpiMetric("Jornales", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.LABOUR),
                         Modifier.fillMaxWidth().testTag("day-resource-labour"), icon = MoIcons.People, kind = MoKpiKind.JORNALES,
                         supportingText = when { state.labourReadFailed -> "No pudimos leer los jornales"; !state.labourLoaded -> "Cargando jornales…";
-                            else -> listOfNotNull("${labourSummary.people} personas · ${labourSummary.label()} · Ver detalle",
+                            else -> listOfNotNull("${countOf(labourSummary.people, "persona", "personas")} · ${labourSummary.label()} · Ver detalle",
                                 labourCostNote(state.labour, state.costs)).joinToString("\n") },
                         onClick = { resourceDetail = "labour" })
                     MoKpiMetric("Maquinaria", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.EQUIPMENT),
                         Modifier.fillMaxWidth().testTag("day-resource-equipment"), icon = MoIcons.Tractor, kind = MoKpiKind.MAQUINARIA,
                         supportingText = when { !state.equipmentLoaded -> "Cargando maquinaria…"; state.equipmentReadFailed -> "No pudimos leer la maquinaria";
-                            else -> listOfNotNull("${state.equipment.sumOf { it.quantity }} equipos/usos · Ver detalle",
+                            else -> listOfNotNull("${countOf(state.equipment.sumOf { it.quantity }, "equipo/uso", "equipos/usos")} · Ver detalle",
                                 equipmentCostNote(state.equipment, state.costs)).joinToString("\n") }, onClick = { resourceDetail = "equipment" })
                     MoKpiMetric("Otros gastos", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.OTHER),
                         Modifier.fillMaxWidth().testTag("day-resource-other"), icon = MoIcons.Euro, kind = MoKpiKind.COSTES,

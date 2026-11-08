@@ -93,6 +93,18 @@ class CampaignViewModelTest {
         )
     }
 
+    @Test fun aRefusedReopenExplainsWhyAndSurvivesAReEmission() = runTest(dispatcher) {
+        val fake = FakeRepository(campaign(CampaignStatus.CLOSED))
+        val viewModel = CampaignDetailViewModel(fake.detail.value!!.id, fake)
+        advanceUntilIdle()
+        fake.failure = AppError.Validation("agriculturalCycleId", "cycle_closed")
+        viewModel.reopen(); advanceUntilIdle()
+        val message = "No se puede reabrir: esta recolección pertenece a una campaña agrícola cerrada. Su histórico se conserva."
+        assertEquals(message, viewModel.state.value.error)
+        fake.detail.value = fake.detail.value!!.copy(notes = "re-emitida"); advanceUntilIdle()
+        assertEquals(message, viewModel.state.value.error)
+    }
+
     /** #380: two edits bring the same message; only the count tells the editor to close again. */
     @Test fun everyEditIsCountedAndAFailureIsNot() = runTest(dispatcher) {
         val fake = FakeRepository(campaign(CampaignStatus.PREPARATION))
@@ -119,6 +131,7 @@ class CampaignViewModelTest {
         var created: NewCampaign? = null
         var lastAction: String? = null
         var fail = false
+        var failure: AppError? = null
         override fun observeForFarm(farmId: UUID): Flow<List<Campaign>> = forFarm
         override fun observeSelectableParcels(farmId: UUID): Flow<List<CampaignParcelOption>> = parcels
         override fun observe(id: UUID): Flow<Campaign?> = detail
@@ -130,6 +143,6 @@ class CampaignViewModelTest {
         override suspend fun closeToday(id: UUID) = result("closeToday")
         override suspend fun reopen(id: UUID) = result("reopen")
         override suspend fun archivePreparation(id: UUID) = result("archive")
-        private fun result(action: String): AppResult<Unit> { lastAction = action; return if (fail) AppResult.Failure(com.isivoltpro.maginaolivo.core.common.AppError.Conflict(action)) else AppResult.Success(Unit) }
+        private fun result(action: String): AppResult<Unit> { lastAction = action; return failure?.let { AppResult.Failure(it) } ?: if (fail) AppResult.Failure(AppError.Conflict(action)) else AppResult.Success(Unit) }
     }
 }

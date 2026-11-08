@@ -27,7 +27,6 @@ import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
-import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.feature.activities.label
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
@@ -55,16 +54,15 @@ private fun Activity.productName(): String? = (detail as? ActivityDetail.Phytosa
 internal fun filterFarmHistory(
     activities: List<Activity>,
     type: ActivityType,
-    campaignId: UUID?,
+    linkedToCycle: Set<UUID>?,
     parcelId: UUID?,
     query: String,
     newestFirst: Boolean,
-    campaignPeriod: CampaignPeriod? = null,
 ): List<Activity> {
     val text = plain(query)
     val rows = activities.filter { activity ->
         activity.type == type &&
-            (campaignId == null || activity.belongsToCampaign(campaignId, campaignPeriod)) &&
+            (linkedToCycle == null || activity.id in linkedToCycle) &&
             (parcelId == null || activity.targets.any { it.parcelId == parcelId }) &&
             (text.isEmpty() || plain(activity.productName().orEmpty()).contains(text))
     }
@@ -104,8 +102,8 @@ internal fun FarmActivityHistoryRoute(
     onRegister: (() -> Unit)?,
 ) {
     val activities by remember(farmId) { persistence.activityRepository.observeForFarm(farmId) }.collectAsStateWithLifecycle(emptyList())
-    val campaigns by remember(farmId) { persistence.campaignRepository.observeForFarm(farmId) }.collectAsStateWithLifecycle(emptyList())
-    FarmActivityHistory(type, activities, campaigns, onActivitySelected, onRegister)
+    val cycles by remember(farmId) { observeFarmCycles(persistence, farmId) }.collectAsStateWithLifecycle(emptyList())
+    FarmActivityHistory(type, activities, cycles, onActivitySelected, onRegister)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -113,11 +111,11 @@ internal fun FarmActivityHistoryRoute(
 internal fun FarmActivityHistory(
     type: ActivityType,
     activities: List<Activity>,
-    campaigns: List<Campaign>,
+    cycles: List<FarmCycleView>,
     onActivitySelected: (UUID) -> Unit,
     onRegister: (() -> Unit)?,
 ) {
-    var campaign by rememberSaveable { mutableStateOf<String?>(null) }
+    var cycle by rememberSaveable { mutableStateOf<String?>(null) }
     var parcel by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var newest by rememberSaveable { mutableStateOf(true) }
@@ -139,10 +137,10 @@ internal fun FarmActivityHistory(
         }
         onRegister?.let { MoPrimaryButton(registerLabel, it, Modifier.fillMaxWidth().testTag("farm-history-register")) }
         if (treatment) MoTextField(query, { query = it }, "Buscar producto", Modifier.fillMaxWidth().testTag("farm-history-search"))
-        if (campaigns.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            campaigns.forEach { option ->
+        if (cycles.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            cycles.forEach { option ->
                 val key = option.id.toString()
-                FilterChip(campaign == key, { campaign = key.takeIf { it != campaign } }, { Text(option.name) }, Modifier.testTag("farm-history-campaign-$key"))
+                FilterChip(cycle == key, { cycle = key.takeIf { it != cycle } }, { Text("${option.label} · ${if (option.closed) "Cerrada" else "Abierta"}") }, Modifier.testTag("farm-history-cycle-$key"))
             }
         }
         val parcels = ofType.flatMap { it.targets }.distinctBy { it.parcelId }
@@ -153,8 +151,8 @@ internal fun FarmActivityHistory(
             }
         }
         MoTertiaryButton(if (newest) "Más recientes primero" else "Más antiguos primero", { newest = !newest }, Modifier.testTag("farm-history-sort"))
-        val period = campaigns.firstOrNull { it.id.toString() == campaign }?.let { CampaignPeriod(it.startDate, it.endDate) }
-        val rows = filterFarmHistory(activities, type, campaign?.let(UUID::fromString), parcel?.let(UUID::fromString), query, newest, period)
+        val linked = cycles.firstOrNull { it.id.toString() == cycle }?.activityIds
+        val rows = filterFarmHistory(activities, type, linked, parcel?.let(UUID::fromString), query, newest)
         if (rows.isEmpty()) Text("Ningún registro coincide con los filtros.", color = MoSurfaceTokens.secondaryText, modifier = Modifier.testTag("farm-history-no-match"))
         rows.forEach { activity ->
             Surface(shape = MoShape.card, color = MoSurfaceTokens.cardSurface, border = BorderStroke(1.dp, MoSurfaceTokens.cardStroke),

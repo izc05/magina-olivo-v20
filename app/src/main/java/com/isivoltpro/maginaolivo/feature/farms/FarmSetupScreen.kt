@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
+import com.isivoltpro.maginaolivo.ui.components.MoUnsavedBackGuard
+import com.isivoltpro.maginaolivo.core.common.countOf
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -162,6 +164,7 @@ internal fun FarmSetupScreen(
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var searchOptions by rememberSaveable { mutableStateOf(false) }
+    MoUnsavedBackGuard(enabled = state.farm == null && name.isNotBlank() && !state.saving)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(MoSpacing.screen)
         .testTag("farm-setup-root"), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
         Text("Añadir finca", style = MaterialTheme.typography.headlineSmall)
@@ -177,7 +180,7 @@ internal fun FarmSetupScreen(
             else -> {
                 val farm = state.farm
                 Text(farm.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag("farm-setup-summary"))
-                Text("${state.parcels.size} parcelas guardadas en esta finca")
+                Text("${countOf(state.parcels.size, "parcela guardada", "parcelas guardadas")} en esta finca")
                 MoPrimaryButton("Seleccionar en el mapa", { onMap(farm.id) }, Modifier.fillMaxWidth().testTag("farm-setup-map"))
                 MoSecondaryButton("Buscar parcela", { searchOptions = !searchOptions }, Modifier.fillMaxWidth().testTag("farm-setup-search"))
                 if (searchOptions) {

@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import com.isivoltpro.maginaolivo.core.common.countOf
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import androidx.compose.foundation.Canvas
@@ -59,7 +60,7 @@ internal fun CampaignCharts(series: CampaignSeries) {
     val knownTotal = series.deliveredGrams
     val kgKnown = knownTotal != null && series.days.all { it.deliveredGrams != null && it.cumulativeDeliveredGrams != null }
     val summary = if (kgKnown) {
-        "Pesado ${Weight.format(knownTotal!!)} en ${series.days.count { it.deliveryCount > 0 }} días, " +
+        "Pesado ${Weight.format(knownTotal!!)} en ${countOf(series.days.count { it.deliveryCount > 0 }, "día", "días")}, " +
             "del ${first.format(SHORT_DAY)} al ${last.format(SHORT_DAY)}"
     } else {
         "Kilos no disponibles por un total histórico inconsistente"

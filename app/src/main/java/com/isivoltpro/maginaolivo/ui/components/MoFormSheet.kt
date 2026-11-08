@@ -1,6 +1,9 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,6 +59,17 @@ fun MoDiscardChangesDialog(onKeepEditing: () -> Unit, onDiscard: () -> Unit) {
         confirmButton = { TextButton(onKeepEditing, Modifier.testTag("form-keep-editing")) { Text("Seguir editando") } },
         dismissButton = { TextButton(onDiscard, Modifier.testTag("form-discard")) { Text("Descartar cambios") } },
     )
+}
+
+/** A form shown as a full screen: Atrás asks first, then leaves as it would have. */
+@Composable
+fun MoUnsavedBackGuard(enabled: Boolean) {
+    var asking by remember { mutableStateOf(false) }
+    var discarded by remember { mutableStateOf(false) }
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    BackHandler(enabled = enabled && !discarded) { asking = true }
+    if (asking) MoDiscardChangesDialog({ asking = false }, { asking = false; discarded = true })
+    LaunchedEffect(discarded) { if (discarded) backDispatcher?.onBackPressed() }
 }
 
 /** A bottom sheet holding a form: touching outside, swiping down or Atrás ask before losing changes. */

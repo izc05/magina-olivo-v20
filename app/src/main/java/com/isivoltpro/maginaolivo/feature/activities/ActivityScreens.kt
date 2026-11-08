@@ -1,9 +1,8 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import com.isivoltpro.maginaolivo.core.common.countOf
 import com.isivoltpro.maginaolivo.ui.components.LocalMoFormGuard
-import com.isivoltpro.maginaolivo.ui.components.MoDiscardChangesDialog
+import com.isivoltpro.maginaolivo.ui.components.MoUnsavedBackGuard
 import com.isivoltpro.maginaolivo.ui.components.moFormChanges
 import com.isivoltpro.maginaolivo.ui.components.MoFormSheet
 import androidx.compose.foundation.layout.Box
@@ -461,7 +460,7 @@ private fun FarmChoiceRow(farm: Farm, onSelected: () -> Unit) {
         Column(Modifier.padding(MoSpacing.md)) {
             Text(farm.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                "${farm.parcelCount} parcelas",
+                countOf(farm.parcelCount, "parcela", "parcelas"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MoSurfaceTokens.secondaryText,
             )
@@ -687,15 +686,8 @@ internal fun ActivityEditor(
             planning,
         ),
     )
-    if (LocalMoFormGuard.current == null) {
-        // The editor as a full screen: Atrás would leave it without any sheet to ask.
-        var asking by remember { mutableStateOf(false) }
-        var discarded by remember { mutableStateOf(false) }
-        val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-        BackHandler(enabled = formChanged && !isSaving && !discarded) { asking = true }
-        if (asking) MoDiscardChangesDialog({ asking = false }, { asking = false; discarded = true })
-        LaunchedEffect(discarded) { if (discarded) backDispatcher?.onBackPressed() }
-    }
+    // The editor as a full screen: Atrás would leave it without any sheet to ask.
+    if (LocalMoFormGuard.current == null) MoUnsavedBackGuard(enabled = formChanged && !isSaving)
 
     Column(
         // Measure the scroll viewport above the IME, including when this editor is a screen

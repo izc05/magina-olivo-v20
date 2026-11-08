@@ -105,7 +105,7 @@ internal fun FarmDashboardPanel(
                 Line("${last.product ?: "Producto sin registrar"} · ${last.date.format(DATE)}", "farm-dash-last-treatment")
                 Note("${last.parcels.joinToString(", ").ifEmpty { NOT_RECORDED }} · ${last.quantity?.let { "${number(it)} ${last.unit.orEmpty()}".trim() } ?: NOT_RECORDED}")
             }
-            if (dashboard?.campaignName != null) Note("${dashboard.treatmentsInCampaign} en la campaña")
+            dashboard?.openCycleLabel?.let { Note("${dashboard.treatmentsInOpenCycle} vinculados a la campaña agrícola $it", "farm-dash-treatments-cycle") }
             if ((dashboard?.incompleteTreatments ?: 0) > 0) Note("${dashboard?.incompleteTreatments} con datos por completar", "farm-dash-incomplete", warning = true)
         }
         FarmHubCard("Trabajos agrícolas", MoIcons.Activity, "farm-section-activities", { onOpenSection(FarmSection.ACTIVITIES) }, "Abrir Cuaderno" to onNotebook, "farm-section-notebook") {

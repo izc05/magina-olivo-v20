@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.core.common.countOf
 import com.isivoltpro.maginaolivo.ui.theme.MoColors
 
 import androidx.compose.foundation.layout.Arrangement
@@ -102,7 +103,7 @@ internal fun JornadaLabour(
         )
         labour.forEach { entry ->
             MoCompactListItem(
-                title = entry.workerName ?: "Sin identificar · ${entry.quantity} personas",
+                title = entry.workerName ?: "Sin identificar · ${countOf(entry.quantity, "persona", "personas")}",
                 subtitle = entry.label() + if (entry.appliedRate == null) " · Precio sin confirmar" else "",
                 onClick = entry.workerId?.let { { onPerson(it) } },
                 iconTint = MoColors.current.labourText,
